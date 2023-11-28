@@ -2,8 +2,7 @@
 #include <optional>
 App::App(HINSTANCE hInstance, int showWnd)
     :
-    window(hInstance, showWnd, L"engine", L"DirectX", 800, 600),
-    wnd(hInstance, showWnd, L"game", L"game", 300, 300)
+    window(hInstance, showWnd, L"engine", L"DirectX", 800, 600)
 {}
 
 int App::createLoop()
@@ -22,4 +21,9 @@ int App::createLoop()
 
 void App::Render()
 {
+    const float t = timer.Peek();
+    window.Gfx().ClearDepthColor(0.1f, 0.1f, 0.16f);
+
+
+    window.Gfx().End();
 }

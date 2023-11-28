@@ -1,6 +1,7 @@
 #include "Window.h"
 
 
+
 Window::Window(HINSTANCE hInstance, int nCmdShow, LPCWSTR windowTitle, LPCWSTR windowClass, int width, int height)
 	:
 	hInstance(hInstance),
@@ -10,11 +11,20 @@ Window::Window(HINSTANCE hInstance, int nCmdShow, LPCWSTR windowTitle, LPCWSTR w
 	width(width),
 	height(height)
 {
-	//Initialize();
+
 	if (!Initialize())
 	{
 		MessageBox(hwnd,L"failed to create Window", L"ERROR", MB_OK | MB_ICONERROR);
 	}
+}
+
+Graphics& Window::Gfx()
+{
+	if (!pGfx)
+	{
+		MessageBox(hwnd, L"failed initialize graphics Object",L"error",MB_OK);
+	}
+	return *pGfx;
 }
 
 Window::~Window()
@@ -49,7 +59,7 @@ bool Window::Initialize()
 	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	
-	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 2);
+	wc.hbrBackground = nullptr;
 	wc.lpszMenuName = NULL;
 	wc.lpszClassName = windowClass;
 	wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
@@ -85,6 +95,9 @@ bool Window::Initialize()
 
 	ShowWindow(hwnd, nShowWnd);
 	UpdateWindow(hwnd);
+
+	// create graphics object
+	pGfx = std::make_unique<Graphics>(hwnd, width, height);
 
 	return true;
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "Window.h"
+#include "FrameTime.h"
 
 
 class App
@@ -12,6 +13,7 @@ private:
 	void Render();
 private:
 	Window window;
-	Window wnd;
+	FrameTime timer;
+	//Window wnd;
 };
 

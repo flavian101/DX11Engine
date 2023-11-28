@@ -139,12 +139,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\FrameTime.cpp" />
     <ClCompile Include="src\Graphics.cpp" />
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\FrameTime.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Window.h" />
