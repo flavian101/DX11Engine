@@ -1,7 +1,6 @@
-#include <Windows.h>
-
-
-
+#include "Window.h"
+#include <optional>
+#include "App.h"
 
 int CALLBACK WinMain(
 	HINSTANCE hInstance,
@@ -9,9 +8,15 @@ int CALLBACK WinMain(
 	LPSTR     lpCmdLine,
 	int       nCmdShow)
 {
+	
+
+
+	return App(hInstance, nCmdShow).createLoop();
 
 
 
-	return App{}.Go();
+	
+
+	
 }
 
