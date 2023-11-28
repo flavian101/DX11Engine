@@ -56,13 +56,19 @@ bool Window::Initialize()
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
 	wc.hInstance = hInstance;
-	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	wc.hIcon = static_cast<HICON>(LoadImage(
+		hInstance, MAKEINTRESOURCE(IDI_ICON2),
+		IMAGE_ICON, 256, 201, 0
+	));
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	
 	wc.hbrBackground = nullptr;
 	wc.lpszMenuName = NULL;
 	wc.lpszClassName = windowClass;
-	wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+	wc.hIconSm = static_cast<HICON>(LoadImage(
+		hInstance, MAKEINTRESOURCE(IDI_ICON2),
+		IMAGE_ICON, 256, 201, 0
+	));
 
 
 	if (!RegisterClassEx(&wc))

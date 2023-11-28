@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphics.h"
+#include "resource.h"
 #include <Windows.h>
 #include <optional>
 #include <memory>

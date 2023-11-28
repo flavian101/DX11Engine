@@ -17,6 +17,18 @@ Graphics::~Graphics()
 {
 }
 
+Microsoft::WRL::ComPtr<ID3D11DeviceContext> Graphics::GetContext()
+{
+    return pContext;
+}
+
+Microsoft::WRL::ComPtr<ID3D11Device> Graphics::GetDevice()
+{
+    return pDevice;
+}
+
+
+
 bool Graphics::Intialize()
 {
     using namespace Microsoft::WRL;

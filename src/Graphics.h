@@ -24,6 +24,8 @@ public:
 	Graphics(const Graphics&) = delete;
 	Graphics& operator=(const Graphics&) = delete;
 	~Graphics();
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetContext();
+	Microsoft::WRL::ComPtr<ID3D11Device> GetDevice();
 
 	bool Intialize();
 	void ClearDepthColor(float red, float green, float blue);

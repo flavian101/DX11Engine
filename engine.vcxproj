@@ -144,12 +144,25 @@
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
     <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\Vertex.cpp" />
+    <ClCompile Include="src\VertexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\FrameTime.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\Vertex.h" />
+    <ClInclude Include="src\VertexBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="src\engine.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\icon\icon.ico" />
+    <Image Include="assets\icon\icon.png" />
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
