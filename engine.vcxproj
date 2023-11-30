@@ -139,6 +139,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\InputLayout.cpp" />
+    <ClCompile Include="src\Mesh.cpp" />
+    <ClCompile Include="src\PixelShader.cpp" />
+    <ClCompile Include="src\IndexBuffer.cpp" />
     <ClCompile Include="src\FrameTime.cpp" />
     <ClCompile Include="src\Graphics.cpp" />
     <ClCompile Include="src\App.cpp" />
@@ -146,8 +150,15 @@
     <ClCompile Include="src\Window.cpp" />
     <ClCompile Include="src\Vertex.cpp" />
     <ClCompile Include="src\VertexBuffer.cpp" />
+    <ClCompile Include="src\VertexShader.cpp" />
+    <ClCompile Include="src\Topology.cpp" />
+    <ClCompile Include="src\Triangle.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\InputLayout.h" />
+    <ClInclude Include="src\Mesh.h" />
+    <ClInclude Include="src\PixelShader.h" />
+    <ClInclude Include="src\IndexBuffer.h" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\FrameTime.h" />
     <ClInclude Include="src\Graphics.h" />
@@ -155,6 +166,9 @@
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\Vertex.h" />
     <ClInclude Include="src\VertexBuffer.h" />
+    <ClInclude Include="src\VertexShader.h" />
+    <ClInclude Include="src\Topology.h" />
+    <ClInclude Include="src\Triangle.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\engine.rc" />
@@ -163,6 +177,20 @@
     <Image Include="assets\icon\icon.ico" />
     <Image Include="assets\icon\icon.png" />
     <Image Include="icon1.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="assets\shaders\ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="assets\shaders\vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

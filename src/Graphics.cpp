@@ -1,4 +1,5 @@
 #include "Graphics.h"
+#include <d3d11sdklayers.h>
 
 
 Graphics::Graphics(HWND hwnd, int width, int height)
@@ -67,6 +68,11 @@ bool Graphics::Intialize()
         nullptr,
         &pContext
     );
+ 
+    if (FAILED(hr))
+    {
+        PrintError(hr);
+    }
 
     //back buffer
    ComPtr<ID3D11Resource> pBackBuffer;
@@ -122,11 +128,61 @@ bool Graphics::Intialize()
     return true;
 }
 
+HWND Graphics::getHwnd()
+{
+    return hwnd;
+}
+
+void Graphics::ShowMessageBox(const wchar_t* title, const char* message)
+{
+    MessageBox(nullptr,(LPCWSTR) message, title, MB_OK | MB_ICONERROR);
+}
+
+void Graphics::PrintError(HRESULT ghr)
+{
+  //  ID3D11InfoQueue* pInfoQueue = nullptr;
+  //
+  //  // Query the debug interface
+  //  
+  //   ghr = D3D11GetDebugInterface(__uuidof(ID3D11InfoQueue), (void**)&pInfoQueue);
+  //   
+  //  if (SUCCEEDED(ghr)) {
+  //      // Set up the debug message callback
+  //      pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+  //      pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
+  //
+  //      // Loop through the messages
+  //      SIZE_T numMessages = pInfoQueue->GetNumStoredMessages();
+  //      for (SIZE_T i = 0; i < numMessages; ++i) {
+  //          SIZE_T messageLength = 0;
+  //          pInfoQueue->GetMessage(i, nullptr, &messageLength);
+  //
+  //          D3D11_MESSAGE* pMessage = (D3D11_MESSAGE*)malloc(messageLength);
+  //          if (pMessage) {
+  //              pInfoQueue->GetMessage(i, pMessage, &messageLength);
+  //
+  //              // Display the message in a message box
+  //              ShowMessageBox(L"Direct3D Error", pMessage->pDescription);
+  //
+  //              free(pMessage);
+  //          }
+  //      }
+  //
+  //      // Release the info queue
+  //      pInfoQueue->Release();
+  //  }
+}
+
 void Graphics::ClearDepthColor(float red, float green, float blue)
 {
-    const float color[] = { red,green,blue,1.0f };
+    const float color[4] = { red,green,blue,1.0f };
     pContext->ClearRenderTargetView(pRenderTarget.Get(), color);
     pContext->ClearDepthStencilView(pDsv.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);
+}
+
+void Graphics::Draw(UINT vertexCount)
+{
+    pContext->Draw(vertexCount, 0);
 }
 
 void Graphics::End()

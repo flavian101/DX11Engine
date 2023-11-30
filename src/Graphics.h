@@ -10,15 +10,7 @@
 
 class Graphics
 {
-private:
-	HWND hwnd;
-	int width;
-	int height;
-	Microsoft::WRL::ComPtr<ID3D11Device> pDevice;
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pContext;
-	Microsoft::WRL::ComPtr<IDXGISwapChain> pSwapChain;
-	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pRenderTarget;
-	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> pDsv;
+
 public:
 	Graphics(HWND hwnd,int width, int height);
 	Graphics(const Graphics&) = delete;
@@ -28,7 +20,21 @@ public:
 	Microsoft::WRL::ComPtr<ID3D11Device> GetDevice();
 
 	bool Intialize();
+	HWND getHwnd();
+	void ShowMessageBox(const wchar_t* title, const char* message);
+	void PrintError(HRESULT ghr);
 	void ClearDepthColor(float red, float green, float blue);
+	void Draw(UINT vertexCount);
 	void End();
+
+private:
+	HWND hwnd;
+	int width;
+	int height;
+	Microsoft::WRL::ComPtr<ID3D11Device> pDevice;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pContext;
+	Microsoft::WRL::ComPtr<IDXGISwapChain> pSwapChain;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pRenderTarget;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> pDsv;
 };
 

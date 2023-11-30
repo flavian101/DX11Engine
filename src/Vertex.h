@@ -6,15 +6,25 @@ using namespace DirectX;
 class Vertex
 {
 public:
-	Vertex(float x, float y,float z,
-	float nx, float ny, float nz,
-		float u, float v);
+	Vertex();
+	//Vertex(float x, float y,float z,
+	//float nx, float ny, float nz,
+	//	float u, float v);
+	Vertex(float x, float y, float z);
+
+	//int getCount();
+	//std::vector<Vertex> GetVertices();
+	//void AddVertex(const Vertex& v);
+	XMFLOAT3 pos;
 
 private:
 	
-	XMFLOAT3 pos;
-	XMFLOAT3 normals;
-	XMFLOAT2 texCoords;
+
+private:
+	//std::vector<Vertex> vertices;
+	
+	//XMFLOAT3 normals;
+	//XMFLOAT2 texCoords;
 
 };
 

@@ -1,7 +1,8 @@
 #pragma once
 #include "Window.h"
 #include "FrameTime.h"
-
+#include "Mesh.h"
+#include "Triangle.h"
 
 class App
 {
@@ -14,6 +15,7 @@ private:
 private:
 	Window window;
 	FrameTime timer;
+	Triangle tri;
 	//Window wnd;
 };
 
