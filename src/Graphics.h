@@ -13,7 +13,7 @@ class Graphics
 {
 
 public:
-	Graphics(HWND hwnd,int width, int height);
+	Graphics(HWND hwnd,int width, int height, bool enableWireFrame);
 	Graphics(const Graphics&) = delete;
 	Graphics& operator=(const Graphics&) = delete;
 	~Graphics();
@@ -21,6 +21,7 @@ public:
 	Microsoft::WRL::ComPtr<ID3D11Device> GetDevice();
 
 	bool Intialize();
+	bool WireFrame();
 	HWND getHwnd();
 	void ShowMessageBox(const wchar_t* title, const char* message);
 	void PrintError(HRESULT ghr);
@@ -43,5 +44,7 @@ private:
 	Microsoft::WRL::ComPtr<IDXGISwapChain> pSwapChain;
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pRenderTarget;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> pDsv;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> wireFrame;
+	bool enableWireFrame = false;
 };
 

@@ -2,11 +2,12 @@
 #include <d3d11sdklayers.h>
 
 
-Graphics::Graphics(HWND hwnd, int width, int height)
+Graphics::Graphics(HWND hwnd, int width, int height,bool enableWireFrame)
     :
     hwnd(hwnd),
     width(width),
-    height(height)
+    height(height),
+    enableWireFrame(enableWireFrame)
 {
     if (!Intialize())
     {
@@ -125,6 +126,24 @@ bool Graphics::Intialize()
    vp.TopLeftY = 0.0f;
    pContext->RSSetViewports(1u, &vp);
 
+   if (enableWireFrame)
+   {
+       WireFrame();
+   }
+    return true;
+}
+
+bool Graphics::WireFrame()
+{
+    D3D11_RASTERIZER_DESC wfDesc;
+    ZeroMemory(&wfDesc, sizeof(D3D11_RASTERIZER_DESC));
+    wfDesc.FillMode = D3D11_FILL_WIREFRAME;
+    wfDesc.CullMode = D3D11_CULL_NONE;
+
+    HRESULT hr;
+    hr = pDevice->CreateRasterizerState(&wfDesc, wireFrame.GetAddressOf());
+
+    pContext->RSSetState(wireFrame.Get());
     return true;
 }
 

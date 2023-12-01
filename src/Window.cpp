@@ -103,7 +103,7 @@ bool Window::Initialize()
 	UpdateWindow(hwnd);
 
 	// create graphics object
-	pGfx = std::make_unique<Graphics>(hwnd, width, height);
+	pGfx = std::make_unique<Graphics>(hwnd, width, height,TRUE);
 
 	return true;
 }

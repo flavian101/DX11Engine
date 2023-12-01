@@ -2,7 +2,7 @@
 #include <optional>
 App::App(HINSTANCE hInstance, int showWnd)
     :
-    window(hInstance, showWnd, L"engine", L"DirectX", 800, 600),
+    window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
     tri(window.Gfx())
 
 {
