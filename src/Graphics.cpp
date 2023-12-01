@@ -190,3 +190,23 @@ void Graphics::End()
     HRESULT hr;
     hr = pSwapChain->Present(1u, 0u);
 }
+
+void Graphics::SetProjection(DirectX::FXMMATRIX proj) noexcept
+{
+    projection = proj;
+}
+
+DirectX::XMMATRIX Graphics::GetProjection() const noexcept
+{
+    return projection;
+}
+
+void Graphics::SetCamera(DirectX::FXMMATRIX view) noexcept
+{
+    Camera = view;
+}
+
+DirectX::XMMATRIX Graphics::GetCamera() const noexcept
+{
+    return Camera;;
+}

@@ -3,6 +3,7 @@
 #include "FrameTime.h"
 #include "Mesh.h"
 #include "Triangle.h"
+#include "Camera.h"
 
 class App
 {
@@ -15,6 +16,7 @@ private:
 private:
 	Window window;
 	FrameTime timer;
+	Camera camera;
 	Triangle tri;
 	//Window wnd;
 };

@@ -13,6 +13,11 @@ Mesh::Mesh(Graphics& g, const unsigned short indices[], Vertex v[], UINT indexCo
 	VertexBuffer vb(g, v, sizeof(v), sizeof(Vertex));
 	vb.Bind(g);
 
+	//initialize constant buffer
+	vsBuffer.Initialize(g);
+	
+	
+
 	VertexShader vs(g, L"assets/shaders/vs.hlsl");
 	auto bytecode = vs.GetByteCode();
 	vs.Bind(g);
@@ -28,7 +33,21 @@ Mesh::Mesh(Graphics& g, const unsigned short indices[], Vertex v[], UINT indexCo
 	
 }
 
-void Mesh::Draw(Graphics& g)
+
+void Mesh::Draw(Graphics& g,FXMMATRIX modelMatrix)
 {
+	Model = modelMatrix;
+	World = XMMatrixIdentity();
+
+	WVP = Model * g.GetCamera() * g.GetProjection();
+	vsBuffer.data.WVP = XMMatrixTranspose(WVP);
+	vsBuffer.data.World = XMMatrixTranspose(Model);
+	vsBuffer.Update(g);
+	g.GetContext()->VSSetConstantBuffers(0,1,vsBuffer.GetAddressOf());
 	g.Draw(indexCount);
+}
+
+void Mesh::UpdateMesh(Graphics& g)
+{
+
 }

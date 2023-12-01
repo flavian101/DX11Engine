@@ -60,6 +60,9 @@
     <ClCompile Include="src\Triangle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Window.h">
@@ -102,6 +105,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Triangle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ConstantBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ConstantBufferTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

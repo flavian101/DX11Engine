@@ -1,6 +1,7 @@
 #pragma once
 #include "Graphics.h"
 #include "Mesh.h"
+#include <DirectXMath.h>
 
 
 
@@ -27,7 +28,7 @@ public:
 	Triangle(Graphics& g);
 	void Draw(Graphics& g);
 private:
-
+	DirectX::XMMATRIX squareMatrix;
 	Mesh tria;
 };
 
