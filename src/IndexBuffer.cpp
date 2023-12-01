@@ -1,6 +1,6 @@
 #include "IndexBuffer.h"
 
-IndexBuffer::IndexBuffer(Graphics& g, const unsigned short indices[])
+IndexBuffer::IndexBuffer(Graphics& g, const unsigned short indices[], UINT indexCount)
 {
 	D3D11_BUFFER_DESC idDesc;
     ZeroMemory(&idDesc, sizeof(idDesc));
@@ -9,7 +9,7 @@ IndexBuffer::IndexBuffer(Graphics& g, const unsigned short indices[])
     idDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
     idDesc.CPUAccessFlags = 0;
     idDesc.MiscFlags = 0;
-    idDesc.ByteWidth = sizeof(indices)* sizeof(unsigned short);
+    idDesc.ByteWidth = indexCount* sizeof(unsigned short);
     idDesc.StructureByteStride = sizeof(unsigned short);
 
     D3D11_SUBRESOURCE_DATA idData;

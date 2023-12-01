@@ -6,7 +6,7 @@ Mesh::Mesh(Graphics& g, const unsigned short indices[], Vertex v[], UINT indexCo
 {
 
 	//indexCount = sizeof(indices) / sizeof(indices[0]);
-	IndexBuffer id(g, indices);
+	IndexBuffer id(g, indices, indexCount);
 	id.Bind(g);
 
 
