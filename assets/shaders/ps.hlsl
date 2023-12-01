@@ -1,4 +1,11 @@
-float4 main(float4 Pos : SV_POSITION) : SV_Target
+struct VS_out
 {
-    return float4(1.0f, 1.0f, 0.0f, 1.0f); // Yellow, with Alpha = 1
+    float4 Pos : SV_POSITION;
+    float4 color : COLOR;
+};
+
+float4 main(VS_out input) : SV_Target
+{
+    return input.color;
+    
 }

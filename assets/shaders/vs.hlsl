@@ -1,4 +1,13 @@
-float4 main(float4 Pos : POSITION) : SV_POSITION
+struct VS_out
 {
-    return Pos;
+    float4 Pos : SV_POSITION;
+    float4 color : COLOR;
+};
+
+VS_out main(float4 Pos : POSITION, float4 inColor : COLOR)
+{
+    VS_out output;
+    output.Pos = Pos;
+    output.color = inColor;
+    return output;
 }

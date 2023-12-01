@@ -4,11 +4,23 @@ Triangle::Triangle(Graphics& g)
 {
 	Vertex v[] =
 	{
-		Vertex(0.0f, 0.5f, 0.5f),
-		Vertex(0.5f, -0.5f, 0.5f),
-		Vertex(-0.5f, -0.5f, 0.5f)
+		Vertex(-0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f),
+		Vertex(-0.5f,  0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f),
+		Vertex(0.5f,  0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f),
+		Vertex(0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f),
 	};
-	//v->AddVertex(*v);
+
+
+	const unsigned short indices[] =
+	{
+		 0, 1, 2,
+		0, 2,3
+	};
+
+	indexCount = sizeof(indices) / sizeof(indices[0]);
+	IndexBuffer id(g, indices);
+	id.Bind(g);
+	
 
 	VertexBuffer vb(g, v, sizeof(v), sizeof(Vertex));
 	vb.Bind(g);
@@ -30,5 +42,5 @@ Triangle::Triangle(Graphics& g)
 
 void Triangle::Draw(Graphics& g)
 {
-	g.Draw(3);
+	g.Draw(indexCount);
 }

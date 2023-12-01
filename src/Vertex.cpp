@@ -11,9 +11,11 @@ Vertex::Vertex()
 {}
 
 //}
-Vertex::Vertex(float x, float y, float z)
+Vertex::Vertex(float x, float y, float z,
+	float cr, float cg, float cb, float ca)
 	:
-	pos(x,y,z)
+	pos(x,y,z),
+	color(cr, cg, cb, ca)
 {
 	//AddVertex();
 	//vertices.push_back(Vertex(x, y, z));

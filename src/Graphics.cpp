@@ -180,9 +180,9 @@ void Graphics::ClearDepthColor(float red, float green, float blue)
     pContext->ClearDepthStencilView(pDsv.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);
 }
 
-void Graphics::Draw(UINT vertexCount)
+void Graphics::Draw(UINT indexCount)
 {
-    pContext->Draw(vertexCount, 0);
+    pContext->DrawIndexed(indexCount, 0,0);
 }
 
 void Graphics::End()

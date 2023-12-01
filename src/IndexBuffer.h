@@ -5,6 +5,7 @@
 
 class IndexBuffer
 {
+public:
 	IndexBuffer(Graphics& g, const unsigned short indices[]);
 
 	void Bind(Graphics& g);
