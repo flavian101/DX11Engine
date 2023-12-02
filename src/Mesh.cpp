@@ -1,16 +1,18 @@
 #include "Mesh.h"
 
-Mesh::Mesh(Graphics& g, const unsigned short indices[], Vertex v[], UINT indexCount)
+Mesh::Mesh(Graphics& g, const unsigned short indices[], Vertex v[], UINT indexCount,UINT size)
 	:
-	indexCount(indexCount)
+	indexCount(indexCount),
+	samp(g)
 {
 
 	//indexCount = sizeof(indices) / sizeof(indices[0]);
 	IndexBuffer id(g, indices, indexCount);
 	id.Bind(g);
 
+	UINT count = size;
 
-	VertexBuffer vb(g, v, sizeof(v), sizeof(Vertex));
+	VertexBuffer vb(g, v, count);
 	vb.Bind(g);
 
 	//initialize constant buffer
@@ -30,6 +32,8 @@ Mesh::Mesh(Graphics& g, const unsigned short indices[], Vertex v[], UINT indexCo
 
 	Topology tp(g, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	tp.Bind(g);
+
+	
 	
 }
 
@@ -44,6 +48,7 @@ void Mesh::Draw(Graphics& g,FXMMATRIX modelMatrix)
 	vsBuffer.data.World = XMMatrixTranspose(Model);
 	vsBuffer.Update(g);
 	g.GetContext()->VSSetConstantBuffers(0,1,vsBuffer.GetAddressOf());
+	samp.Bind(g);
 	g.Draw(indexCount);
 }
 
@@ -51,3 +56,4 @@ void Mesh::UpdateMesh(Graphics& g)
 {
 
 }
+

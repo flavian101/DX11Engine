@@ -3,11 +3,12 @@
 
 
 
-VertexBuffer::VertexBuffer(Graphics& g,Vertex *vertices, UINT dataSize, UINT stride)
+VertexBuffer::VertexBuffer(Graphics& g,Vertex *vertices, UINT dataSize)
     :
-    stride(stride)
+    stride(sizeof(Vertex))
 {
  
+   
     D3D11_BUFFER_DESC vbDesc;
     ZeroMemory(&vbDesc, sizeof(vbDesc));
 
@@ -15,7 +16,7 @@ VertexBuffer::VertexBuffer(Graphics& g,Vertex *vertices, UINT dataSize, UINT str
     vbDesc.Usage = D3D11_USAGE_DEFAULT;
     vbDesc.CPUAccessFlags = 0u;
     vbDesc.MiscFlags = 0u;
-    vbDesc.ByteWidth = dataSize*stride;
+    vbDesc.ByteWidth = dataSize;
     vbDesc.StructureByteStride = stride;
 
     D3D11_SUBRESOURCE_DATA vbData = {};

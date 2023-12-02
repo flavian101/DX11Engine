@@ -11,19 +11,16 @@ public:
 	//float nx, float ny, float nz,
 	//	float u, float v);
 	Vertex(float x, float y, float z,
-		float cr, float cg, float cb, float ca);
+		float u, float v);
 
-	//int getCount();
-	//std::vector<Vertex> GetVertices();
-	//void AddVertex(const Vertex& v);
+	
 	XMFLOAT3 pos;
-	XMFLOAT4 color;
+	XMFLOAT2 texCoord;
 
 private:
 	
 
 private:
-	//std::vector<Vertex> vertices;
 	
 	//XMFLOAT3 normals;
 	//XMFLOAT2 texCoords;

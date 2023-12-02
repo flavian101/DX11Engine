@@ -3,7 +3,8 @@
 
 Triangle::Triangle(Graphics& g)
 	:
-	tria(g, indices, v,(sizeof(indices) / sizeof(indices[0])))
+	tria(g, indices, v,(sizeof(indices) / sizeof(indices[0])), sizeof(v)),
+	tex(g,"assets/textures/icon.png")
 {
 
 	squareMatrix = XMMatrixIdentity();
@@ -30,7 +31,7 @@ void Triangle::Draw(Graphics& g)
 
 	//Set cube2's world space matrix
 	squareMatrix2 = Rotation * Scale;
-	
+	tex.Bind(g);
 	tria.Draw(g,squareMatrix);
 	tria.Draw(g, squareMatrix2);
 }

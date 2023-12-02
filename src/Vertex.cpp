@@ -12,27 +12,12 @@ Vertex::Vertex()
 
 //}
 Vertex::Vertex(float x, float y, float z,
-	float cr, float cg, float cb, float ca)
+	float u, float v)
 	:
 	pos(x,y,z),
-	color(cr, cg, cb, ca)
+	texCoord(u,v)
 {
-	//AddVertex();
-	//vertices.push_back(Vertex(x, y, z));
+	
 }
 
-//int Vertex::getCount()
-//{
-//	return vertices.size();
-//}
-//
-//std::vector<Vertex> Vertex::GetVertices()
-//{
-//	return vertices;
-//}
-//
-//void Vertex::AddVertex(const Vertex& v)
-//{
-//	vertices.push_back(v);
-//}
 

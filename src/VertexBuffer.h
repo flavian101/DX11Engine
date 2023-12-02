@@ -6,7 +6,7 @@
 class VertexBuffer
 {
 public:
-	VertexBuffer(Graphics& g, Vertex* v, UINT dataSize, UINT stride);
+	VertexBuffer(Graphics& g, Vertex* v, UINT dataSize);
 
 	void Bind(Graphics& g);
 

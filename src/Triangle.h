@@ -2,6 +2,7 @@
 #include "Graphics.h"
 #include "Mesh.h"
 #include <DirectXMath.h>
+#include "Texture.h"
 
 
 
@@ -9,44 +10,71 @@
 class Triangle
 {
 private:
-	 Vertex v[8] =
+	 Vertex v[24] =
 	{
-		Vertex(-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
-		Vertex(-1.0f, +1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f),
-		Vertex(+1.0f, +1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f),
-		Vertex(+1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f),
-		Vertex(-1.0f, -1.0f, +1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
-		Vertex(-1.0f, +1.0f, +1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
-		Vertex(+1.0f, +1.0f, +1.0f, 1.0f, 0.0f, 1.0f, 1.0f),
-		Vertex(+1.0f, -1.0f, +1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
+		 // Front Face
+			Vertex(-1.0f, -1.0f, -1.0f, 0.0f, 1.0f),
+			Vertex(-1.0f,  1.0f, -1.0f, 0.0f, 0.0f),
+			Vertex(1.0f,  1.0f, -1.0f, 1.0f, 0.0f),
+			Vertex(1.0f, -1.0f, -1.0f, 1.0f, 1.0f),
+
+			// Back Face
+			Vertex(-1.0f, -1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(1.0f, -1.0f, 1.0f, 0.0f, 1.0f),
+			Vertex(1.0f,  1.0f, 1.0f, 0.0f, 0.0f),
+			Vertex(-1.0f,  1.0f, 1.0f, 1.0f, 0.0f),
+
+			// Top Face
+			Vertex(-1.0f, 1.0f, -1.0f, 0.0f, 1.0f),
+			Vertex(-1.0f, 1.0f,  1.0f, 0.0f, 0.0f),
+			Vertex(1.0f, 1.0f,  1.0f, 1.0f, 0.0f),
+			Vertex(1.0f, 1.0f, -1.0f, 1.0f, 1.0f),
+
+			// Bottom Face
+			Vertex(-1.0f, -1.0f, -1.0f, 1.0f, 1.0f),
+			Vertex(1.0f, -1.0f, -1.0f, 0.0f, 1.0f),
+			Vertex(1.0f, -1.0f,  1.0f, 0.0f, 0.0f),
+			Vertex(-1.0f, -1.0f,  1.0f, 1.0f, 0.0f),
+
+			// Left Face
+			Vertex(-1.0f, -1.0f,  1.0f, 0.0f, 1.0f),
+			Vertex(-1.0f,  1.0f,  1.0f, 0.0f, 0.0f),
+			Vertex(-1.0f,  1.0f, -1.0f, 1.0f, 0.0f),
+			Vertex(-1.0f, -1.0f, -1.0f, 1.0f, 1.0f),
+
+			// Right Face
+			Vertex(1.0f, -1.0f, -1.0f, 0.0f, 1.0f),
+			Vertex(1.0f,  1.0f, -1.0f, 0.0f, 0.0f),
+			Vertex(1.0f,  1.0f,  1.0f, 1.0f, 0.0f),
+			Vertex(1.0f, -1.0f,  1.0f, 1.0f, 1.0f),
 	};
 
 
 	const unsigned short indices[36] =
 	{
-		// front face
-	   0, 1, 2,
-	   0, 2, 3,
+		// Front Face
+		  0,  1,  2,
+		  0,  2,  3,
 
-	   // back face
-	   4, 6, 5,
-	   4, 7, 6,
+		  // Back Face
+		  4,  5,  6,
+		  4,  6,  7,
 
-	   // left face
-	   4, 5, 1,
-	   4, 1, 0,
+		  // Top Face
+		  8,  9, 10,
+		  8, 10, 11,
 
-	   // right face
-	   3, 2, 6,
-	   3, 6, 7,
+		  // Bottom Face
+		  12, 13, 14,
+		  12, 14, 15,
 
-	   // top face
-	   1, 5, 6,
-	   1, 6, 2,
+		  // Left Face
+		  16, 17, 18,
+		  16, 18, 19,
 
-	   // bottom face
-	   4, 0, 3,
-	   4, 3, 7
+		  // Right Face
+		  20, 21, 22,
+		  20, 22, 23
 	};
 
 public:
@@ -60,5 +88,7 @@ private:
 	DirectX::XMMATRIX Translation;
 	float rot = 0.01f;
 	Mesh tria;
+	Texture tex;
+
 };
 
