@@ -28,9 +28,9 @@ public:
 	void ClearDepthColor(float red, float green, float blue);
 	void Draw(UINT vertexCount);
 	void End();
-	void SetProjection(DirectX::FXMMATRIX proj) noexcept;
+	void SetProjection(DirectX::XMMATRIX proj) noexcept;
 	DirectX::XMMATRIX GetProjection() const noexcept;
-	void SetCamera(DirectX::FXMMATRIX view)noexcept;
+	void SetCamera(DirectX::XMMATRIX view)noexcept;
 	DirectX::XMMATRIX GetCamera()const noexcept;
 
 private:

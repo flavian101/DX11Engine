@@ -4,7 +4,10 @@
 #include "Mesh.h"
 #include "Triangle.h"
 #include "Camera.h"
-
+#pragma comment (lib, "dinput8.lib")
+#pragma comment (lib, "dxguid.lib")
+#include <dinput.h>
+#include <wrl.h>
 class App
 {
 public:
@@ -13,7 +16,12 @@ public:
 	int createLoop();
 private:
 	void Render();
+	void DetectInput(double time);
 private:
+	Microsoft::WRL::ComPtr<IDirectInputDevice8> pKeyboard;
+	Microsoft::WRL::ComPtr<IDirectInputDevice8> pMouse;
+	DIMOUSESTATE mouseLastState;
+	LPDIRECTINPUT8 DirectInput;
 	Window window;
 	FrameTime timer;
 	Camera camera;
