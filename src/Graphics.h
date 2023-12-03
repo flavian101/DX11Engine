@@ -26,6 +26,7 @@ public:
 	void PrintError(HRESULT ghr);
 	void ClearDepthColor(float red, float green, float blue);
 	void Draw(UINT vertexCount);
+	void DrawSkybox(UINT indexCount);
 	void End();
 	void SetProjection(DirectX::XMMATRIX proj) noexcept;
 	DirectX::XMMATRIX GetProjection() const noexcept;
@@ -44,6 +45,12 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pRenderTarget;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> pDsv;
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> wireFrame;
+	Microsoft::WRL::ComPtr<ID3D11BlendState> Tranparency;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CCWcullMode;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CWcullMode;
+	Microsoft::WRL::ComPtr < ID3D11RasterizerState> RSCullNone;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> DSLessEqual;
+	
 	bool enableWireFrame = false;
 };
 

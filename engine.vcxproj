@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CubeMapTexture.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Sampler.cpp" />
     <ClCompile Include="src\Camera.cpp" />
@@ -163,6 +164,7 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CubeMapTexture.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Sampler.h" />
     <ClInclude Include="src\Camera.h" />

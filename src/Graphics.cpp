@@ -84,7 +84,7 @@ bool Graphics::Intialize()
    D3D11_DEPTH_STENCIL_DESC dsDesc = {};
    dsDesc.DepthEnable = TRUE;
    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-   dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+   dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
    ComPtr<ID3D11DepthStencilState> depthState;
   hr= pDevice->CreateDepthStencilState(&dsDesc, depthState.GetAddressOf());
         //bind the depth state
@@ -126,6 +126,27 @@ bool Graphics::Intialize()
    vp.TopLeftY = 0.0f;
    pContext->RSSetViewports(1u, &vp);
 
+   //blending
+   D3D11_BLEND_DESC blendDesc;
+   ZeroMemory(&blendDesc, sizeof(blendDesc));
+
+   D3D11_RENDER_TARGET_BLEND_DESC rtbd;
+   ZeroMemory(&rtbd, sizeof(rtbd));
+
+   rtbd.BlendEnable = true;
+   rtbd.SrcBlend = D3D11_BLEND_SRC_COLOR;
+   rtbd.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+   rtbd.BlendOp = D3D11_BLEND_OP_ADD;
+   rtbd.SrcBlendAlpha = D3D11_BLEND_ONE;
+   rtbd.DestBlendAlpha = D3D11_BLEND_ZERO;
+   rtbd.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+   rtbd.RenderTargetWriteMask = D3D10_COLOR_WRITE_ENABLE_ALL;
+
+   blendDesc.AlphaToCoverageEnable = false;
+   blendDesc.RenderTarget[0] = rtbd;
+   pDevice->CreateBlendState(&blendDesc, Tranparency.GetAddressOf());
+
+
    D3D11_RASTERIZER_DESC wfDesc;
    ZeroMemory(&wfDesc, sizeof(D3D11_RASTERIZER_DESC));
    if (enableWireFrame)
@@ -139,8 +160,14 @@ bool Graphics::Intialize()
        wfDesc.CullMode = D3D11_CULL_BACK;
    }
    wfDesc.FrontCounterClockwise = true;
-
    hr = pDevice->CreateRasterizerState(&wfDesc, wireFrame.GetAddressOf());
+
+
+   wfDesc.FrontCounterClockwise = false;
+   hr = pDevice->CreateRasterizerState(&wfDesc, CWcullMode.GetAddressOf());
+
+   wfDesc.CullMode = D3D11_CULL_NONE;
+   hr = pDevice->CreateRasterizerState(&wfDesc, RSCullNone.GetAddressOf());
 
    pContext->RSSetState(wireFrame.Get());
 
@@ -201,11 +228,31 @@ void Graphics::ClearDepthColor(float red, float green, float blue)
     const float color[4] = { red,green,blue,1.0f };
     pContext->ClearRenderTargetView(pRenderTarget.Get(), color);
     pContext->ClearDepthStencilView(pDsv.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);
+    //reset the shader
+
+    //Set our Render Target
+    pContext->OMSetRenderTargets(1, pRenderTarget.GetAddressOf(), pDsv.Get());
+
+    //Set the default blend state (no blending) for opaque objects
+    pContext->OMSetBlendState(0, 0, 0xffffffff);
+
 }
 
 void Graphics::Draw(UINT indexCount)
 {
+    pContext->RSSetState(wireFrame.Get());
     pContext->DrawIndexed(indexCount, 0,0);
+}
+
+void Graphics::DrawSkybox(UINT indexCount)
+{
+    pContext->OMSetDepthStencilState(DSLessEqual.Get(), 0);
+    pContext->RSSetState(RSCullNone.Get());
+    pContext->DrawIndexed(indexCount, 0, 0);
+
+    //set the default vs Shader and the depth state
+    //pContext->VSSetShader(VS,0,0);
+    pContext->OMSetDepthStencilState(NULL, 0);
 }
 
 void Graphics::End()
