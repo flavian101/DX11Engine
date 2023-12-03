@@ -21,7 +21,6 @@ public:
 	Microsoft::WRL::ComPtr<ID3D11Device> GetDevice();
 
 	bool Intialize();
-	bool WireFrame();
 	HWND getHwnd();
 	void ShowMessageBox(const wchar_t* title, const char* message);
 	void PrintError(HRESULT ghr);

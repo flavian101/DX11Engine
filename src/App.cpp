@@ -31,7 +31,7 @@ App::App(HINSTANCE hInstance, int showWnd)
 
 	hr = pMouse->SetDataFormat(&c_dfDIMouse);
 	//hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
-	hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
+	hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(),  DISCL_NOWINKEY | DISCL_FOREGROUND);
 
 	
 }
@@ -60,7 +60,8 @@ void App::Render()
 	DetectInput(t);
 
     window.Gfx().SetCamera(camera.GetView());
-    tri.Draw(window.Gfx());
+	
+    tri.Draw(window.Gfx(),camera.GetPos(),camera.GetTarget());
 
     window.Gfx().End();
 }

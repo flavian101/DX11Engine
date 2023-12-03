@@ -7,7 +7,7 @@ using namespace DirectX;
 struct cb_vsConstantBuffer
 {
 	XMMATRIX WVP;
-	XMMATRIX World;
+	XMMATRIX Model;
 
 };
 struct Light
@@ -16,10 +16,16 @@ struct Light
 	{
 		ZeroMemory(this, sizeof(Light));
 	}
-	XMFLOAT3 dir;
-	float pad;
-	XMFLOAT4 ambient;
-	XMFLOAT4 diffuse;
+    XMFLOAT3 pointPos;
+    float pad;
+    XMFLOAT3 spotPos;
+    float range;
+    XMFLOAT3 dir;
+    float cone;
+    XMFLOAT3 att;
+    float pad2;
+    XMFLOAT4 ambient;
+    XMFLOAT4 diffuse;
 };
 struct cb_psConstantBuffer
 {

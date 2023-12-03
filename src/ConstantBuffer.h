@@ -38,7 +38,7 @@ public:
 		g.GetDevice()->CreateBuffer(&desc, 0, buffer.GetAddressOf());
 
 	}
-
+	
 	bool Update(Graphics& g)
 	{
 		D3D11_MAPPED_SUBRESOURCE mappedResource;

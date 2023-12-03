@@ -4,36 +4,24 @@
 Triangle::Triangle(Graphics& g)
 	:
 	tria(g, indices, v,(sizeof(indices) / sizeof(indices[0])), sizeof(v)),
-	tex(g,"assets/textures/icon.png")
+	tex(g,"assets/textures/grass.jpg")
 {
 
-	squareMatrix = XMMatrixIdentity();
-	squareMatrix2 = XMMatrixIdentity();
+	
+	
 }
 
-void Triangle::Draw(Graphics& g)
+void Triangle::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 {
-	//Keep the cubes rotating
-	rot += .02f;
-	if (rot > 6.26f)
-		rot = 0.0f;
-	//Define cube1's world space matrix
-	XMVECTOR rotaxis = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	Rotation = XMMatrixRotationAxis(rotaxis, rot);
-	Translation = XMMatrixTranslation(0.0f, 0.0f, 4.0f);
+	squareMatrix = XMMatrixIdentity();
+	
+	Scale = XMMatrixScaling(500.0f, 10.0f, 500.0f);
+	Translation = XMMatrixTranslation(0.0f, 10.0f, 0.0f);
 
-	//Set cube1's world space using the transformations
-	squareMatrix = Translation * Rotation;
-
-	//Define cube2's world space matrix
-	Rotation = XMMatrixRotationAxis(rotaxis, -rot);
-	Scale = XMMatrixScaling(1.3f, 1.3f, 1.3f);
-
-	//Set cube2's world space matrix
-	squareMatrix2 = Rotation * Scale;
+	
+	squareMatrix = Scale * Translation;
 	tex.Bind(g);
-	tria.Draw(g,squareMatrix);
-	tria.Draw(g, squareMatrix2);
+	tria.Draw(g,squareMatrix,camPos, camTarget);
 }
 
 

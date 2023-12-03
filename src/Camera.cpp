@@ -35,3 +35,13 @@ DirectX::XMMATRIX Camera::GetView()
 {
 	return camView;
 }
+
+DirectX::XMVECTOR Camera::GetPos()
+{
+	return camPosition;
+}
+
+DirectX::XMVECTOR Camera::GetTarget()
+{
+	return camTarget;
+}

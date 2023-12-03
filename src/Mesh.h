@@ -15,16 +15,19 @@ class Mesh
 public:
 	Mesh(Graphics& g, const unsigned short indices[], Vertex v[],UINT indexCount, UINT size);
 
-	void Draw(Graphics& g, FXMMATRIX model);
+	void Draw(Graphics& g, XMMATRIX model, XMVECTOR camPos, XMVECTOR camTarget);
 	void UpdateMesh(Graphics& g);
+	void UpdateLight(Graphics& g);
+	void UpdateCamera(Graphics& g);
 private:
 	UINT indexCount;
 	//constant buffer
+	ConstantBuffer<cb_psConstantBuffer> psBuffer;
 	ConstantBuffer<cb_vsConstantBuffer> vsBuffer;
+
 	Sampler samp;
 	//matrices
 	XMMATRIX WVP;
-	XMMATRIX World;
 	XMMATRIX Model;
 public:
 

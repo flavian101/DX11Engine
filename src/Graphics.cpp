@@ -126,26 +126,30 @@ bool Graphics::Intialize()
    vp.TopLeftY = 0.0f;
    pContext->RSSetViewports(1u, &vp);
 
+   D3D11_RASTERIZER_DESC wfDesc;
+   ZeroMemory(&wfDesc, sizeof(D3D11_RASTERIZER_DESC));
    if (enableWireFrame)
    {
-       WireFrame();
+       wfDesc.FillMode = D3D11_FILL_WIREFRAME;
+       wfDesc.CullMode = D3D11_CULL_NONE;
    }
+   else
+   {
+       wfDesc.FillMode = D3D11_FILL_SOLID;
+       wfDesc.CullMode = D3D11_CULL_BACK;
+   }
+   wfDesc.FrontCounterClockwise = true;
+
+   hr = pDevice->CreateRasterizerState(&wfDesc, wireFrame.GetAddressOf());
+
+   pContext->RSSetState(wireFrame.Get());
+
+
+   
     return true;
 }
 
-bool Graphics::WireFrame()
-{
-    D3D11_RASTERIZER_DESC wfDesc;
-    ZeroMemory(&wfDesc, sizeof(D3D11_RASTERIZER_DESC));
-    wfDesc.FillMode = D3D11_FILL_WIREFRAME;
-    wfDesc.CullMode = D3D11_CULL_NONE;
 
-    HRESULT hr;
-    hr = pDevice->CreateRasterizerState(&wfDesc, wireFrame.GetAddressOf());
-
-    pContext->RSSetState(wireFrame.Get());
-    return true;
-}
 
 HWND Graphics::getHwnd()
 {
