@@ -32,7 +32,6 @@ void Triangle::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 	squareMatrix = Scale * Translation;
 
 	tex.Bind(g);
-
 	getGround(g).Draw(g, squareMatrix, camPos, camTarget);
 }
 

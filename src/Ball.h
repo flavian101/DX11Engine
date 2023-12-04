@@ -2,21 +2,24 @@
 #include "Mesh.h"
 #include "Sphere.h"
 #include "Graphics.h"
+#include "Texture.h"
 
-//
-//class Ball
-//{
-//public:
-//	Ball(Graphics& g);
-//
-//	void Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget);
-//private:
-//	Sphere sphere;
-//	XMMATRIX ballPos;
-//	Mesh ball;
-//	DirectX::XMMATRIX Scale;
-//	DirectX::XMMATRIX Translation;
-//
-//
-//};
-//
+
+class Ball
+{
+public:
+	Ball(Graphics& g);
+
+	void Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget);
+	Mesh getBal(Graphics& g);
+
+private:
+	Sphere sphere;
+	XMMATRIX ballPos;
+	Texture tex;
+	DirectX::XMMATRIX Scale;
+	DirectX::XMMATRIX Translation;
+
+
+};
+
