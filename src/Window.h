@@ -19,7 +19,7 @@ public:
 	static std::optional<int> ProcessMessages();
 	Graphics& Gfx();
 
-	HWND GetHwnd() const { return hwnd; };
+	HWND GetHwnd() const;
 private:
 	
 	static LRESULT CALLBACK HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;

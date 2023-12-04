@@ -27,6 +27,11 @@ Graphics& Window::Gfx()
 	return *pGfx;
 }
 
+HWND Window::GetHwnd() const
+{
+	return hwnd;
+}
+
 Window::~Window()
 {
 	DestroyWindow(hwnd);
@@ -139,8 +144,13 @@ LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noe
 {
 	switch (msg)
 	{
-	case WM_CLOSE:
-		
+	case WM_KEYDOWN:
+		if (wParam == VK_ESCAPE)
+		{
+			DestroyWindow(hWnd);
+		}
+		return 0;
+	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
 	}

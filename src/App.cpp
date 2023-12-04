@@ -31,7 +31,7 @@ App::App(HINSTANCE hInstance, int showWnd)
 
 	hr = pMouse->SetDataFormat(&c_dfDIMouse);
 	//hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
-	hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(),  DISCL_NOWINKEY | DISCL_FOREGROUND);
+	hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
 
 	
 }
@@ -81,7 +81,7 @@ void App::DetectInput(double time)
 
 	if (keyboardState[DIK_ESCAPE] & 0x80)
 	{
-		PostMessage(window.Gfx().getHwnd(), WM_DESTROY, 0, 0);
+		PostMessage(window.GetHwnd(), WM_DESTROY, 0, 0);
 	}
 
 	float speed = 0.02f * time;
