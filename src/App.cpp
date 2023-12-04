@@ -5,7 +5,7 @@ App::App(HINSTANCE hInstance, int showWnd)
     :
     window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
     tri(window.Gfx())
-
+	//ball(window.Gfx())
 {
 
     window.Gfx().SetProjection(DirectX::XMMatrixPerspectiveLH(1.0f, 9.0f / 16.0f, 0.5f, 100.0f));
@@ -62,7 +62,7 @@ void App::Render()
     window.Gfx().SetCamera(camera.GetView());
 	
     tri.Draw(window.Gfx(),camera.GetPos(),camera.GetTarget());
-
+	//ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
     window.Gfx().End();
 }
 
@@ -90,17 +90,21 @@ void App::DetectInput(double time)
 	{
 		camera.moveLeftRight -= speed;
 	}
-	if (keyboardState[DIK_D] & 0x80)
+	else if (keyboardState[DIK_D] & 0x80)
 	{
 		camera.moveLeftRight += speed;
 	}
-	if (keyboardState[DIK_W] & 0x80)
+	else if (keyboardState[DIK_W] & 0x80)
 	{
 		camera.moveBackForward += speed;
 	}
-	if (keyboardState[DIK_S] & 0x80)
+	else if (keyboardState[DIK_S] & 0x80)
 	{
 		camera.moveBackForward -= speed;
+	}
+	else
+	{
+		speed = 0.02;
 	}
 	if ((mouseCurrState.lX != mouseLastState.lX) || (mouseCurrState.lY != mouseLastState.lY))
 	{

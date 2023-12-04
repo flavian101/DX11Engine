@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Ball.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Sampler.cpp" />
     <ClCompile Include="src\Camera.cpp" />
@@ -153,6 +154,7 @@
     <ClCompile Include="src\FrameTime.cpp" />
     <ClCompile Include="src\Graphics.cpp" />
     <ClCompile Include="src\App.cpp" />
+    <ClCompile Include="src\Sphere.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
     <ClCompile Include="src\Window.cpp" />
     <ClCompile Include="src\Vertex.cpp" />
@@ -163,6 +165,7 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Ball.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Sampler.h" />
     <ClInclude Include="src\Camera.h" />
@@ -176,6 +179,7 @@
     <ClInclude Include="src\FrameTime.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\App.h" />
+    <ClInclude Include="src\Sphere.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\Vertex.h" />
     <ClInclude Include="src\VertexBuffer.h" />

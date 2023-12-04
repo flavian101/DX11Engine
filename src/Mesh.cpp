@@ -1,18 +1,19 @@
 #include "Mesh.h"
 
-Mesh::Mesh(Graphics& g, const unsigned short indices[], Vertex v[], UINT indexCount,UINT size)
+
+
+Mesh::Mesh(Graphics& g, std::vector<unsigned short> indices, std::vector< Vertex> v)
 	:
-	indexCount(indexCount),
+	indexCount(indices.size()),
 	samp(g)
 {
 
 	//indexCount = sizeof(indices) / sizeof(indices[0]);
-	IndexBuffer id(g, indices, indexCount);
+	IndexBuffer id(g, indices);
 	id.Bind(g);
 
-	UINT count = size;
 
-	VertexBuffer vb(g, v, count);
+	VertexBuffer vb(g, v);
 	vb.Bind(g);
 
 	//initialize constant buffer

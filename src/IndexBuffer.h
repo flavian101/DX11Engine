@@ -1,12 +1,13 @@
 #pragma once
 #include "Graphics.h"
 #include "wrl.h"
+#include <vector>
 
 
 class IndexBuffer
 {
 public:
-	IndexBuffer(Graphics& g, const unsigned short indices[], UINT indexCount);
+	IndexBuffer(Graphics& g, std::vector<unsigned short> indices);
 
 	void Bind(Graphics& g);
 

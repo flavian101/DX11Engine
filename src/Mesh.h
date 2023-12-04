@@ -9,11 +9,12 @@
 #include "IndexBuffer.h"
 #include "ConstantBuffer.h"
 #include "Sampler.h"
+#include <vector>
 
 class Mesh
 {
 public:
-	Mesh(Graphics& g, const unsigned short indices[], Vertex v[],UINT indexCount, UINT size);
+	Mesh(Graphics& g, std::vector<unsigned short> indices,std::vector< Vertex> v);
 
 	void Draw(Graphics& g, XMMATRIX model, XMVECTOR camPos, XMVECTOR camTarget);
 	void UpdateMesh(Graphics& g);

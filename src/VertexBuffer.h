@@ -6,7 +6,7 @@
 class VertexBuffer
 {
 public:
-	VertexBuffer(Graphics& g, Vertex* v, UINT dataSize);
+	VertexBuffer(Graphics& g, std::vector< Vertex> v);
 
 	void Bind(Graphics& g);
 
