@@ -48,7 +48,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11BlendState> Tranparency;
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CCWcullMode;
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CWcullMode;
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState> RSCullNone;
+	Microsoft::WRL::ComPtr < ID3D11RasterizerState> RSCullNone;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> DSLessEqual;
 	
 	bool enableWireFrame = false;

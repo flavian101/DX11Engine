@@ -3,8 +3,7 @@
 #include "FrameTime.h"
 #include "Mesh.h"
 #include "Triangle.h"
-//#include "Ball.h"
-#include "SkySphere.h"
+#include "Ball.h"
 #include "Camera.h"
 #pragma comment (lib, "dinput8.lib")
 #pragma comment (lib, "dxguid.lib")
@@ -28,8 +27,7 @@ private:
 	FrameTime timer;
 	Camera camera;
 	Triangle tri;
-	SkySphere sky;
-	//Ball ball;
+	Ball ball;
 	//Window wnd;
 };
 

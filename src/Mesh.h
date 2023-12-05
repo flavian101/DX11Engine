@@ -14,12 +14,9 @@
 class Mesh
 {
 public:
-	Mesh(Graphics& g, std::vector<unsigned short> indices,std::vector< Vertex> v,
-		LPCWSTR vertexShader, LPCWSTR pixelShader);
+	Mesh(Graphics& g, std::vector<unsigned short> indices,std::vector< Vertex> v);
 
 	void Draw(Graphics& g, XMMATRIX model, XMVECTOR camPos, XMVECTOR camTarget);
-	void DrawSky(Graphics& g, XMMATRIX model, XMVECTOR camPos);
-
 	void UpdateMesh(Graphics& g);
 	void UpdateLight(Graphics& g);
 	void UpdateCamera(Graphics& g);

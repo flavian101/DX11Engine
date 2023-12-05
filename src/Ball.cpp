@@ -2,10 +2,9 @@
 
 Ball::Ball(Graphics& g)
 	:
-	sphere(4),
-	tex(g, "assets/textures/icon.png",0)
+	sphere(32),
+	tex(g, "assets/textures/8k_moon.jpg")
 {
-
 	ballPos = XMMatrixIdentity();
 
 }
@@ -24,8 +23,5 @@ void Ball::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 
 Mesh Ball::getBal(Graphics& g)
 {
-	return Mesh(g,sphere.getIndices(),sphere.getVertex(),
-		L"assets/shaders/vs.hlsl",
-		L"assets/shaders/ps.hlsl"
-	);
+	return Mesh(g,sphere.getIndices(),sphere.getVertex());
 }

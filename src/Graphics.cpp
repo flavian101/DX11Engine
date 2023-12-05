@@ -234,7 +234,7 @@ void Graphics::ClearDepthColor(float red, float green, float blue)
     pContext->OMSetRenderTargets(1, pRenderTarget.GetAddressOf(), pDsv.Get());
 
     //Set the default blend state (no blending) for opaque objects
-    pContext->OMSetBlendState(nullptr, 0, 0xffffffff);
+    pContext->OMSetBlendState(0, 0, 0xffffffff);
 
 }
 
@@ -247,12 +247,10 @@ void Graphics::Draw(UINT indexCount)
 void Graphics::DrawSkybox(UINT indexCount)
 {
     pContext->OMSetDepthStencilState(DSLessEqual.Get(), 0);
-    //pContext->RSSetState(RSCullNone.Get());
     pContext->RSSetState(RSCullNone.Get());
     pContext->DrawIndexed(indexCount, 0, 0);
 
     //set the default vs Shader and the depth state
-    
     //pContext->VSSetShader(VS,0,0);
     pContext->OMSetDepthStencilState(NULL, 0);
 }
