@@ -2,7 +2,8 @@
 
 
 
-Mesh::Mesh(Graphics& g, std::vector<unsigned short> indices, std::vector< Vertex> v)
+Mesh::Mesh(Graphics& g, std::vector<unsigned short> indices, std::vector< Vertex> v,
+	LPCWSTR vertexShader, LPCWSTR pixelShader)
 	:
 	indexCount(indices.size()),
 	samp(g)
@@ -30,13 +31,11 @@ Mesh::Mesh(Graphics& g, std::vector<unsigned short> indices, std::vector< Vertex
 
 	vsBuffer.Initialize(g);
 
-	
-	
 
-	VertexShader vs(g, L"assets/shaders/vs.hlsl");
+	VertexShader vs(g, vertexShader);
 	auto bytecode = vs.GetByteCode();
 	vs.Bind(g);
-	PixelShader ps(g, L"assets/shaders/ps.hlsl");
+	PixelShader ps(g, pixelShader);
 
 	ps.Bind(g);
 
@@ -82,7 +81,24 @@ void Mesh::Draw(Graphics& g,XMMATRIX modelMatrix, XMVECTOR camPos, XMVECTOR camT
 	samp.Bind(g);
 	g.Draw(indexCount);
 }
-
+//
+//void Mesh::DrawSky(Graphics& g, XMMATRIX model, XMVECTOR camPos)
+//{
+//	Model = model;
+//
+//	WVP = Model * g.GetCamera() * g.GetProjection();
+//	vsBuffer.data.WVP = XMMatrixTranspose(WVP);
+//	vsBuffer.data.Model = XMMatrixTranspose(Model);
+//
+//	vsBuffer.Update(g);
+//	g.GetContext()->VSSetConstantBuffers(0, 1, vsBuffer.GetAddressOf());
+//
+//	samp.Bind(g);
+//	g.DrawSkybox(indexCount);
+//
+//	
+//}
+//
 void Mesh::UpdateMesh(Graphics& g)
 {
 

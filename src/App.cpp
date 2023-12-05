@@ -5,7 +5,8 @@ App::App(HINSTANCE hInstance, int showWnd)
     :
     window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
     tri(window.Gfx()),
-	ball(window.Gfx())
+	//ball(window.Gfx()),
+	sky(window.Gfx())
 {
 
     window.Gfx().SetProjection(DirectX::XMMatrixPerspectiveLH(1.0f, 9.0f / 16.0f, 0.5f, 100.0f));
@@ -30,8 +31,8 @@ App::App(HINSTANCE hInstance, int showWnd)
 	hr = pKeyboard->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 
 	hr = pMouse->SetDataFormat(&c_dfDIMouse);
-	//hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
 	hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
+	//hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_NOWINKEY | DISCL_FOREGROUND);
 
 	
 }
@@ -61,8 +62,10 @@ void App::Render()
 
     window.Gfx().SetCamera(camera.GetView());
 	
+	sky.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
     tri.Draw(window.Gfx(),camera.GetPos(),camera.GetTarget());
-	ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
+	//ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
+	
     window.Gfx().End();
 }
 
