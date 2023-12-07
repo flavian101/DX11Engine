@@ -22,7 +22,8 @@ struct PS_input
     float3 normal : NORMAL;
 };
 
-Texture2D tex;
+Texture2D tex : register(t0);
+
 SamplerState samp;
 
 float4 SpotLight(PS_input input)

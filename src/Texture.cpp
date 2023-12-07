@@ -4,7 +4,9 @@
 
 
 
-Texture::Texture(Graphics& g, const char* filename)
+Texture::Texture(Graphics& g, const char* filename,UINT slot = 0)
+	:
+	slot(slot)
 {
 	int image_Width, image_height, image_Channels, image_Desired_channels = 4;
 	 
@@ -52,5 +54,5 @@ Texture::Texture(Graphics& g, const char* filename)
 
 void Texture::Bind(Graphics& g)
 {
-	g.GetContext()->PSSetShaderResources(0, 1, textureView.GetAddressOf());
+	g.GetContext()->PSSetShaderResources(slot, 1, textureView.GetAddressOf());
 }

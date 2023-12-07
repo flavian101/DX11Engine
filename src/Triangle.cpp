@@ -4,7 +4,7 @@
 Triangle::Triangle(Graphics& g)
 	:
 	//tria(g, indices, v,(sizeof(indices) / sizeof(indices[0])), sizeof(v)),
-	tex(g,"assets/textures/grass.jpg")
+	tex(g,"assets/textures/grass.jpg",0)
 {
 	vertices.push_back( Vertex(-1.0f, -1.0f, -1.0f, 100.0f, 100.0f, 0.0f, 1.0f, 0.0f));
 	vertices.push_back(Vertex(1.0f, -1.0f, -1.0f, 0.0f, 100.0f, 0.0f, 1.0f, 0.0f));
@@ -18,6 +18,7 @@ Triangle::Triangle(Graphics& g)
 	ind.push_back(2);
 	ind.push_back(3);
 	
+
 
 }
 
@@ -37,7 +38,10 @@ void Triangle::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 
 Mesh Triangle::getGround(Graphics& g)
 {
-	return Mesh(g, ind, vertices);
+	return Mesh(g, ind, vertices,
+		L"assets/shaders/vs.hlsl",
+		L"assets/shaders/ps.hlsl"
+	);
 }
 
 

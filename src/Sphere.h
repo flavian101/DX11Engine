@@ -6,6 +6,7 @@ class Sphere
 {
 public:
 	Sphere(const int SPHERE_RESOLUTION);
+	Sphere(const int resolution, int slot);
 	std::vector<Vertex> getVertex();
 	std::vector<unsigned short> getIndices();
 
