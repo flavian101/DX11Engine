@@ -27,8 +27,8 @@ void SkySphere::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 Mesh SkySphere::getSky(Graphics& g)
 {
 	return Mesh(g, sphere.getIndices(), sphere.getVertex(),
-		L"assets/shaders/skyVs.hlsl",
-		L"assets/shaders/skyPs.hlsl"
+		L"assets/shaders/skyVs.cso",
+		L"assets/shaders/skyPs.cso"
 	);
 }
 

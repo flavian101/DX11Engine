@@ -39,8 +39,8 @@ void Triangle::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 Mesh Triangle::getGround(Graphics& g)
 {
 	return Mesh(g, ind, vertices,
-		L"assets/shaders/vs.hlsl",
-		L"assets/shaders/ps.hlsl"
+		L"assets/shaders/vs.cso",
+		L"assets/shaders/ps.cso"
 	);
 }
 

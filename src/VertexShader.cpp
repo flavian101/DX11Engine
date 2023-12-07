@@ -2,8 +2,9 @@
 
 VertexShader::VertexShader(Graphics& g, LPCWSTR filename)
 {
-	hr = D3DCompileFromFile(
-		filename, nullptr, nullptr, "main", "vs_5_0", 0, 0, &shaderBlob, NULL);
+	//hr = D3DCompileFromFile(
+//filename, nullptr, nullptr, "main", "vs_5_0", 0, 0, &shaderBlob, NULL);
+	D3DReadFileToBlob(filename, &shaderBlob);
 	if (shaderBlob == NULL)
 	{
 		MessageBoxA(g.getHwnd(),"empty vshader blob","ERROE",MB_OK|MB_ICONEXCLAMATION);
