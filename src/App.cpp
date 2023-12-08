@@ -5,7 +5,7 @@ App::App(HINSTANCE hInstance, int showWnd)
     :
     window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
     tri(window.Gfx()),
-	//ball(window.Gfx()),
+	ball(window.Gfx()),
 	sky(window.Gfx())
 {
 
@@ -57,16 +57,23 @@ int App::createLoop()
 void App::Render()
 {
     const float t = timer.Peek();
+
     window.Gfx().ClearDepthColor(0.1f, 0.1f, 0.16f);
+	
 	DetectInput(t);
 
     window.Gfx().SetCamera(camera.GetView());
+
 	
-	sky.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
+	sky.Draw(window.Gfx(), camera.GetPos());
     tri.Draw(window.Gfx(),camera.GetPos(),camera.GetTarget());
-	//ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
+
+	ball.SetPos(XMMatrixTranslation(10.0f, 20.0f, 0.0f));
+	ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
+	
 	
     window.Gfx().End();
+	
 }
 
 void App::DetectInput(double time)

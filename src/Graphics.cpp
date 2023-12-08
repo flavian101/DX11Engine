@@ -36,12 +36,13 @@ bool Graphics::Intialize()
     using namespace Microsoft::WRL;
 
     DXGI_SWAP_CHAIN_DESC sd = {};
+    ZeroMemory(&sd, sizeof(DXGI_SWAP_CHAIN_DESC));
 
     sd.BufferDesc.Width = width;
     sd.BufferDesc.Height = height;
     sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 0;
-    sd.BufferDesc.RefreshRate.Denominator = 0;
+    sd.BufferDesc.RefreshRate.Numerator = 60;
+    sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
     sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
     sd.SampleDesc.Count = 1;
@@ -85,10 +86,10 @@ bool Graphics::Intialize()
    dsDesc.DepthEnable = TRUE;
    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
    dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-   ComPtr<ID3D11DepthStencilState> depthState;
-  hr= pDevice->CreateDepthStencilState(&dsDesc, depthState.GetAddressOf());
+  hr= pDevice->CreateDepthStencilState(&dsDesc, DSLessEqual.GetAddressOf());
+
         //bind the depth state
-  pContext->OMSetDepthStencilState(depthState.Get(), 1);
+  pContext->OMSetDepthStencilState(DSLessEqual.Get(), 1);
 
    // create depth stensil texture
    ComPtr<ID3D11Texture2D> pDepthStencil;
@@ -98,7 +99,7 @@ bool Graphics::Intialize()
    descDepth.Height = (float)height;
    descDepth.MipLevels = 1u;
    descDepth.ArraySize = 1u;
-   descDepth.Format = DXGI_FORMAT_D32_FLOAT;
+   descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
    descDepth.SampleDesc.Count = 1u;
    descDepth.SampleDesc.Quality = 0u;
    descDepth.Usage = D3D11_USAGE_DEFAULT;
@@ -108,11 +109,12 @@ bool Graphics::Intialize()
 
        //create depth view
    D3D11_DEPTH_STENCIL_VIEW_DESC descDSV = {};
-   descDSV.Format = DXGI_FORMAT_D32_FLOAT;
+   descDSV.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
    descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
    descDSV.Texture2D.MipSlice = 0u;
    pDevice->CreateDepthStencilView(
        pDepthStencil.Get(), &descDSV, pDsv.GetAddressOf());
+
    // bind depth stensil view to OM
    pContext->OMSetRenderTargets(1u, pRenderTarget.GetAddressOf(), pDsv.Get());
 
@@ -166,10 +168,10 @@ bool Graphics::Intialize()
    wfDesc.FrontCounterClockwise = false;
    hr = pDevice->CreateRasterizerState(&wfDesc, CWcullMode.GetAddressOf());
 
-   wfDesc.CullMode = D3D11_CULL_NONE;
+   wfDesc.CullMode = D3D11_CULL_FRONT;
    hr = pDevice->CreateRasterizerState(&wfDesc, RSCullNone.GetAddressOf());
 
-   pContext->RSSetState(wireFrame.Get());
+
 
 
    
@@ -227,14 +229,16 @@ void Graphics::ClearDepthColor(float red, float green, float blue)
 {
     const float color[4] = { red,green,blue,1.0f };
     pContext->ClearRenderTargetView(pRenderTarget.Get(), color);
-    pContext->ClearDepthStencilView(pDsv.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);
+    pContext->ClearDepthStencilView(pDsv.Get(), D3D11_CLEAR_DEPTH| D3D11_CLEAR_STENCIL, 1.0f, 0u);
     //reset the shader
+    pContext->VSSetShader(0, 0, 0);
+    pContext->PSSetShader(0, 0, 0);
 
     //Set our Render Target
-    pContext->OMSetRenderTargets(1, pRenderTarget.GetAddressOf(), pDsv.Get());
+    pContext->OMSetRenderTargets(1u, pRenderTarget.GetAddressOf(), pDsv.Get());
 
     //Set the default blend state (no blending) for opaque objects
-    pContext->OMSetBlendState(nullptr, 0, 0xffffffff);
+    pContext->OMSetBlendState(Tranparency.Get(), 0, 0xffffffff);
 
 }
 
@@ -246,24 +250,24 @@ void Graphics::Draw(UINT indexCount)
 
 void Graphics::DrawSkybox(UINT indexCount)
 {
-    pContext->OMSetDepthStencilState(DSLessEqual.Get(), 0);
-    //pContext->RSSetState(RSCullNone.Get());
+    pContext->OMSetDepthStencilState(DSLessEqual.Get(), 1);
     pContext->RSSetState(RSCullNone.Get());
-    pContext->DrawIndexed(indexCount, 0, 0);
+    pContext->DrawIndexed(indexCount,0, 0);
 
     //set the default vs Shader and the depth state
     
     //pContext->VSSetShader(VS,0,0);
-    pContext->OMSetDepthStencilState(NULL, 0);
+   
 }
 
 void Graphics::End()
 {
     HRESULT hr;
-    hr = pSwapChain->Present(1u, 0u);
+    pContext->OMSetDepthStencilState(nullptr, 0);
+    hr = pSwapChain->Present(0u, 0u);
 }
 
-void Graphics::SetProjection(DirectX::XMMATRIX proj) noexcept
+void Graphics::SetProjection(DirectX::FXMMATRIX proj) noexcept
 {
     projection = proj;
 }
@@ -273,7 +277,7 @@ DirectX::XMMATRIX Graphics::GetProjection() const noexcept
     return projection;
 }
 
-void Graphics::SetCamera(DirectX::XMMATRIX view) noexcept
+void Graphics::SetCamera(DirectX::FXMMATRIX view) noexcept
 {
     Camera = view;
 }

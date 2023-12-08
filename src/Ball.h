@@ -11,7 +11,9 @@ public:
 	Ball(Graphics& g);
 
 	void Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget);
+	void SetPos(XMMATRIX trans);
 	Mesh getBal(Graphics& g);
+
 
 private:
 	Sphere sphere;

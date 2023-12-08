@@ -32,7 +32,7 @@ private:
 
 public:
 	Triangle(Graphics& g);
-	void Draw(Graphics& g,XMVECTOR camPos, XMVECTOR camTarget);
+	void Draw(Graphics& g,FXMVECTOR camPos, FXMVECTOR camTarget);
 	Mesh getGround(Graphics& g);
 private:
 	std::vector<Vertex> vertices;

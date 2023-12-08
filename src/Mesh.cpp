@@ -38,6 +38,7 @@ Mesh::Mesh(Graphics& g, std::vector<unsigned short> indices, std::vector< Vertex
 	PixelShader ps(g, pixelShader);
 
 	ps.Bind(g);
+	samp.Bind(g);
 
 	InputLayout layout(g, bytecode);
 	layout.Bind(g);
@@ -78,29 +79,30 @@ void Mesh::Draw(Graphics& g,XMMATRIX modelMatrix, XMVECTOR camPos, XMVECTOR camT
 	
 
 
-	samp.Bind(g);
+	
 	g.Draw(indexCount);
 }
-//
-//void Mesh::DrawSky(Graphics& g, XMMATRIX model, XMVECTOR camPos)
-//{
-//	Model = model;
-//
-//	WVP = Model * g.GetCamera() * g.GetProjection();
-//	vsBuffer.data.WVP = XMMatrixTranspose(WVP);
-//	vsBuffer.data.Model = XMMatrixTranspose(Model);
-//
-//	vsBuffer.Update(g);
-//	g.GetContext()->VSSetConstantBuffers(0, 1, vsBuffer.GetAddressOf());
-//
-//	samp.Bind(g);
-//	g.DrawSkybox(indexCount);
-//
-//	
-//}
-//
+
+void Mesh::DrawSky(Graphics& g, XMMATRIX model)
+{
+	Model = model;
+
+	WVP = model * g.GetCamera() * g.GetProjection();
+	vsBuffer.data.WVP = XMMatrixTranspose(WVP);
+	vsBuffer.data.Model = XMMatrixTranspose(model);
+	vsBuffer.Update(g);
+
+	g.GetContext()->VSSetConstantBuffers(0, 1, vsBuffer.GetAddressOf());
+
+
+	g.DrawSkybox(indexCount);
+
+	
+}
+
 void Mesh::UpdateMesh(Graphics& g)
 {
+
 
 }
 

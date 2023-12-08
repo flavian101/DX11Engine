@@ -22,7 +22,7 @@ Triangle::Triangle(Graphics& g)
 
 }
 
-void Triangle::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
+void Triangle::Draw(Graphics& g, FXMVECTOR camPos, FXMVECTOR camTarget)
 {
 	squareMatrix = XMMatrixIdentity();
 

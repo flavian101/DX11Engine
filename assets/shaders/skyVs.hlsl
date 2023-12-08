@@ -16,10 +16,7 @@ SKYMAP_VS_OUTPUT main(float3 inPos : POSITION)
     //Set Pos to xyww instead of xyzw, so that z will always be 1 (furthest from camera)
     output.Pos = mul(float4(inPos,1.0f), WVP);
     output.Pos.z = output.Pos.w;
-    
-    output.TexCoord.x = -inPos.x;
-    
-    output.TexCoord.yz = inPos.yz;
-
+    output.TexCoord = inPos.xyz;
+  
     return output;
 }

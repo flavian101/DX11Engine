@@ -18,7 +18,7 @@ public:
 		LPCWSTR vertexShader, LPCWSTR pixelShader);
 
 	void Draw(Graphics& g, XMMATRIX model, XMVECTOR camPos, XMVECTOR camTarget);
-	void DrawSky(Graphics& g, XMMATRIX model, XMVECTOR camPos);
+	void DrawSky(Graphics& g, XMMATRIX model);
 
 	void UpdateMesh(Graphics& g);
 	void UpdateLight(Graphics& g);

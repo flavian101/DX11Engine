@@ -28,9 +28,9 @@ public:
 	void Draw(UINT vertexCount);
 	void DrawSkybox(UINT indexCount);
 	void End();
-	void SetProjection(DirectX::XMMATRIX proj) noexcept;
+	void SetProjection(DirectX::FXMMATRIX proj) noexcept;
 	DirectX::XMMATRIX GetProjection() const noexcept;
-	void SetCamera(DirectX::XMMATRIX view)noexcept;
+	void SetCamera(DirectX::FXMMATRIX view)noexcept;
 	DirectX::XMMATRIX GetCamera()const noexcept;
 
 private:
@@ -46,10 +46,12 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> pDsv;
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> wireFrame;
 	Microsoft::WRL::ComPtr<ID3D11BlendState> Tranparency;
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CCWcullMode;
+//	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CCWcullMode;
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CWcullMode;
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> RSCullNone;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> DSLessEqual;
+
+
 	
 	bool enableWireFrame = false;
 };

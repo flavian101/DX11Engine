@@ -1,16 +1,17 @@
 #include "SkySphere.h"
 
 SkySphere::SkySphere(Graphics& g)
-	:
-	sphere(4,1)
+	
+	
 {
+	sphere = std::make_unique<Sphere>("flavian", 4);
 	skyPos = XMMatrixIdentity();
 }
 
-void SkySphere::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
+void SkySphere::Draw(Graphics& g, FXMVECTOR camPos)
 {
 	//Define sphereWorld's world space matrix
-	Scale = XMMatrixScaling(5.0f, 5.0f, 5.0f);
+	Scale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
 	//Make sure the sphere is always centered around camera
 	Translation = XMMatrixTranslation(XMVectorGetX(camPos), XMVectorGetY(camPos), XMVectorGetZ(camPos));
 
@@ -19,14 +20,16 @@ void SkySphere::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 
 	getSkyTexture(g).Bind(g);
 	
-	//getSky(g).DrawSky(g, skyPos, camPos);
-	getSky(g).Draw(g, skyPos, camPos,camTarget);
+	getSky(g).DrawSky(g, skyPos);
+	//getSky(g).Draw(g, skyPos, camPos,camTarget);
 
 }
 
+
+
 Mesh SkySphere::getSky(Graphics& g)
 {
-	return Mesh(g, sphere.getIndices(), sphere.getVertex(),
+	return Mesh(g, sphere.get()->getIndices(), sphere.get()->getVertex(),
 		L"assets/shaders/skyVs.cso",
 		L"assets/shaders/skyPs.cso"
 	);
@@ -35,12 +38,20 @@ Mesh SkySphere::getSky(Graphics& g)
 CubeMapTexture SkySphere::getSkyTexture(Graphics& g)
 {
 	const char* skyFilename[6] = {
-		"assets/textures/SpaceBox/0.png",
-		"assets/textures/SpaceBox/1.png",
-		"assets/textures/SpaceBox/2.png",
-		"assets/textures/SpaceBox/3.png",
-		"assets/textures/SpaceBox/4.png",
-		"assets/textures/SpaceBox/5.png"
+		"assets/textures/NightSky/nightBack.png",
+		"assets/textures/NightSky/nightBottom.png",
+		"assets/textures/NightSky/nightFront.png",
+		"assets/textures/NightSky/nightLeft.png",
+		"assets/textures/NightSky/nightRight.png",
+		"assets/textures/NightSky/nightTop.png"
 	};
+	//const char* skyFilename[6] = {
+	//	"assets/textures/Skybox/back.png",
+	//	"assets/textures/Skybox/bottom.png",
+	//	"assets/textures/Skybox/front.png",
+	//	"assets/textures/Skybox/left.png",
+	//	"assets/textures/Skybox/right.png",
+	//	"assets/textures/Skybox/top.png"
+	//};
 	return CubeMapTexture(g,skyFilename,1);
 }

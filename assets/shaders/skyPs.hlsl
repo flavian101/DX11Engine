@@ -11,6 +11,5 @@ SamplerState samp;
 float4 main(SKYMAP_VS_OUTPUT inPS) : SV_Target
 {
     
-    
-    return SkyMap.Sample(samp, inPS.TexCoord);
+    return SkyMap.Sample(samp, normalize(inPS.TexCoord));
 }

@@ -38,7 +38,7 @@ Texture::Texture(Graphics& g, const char* filename,UINT slot = 0)
 	sts.SysMemPitch = image_pitch;
 
 	HRESULT hr;
-	hr = g.GetDevice()->CreateTexture2D(&ts, &sts, imageTexture.GetAddressOf());
+	hr = g.GetDevice()->CreateTexture2D(&ts, &sts, &imageTexture);
 
 	// create the resource view on the texture
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
