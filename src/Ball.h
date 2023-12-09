@@ -3,6 +3,7 @@
 #include "Sphere.h"
 #include "Graphics.h"
 #include "Texture.h"
+#include <memory>
 
 
 class Ball
@@ -18,7 +19,8 @@ public:
 private:
 	Sphere sphere;
 	XMMATRIX ballPos;
-	Texture tex;
+	//Texture tex;
+	std::unique_ptr<TextureCache> texCache;
 	DirectX::XMMATRIX Scale;
 	DirectX::XMMATRIX Translation;
 

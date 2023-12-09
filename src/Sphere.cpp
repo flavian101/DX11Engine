@@ -114,52 +114,33 @@ Sphere::Sphere(const int resolution, int slot)
     }
 }
 
-Sphere::Sphere(const char* name,int res)
+Sphere::Sphere(const char* name, int res)
     :
     SPHERE_RESOLUTION(res)
 {
-    for (int lat = 0; lat <= SPHERE_RESOLUTION; ++lat)
-    {
-        float theta = lat * XM_PI / SPHERE_RESOLUTION;
-        float sinTheta = sinf(theta);
-        float cosTheta = cosf(theta);
+    //Define the 8 vertices of a unit cube
+    vertices.push_back(Vertex( -1.0f,  1.0f, -1.0f ));
+    vertices.push_back(Vertex( 1.0f,  1.0f, -1.0f  ));
+    vertices.push_back(Vertex( 1.0f, -1.0f, -1.0f  ));
+    vertices.push_back(Vertex( -1.0f, -1.0f, -1.0f ));
+    vertices.push_back(Vertex( -1.0f,  1.0f,  1.0f ));
+    vertices.push_back(Vertex( 1.0f,  1.0f,  1.0f  ));
+    vertices.push_back(Vertex( 1.0f, -1.0f,  1.0f  ));
+    vertices.push_back(Vertex( -1.0f, -1.0f,  1.0f ));
 
-        for (int lon = 0; lon <= SPHERE_RESOLUTION; ++lon)
-        {
-            float phi = lon * 2 * XM_PI / SPHERE_RESOLUTION;
-            float sinPhi = sinf(phi);
-            float cosPhi = cosf(phi);
 
-            float x = sinPhi * sinTheta;
-            float y = cosTheta;
-            float z = cosPhi * sinTheta;
 
-            Vertex vertex;
-            vertex.pos = XMFLOAT3(x, y, z);
-            vertices.push_back(vertex);
-        }
-    }
+    indices = {
+        0, 1, 2, 0, 2, 3, // Front face
+        4, 6, 5, 4, 7, 6, // Back face
+        0, 3, 7, 0, 7, 4, // Left face
+        1, 5, 6, 1, 6, 2, // Right face
+        0, 4, 5, 0, 5, 1, // Top face
+        2, 6, 7, 2, 7, 3  // Bottom face
+    };
 
-    for (int lat = 0; lat < SPHERE_RESOLUTION; ++lat)
-    {
-        for (int lon = 0; lon < SPHERE_RESOLUTION; ++lon)
-        {
-            int current = lat * (SPHERE_RESOLUTION + 1) + lon;
-            int next = current + 1;
-            int below = current + SPHERE_RESOLUTION + 1;
-            int belowNext = below + 1;
-
-            // Add two triangles for each quad
-            indices.push_back(current);
-            indices.push_back(below);
-            indices.push_back(next);
-
-            indices.push_back(next);
-            indices.push_back(below);
-            indices.push_back(belowNext);
-        }
-    }
 }
+   
 
 Sphere::~Sphere()
 {

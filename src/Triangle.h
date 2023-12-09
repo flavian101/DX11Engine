@@ -11,25 +11,6 @@ class Triangle
 {
 private:
 
-	
-	
-//	Vertex v[4] =
-//	{
-//		// Bottom Face
-//	   Vertex(-1.0f, -1.0f, -1.0f, 100.0f, 100.0f, 0.0f, 1.0f, 0.0f),
-//	   Vertex(1.0f, -1.0f, -1.0f,   0.0f, 100.0f, 0.0f, 1.0f, 0.0f),
-//	   Vertex(1.0f, -1.0f,  1.0f,   0.0f,   0.0f, 0.0f, 1.0f, 0.0f),
-//	   Vertex(-1.0f, -1.0f,  1.0f, 100.0f,   0.0f, 0.0f, 1.0f, 0.0f),
-//	};
-//	const unsigned short indices[6] =
-//	{
-//		 0,  1,  2,
-//		 0,  2,  3,
-//	};
-
-	
-
-
 public:
 	Triangle(Graphics& g);
 	void Draw(Graphics& g,FXMVECTOR camPos, FXMVECTOR camTarget);
@@ -44,7 +25,9 @@ private:
 	DirectX::XMMATRIX Translation;
 	float rot = 0.01f;
 	//Mesh tria;
-	Texture tex;
+	//Texture tex;
+	std::shared_ptr<TextureCache> texCache;
+
 
 };
 

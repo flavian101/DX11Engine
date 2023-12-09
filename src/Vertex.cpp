@@ -10,6 +10,12 @@
 Vertex::Vertex()
 {}
 
+Vertex::Vertex(float x, float y, float z)
+	:
+	pos(x,y,z)
+{
+}
+
 //}
 Vertex::Vertex(float x, float y, float z,
 	float u, float v,

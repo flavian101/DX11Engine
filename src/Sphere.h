@@ -8,6 +8,7 @@ public:
 	Sphere(const int SPHERE_RESOLUTION);
 	Sphere(const int resolution, int slot);
 	Sphere(const char* name,int res);
+	
 	~Sphere();
 	std::vector<Vertex> getVertex();
 	std::vector<unsigned short> getIndices();
