@@ -2,13 +2,10 @@
 
 Ball::Ball(Graphics& g)
 	:
-	sphere(10)
-	//tex(g, "assets/textures/8k_moon.jpg",0)
+	sphere(64),
+	tex(g, "assets/textures/8k_moon.jpg",0)
 {
-	texCache = std::make_unique<TextureCache>(g);
 
-	auto texture = texCache.get()->GetTexture("assets/textures/8k_moon.jpg",0);
-	g.GetContext()->PSSetShaderResources(0, 1, texture.GetAddressOf());
 	ballPos = XMMatrixIdentity();
 
 }
@@ -20,7 +17,7 @@ void Ball::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 
 	ballPos = Scale * Translation;
 
-	//tex.Bind(g);
+	tex.Bind(g);
 	getBal(g).Draw(g, ballPos, camPos, camTarget);
 
 }

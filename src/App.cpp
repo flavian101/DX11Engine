@@ -5,7 +5,7 @@ App::App(HINSTANCE hInstance, int showWnd)
     :
     window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
     tri(window.Gfx()),
-	//ball(window.Gfx()),
+	ball(window.Gfx()),
 	sky(window.Gfx())
 {
 
@@ -67,8 +67,9 @@ void App::Render()
 	
 	sky.Draw(window.Gfx(), camera.GetPos());
     tri.Draw(window.Gfx(),camera.GetPos(),camera.GetTarget());
-	//ball.SetPos(XMMatrixTranslation(10.0f, 20.0f, 0.0f));
-	//ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
+
+	ball.SetPos(XMMatrixTranslation(10.0f, 20.0f, 0.0f));
+	ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
 	
 	
     window.Gfx().End();

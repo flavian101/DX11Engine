@@ -6,22 +6,10 @@
 
 Texture::Texture(Graphics& g, const char* filename,UINT slot = 0)
 	:
-	slot(slot),
-	filename(filename)
-{
-	LoadTexture(g,filename);
-	
-}
-
-void Texture::Bind(Graphics& g)
-{
-	g.GetContext()->PSSetShaderResources(slot, 1, textureView.GetAddressOf());
-}
-
-void Texture::LoadTexture(Graphics& g,const char* filename)
+	slot(slot)
 {
 	int image_Width, image_height, image_Channels, image_Desired_channels = 4;
-
+	 
 	unsigned char* data = stbi_load(filename, &image_Width, &image_height,
 		&image_Channels, image_Desired_channels);
 
@@ -62,4 +50,9 @@ void Texture::LoadTexture(Graphics& g,const char* filename)
 	hr = g.GetDevice()->CreateShaderResourceView(imageTexture.Get(), &srvDesc, textureView.GetAddressOf());
 
 	stbi_image_free(data);
+}
+
+void Texture::Bind(Graphics& g)
+{
+	g.GetContext()->PSSetShaderResources(slot, 1, textureView.GetAddressOf());
 }

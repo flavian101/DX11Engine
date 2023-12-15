@@ -29,7 +29,7 @@ private:
 	Camera camera;
 	Triangle tri;
 	SkySphere sky;
-	//Ball ball;
+	Ball ball;
 	//Window wnd;
 };
 
