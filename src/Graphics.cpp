@@ -19,12 +19,12 @@ Graphics::~Graphics()
 {
 }
 
-Microsoft::WRL::ComPtr<ID3D11DeviceContext> Graphics::GetContext()
+const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& Graphics::GetContext() const
 {
     return pContext;
 }
 
-Microsoft::WRL::ComPtr<ID3D11Device> Graphics::GetDevice()
+const Microsoft::WRL::ComPtr<ID3D11Device>& Graphics::GetDevice() const
 {
     return pDevice;
 }
@@ -171,9 +171,6 @@ bool Graphics::Intialize()
    wfDesc.CullMode = D3D11_CULL_FRONT;
    hr = pDevice->CreateRasterizerState(&wfDesc, RSCullNone.GetAddressOf());
 
-
-
-
    
     return true;
 }
@@ -246,17 +243,16 @@ void Graphics::Draw(UINT indexCount)
 {
     pContext->RSSetState(wireFrame.Get());
     pContext->DrawIndexed(indexCount, 0,0);
+
 }
 
 void Graphics::DrawSkybox(UINT indexCount)
 {
+    
     pContext->OMSetDepthStencilState(DSLessEqual.Get(), 1);
     pContext->RSSetState(RSCullNone.Get());
     pContext->DrawIndexed(indexCount,0, 0);
 
-    //set the default vs Shader and the depth state
-    
-    //pContext->VSSetShader(VS,0,0);
    
 }
 
@@ -272,7 +268,7 @@ void Graphics::SetProjection(DirectX::FXMMATRIX proj) noexcept
     projection = proj;
 }
 
-DirectX::XMMATRIX Graphics::GetProjection() const noexcept
+const DirectX::XMMATRIX& Graphics::GetProjection() const noexcept
 {
     return projection;
 }
@@ -282,7 +278,7 @@ void Graphics::SetCamera(DirectX::FXMMATRIX view) noexcept
     Camera = view;
 }
 
-DirectX::XMMATRIX Graphics::GetCamera() const noexcept
+const DirectX::XMMATRIX& Graphics::GetCamera() const noexcept
 {
     return Camera;;
 }

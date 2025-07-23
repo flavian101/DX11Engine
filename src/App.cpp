@@ -37,6 +37,10 @@ App::App(HINSTANCE hInstance, int showWnd)
 	
 }
 
+App::~App()
+{
+}
+
 int App::createLoop()
 {
     while (true)

@@ -14,8 +14,9 @@
 class Mesh
 {
 public:
-	Mesh(Graphics& g, std::vector<unsigned short> indices,std::vector< Vertex> v,
+	Mesh(Graphics& g,const std::vector<unsigned short>& indices,const std::vector< Vertex>& v,
 		LPCWSTR vertexShader, LPCWSTR pixelShader);
+	~Mesh();
 
 	void Draw(Graphics& g, XMMATRIX model, XMVECTOR camPos, XMVECTOR camTarget);
 	void DrawSky(Graphics& g, XMMATRIX model);
@@ -28,11 +29,14 @@ private:
 	//constant buffer
 	ConstantBuffer<cb_psConstantBuffer> psBuffer;
 	ConstantBuffer<cb_vsConstantBuffer> vsBuffer;
-
+	VertexBuffer vb;
+	IndexBuffer id;
+	VertexShader vs;
+	PixelShader ps;
+	InputLayout layout;
+	Topology tp;
 	Sampler samp;
-	//matrices
-	XMMATRIX WVP;
-	XMMATRIX Model;
+
 public:
 
 	

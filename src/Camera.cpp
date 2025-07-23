@@ -31,17 +31,17 @@ void Camera::UpdateCamera()
 	camView = XMMatrixLookAtLH(camPosition, camTarget, camUp);
 }
 
-DirectX::XMMATRIX Camera::GetView()
+const DirectX::XMMATRIX& Camera::GetView() const
 {
 	return camView;
 }
 
-DirectX::XMVECTOR Camera::GetPos()
+const DirectX::XMVECTOR& Camera::GetPos()const
 {
 	return camPosition;
 }
 
-DirectX::XMVECTOR Camera::GetTarget()
+const DirectX::XMVECTOR& Camera::GetTarget() const
 {
 	return camTarget;
 }

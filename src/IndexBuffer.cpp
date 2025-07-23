@@ -19,6 +19,11 @@ IndexBuffer::IndexBuffer(Graphics& g, std::vector<unsigned short> indices)
 
 }
 
+IndexBuffer::~IndexBuffer()
+{
+    pIndexBuffer.Reset();
+}
+
 void IndexBuffer::Bind(Graphics& g)
 {
     g.GetContext()->IASetIndexBuffer(pIndexBuffer.Get(),DXGI_FORMAT_R16_UINT,0);

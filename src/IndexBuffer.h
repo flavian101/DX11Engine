@@ -8,6 +8,7 @@ class IndexBuffer
 {
 public:
 	IndexBuffer(Graphics& g, std::vector<unsigned short> indices);
+	~IndexBuffer();
 
 	void Bind(Graphics& g);
 

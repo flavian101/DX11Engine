@@ -3,7 +3,7 @@
 
 
 
-VertexBuffer::VertexBuffer(Graphics& g, std::vector< Vertex> v)
+VertexBuffer::VertexBuffer(Graphics& g, const std::vector< Vertex>& v)
     :
     stride(sizeof(Vertex))
 {
@@ -25,6 +25,11 @@ VertexBuffer::VertexBuffer(Graphics& g, std::vector< Vertex> v)
     vbData.SysMemPitch = 0;
     vbData.SysMemSlicePitch = 0;
     hr = g.GetDevice()->CreateBuffer(&vbDesc, &vbData, &pVertexBuffer);
+}
+
+VertexBuffer::~VertexBuffer()
+{
+    pVertexBuffer.Reset();
 }
 
 void VertexBuffer::Bind(Graphics& g)

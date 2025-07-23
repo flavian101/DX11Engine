@@ -33,7 +33,7 @@ private:
 public:
 	Triangle(Graphics& g);
 	void Draw(Graphics& g,FXMVECTOR camPos, FXMVECTOR camTarget);
-	Mesh getGround(Graphics& g);
+	void Initialize(Graphics& g);
 private:
 	std::vector<Vertex> vertices;
 	std::vector<unsigned short> ind;
@@ -44,6 +44,7 @@ private:
 	DirectX::XMMATRIX Translation;
 	float rot = 0.01f;
 	//Mesh tria;
+	std::unique_ptr<Mesh> groundMesh;
 	Texture tex;
 
 };

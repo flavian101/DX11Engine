@@ -2,20 +2,21 @@
 
 
 
-Mesh::Mesh(Graphics& g, std::vector<unsigned short> indices, std::vector< Vertex> v,
+Mesh::Mesh(Graphics& g,const std::vector<unsigned short>& indices, const std::vector< Vertex>& v,
 	LPCWSTR vertexShader, LPCWSTR pixelShader)
 	:
+	vb(g, v),
+	id(g, indices),
+	vs(g, vertexShader),
+	ps(g, pixelShader),
+	layout(g, vs.GetByteCode()),
 	indexCount(indices.size()),
+	tp(g, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST),
 	samp(g)
 {
 
 	//indexCount = sizeof(indices) / sizeof(indices[0]);
-	IndexBuffer id(g, indices);
-	id.Bind(g);
-
-
-	VertexBuffer vb(g, v);
-	vb.Bind(g);
+	samp.Bind(g);
 
 	//initialize constant buffer
 	psBuffer.Initialize(g);
@@ -32,29 +33,25 @@ Mesh::Mesh(Graphics& g, std::vector<unsigned short> indices, std::vector< Vertex
 	vsBuffer.Initialize(g);
 
 
-	VertexShader vs(g, vertexShader);
-	auto bytecode = vs.GetByteCode();
-	vs.Bind(g);
-	PixelShader ps(g, pixelShader);
 
-	ps.Bind(g);
-	samp.Bind(g);
 
-	InputLayout layout(g, bytecode);
 	layout.Bind(g);
-
-	Topology tp(g, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	tp.Bind(g);
-
-	
-	
 }
 
+Mesh::~Mesh()
+{
+
+}
 
 void Mesh::Draw(Graphics& g,XMMATRIX modelMatrix, XMVECTOR camPos, XMVECTOR camTarget)
 {
+	id.Bind(g);
+	vb.Bind(g);
 
-	
+	vs.Bind(g);
+	ps.Bind(g);
+
 	psBuffer.data.light.spotPos.x = XMVectorGetX(camPos);
 	psBuffer.data.light.spotPos.y = XMVectorGetY(camPos);
 	psBuffer.data.light.spotPos.z = XMVectorGetZ(camPos);
@@ -68,12 +65,8 @@ void Mesh::Draw(Graphics& g,XMMATRIX modelMatrix, XMVECTOR camPos, XMVECTOR camT
 	g.GetContext()->PSSetConstantBuffers(0, 1, psBuffer.GetAddressOf());
 	
 
-
-	Model = modelMatrix;
-
-	WVP = Model * g.GetCamera() * g.GetProjection();
-	vsBuffer.data.WVP = XMMatrixTranspose(WVP);
-	vsBuffer.data.Model = XMMatrixTranspose(Model);
+	vsBuffer.data.WVP = XMMatrixTranspose(modelMatrix * g.GetCamera() * g.GetProjection());
+	vsBuffer.data.Model = XMMatrixTranspose(modelMatrix);
 	vsBuffer.Update(g);
 	g.GetContext()->VSSetConstantBuffers(0, 1, vsBuffer.GetAddressOf());
 	
@@ -85,10 +78,12 @@ void Mesh::Draw(Graphics& g,XMMATRIX modelMatrix, XMVECTOR camPos, XMVECTOR camT
 
 void Mesh::DrawSky(Graphics& g, XMMATRIX model)
 {
-	Model = model;
+	id.Bind(g);
+	vb.Bind(g);
 
-	WVP = model * g.GetCamera() * g.GetProjection();
-	vsBuffer.data.WVP = XMMatrixTranspose(WVP);
+	vs.Bind(g);
+	ps.Bind(g);
+	vsBuffer.data.WVP = XMMatrixTranspose(model * g.GetCamera() * g.GetProjection());
 	vsBuffer.data.Model = XMMatrixTranspose(model);
 	vsBuffer.Update(g);
 

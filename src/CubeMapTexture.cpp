@@ -70,6 +70,12 @@ CubeMapTexture::CubeMapTexture(Graphics& g, const char* filename[6], UINT slot)
     }
 }
 
+CubeMapTexture::~CubeMapTexture()
+{
+    skyTextureView.Reset();
+    skyTexture.Reset();
+}
+
 void CubeMapTexture::Bind(Graphics& g)
 {
     g.GetContext()->PSSetShaderResources(slot, 1, skyTextureView.GetAddressOf());

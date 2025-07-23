@@ -167,12 +167,12 @@ Sphere::~Sphere()
     indices.clear();
 }
 
-std::vector<Vertex> Sphere::getVertex()
+const std::vector<Vertex>& Sphere::getVertex()const 
 {
     return vertices;
 }
 
-std::vector<unsigned short> Sphere::getIndices()
+const std::vector<unsigned short>& Sphere::getIndices() const 
 {
     return indices;
 }

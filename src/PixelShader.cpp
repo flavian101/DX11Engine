@@ -8,6 +8,12 @@ PixelShader::PixelShader(Graphics& g, LPCWSTR filename)
 	g.GetDevice()->CreatePixelShader(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(),NULL,&pPixelShader);
 }
 
+PixelShader::~PixelShader()
+{
+	pShaderBlob.Reset();
+	pPixelShader.Reset();
+}
+
 void PixelShader::Bind(Graphics& g)
 {
 	g.GetContext()->PSSetShader(pPixelShader.Get(), nullptr, 0);

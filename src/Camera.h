@@ -11,9 +11,9 @@ public:
 
 	void UpdateCamera();
 
-	DirectX::XMMATRIX GetView();
-	DirectX::XMVECTOR GetPos();
-	DirectX::XMVECTOR GetTarget();
+	const DirectX::XMMATRIX& GetView() const;
+	const DirectX::XMVECTOR& GetPos() const;
+	const DirectX::XMVECTOR& GetTarget() const;
 
 	XMVECTOR DefaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 	XMVECTOR DefaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);

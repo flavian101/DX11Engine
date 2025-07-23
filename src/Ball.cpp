@@ -7,7 +7,17 @@ Ball::Ball(Graphics& g)
 {
 
 	ballPos = XMMatrixIdentity();
+	Initialize(g);
 
+}
+void  Ball::Initialize(Graphics& g)
+{
+if (!ballMesh)
+	{
+		ballMesh = std::make_unique<Mesh>(g, sphere.getIndices(), sphere.getVertex(),
+			L"assets/shaders/vs.cso",
+			L"assets/shaders/ps.cso");
+}
 }
 
 void Ball::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
@@ -18,7 +28,7 @@ void Ball::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
 	ballPos = Scale * Translation;
 
 	tex.Bind(g);
-	getBal(g).Draw(g, ballPos, camPos, camTarget);
+	ballMesh->Draw(g, ballPos, camPos, camTarget);
 
 }
 
@@ -28,10 +38,3 @@ void Ball::SetPos(XMMATRIX trans)
 	
 }
 
-Mesh Ball::getBal(Graphics& g)
-{
-	return Mesh(g,sphere.getIndices(),sphere.getVertex(),
-		L"assets/shaders/vs.cso",
-		L"assets/shaders/ps.cso"
-	);
-}

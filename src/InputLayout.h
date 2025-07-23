@@ -7,6 +7,7 @@ class InputLayout
 public:
 
 	InputLayout(Graphics& g, Microsoft::WRL::ComPtr<ID3DBlob> pVsBytecode);
+	~InputLayout();
 
 	void Bind(Graphics& g);
 

@@ -17,8 +17,8 @@ public:
 	Graphics(const Graphics&) = delete;
 	Graphics& operator=(const Graphics&) = delete;
 	~Graphics();
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetContext();
-	Microsoft::WRL::ComPtr<ID3D11Device> GetDevice();
+	const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& GetContext() const;
+	const Microsoft::WRL::ComPtr<ID3D11Device>& GetDevice() const;
 
 	bool Intialize();
 	HWND getHwnd();
@@ -29,9 +29,9 @@ public:
 	void DrawSkybox(UINT indexCount);
 	void End();
 	void SetProjection(DirectX::FXMMATRIX proj) noexcept;
-	DirectX::XMMATRIX GetProjection() const noexcept;
+	const DirectX::XMMATRIX& GetProjection() const noexcept;
 	void SetCamera(DirectX::FXMMATRIX view)noexcept;
-	DirectX::XMMATRIX GetCamera()const noexcept;
+	const DirectX::XMMATRIX& GetCamera()const noexcept;
 
 private:
 	HWND hwnd;

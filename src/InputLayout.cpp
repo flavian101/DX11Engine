@@ -16,6 +16,11 @@ InputLayout::InputLayout(Graphics& g, Microsoft::WRL::ComPtr<ID3DBlob> pVsByteco
 
 }
 
+InputLayout::~InputLayout()
+{
+	pInputLayout.Reset();
+}
+
 void InputLayout::Bind(Graphics& g)
 {
 	g.GetContext()->IASetInputLayout(pInputLayout.Get());

@@ -18,10 +18,20 @@ Triangle::Triangle(Graphics& g)
 	ind.push_back(2);
 	ind.push_back(3);
 	
-
+	Initialize(g);
 
 }
-
+void Triangle::Initialize(Graphics& g)
+{
+	//if (!initialized) {
+		// Create mesh once
+		groundMesh = std::make_unique<Mesh>(g, ind, vertices,
+			L"assets/shaders/vs.cso",
+			L"assets/shaders/ps.cso");
+		// Create texture once
+		tex.Bind(g);
+	//}
+}
 void Triangle::Draw(Graphics& g, FXMVECTOR camPos, FXMVECTOR camTarget)
 {
 	squareMatrix = XMMatrixIdentity();
@@ -33,15 +43,10 @@ void Triangle::Draw(Graphics& g, FXMVECTOR camPos, FXMVECTOR camTarget)
 	squareMatrix = Scale * Translation;
 
 	tex.Bind(g);
-	getGround(g).Draw(g, squareMatrix, camPos, camTarget);
+	groundMesh->Draw(g, squareMatrix, camPos, camTarget);
 }
 
-Mesh Triangle::getGround(Graphics& g)
-{
-	return Mesh(g, ind, vertices,
-		L"assets/shaders/vs.cso",
-		L"assets/shaders/ps.cso"
-	);
-}
+
+
 
 

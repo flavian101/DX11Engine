@@ -5,6 +5,7 @@ class Topology
 {
 	public:
 	Topology(Graphics& g, D3D11_PRIMITIVE_TOPOLOGY type);
+	~Topology();
 	void Bind(Graphics& g);
 
 private:

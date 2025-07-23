@@ -6,6 +6,7 @@ class VertexShader
 {
 public:
 	VertexShader(Graphics& g, LPCWSTR filename);
+	~VertexShader();
 	void Bind(Graphics &g);
 
 	ID3DBlob* GetByteCode();

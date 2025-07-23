@@ -7,7 +7,7 @@ class PixelShader
 public:
 
 	PixelShader(Graphics& g, LPCWSTR filename);
-
+	~PixelShader();
 	void Bind(Graphics& g);
 
 private:

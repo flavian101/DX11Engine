@@ -14,19 +14,20 @@ class App
 {
 public:
 	App(HINSTANCE hInstance, int showWnd);
+	~App();
 
 	int createLoop();
 private:
 	void Render();
 	void DetectInput(double time);
 private:
+	Window window;
+	FrameTime timer;
+	Camera camera;
 	Microsoft::WRL::ComPtr<IDirectInputDevice8> pKeyboard;
 	Microsoft::WRL::ComPtr<IDirectInputDevice8> pMouse;
 	DIMOUSESTATE mouseLastState;
 	LPDIRECTINPUT8 DirectInput;
-	Window window;
-	FrameTime timer;
-	Camera camera;
 	Triangle tri;
 	SkySphere sky;
 	Ball ball;

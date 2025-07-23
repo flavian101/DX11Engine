@@ -27,8 +27,8 @@ private:
 	LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 	
 private:
-	HWND hwnd;
 	std::unique_ptr<Graphics> pGfx;
+	HWND hwnd;
 	HINSTANCE hInstance;
 	int nShowWnd;
 	LPCWSTR windowTitle;

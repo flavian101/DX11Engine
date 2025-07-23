@@ -17,6 +17,12 @@ VertexShader::VertexShader(Graphics& g, LPCWSTR filename)
     g.GetDevice()->CreateVertexShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, &pVertexShader);
 }
 
+VertexShader::~VertexShader()
+{
+	shaderBlob.Reset();
+	pVertexShader.Reset();
+}
+
 void VertexShader::Bind(Graphics& g)
 {
     g.GetContext()->VSSetShader(pVertexShader.Get(), nullptr, 0);
