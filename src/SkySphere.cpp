@@ -1,8 +1,7 @@
 #include "SkySphere.h"
 
 SkySphere::SkySphere(Graphics& g)
-	
-	
+
 {
 	sphere = std::make_unique<Sphere>("flavian", 4);
 	Initialize(g);

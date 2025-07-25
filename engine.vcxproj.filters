@@ -87,6 +87,9 @@
     <ClCompile Include="src\Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\LightSphere.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Window.h">
@@ -164,6 +167,9 @@
     <ClInclude Include="src\Light.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\LightSphere.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\engine.rc">
@@ -190,5 +196,7 @@
     </FxCompile>
     <FxCompile Include="assets\shaders\skyPs.hlsl" />
     <FxCompile Include="assets\shaders\skyVs.hlsl" />
+    <FxCompile Include="assets\shaders\flatPsShader.hlsl" />
+    <FxCompile Include="assets\shaders\flatVsShader.hlsl" />
   </ItemGroup>
 </Project>

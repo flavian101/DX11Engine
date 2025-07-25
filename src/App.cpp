@@ -11,7 +11,7 @@ App::App(HINSTANCE hInstance, int showWnd)
 {
 	
 	window.Gfx().SetCamera(camera);
-	m_Light = std::make_shared<PointLight>(window.Gfx());
+	m_Light = std::make_shared<LightSphere>(window.Gfx());
    // m(window.Gfx());
 
 	HRESULT hr;
@@ -69,9 +69,9 @@ void App::Render()
 	DetectInput(t);
 
 
-	m_Light->Bind(window.Gfx());
 	sky.Draw(window.Gfx(), camera->GetPos());
     tri.Draw(window.Gfx(),camera->GetPos(),camera->GetTarget());
+	m_Light->Draw(window.Gfx());
 
 	ball.SetPos(XMMatrixTranslation(10.0f, 50.0f, 0.0f));
 	ball.Draw(window.Gfx(), camera->GetPos(), camera->GetTarget());

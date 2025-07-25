@@ -36,6 +36,7 @@ public:
 	PointLight(Graphics& gfx);
 	virtual ~PointLight();
 	void Bind(Graphics& gfx) override;
+	void SetPosition(const DirectX::XMFLOAT3& pos);
 private:
 	ConstantBuffer<PointLightData> psBuffer;
 
@@ -48,6 +49,8 @@ public:
 	virtual ~SpotLight();
 
 	void Bind(Graphics& gfx) override;
+	void SetPosition(const DirectX::XMFLOAT3& pos);
+
 private:
 	ConstantBuffer<SpotLightData> psBuffer;
 

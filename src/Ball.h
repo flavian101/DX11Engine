@@ -12,7 +12,6 @@ public:
 
 	void Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget);
 	void SetPos(XMMATRIX trans);
-	Mesh getBal(Graphics& g);
 	void Initialize(Graphics& g);
 
 

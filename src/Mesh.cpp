@@ -50,7 +50,7 @@ void Mesh::Draw(Graphics& g,XMMATRIX modelMatrix, XMVECTOR camPos, XMVECTOR camT
 	vsBuffer.data.WVP = XMMatrixTranspose(modelMatrix * g.GetCamera().GetView() * g.GetCamera().GetProjection());
 	vsBuffer.data.Model = XMMatrixTranspose(modelMatrix);
 	vsBuffer.Update(g);
-	g.GetContext()->VSSetConstantBuffers(0, 1, vsBuffer.GetAddressOf());
+	g.GetContext()->VSSetConstantBuffers(BindSlot::CB_Transform, 1, vsBuffer.GetAddressOf());
 	
 	
 	g.Draw(indexCount);

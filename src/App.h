@@ -11,7 +11,7 @@
 #include <dinput.h>
 #include <wrl.h>
 #include <memory>
-#include "Light.h"
+#include "LightSphere.h"
 
 class App
 {
@@ -34,7 +34,7 @@ private:
 	Triangle tri;
 	SkySphere sky;
 	Ball ball;
-	std::shared_ptr<PointLight> m_Light;
+	std::shared_ptr<LightSphere> m_Light;
 	//Window wnd;
 };
 

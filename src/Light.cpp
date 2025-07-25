@@ -2,7 +2,7 @@
 
 
 Light::Light(Graphics& gfx)
-	:m_LightColor(1.0f, 1.0f, 1.0f, 1.0f), m_lightDir(0.0f, -1.0f, 0.0f)
+	:m_LightColor(1.0, 0.85, 0.6, 1.0), m_lightDir(0.0f, -1.0f, 0.0f)
 {}
 
 DirectionalLight::DirectionalLight(Graphics& gfx)
@@ -14,8 +14,6 @@ DirectionalLight::DirectionalLight(Graphics& gfx)
 	psBuffer.data.d_Ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
 	psBuffer.data.d_Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	psBuffer.data.d_Enabled = 1;
-
-
 }
 
 DirectionalLight::~DirectionalLight()
@@ -52,6 +50,12 @@ void PointLight::Bind(Graphics& gfx)
 
 }
 
+void PointLight::SetPosition(const DirectX::XMFLOAT3& pos)
+{
+	psBuffer.data.p_Position = pos;
+
+}
+
 SpotLight::SpotLight(Graphics& gfx)
 	:Light(gfx)
 {
@@ -63,9 +67,6 @@ SpotLight::SpotLight(Graphics& gfx)
 	psBuffer.data.s_Range = 50.0f;
 	psBuffer.data.s_Cone = 20.0f;
 	psBuffer.data.s_Enabled = 1;
-
-
-
 }
 
 SpotLight::~SpotLight()
@@ -76,4 +77,9 @@ void SpotLight::Bind(Graphics& gfx)
 {
 	psBuffer.Update(gfx);
 	gfx.GetContext()->PSSetConstantBuffers(BindSlot::CB_Spot_Light, 1, psBuffer.GetAddressOf());
+}
+void SpotLight::SetPosition(const DirectX::XMFLOAT3& pos)
+{
+	psBuffer.data.s_Position = pos;
+
 }
