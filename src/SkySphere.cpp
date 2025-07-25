@@ -25,7 +25,7 @@ void SkySphere::Initialize(Graphics& g) {
 			"assets/textures/NightSky/nightRight.png",
 			"assets/textures/NightSky/nightTop.png"
 		};
-		// Create texture once
+		 //Create texture once
 		//const char* skyFilename[6] = {
 		//	"assets/textures/Skybox/back.png",
 		//	"assets/textures/Skybox/bottom.png",
@@ -33,6 +33,15 @@ void SkySphere::Initialize(Graphics& g) {
 		//	"assets/textures/Skybox/left.png",
 		//	"assets/textures/Skybox/right.png",
 		//	"assets/textures/Skybox/top.png"
+		//};
+
+		//const char* skyFilename[6] = {
+		//	"assets/textures/SpaceBox/0.png",
+		//	"assets/textures/SpaceBox/1.png",
+		//	"assets/textures/SpaceBox/2.png",
+		//	"assets/textures/SpaceBox/3.png",
+		//	"assets/textures/SpaceBox/4.png",
+		//	"assets/textures/SpaceBox/5.png"
 		//};
 		skyTexture = std::make_unique<CubeMapTexture>(g, skyFilename, 1);
 		initialized = true;

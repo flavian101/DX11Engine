@@ -1,18 +1,31 @@
-struct Light
+cbuffer DirectionalLightData : register(b1)
 {
-    float3 pointPos;
-    float3 spotPos;
-    float range;
-    float3 dir;
-    float cone;
-    float3 att;
-    float4 ambient;
-    float4 diffuse;
+    float4 d_Color;
+    float4 d_Ambient;
+    float4 d_Diffuse;
+    float3 d_Direction;
+    int d_Enable;
 };
-cbuffer cbPerFrame
+
+cbuffer PointLightData : register(b2)
 {
-    Light light;
-}; 
+    float3 p_Position;
+    float p_Range;
+    float4 p_Color;
+    float3 p_Attenuation;
+    int p_Enabled;
+};
+
+cbuffer SpotLightData : register(b3)
+{
+    float4 s_Color;
+    float3 s_Position;
+    float s_Range;
+    float3 s_Direction;
+    float s_Cone;
+    float3 s_Attenuation;
+    int s_Enabled;
+};
 
 struct PS_input
 {
@@ -23,116 +36,118 @@ struct PS_input
 };
 
 Texture2D tex : register(t0);
-
 SamplerState samp;
 
-float4 SpotLight(PS_input input)
+// Helper function to calculate basic lighting components
+struct LightResult
 {
-    input.normal = normalize(input.normal);
-    
-    float4 diffuse = tex.Sample(samp, input.texCoords);
-    
-    float3 finalColor = float3(0.0f, 0.0f, 0.0f);
-    
-    float3 lightToPixelVec = light.spotPos - input.worldPos;
-    float d = length(lightToPixelVec);
-    
-    //add the ambient light
-    float3 finalAmbient = diffuse * light.ambient;
-    
-    //if pixel is too far, return pixel color with ambient light
-    if (d > light.range)
-        return float4(finalAmbient, diffuse.a);
-        
-    //Turn lightToPixelVec into a unit length vector describing
-    //the pixels direction from the lights position
-    lightToPixelVec /= d;
-        
-    //Calculate how much light the pixel gets by the angle
-    //in which the light strikes the pixels surface
-    float howMuchLight = dot(lightToPixelVec, input.normal);
+    float3 diffuse;
+    float3 ambient;
+};
 
-    //If light is striking the front side of the pixel
-    if (howMuchLight > 0.0f)
-    {
-        //Add light to the finalColor of the pixel
-        finalColor += diffuse * light.diffuse;
-                    
-        //Calculate Light's Distance Falloff factor
-        finalColor /= (light.att[0] + (light.att[1] * d)) + (light.att[2] * (d * d));
-
-        //Calculate falloff from center to edge of pointlight cone
-        finalColor *= pow(max(dot(-lightToPixelVec, light.dir), 0.0f), light.cone);
-    }
+float3 CalculateSpotLight(PS_input input, float4 baseColor)
+{
+    float3 lightToPixelVec = s_Position - input.worldPos.xyz;
+    float distance = length(lightToPixelVec);
     
-    //make sure the values are between 1 and 0, and add the ambient
-    finalColor = saturate(finalColor + finalAmbient);
+    // Early exit if beyond range
+    if (distance > s_Range)
+        return float3(0.0f, 0.0f, 0.0f);
+        
+    lightToPixelVec /= distance; // Normalize
     
-    //Return Final Color
-    return float4(finalColor, diffuse.a);
+    // Calculate diffuse lighting
+    float nDotL = saturate(dot(lightToPixelVec, input.normal));
     
+    if (nDotL <= 0.0f)
+        return float3(0.0f, 0.0f, 0.0f);
+    
+    // Calculate attenuation
+    float attenuation = 1.0f / (s_Attenuation[0] +
+                               (s_Attenuation[1] * distance) +
+                               (s_Attenuation[2] * distance * distance));
+    
+    // Calculate spot cone falloff
+    float spotEffect = pow(max(dot(-lightToPixelVec, normalize(s_Direction)), 0.0f), s_Cone);
+    
+    // Combine all factors
+    float3 lightContrib = baseColor.rgb * s_Color.rgb * nDotL * attenuation * spotEffect;
+    
+    return lightContrib;
 }
-float4 DirectionalLight(PS_input input)
+
+float3 CalculateDirectionalLight(PS_input input, float4 baseColor)
 {
-    input.normal = normalize(input.normal);
-
-    float4 diffuse = tex.Sample(samp, input.texCoords);
-
-    float3 finalColor;
-
-    finalColor = diffuse * light.ambient;
-    finalColor += saturate(dot(light.dir, input.normal) * light.diffuse * diffuse);
-	
-    return float4(finalColor, diffuse.a);
+    float3 lightDir = normalize(-d_Direction); // Assuming d_Direction points away from light
+    float nDotL = saturate(dot(lightDir, input.normal));
     
+    // Ambient contribution
+    float3 ambient = baseColor.rgb * d_Ambient.rgb;
+    
+    // Diffuse contribution
+    float3 diffuse = baseColor.rgb * d_Color.rgb * nDotL;
+    
+    return ambient + diffuse;
 }
-float4 PointLight(PS_input input)
+
+float3 CalculatePointLight(PS_input input, float4 baseColor)
 {
-    input.normal = normalize(input.normal);
+    float3 lightToPixelVec = p_Position - input.worldPos.xyz;
+    float distance = length(lightToPixelVec);
     
-    float4 diffuse = tex.Sample(samp, input.texCoords);
-    float3 finalColor = float3(0.0f, 0.0f, 0.0f);
-    
-    //Create the vector between light position and pixels position
-    float3 lightToPixelVec = light.pointPos - input.worldPos;
+    // Early exit if beyond range
+    if (distance > p_Range)
+        return float3(0.0f, 0.0f, 0.0f);
         
-    //Find the distance between the light pos and pixel pos
-    float d = length(lightToPixelVec);
+    lightToPixelVec /= distance; // Normalize
     
-    //Create the ambient light
-    float3 finalAmbient = diffuse * light.ambient;
-
-    //If pixel is too far, return pixel color with ambient light
-    if (d > light.range)
-        return float4(finalAmbient, diffuse.a);
-        
-    //Turn lightToPixelVec into a unit length vector describing
-    //the pixels direction from the lights position
-    lightToPixelVec /= d;
+    // Calculate diffuse lighting
+    float nDotL = saturate(dot(lightToPixelVec, input.normal));
     
-    //Calculate how much light the pixel gets by the angle
-    //in which the light strikes the pixels surface
-    float howMuchLight = dot(lightToPixelVec, input.normal);
-
-    //If light is striking the front side of the pixel
-    if (howMuchLight > 0.0f)
-    {
-        //Add light to the finalColor of the pixel
-        finalColor += howMuchLight * diffuse * light.diffuse;
-        
-        //Calculate Light's Falloff factor
-        finalColor /= light.att[0] + (light.att[1] * d) + (light.att[2] * (d * d));
-    }
-        
-    //make sure the values are between 1 and 0, and add the ambient
-    finalColor = saturate(finalColor + finalAmbient);
+    if (nDotL <= 0.0f)
+        return float3(0.0f, 0.0f, 0.0f);
     
-    //Return Final Color
-    return float4(finalColor, diffuse.a);
+    // Calculate attenuation
+    float attenuation = 1.0f / (p_Attenuation[0] +
+                               (p_Attenuation[1] * distance) +
+                               (p_Attenuation[2] * distance * distance));
+    
+    // Combine factors
+    float3 lightContrib = baseColor.rgb * p_Color.rgb * nDotL * attenuation;
+    
+    return lightContrib;
 }
 
 float4 main(PS_input input) : SV_Target
 {
-   
-    return SpotLight(input) + PointLight(input);
+    // Normalize the input normal
+    input.normal = normalize(input.normal);
+    
+    // Sample the base texture
+    float4 baseColor = tex.Sample(samp, input.texCoords);
+    
+    // Initialize final color (start with black, no ambient globally)
+    float3 finalColor = float3(0.0f, 0.0f, 0.0f);
+    
+    // Add contributions from each active light type
+    if (d_Enable)
+    {
+        finalColor += CalculateDirectionalLight(input, baseColor);
+    }
+    
+    if (p_Enabled)
+    {
+        finalColor += CalculatePointLight(input, baseColor);
+    }
+    
+    if (s_Enabled)
+    {
+        finalColor += CalculateSpotLight(input, baseColor);
+    }
+    
+    // Ensure we don't exceed 1.0 (optional, depending on your HDR setup)
+    // finalColor = saturate(finalColor);
+    
+    // Return final color with original alpha
+    return float4(finalColor, baseColor.a);
 }

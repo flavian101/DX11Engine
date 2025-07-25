@@ -1,5 +1,4 @@
 #pragma once
-#include "Graphics.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -7,13 +6,16 @@ class Camera
 {
 	
 public:
-	Camera();
+	Camera(float viewWidth, float aspectRatio, float nearZ, float farZ);
 
 	void UpdateCamera();
 
-	const DirectX::XMMATRIX& GetView() const;
-	const DirectX::XMVECTOR& GetPos() const;
-	const DirectX::XMVECTOR& GetTarget() const;
+	const DirectX::XMMATRIX& GetView() const noexcept;
+	const DirectX::XMVECTOR& GetPos() const noexcept;
+	const DirectX::XMVECTOR& GetTarget() const noexcept;
+
+	void SetProjection(DirectX::FXMMATRIX proj) noexcept;
+	const DirectX::XMMATRIX& GetProjection() const noexcept;
 
 	XMVECTOR DefaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 	XMVECTOR DefaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);

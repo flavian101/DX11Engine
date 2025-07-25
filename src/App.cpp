@@ -4,12 +4,14 @@
 App::App(HINSTANCE hInstance, int showWnd)
     :
     window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
+	camera(std::make_shared<Camera>(1.0f, 9.0f / 16.0f, 0.5f, 100.0f)),
     tri(window.Gfx()),
 	ball(window.Gfx()),
 	sky(window.Gfx())
 {
-
-    window.Gfx().SetProjection(DirectX::XMMatrixPerspectiveLH(1.0f, 9.0f / 16.0f, 0.5f, 100.0f));
+	
+	window.Gfx().SetCamera(camera);
+	m_Light = std::make_shared<PointLight>(window.Gfx());
    // m(window.Gfx());
 
 	HRESULT hr;
@@ -66,14 +68,13 @@ void App::Render()
 	
 	DetectInput(t);
 
-    window.Gfx().SetCamera(camera.GetView());
 
-	
-	sky.Draw(window.Gfx(), camera.GetPos());
-    tri.Draw(window.Gfx(),camera.GetPos(),camera.GetTarget());
+	m_Light->Bind(window.Gfx());
+	sky.Draw(window.Gfx(), camera->GetPos());
+    tri.Draw(window.Gfx(),camera->GetPos(),camera->GetTarget());
 
-	ball.SetPos(XMMatrixTranslation(10.0f, 20.0f, 0.0f));
-	ball.Draw(window.Gfx(), camera.GetPos(), camera.GetTarget());
+	ball.SetPos(XMMatrixTranslation(10.0f, 50.0f, 0.0f));
+	ball.Draw(window.Gfx(), camera->GetPos(), camera->GetTarget());
 	
 	
     window.Gfx().End();
@@ -102,19 +103,19 @@ void App::DetectInput(double time)
 
 	if (keyboardState[DIK_A] & 0x80)
 	{
-		camera.moveLeftRight -= speed;
+		camera->moveLeftRight -= speed;
 	}
 	else if (keyboardState[DIK_D] & 0x80)
 	{
-		camera.moveLeftRight += speed;
+		camera->moveLeftRight += speed;
 	}
 	else if (keyboardState[DIK_W] & 0x80)
 	{
-		camera.moveBackForward += speed;
+		camera->moveBackForward += speed;
 	}
 	else if (keyboardState[DIK_S] & 0x80)
 	{
-		camera.moveBackForward -= speed;
+		camera->moveBackForward -= speed;
 	}
 	else
 	{
@@ -122,13 +123,13 @@ void App::DetectInput(double time)
 	}
 	if ((mouseCurrState.lX != mouseLastState.lX) || (mouseCurrState.lY != mouseLastState.lY))
 	{
-		camera.camYaw += mouseLastState.lX * 0.001f;
+		camera->camYaw += mouseLastState.lX * 0.001f;
 
-		camera.camPitch += mouseCurrState.lY * 0.001f;
+		camera->camPitch += mouseCurrState.lY * 0.001f;
 
 		mouseLastState = mouseCurrState;
 	}
-	camera.UpdateCamera();
+	camera->UpdateCamera();
 	//call update
 
 	return;

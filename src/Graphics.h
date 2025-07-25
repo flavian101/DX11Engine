@@ -8,6 +8,8 @@
 
 #include <d3d11.h>
 #include <d3dcompiler.h>
+#include "Camera.h"
+#include <memory>
 
 class Graphics
 {
@@ -28,17 +30,14 @@ public:
 	void Draw(UINT vertexCount);
 	void DrawSkybox(UINT indexCount);
 	void End();
-	void SetProjection(DirectX::FXMMATRIX proj) noexcept;
-	const DirectX::XMMATRIX& GetProjection() const noexcept;
-	void SetCamera(DirectX::FXMMATRIX view)noexcept;
-	const DirectX::XMMATRIX& GetCamera()const noexcept;
+	void SetCamera(const std::shared_ptr<Camera>& camera);
+	const Camera& GetCamera() const;
 
 private:
 	HWND hwnd;
 	int width;
 	int height;
-	DirectX::XMMATRIX Camera;
-	DirectX::XMMATRIX projection;
+	std::shared_ptr<Camera> m_Camera;
 	Microsoft::WRL::ComPtr<ID3D11Device> pDevice;
 	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pContext;
 	Microsoft::WRL::ComPtr<IDXGISwapChain> pSwapChain;

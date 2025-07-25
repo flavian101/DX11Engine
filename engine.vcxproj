@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Light.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
     <ClCompile Include="src\CubeMapTexture.cpp" />
     <ClCompile Include="src\Ball.cpp" />
@@ -171,6 +172,7 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Light.h" />
     <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\CubeMapTexture.h" />
     <ClInclude Include="src\Ball.h" />

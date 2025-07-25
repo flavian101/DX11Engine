@@ -2,12 +2,13 @@
 #include <d3d11sdklayers.h>
 
 
-Graphics::Graphics(HWND hwnd, int width, int height,bool enableWireFrame)
+Graphics::Graphics(HWND hwnd, int width, int height, bool enableWireFrame)
     :
     hwnd(hwnd),
     width(width),
     height(height),
-    enableWireFrame(enableWireFrame)
+    enableWireFrame(enableWireFrame),
+    m_Camera(nullptr)
 {
     if (!Intialize())
     {
@@ -263,22 +264,13 @@ void Graphics::End()
     hr = pSwapChain->Present(0u, 0u);
 }
 
-void Graphics::SetProjection(DirectX::FXMMATRIX proj) noexcept
+void Graphics::SetCamera(const std::shared_ptr<Camera>& camera)
 {
-    projection = proj;
+    m_Camera = camera;
 }
 
-const DirectX::XMMATRIX& Graphics::GetProjection() const noexcept
+const Camera& Graphics::GetCamera() const
 {
-    return projection;
+    return *m_Camera.get();
 }
 
-void Graphics::SetCamera(DirectX::FXMMATRIX view) noexcept
-{
-    Camera = view;
-}
-
-const DirectX::XMMATRIX& Graphics::GetCamera() const noexcept
-{
-    return Camera;;
-}

@@ -10,6 +10,9 @@
 #pragma comment (lib, "dxguid.lib")
 #include <dinput.h>
 #include <wrl.h>
+#include <memory>
+#include "Light.h"
+
 class App
 {
 public:
@@ -23,7 +26,7 @@ private:
 private:
 	Window window;
 	FrameTime timer;
-	Camera camera;
+	std::shared_ptr<Camera> camera;
 	Microsoft::WRL::ComPtr<IDirectInputDevice8> pKeyboard;
 	Microsoft::WRL::ComPtr<IDirectInputDevice8> pMouse;
 	DIMOUSESTATE mouseLastState;
@@ -31,6 +34,7 @@ private:
 	Triangle tri;
 	SkySphere sky;
 	Ball ball;
+	std::shared_ptr<PointLight> m_Light;
 	//Window wnd;
 };
 

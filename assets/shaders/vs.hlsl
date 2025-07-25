@@ -1,4 +1,4 @@
-cbuffer cb_vsConstantBuffer
+cbuffer cb_vsConstantBuffer : register(b0)
 {
     float4x4 WVP;
     float4x4 Model;

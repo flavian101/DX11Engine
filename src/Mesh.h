@@ -27,8 +27,7 @@ public:
 private:
 	UINT indexCount;
 	//constant buffer
-	ConstantBuffer<cb_psConstantBuffer> psBuffer;
-	ConstantBuffer<cb_vsConstantBuffer> vsBuffer;
+	ConstantBuffer<TransfomBufferData> vsBuffer;
 	VertexBuffer vb;
 	IndexBuffer id;
 	VertexShader vs;

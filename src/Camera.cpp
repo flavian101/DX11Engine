@@ -1,8 +1,9 @@
 #include "Camera.h"
 
-Camera::Camera()
+Camera::Camera(float viewWidth, float aspectRatio, float nearZ, float farZ)
 {
-	camView = DirectX::XMMatrixLookAtLH(camPosition, camTarget, camUp);
+	 camProjection = DirectX::XMMatrixPerspectiveLH(viewWidth, aspectRatio,nearZ, farZ);
+	 camView = DirectX::XMMatrixLookAtLH(camPosition, camTarget, camUp);
 
 }
 
@@ -31,17 +32,29 @@ void Camera::UpdateCamera()
 	camView = XMMatrixLookAtLH(camPosition, camTarget, camUp);
 }
 
-const DirectX::XMMATRIX& Camera::GetView() const
+const DirectX::XMMATRIX& Camera::GetView() const noexcept
 {
 	return camView;
 }
 
-const DirectX::XMVECTOR& Camera::GetPos()const
+const DirectX::XMVECTOR& Camera::GetPos()const noexcept
 {
 	return camPosition;
 }
 
-const DirectX::XMVECTOR& Camera::GetTarget() const
+const DirectX::XMVECTOR& Camera::GetTarget() const noexcept
 {
 	return camTarget;
 }
+
+void Camera::SetProjection(DirectX::FXMMATRIX proj) noexcept
+{
+	camProjection = proj;
+}
+
+const DirectX::XMMATRIX& Camera::GetProjection() const noexcept
+{
+	return camProjection;
+}
+
+
