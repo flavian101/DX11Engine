@@ -10,6 +10,7 @@
 #include "ConstantBuffer.h"
 #include "Sampler.h"
 #include <vector>
+#include "Material.h"
 
 class Mesh
 {
@@ -18,6 +19,7 @@ public:
 		LPCWSTR vertexShader, LPCWSTR pixelShader);
 	~Mesh();
 
+	void SetMaterial(const std::shared_ptr<Material>& material);
 	void Draw(Graphics& g, XMMATRIX model, XMVECTOR camPos, XMVECTOR camTarget);
 	void DrawSky(Graphics& g, XMMATRIX model);
 
@@ -34,7 +36,7 @@ private:
 	PixelShader ps;
 	InputLayout layout;
 	Topology tp;
-	Sampler samp;
+	std::shared_ptr<Material> m_MeshMaterial;
 
 public:
 

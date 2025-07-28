@@ -12,10 +12,10 @@ Mesh::Mesh(Graphics& g,const std::vector<unsigned short>& indices, const std::ve
 	layout(g, vs.GetByteCode()),
 	indexCount(indices.size()),
 	tp(g, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST),
-	samp(g)
+	m_MeshMaterial(nullptr)
+
 {
 	//indexCount = sizeof(indices) / sizeof(indices[0]);
-	samp.Bind(g);
 
 	vsBuffer.Initialize(g);
 
@@ -28,11 +28,18 @@ Mesh::~Mesh()
 
 }
 
+void Mesh::SetMaterial(const std::shared_ptr<Material>& material)
+{
+	m_MeshMaterial = material;
+
+}
+
 void Mesh::Draw(Graphics& g,XMMATRIX modelMatrix, XMVECTOR camPos, XMVECTOR camTarget)
 {
 	id.Bind(g);
 	vb.Bind(g);
-
+	if(m_MeshMaterial)
+		m_MeshMaterial->Bind(g);
 	vs.Bind(g);
 	ps.Bind(g);
 

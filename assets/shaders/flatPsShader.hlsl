@@ -1,4 +1,4 @@
-cbuffer PointLightData : register(b2)
+cbuffer PointLightData : register(b3)
 {
     float3 p_Position;
     float p_Range;

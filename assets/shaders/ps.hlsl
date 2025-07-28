@@ -1,4 +1,11 @@
-cbuffer DirectionalLightData : register(b1)
+cbuffer MaterialBufferData : register(b1)
+{
+    float4 difColor;
+    bool hasTexture;
+    bool hasNormalMap;
+};
+
+cbuffer DirectionalLightData : register(b2)
 {
     float4 d_Color;
     float4 d_Ambient;
@@ -7,7 +14,7 @@ cbuffer DirectionalLightData : register(b1)
     int d_Enable;
 };
 
-cbuffer PointLightData : register(b2)
+cbuffer PointLightData : register(b3)
 {
     float3 p_Position;
     float p_Range;
@@ -16,7 +23,7 @@ cbuffer PointLightData : register(b2)
     int p_Enabled;
 };
 
-cbuffer SpotLightData : register(b3)
+cbuffer SpotLightData : register(b4)
 {
     float4 s_Color;
     float3 s_Position;
@@ -33,9 +40,11 @@ struct PS_input
     float4 worldPos : POSITION;
     float2 texCoords : TEXCOORD;
     float3 normal : NORMAL;
+    float4 tangents : TANGENT;
 };
 
 Texture2D tex : register(t0);
+Texture2D normalMap : register(t1);
 SamplerState samp;
 
 // Helper function to calculate basic lighting components
@@ -76,10 +85,10 @@ float3 CalculateSpotLight(PS_input input, float4 baseColor)
     return lightContrib;
 }
 
-float3 CalculateDirectionalLight(PS_input input, float4 baseColor)
+float3 CalculateDirectionalLight(float3 nWorld, float4 baseColor)
 {
     float3 lightDir = normalize(-d_Direction); // Assuming d_Direction points away from light
-    float nDotL = saturate(dot(lightDir, input.normal));
+    float nDotL = saturate(dot(nWorld, lightDir));
     
     // Ambient contribution
     float3 ambient = baseColor.rgb * d_Ambient.rgb;
@@ -90,8 +99,9 @@ float3 CalculateDirectionalLight(PS_input input, float4 baseColor)
     return ambient + diffuse;
 }
 
-float3 CalculatePointLight(PS_input input, float4 baseColor)
+float3 CalculatePointLight(PS_input input, float4 baseColor, float3 nWorld)
 {
+    
     float3 lightToPixelVec = p_Position - input.worldPos.xyz;
     float distance = length(lightToPixelVec);
     
@@ -102,7 +112,7 @@ float3 CalculatePointLight(PS_input input, float4 baseColor)
     lightToPixelVec /= distance; // Normalize
     
     // Calculate diffuse lighting
-    float nDotL = saturate(dot(lightToPixelVec, input.normal));
+    float nDotL = saturate(dot(nWorld,lightToPixelVec));
     
     if (nDotL <= 0.0f)
         return float3(0.0f, 0.0f, 0.0f);
@@ -124,7 +134,38 @@ float4 main(PS_input input) : SV_Target
     input.normal = normalize(input.normal);
     
     // Sample the base texture
-    float4 baseColor = tex.Sample(samp, input.texCoords);
+    float4 baseColor =  float4(1.0f, 1.0f, 1.0f, 1.0f);
+    if(hasTexture)
+    {
+        baseColor = tex.Sample(samp, input.texCoords);
+    }
+    else
+    {
+        baseColor = difColor;
+
+    }
+    float3 nWorld;
+    if(hasNormalMap)
+    {
+        float3 nSampleTS = normalMap.Sample(samp, input.texCoords).rgb * 2.0f - 1.0f;
+
+    // Normalize vertex axes
+        float3 T = normalize(input.tangents.xyz);
+        float3 N = normalize(input.normal);
+        float3 B = normalize(cross(N, T) * input.tangents.w);
+
+        nWorld = normalize(
+        nSampleTS.x * T +
+        nSampleTS.y * B +
+        nSampleTS.z * N
+    );
+        
+    }
+    else
+    {
+        nWorld = input.normal;
+
+    }
     
     // Initialize final color (start with black, no ambient globally)
     float3 finalColor = float3(0.0f, 0.0f, 0.0f);
@@ -132,12 +173,12 @@ float4 main(PS_input input) : SV_Target
     // Add contributions from each active light type
     if (d_Enable)
     {
-        finalColor += CalculateDirectionalLight(input, baseColor);
+        finalColor += CalculateDirectionalLight(nWorld, baseColor);
     }
     
     if (p_Enabled)
     {
-        finalColor += CalculatePointLight(input, baseColor);
+        finalColor += CalculatePointLight(input, baseColor, nWorld);
     }
     
     if (s_Enabled)

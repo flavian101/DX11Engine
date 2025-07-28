@@ -90,6 +90,9 @@
     <ClCompile Include="src\LightSphere.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Material.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Window.h">
@@ -170,6 +173,9 @@
     <ClInclude Include="src\LightSphere.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Material.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\engine.rc">
@@ -184,6 +190,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="icon1.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="C:\Users\judef\Downloads\grassNormal.jpg">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

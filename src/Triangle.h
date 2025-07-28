@@ -45,7 +45,6 @@ private:
 	float rot = 0.01f;
 	//Mesh tria;
 	std::unique_ptr<Mesh> groundMesh;
-	Texture tex;
 
 };
 

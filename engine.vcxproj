@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Material.cpp" />
     <ClCompile Include="src\LightSphere.cpp" />
     <ClCompile Include="src\Light.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
@@ -173,6 +174,7 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Material.h" />
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Light.h" />
     <ClInclude Include="src\SkySphere.h" />
@@ -206,6 +208,7 @@
   <ItemGroup>
     <Image Include="assets\icon\icon.ico" />
     <Image Include="assets\icon\icon.png" />
+    <Image Include="C:\Users\judef\Downloads\grassNormal.jpg" />
     <Image Include="icon1.ico" />
   </ItemGroup>
   <ItemGroup>

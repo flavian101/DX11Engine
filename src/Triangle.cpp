@@ -2,14 +2,15 @@
 
 
 Triangle::Triangle(Graphics& g)
-	:
 	//tria(g, indices, v,(sizeof(indices) / sizeof(indices[0])), sizeof(v)),
-	tex(g,"assets/textures/grass.jpg",0)
 {
-	vertices.push_back( Vertex(-1.0f, -1.0f, -1.0f, 100.0f, 100.0f, 0.0f, 1.0f, 0.0f));
-	vertices.push_back(Vertex(1.0f, -1.0f, -1.0f, 0.0f, 100.0f, 0.0f, 1.0f, 0.0f));
-	vertices.push_back(Vertex(1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f));
-	vertices.push_back(Vertex(-1.0f, -1.0f, 1.0f, 100.0f, 0.0f, 0.0f, 1.0f, 0.0f));
+	XMFLOAT4 tangent(1.0f, 0.0f, 0.0f,1.0f);
+	
+	vertices.push_back(Vertex(-1.0f, -1.0f, -1.0f, 100.0f, 100.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
+	vertices.push_back(Vertex( 1.0f, -1.0f, -1.0f,   0.0f, 100.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
+	vertices.push_back(Vertex( 1.0f, -1.0f,  1.0f,   0.0f,   0.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
+	vertices.push_back(Vertex(-1.0f, -1.0f,  1.0f, 100.0f,   0.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
+
 
 	ind.push_back(0);
 	ind.push_back(1);
@@ -17,20 +18,23 @@ Triangle::Triangle(Graphics& g)
 	ind.push_back(0);
 	ind.push_back(2);
 	ind.push_back(3);
-	
+
 	Initialize(g);
+	auto grassMaterial = std::make_shared<Material>(g);
+	auto grassDiffuse = std::make_shared<Texture>(g, "assets/textures/grass.jpg");
+	auto grassNormal = std::make_shared<Texture>(g, "assets/textures/grassNormal.jpg");
+	grassMaterial->SetDiffuse(grassDiffuse);
+	grassMaterial->SetNormalMap(grassNormal);
+	groundMesh->SetMaterial(grassMaterial);
+
 
 }
 void Triangle::Initialize(Graphics& g)
 {
-	//if (!initialized) {
-		// Create mesh once
-		groundMesh = std::make_unique<Mesh>(g, ind, vertices,
-			L"assets/shaders/vs.cso",
-			L"assets/shaders/ps.cso");
-		// Create texture once
-		tex.Bind(g);
-	//}
+	groundMesh = std::make_unique<Mesh>(g, ind, vertices,
+		L"assets/shaders/vs.cso",
+		L"assets/shaders/ps.cso");
+
 }
 void Triangle::Draw(Graphics& g, FXMVECTOR camPos, FXMVECTOR camTarget)
 {
@@ -42,7 +46,6 @@ void Triangle::Draw(Graphics& g, FXMVECTOR camPos, FXMVECTOR camTarget)
 
 	squareMatrix = Scale * Translation;
 
-	tex.Bind(g);
 	groundMesh->Draw(g, squareMatrix, camPos, camTarget);
 }
 

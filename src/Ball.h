@@ -19,7 +19,6 @@ private:
 	Sphere sphere;
 	std::unique_ptr<Mesh> ballMesh;
 	XMMATRIX ballPos;
-	Texture tex;
 	DirectX::XMMATRIX Scale;
 	DirectX::XMMATRIX Translation;
 

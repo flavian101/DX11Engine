@@ -4,9 +4,7 @@
 
 
 
-Texture::Texture(Graphics& g, const char* filename,UINT slot = 0)
-	:
-	slot(slot)
+Texture::Texture(Graphics& g, const char* filename)
 {
 	int image_Width, image_height, image_Channels, image_Desired_channels = 4;
 	 
@@ -52,7 +50,7 @@ Texture::Texture(Graphics& g, const char* filename,UINT slot = 0)
 	stbi_image_free(data);
 }
 
-void Texture::Bind(Graphics& g)
+void Texture::Bind(Graphics& g,UINT slot)
 {
 	g.GetContext()->PSSetShaderResources(slot, 1, textureView.GetAddressOf());
 }

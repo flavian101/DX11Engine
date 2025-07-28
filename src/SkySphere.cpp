@@ -11,8 +11,8 @@ void SkySphere::Initialize(Graphics& g) {
 	//if (!initialized) {
 		// Create mesh once
 		skyMesh = std::make_unique<Mesh>(g,
-			sphere->getIndices(),
-			sphere->getVertex(),
+			sphere->GetIndices(),
+			sphere->GetVertices(),
 			L"assets/shaders/skyVs.cso",
 			L"assets/shaders/skyPs.cso");
 

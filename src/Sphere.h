@@ -9,8 +9,8 @@ public:
 	Sphere(const int resolution, int slot);
 	Sphere(const char* name,int res);
 	~Sphere();
-	const std::vector<Vertex>& getVertex() const;
-	const std::vector<unsigned short>& getIndices() const;
+	const std::vector<Vertex>& GetVertices() const;
+	const std::vector<unsigned short>& GetIndices() const;
 
 private:
 	Vertex vertex;

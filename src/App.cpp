@@ -30,7 +30,7 @@ App::App(HINSTANCE hInstance, int showWnd)
 		NULL);
 
 	hr = pKeyboard->SetDataFormat(&c_dfDIKeyboard);
-	hr = pKeyboard->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+	hr = pKeyboard->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
 
 	hr = pMouse->SetDataFormat(&c_dfDIMouse);
 	hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);

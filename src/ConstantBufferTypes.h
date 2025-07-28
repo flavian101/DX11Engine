@@ -10,6 +10,14 @@ struct TransfomBufferData
 	XMMATRIX Model;
 
 };
+struct MaterialBufferData
+{
+    XMFLOAT4 difColor;
+    BOOL hasTexture;
+    BOOL hasNormalMap;
+    float pad[2];
+
+};
 struct PointLightData
 {
     PointLightData()
@@ -55,9 +63,11 @@ struct DirectionalLightData
 enum BindSlot
 {
     CB_Transform = 0,
-    CB_Direction_Light = 1,
-    CB_Point_Light = 2,
-    CB_Spot_Light = 3,
+    CB_Material = 1,
+    CB_Direction_Light = 2,
+    CB_Point_Light = 3,
+    CB_Spot_Light = 4,
+    
 
 
 };

@@ -5,7 +5,7 @@ LightSphere::LightSphere(Graphics& gfx)
 	m_Sphere(64)
 
 {
-	m_Mesh = std::make_shared<Mesh>(gfx, m_Sphere.getIndices(), m_Sphere.getVertex(),
+	m_Mesh = std::make_shared<Mesh>(gfx, m_Sphere.GetIndices(), m_Sphere.GetVertices(),
 		L"assets/shaders/flatVsShader.cso",
 		L"assets/shaders/flatPsShader.cso");
 	m_Light = std::make_shared<PointLight>(gfx);

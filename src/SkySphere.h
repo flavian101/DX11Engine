@@ -14,8 +14,6 @@ public:
 	SkySphere(Graphics& g);
 
 	void Draw(Graphics& g, FXMVECTOR camPos);
-	Mesh* getSky(Graphics& g);
-	CubeMapTexture* getSkyTexture(Graphics& g);
 	void Initialize(Graphics& g);
 
 private:
