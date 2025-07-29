@@ -1,9 +1,12 @@
 #include "Window.h"
 #include "Event/KeyEvent.h"
+#include "windows/WindowsInput.h"
+#include "Event/ApplicationEvent.h"
+#include <windowsx.h>
+#include "Event/MouseEvent.h"
+
 
 #define BIND_EVENT_FN(x) std::bind(&Window::x, this, std::placeholders::_1)
-
-
 
 Window::Window(HINSTANCE hInstance, int nCmdShow, LPCWSTR windowTitle, LPCWSTR windowClass, int width, int height)
 	:
@@ -113,6 +116,9 @@ bool Window::Initialize()
 	// create graphics object
 	pGfx = std::make_unique<Graphics>(hwnd, width, height,false);
 
+	Input::Init(new WindowsInput(hwnd));
+
+
 	return true;
 }
 
@@ -164,7 +170,64 @@ LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noe
 		m_EventCallback(e);
 		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
 	}
+	case WM_SIZE:
+	{
+		int newW = LOWORD(lParam);
+		int newH = HIWORD(lParam);
 
+		// 1) Construct the event
+		WindowResizeEvent e(newW, newH);
+
+		// 2) Dispatch to whoever registered
+		if (m_EventCallback)
+			m_EventCallback(e);
+
+		// 3) If handled, swallow it; otherwise pass on
+		return e.Handled
+			? 0
+			: DefWindowProc(hWnd, msg, wParam, lParam);
+	}
+	case WM_MOUSEMOVE:
+	{
+		float x = static_cast<float>(GET_X_LPARAM(lParam));
+		float y = static_cast<float>(GET_Y_LPARAM(lParam));
+		MouseMovedEvent e(x, y);
+		if (m_EventCallback)
+			m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProcW(hwnd, msg, wParam, lParam);
+	}
+	case WM_MOUSEWHEEL:
+	{
+		float delta = static_cast<float>(GET_WHEEL_DELTA_WPARAM(wParam))/ static_cast<float>(WHEEL_DELTA);
+		MouseScrolledEvent e(0.0f, delta);
+		if (m_EventCallback) m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+	}
+	case WM_LBUTTONDOWN:
+	{
+		MouseButtonPressedEvent e(VK_LBUTTON);
+		if (m_EventCallback) m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+	}
+	case WM_LBUTTONUP:
+	{
+		MouseButtonReleasedEvent e(VK_LBUTTON);
+		if (m_EventCallback) m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+	}
+
+	case WM_RBUTTONDOWN:
+	{
+		MouseButtonPressedEvent e(VK_RBUTTON);
+		if (m_EventCallback) m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+	}
+	case WM_RBUTTONUP:
+	{
+		MouseButtonReleasedEvent e(VK_RBUTTON);
+		if (m_EventCallback) m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+	}
 	case WM_DESTROY:
 	{
 		PostQuitMessage(0);

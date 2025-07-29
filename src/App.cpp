@@ -2,6 +2,8 @@
 #include <optional>
 #include "Event/Event.h"
 #include <functional>
+#include "Core/Input.h"
+#include <iostream>
 
 
 #define BIND_EVENT_FN(fn) std::bind(&App::fn, this, std::placeholders::_1)
@@ -70,11 +72,22 @@ void App::OnEvent(Event& e)
 	// Route each type of event to the correct handler:
 	dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OnWindowResize));
 	dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(OnKeyPressed));
+	dispatcher.Dispatch<MouseMovedEvent>(BIND_EVENT_FN(OnMouseMoved));
+	dispatcher.Dispatch<MouseScrolledEvent>(BIND_EVENT_FN(OnMouseScrolled));
+	dispatcher.Dispatch<MouseButtonPressedEvent>(BIND_EVENT_FN(OnMouseButtonPressed));
+	dispatcher.Dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FN(OnMouseButtonReleased));
 }
 
 bool App::OnWindowResize(WindowResizeEvent& e)
 {
-	//window.Gfx().Resize(e.GetWidth(), e.GetHeight());
+	window.Gfx().Resize(e.GetWidth(), e.GetHeight());
+
+	// also update the camera’s aspect ratio
+	float width = e.GetWidth();
+	float height = e.GetHeight();
+	float aspect = height/ width ;
+	XMMATRIX camProjection= DirectX::XMMatrixPerspectiveLH(1.0f, aspect, 0.5f, 100.0f);
+	camera->SetProjection(camProjection);
 	return true;
 }
 
@@ -85,16 +98,55 @@ bool App::OnKeyPressed(KeyPressedEvent& e)
 	case VK_ESCAPE:
 		window.QuitWindow();
 		return true;
-	case 'W':
-		//camera->MoveForward();
-		return true;
-		// … handle other keys …
+	//case 'W':
+	//	//camera->MoveForward();
+	//	return true;
+	//	// … handle other keys …
 	}
-	return false;  
+	return true;  
+}
+
+bool App::OnMouseMoved(MouseMovedEvent& e)
+{
+
+	return true;
+}
+
+bool App::OnMouseScrolled(MouseScrolledEvent& e)
+{
+	
+	return true;
+}
+
+bool App::OnMouseButtonPressed(MouseButtonPressedEvent& e)
+{
+	return false;
+}
+
+bool App::OnMouseButtonReleased(MouseButtonReleasedEvent& e)
+{
+	return false;
 }
 
 void App::DetectInput(double time)
 {
+	float speed = time * 0.025f;
+	if (Input::IsKeyPressed('W'))
+	{
+		camera->moveBackForward += speed;
+	}
+	if (Input::IsKeyPressed('S'))
+	{
+		camera->moveBackForward -= speed;
+	}
+	if (Input::IsKeyPressed('A'))
+	{
+		camera->moveLeftRight -= speed;
+	}
+	if (Input::IsKeyPressed('D'))
+	{
+		camera->moveLeftRight += speed;
+	}
 
 	camera->UpdateCamera();
 	//call update

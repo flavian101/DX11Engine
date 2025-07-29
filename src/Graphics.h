@@ -23,6 +23,7 @@ public:
 	const Microsoft::WRL::ComPtr<ID3D11Device>& GetDevice() const;
 
 	bool Intialize();
+	void Resize(int newWidth, int newHeight);
 	HWND getHwnd();
 	void ShowMessageBox(const wchar_t* title, const char* message);
 	void PrintError(HRESULT ghr);

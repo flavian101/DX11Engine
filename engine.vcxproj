@@ -147,13 +147,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Core\Input.cpp" />
     <ClCompile Include="src\Material.cpp" />
     <ClCompile Include="src\LightSphere.cpp" />
     <ClCompile Include="src\Light.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
     <ClCompile Include="src\CubeMapTexture.cpp" />
     <ClCompile Include="src\Ball.cpp" />
-    <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Sampler.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\InputLayout.cpp" />
@@ -172,8 +172,11 @@
     <ClCompile Include="src\Topology.cpp" />
     <ClCompile Include="src\Triangle.cpp" />
     <ClCompile Include="src\Texture.cpp" />
+    <ClCompile Include="src\windows\WindowsInput.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Core\Input.h" />
+    <ClInclude Include="src\Core\Keycodes.h" />
     <ClInclude Include="src\Event\ApplicationEvent.h" />
     <ClInclude Include="src\Event\Event.h" />
     <ClInclude Include="src\Event\KeyEvent.h" />
@@ -184,7 +187,6 @@
     <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\CubeMapTexture.h" />
     <ClInclude Include="src\Ball.h" />
-    <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Sampler.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\ConstantBuffer.h" />
@@ -205,6 +207,7 @@
     <ClInclude Include="src\Topology.h" />
     <ClInclude Include="src\Triangle.h" />
     <ClInclude Include="src\Texture.h" />
+    <ClInclude Include="src\windows\WindowsInput.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\engine.rc" />

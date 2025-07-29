@@ -14,6 +14,8 @@
 #include "LightSphere.h"
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
+#include "Event/MouseEvent.h"
+
 
 class App
 {
@@ -29,6 +31,10 @@ private:
 	// 2) Individual handlers for events you care about
 	bool OnWindowResize(WindowResizeEvent& e);
 	bool OnKeyPressed(KeyPressedEvent& e);
+	bool OnMouseMoved(MouseMovedEvent& e);
+	bool OnMouseScrolled(MouseScrolledEvent& e);
+	bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
+	bool OnMouseButtonReleased(MouseButtonReleasedEvent& e);
 
 	void DetectInput(double time);
 

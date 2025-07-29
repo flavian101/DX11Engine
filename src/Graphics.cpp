@@ -1,4 +1,4 @@
-#include "Graphics.h"
+﻿#include "Graphics.h"
 #include <d3d11sdklayers.h>
 
 
@@ -174,6 +174,88 @@ bool Graphics::Intialize()
 
    
     return true;
+}
+
+void Graphics::Resize(int newWidth, int newHeight)
+{
+    pContext->OMSetRenderTargets(0, nullptr, nullptr);
+    pRenderTarget.Reset();
+    pDsv.Reset();
+
+    // 2) Resize the swap‐chain buffers
+    HRESULT hr = pSwapChain->ResizeBuffers(
+        1,                // buffer count
+        newWidth,
+        newHeight,
+        DXGI_FORMAT_B8G8R8A8_UNORM,
+        0                 // flags
+    );
+    if (FAILED(hr))
+        PrintError(hr);
+
+    // 3) Recreate render‐target view
+    Microsoft::WRL::ComPtr<ID3D11Resource> backBuffer;
+    hr = pSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), &backBuffer);
+    if (FAILED(hr))
+        PrintError(hr);
+
+    hr = pDevice->CreateRenderTargetView(
+        backBuffer.Get(),
+        nullptr,
+        pRenderTarget.GetAddressOf()
+    );
+    if (FAILED(hr))
+        PrintError(hr);
+
+    // 4) Recreate depth‐stencil buffer & view
+    D3D11_TEXTURE2D_DESC descDepth = {};
+    descDepth.Width = newWidth;
+    descDepth.Height = newHeight;
+    descDepth.MipLevels = 1;
+    descDepth.ArraySize = 1;
+    descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    descDepth.SampleDesc.Count = 1;
+    descDepth.SampleDesc.Quality = 0;
+    descDepth.Usage = D3D11_USAGE_DEFAULT;
+    descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> depthTex;
+    hr = pDevice->CreateTexture2D(
+        &descDepth,
+        nullptr,
+        depthTex.GetAddressOf()
+    );
+    if (FAILED(hr))
+        PrintError(hr);
+
+    D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = descDepth.Format;
+    dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Texture2D.MipSlice = 0;
+    hr = pDevice->CreateDepthStencilView(
+        depthTex.Get(),
+        &dsvDesc,
+        pDsv.GetAddressOf()
+    );
+    if (FAILED(hr))
+        PrintError(hr);
+
+    // 5) Bind the new views
+    pContext->OMSetRenderTargets(1, pRenderTarget.GetAddressOf(), pDsv.Get());
+
+    // 6) Update the viewport
+    D3D11_VIEWPORT vp;
+    vp.TopLeftX = 0;
+    vp.TopLeftY = 0;
+    vp.Width = static_cast<float>(newWidth);
+    vp.Height = static_cast<float>(newHeight);
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    pContext->RSSetViewports(1, &vp);
+
+    // 7) Update your stored dimensions
+    width = newWidth;
+    height = newHeight;
 }
 
 
