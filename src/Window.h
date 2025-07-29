@@ -4,11 +4,17 @@
 #include <Windows.h>
 #include <optional>
 #include <memory>
+#include "Event/Event.h"
+#include <functional>
+
 
 class Window
 {
+
 	friend class Graphics;
 public:
+	using EventCallbackFn = std::function<void(Event&)>;
+
 	Window(HINSTANCE hInstance, int nCmdShow,
 		LPCWSTR windowTitle, LPCWSTR windowClass,
 		int width, int height);
@@ -17,6 +23,8 @@ public:
 	~Window();
 	bool Initialize();
 	static std::optional<int> ProcessMessages();
+	void SetEventCallback(const EventCallbackFn& callback);
+	void QuitWindow();
 	Graphics& Gfx();
 
 	HWND GetHwnd() const;
@@ -35,8 +43,7 @@ private:
 	LPCWSTR windowClass;
 	int width;
 	int height;
-
+	EventCallbackFn m_EventCallback;
 	
-
 };
 

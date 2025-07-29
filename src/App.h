@@ -12,6 +12,8 @@
 #include <wrl.h>
 #include <memory>
 #include "LightSphere.h"
+#include "Event/ApplicationEvent.h"
+#include "Event/KeyEvent.h"
 
 class App
 {
@@ -22,15 +24,18 @@ public:
 	int createLoop();
 private:
 	void Render();
+	void OnEvent(Event& e);
+
+	// 2) Individual handlers for events you care about
+	bool OnWindowResize(WindowResizeEvent& e);
+	bool OnKeyPressed(KeyPressedEvent& e);
+
 	void DetectInput(double time);
+
 private:
 	Window window;
 	FrameTime timer;
 	std::shared_ptr<Camera> camera;
-	Microsoft::WRL::ComPtr<IDirectInputDevice8> pKeyboard;
-	Microsoft::WRL::ComPtr<IDirectInputDevice8> pMouse;
-	DIMOUSESTATE mouseLastState;
-	LPDIRECTINPUT8 DirectInput;
 	Triangle tri;
 	SkySphere sky;
 	Ball ball;

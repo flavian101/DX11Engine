@@ -1,4 +1,7 @@
 #include "Window.h"
+#include "Event/KeyEvent.h"
+
+#define BIND_EVENT_FN(x) std::bind(&Window::x, this, std::placeholders::_1)
 
 
 
@@ -94,7 +97,7 @@ bool Window::Initialize()
 		NULL,
 		NULL,
 		hInstance,
-		NULL
+		this
 	);
 
 	if (!hwnd)
@@ -144,14 +147,24 @@ LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noe
 {
 	switch (msg)
 	{
+		// -- keyboard down --
 	case WM_KEYDOWN:
 	{
-		if (wParam == VK_ESCAPE)
-		{
-			DestroyWindow(hWnd);
-		}
-		return 0;
+		bool repeat = (lParam & (1 << 30)) != 0;
+		KeyPressedEvent e((int)wParam, repeat);
+		if (m_EventCallback)    
+			m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
 	}
+
+	// -- keyboard up --
+	case WM_KEYUP:
+	{
+		KeyReleasedEvent e((int)wParam);
+		m_EventCallback(e);
+		return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+	}
+
 	case WM_DESTROY:
 	{
 		PostQuitMessage(0);
@@ -175,4 +188,15 @@ std::optional<int> Window::ProcessMessages()
 		
 	}
 	return {};
+}
+
+void Window::SetEventCallback(const EventCallbackFn& callback)
+{
+	m_EventCallback = callback;
+
+}
+
+void Window::QuitWindow()
+{
+	DestroyWindow(hwnd);
 }

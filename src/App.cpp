@@ -1,5 +1,10 @@
 #include "App.h"
 #include <optional>
+#include "Event/Event.h"
+#include <functional>
+
+
+#define BIND_EVENT_FN(fn) std::bind(&App::fn, this, std::placeholders::_1)
 
 App::App(HINSTANCE hInstance, int showWnd)
     :
@@ -9,34 +14,12 @@ App::App(HINSTANCE hInstance, int showWnd)
 	ball(window.Gfx()),
 	sky(window.Gfx())
 {
-	
+	window.SetEventCallback([this](Event& e) { OnEvent(e); });
+
 	window.Gfx().SetCamera(camera);
 	m_Light = std::make_shared<LightSphere>(window.Gfx());
    // m(window.Gfx());
 
-	HRESULT hr;
-	hr = DirectInput8Create(hInstance,
-		DIRECTINPUT_VERSION,
-		IID_IDirectInput8,
-		(void**)&DirectInput,
-		NULL);
-
-	hr = DirectInput->CreateDevice(GUID_SysKeyboard,
-		&pKeyboard,
-		NULL);
-
-	hr = DirectInput->CreateDevice(GUID_SysMouse,
-		&pMouse,
-		NULL);
-
-	hr = pKeyboard->SetDataFormat(&c_dfDIKeyboard);
-	hr = pKeyboard->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
-
-	hr = pMouse->SetDataFormat(&c_dfDIMouse);
-	hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
-	//hr = pMouse->SetCooperativeLevel(window.Gfx().getHwnd(), DISCL_NOWINKEY | DISCL_FOREGROUND);
-
-	
 }
 
 App::~App()
@@ -81,54 +64,38 @@ void App::Render()
 	
 }
 
+void App::OnEvent(Event& e)
+{
+	EventDispatcher dispatcher(e);
+	// Route each type of event to the correct handler:
+	dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OnWindowResize));
+	dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(OnKeyPressed));
+}
+
+bool App::OnWindowResize(WindowResizeEvent& e)
+{
+	//window.Gfx().Resize(e.GetWidth(), e.GetHeight());
+	return true;
+}
+
+bool App::OnKeyPressed(KeyPressedEvent& e)
+{
+	switch (e.GetKeyCode())
+	{
+	case VK_ESCAPE:
+		window.QuitWindow();
+		return true;
+	case 'W':
+		//camera->MoveForward();
+		return true;
+		// … handle other keys …
+	}
+	return false;  
+}
+
 void App::DetectInput(double time)
 {
-	DIMOUSESTATE mouseCurrState;
 
-	BYTE keyboardState[256];
-
-	pKeyboard->Acquire();
-	pMouse->Acquire();
-
-	pMouse->GetDeviceState(sizeof(DIMOUSESTATE), &mouseCurrState);
-
-	pKeyboard->GetDeviceState(sizeof(keyboardState), (LPVOID)&keyboardState);
-
-	if (keyboardState[DIK_ESCAPE] & 0x80)
-	{
-		PostMessage(window.GetHwnd(), WM_DESTROY, 0, 0);
-	}
-
-	float speed = 0.02f * time;
-
-	if (keyboardState[DIK_A] & 0x80)
-	{
-		camera->moveLeftRight -= speed;
-	}
-	else if (keyboardState[DIK_D] & 0x80)
-	{
-		camera->moveLeftRight += speed;
-	}
-	else if (keyboardState[DIK_W] & 0x80)
-	{
-		camera->moveBackForward += speed;
-	}
-	else if (keyboardState[DIK_S] & 0x80)
-	{
-		camera->moveBackForward -= speed;
-	}
-	else
-	{
-		speed = 0.02;
-	}
-	if ((mouseCurrState.lX != mouseLastState.lX) || (mouseCurrState.lY != mouseLastState.lY))
-	{
-		camera->camYaw += mouseLastState.lX * 0.001f;
-
-		camera->camPitch += mouseCurrState.lY * 0.001f;
-
-		mouseLastState = mouseCurrState;
-	}
 	camera->UpdateCamera();
 	//call update
 
