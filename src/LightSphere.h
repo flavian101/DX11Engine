@@ -1,23 +1,17 @@
 #pragma once
-#include "Light.h"
+#include "utils\Light.h"
 #include "Sphere.h"
-#include "Mesh.h"
+#include "utils\Mesh.h"
+#include "models/Model.h"
 
-class LightSphere
+class LightSphere : public Model
 {
 public:
-	LightSphere(Graphics& gfx);
-
-	void Draw(Graphics& gfx);
-
-
+	LightSphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program);
+	void Render(Graphics& gfx) override;
 private:
 	Sphere m_Sphere;
-	std::shared_ptr<Mesh> m_Mesh;
 	std::shared_ptr <PointLight> m_Light;
 
-	XMMATRIX m_ModelMatrix;
-	DirectX::XMMATRIX m_Scale;
-	DirectX::XMMATRIX m_Translation;
 };
 

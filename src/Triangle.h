@@ -1,50 +1,18 @@
 #pragma once
 #include "Graphics.h"
-#include "Mesh.h"
+#include "utils\Mesh.h"
 #include <DirectXMath.h>
-#include "Texture.h"
+#include "utils\Texture.h"
+#include "models\Model.h"
 
-
-
-
-class Triangle
+class Triangle : public Model
 {
-private:
-
-	
-	
-//	Vertex v[4] =
-//	{
-//		// Bottom Face
-//	   Vertex(-1.0f, -1.0f, -1.0f, 100.0f, 100.0f, 0.0f, 1.0f, 0.0f),
-//	   Vertex(1.0f, -1.0f, -1.0f,   0.0f, 100.0f, 0.0f, 1.0f, 0.0f),
-//	   Vertex(1.0f, -1.0f,  1.0f,   0.0f,   0.0f, 0.0f, 1.0f, 0.0f),
-//	   Vertex(-1.0f, -1.0f,  1.0f, 100.0f,   0.0f, 0.0f, 1.0f, 0.0f),
-//	};
-//	const unsigned short indices[6] =
-//	{
-//		 0,  1,  2,
-//		 0,  2,  3,
-//	};
-
-	
-
-
 public:
-	Triangle(Graphics& g);
-	void Draw(Graphics& g,FXMVECTOR camPos, FXMVECTOR camTarget);
-	void Initialize(Graphics& g);
+	Triangle(Graphics& gfx,std::shared_ptr<ShaderProgram> program);
+
+	void Render(Graphics& gfx)override;
+	void Initialize(Graphics& gfx);
 private:
-	std::vector<Vertex> vertices;
-	std::vector<unsigned short> ind;
-	DirectX::XMMATRIX squareMatrix;
-	DirectX::XMMATRIX squareMatrix2;
-	DirectX::XMMATRIX Rotation;
-	DirectX::XMMATRIX Scale;
-	DirectX::XMMATRIX Translation;
-	float rot = 0.01f;
-	//Mesh tria;
-	std::unique_ptr<Mesh> groundMesh;
 
 };
 

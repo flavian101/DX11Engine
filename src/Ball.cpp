@@ -1,42 +1,30 @@
 #include "Ball.h"
 
-Ball::Ball(Graphics& g)
+Ball::Ball(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
 	:
+	Model(gfx,program),
 	sphere(64)
 {
-	ballPos = XMMatrixIdentity();
-	Initialize(g);
+	Initialize(gfx);
 
-	auto moonMaterial = std::make_shared<Material>(g);
-	auto moonTexture = std::make_shared<Texture>(g, "assets/textures/8k_moon.jpg");
+	auto moonMaterial = std::make_shared<Material>(gfx);
+	auto moonTexture = std::make_shared<Texture>(gfx, "assets/textures/8k_moon.jpg");
 	moonMaterial->SetDiffuse(moonTexture);
-	ballMesh->SetMaterial(moonMaterial);
+	moonMaterial->SetShaderProgram(program);
+	m_Mesh->SetMaterial(moonMaterial);
 
 }
 void  Ball::Initialize(Graphics& g)
 {
-if (!ballMesh)
+	if (!m_Mesh)
 	{
-		ballMesh = std::make_unique<Mesh>(g, sphere.GetIndices(), sphere.GetVertices(),
-			L"assets/shaders/vs.cso",
-			L"assets/shaders/ps.cso");
-}
+		m_Mesh = std::make_shared<Mesh>(g,sphere.getMeshResource());
+	}
 }
 
-void Ball::Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget)
+void Ball::Render(Graphics& gfx)
 {
-	Scale = XMMatrixScaling(10.0f,10.0f, 10.0f);
-	//Translation = XMMatrixTranslation(0.0f, 10.0f, 0.0f);
-
-	ballPos = Scale * Translation;
-
-	ballMesh->Draw(g, ballPos, camPos, camTarget);
-
+	Model::Render(gfx);
 }
 
-void Ball::SetPos(XMMATRIX trans)
-{
-	Translation = trans;
-	
-}
 

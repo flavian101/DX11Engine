@@ -5,7 +5,8 @@ Sphere::Sphere(const int SPHERE_RESOLUTION = 4 )
     :
     SPHERE_RESOLUTION(SPHERE_RESOLUTION)
 {
-   
+    std::vector<Vertex> vertices;
+    std::vector<unsigned short> indices;
 
     for (int lat = 0; lat <= SPHERE_RESOLUTION; ++lat) {
         float theta = lat * XM_PI / SPHERE_RESOLUTION;
@@ -135,13 +136,16 @@ Sphere::Sphere(const int SPHERE_RESOLUTION = 4 )
         vertices[i].tangent = XMFLOAT4(tangentVec.x, tangentVec.y, tangentVec.z, w);
     }
 
-  
+    m_Resource = std::make_shared<MeshResource>(std::move(vertices), std::move(indices));
+
 }
 
 Sphere::Sphere(const int resolution, int slot)
     :
     SPHERE_RESOLUTION(resolution)
 {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned short> indices;
 
     for (int lat = 0; lat <= SPHERE_RESOLUTION; ++lat)
     {
@@ -254,6 +258,8 @@ Sphere::Sphere(const int resolution, int slot)
         XMStoreFloat3(&tangentVec, T);
         vertices[i].tangent = XMFLOAT4(tangentVec.x, tangentVec.y, tangentVec.z, w);
     }
+
+    m_Resource = std::make_shared<MeshResource>(std::move(vertices), std::move(indices));
 
 }
 
@@ -261,6 +267,9 @@ Sphere::Sphere(const char* name,int res)
     :
     SPHERE_RESOLUTION(res)
 {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned short> indices;
+
     for (int lat = 0; lat <= SPHERE_RESOLUTION; ++lat)
     {
         float theta = lat * XM_PI / SPHERE_RESOLUTION;
@@ -373,24 +382,19 @@ Sphere::Sphere(const char* name,int res)
         XMStoreFloat3(&tangentVec, T);
         vertices[i].tangent = XMFLOAT4(tangentVec.x, tangentVec.y, tangentVec.z, w);
     }
+    m_Resource = std::make_shared<MeshResource>(std::move(vertices), std::move(indices));
 
 }
 
 Sphere::~Sphere()
 {
-    vertices.clear();
-    indices.clear();
 }
 
-const std::vector<Vertex>& Sphere::GetVertices()const 
+std::shared_ptr<MeshResource> Sphere::getMeshResource() const
 {
-    return vertices;
+    return m_Resource;
 }
 
-const std::vector<unsigned short>& Sphere::GetIndices() const 
-{
-    return indices;
-}
 
 
 

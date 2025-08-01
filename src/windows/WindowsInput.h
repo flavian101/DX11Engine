@@ -1,5 +1,6 @@
 #pragma once
 #include "..\Core\Input.h"
+#define NOMINMAX 
 #include <Windows.h>
 class WindowsInput : public Input
 {

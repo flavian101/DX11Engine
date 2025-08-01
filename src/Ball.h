@@ -1,26 +1,21 @@
 #pragma once
-#include "Mesh.h"
 #include "Sphere.h"
 #include "Graphics.h"
-#include "Texture.h"
+#include "utils/Texture.h"
+#include <utils/Mesh.h>
+#include "models/Model.h"
 
 
-class Ball
+
+class Ball : public Model
 {
 public:
-	Ball(Graphics& g);
-
-	void Draw(Graphics& g, XMVECTOR camPos, XMVECTOR camTarget);
-	void SetPos(XMMATRIX trans);
+	Ball(Graphics& g, std::shared_ptr<ShaderProgram> program);
+	void Render(Graphics& gfx)override;
+private:
 	void Initialize(Graphics& g);
-
-
 private:
 	Sphere sphere;
-	std::unique_ptr<Mesh> ballMesh;
-	XMMATRIX ballPos;
-	DirectX::XMMATRIX Scale;
-	DirectX::XMMATRIX Translation;
 
 
 };

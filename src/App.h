@@ -1,7 +1,7 @@
 #pragma once
 #include "Window.h"
 #include "FrameTime.h"
-#include "Mesh.h"
+#include "utils\Mesh.h"
 #include "Triangle.h"
 #include "Ball.h"
 #include "SkySphere.h"
@@ -15,6 +15,7 @@
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
+#include <shaders/ShaderManager.h>
 
 
 class App
@@ -41,10 +42,11 @@ private:
 private:
 	Window window;
 	FrameTime timer;
+	std::shared_ptr <ShaderManager> m_ShaderManager;
 	std::shared_ptr<Camera> camera;
-	Triangle tri;
-	SkySphere sky;
-	Ball ball;
+	std::shared_ptr<Triangle> tri;
+	std::shared_ptr<SkySphere> sky;
+	std::shared_ptr<Ball> ball;
 	std::shared_ptr<LightSphere> m_Light;
 	//Window wnd;
 };

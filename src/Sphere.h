@@ -1,6 +1,7 @@
 #pragma once
-#include "Vertex.h"
+#include "utils/Vertex.h"
 #include <wrl.h>
+#include "utils/Mesh.h"
 
 class Sphere
 {
@@ -9,14 +10,13 @@ public:
 	Sphere(const int resolution, int slot);
 	Sphere(const char* name,int res);
 	~Sphere();
-	const std::vector<Vertex>& GetVertices() const;
-	const std::vector<unsigned short>& GetIndices() const;
+	std::shared_ptr<MeshResource> getMeshResource()const;
+
 
 private:
 	Vertex vertex;
+	std::shared_ptr<MeshResource> m_Resource;
 	const int SPHERE_RESOLUTION;
-	std::vector<Vertex> vertices;
-	std::vector<unsigned short> indices;
 	int NumSphereVertices;
 	int NumSphereFaces;
 	XMMATRIX Rotationx;

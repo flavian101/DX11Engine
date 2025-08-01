@@ -11,15 +11,18 @@
 App::App(HINSTANCE hInstance, int showWnd)
     :
     window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
-	camera(std::make_shared<Camera>(1.0f, 9.0f / 16.0f, 0.5f, 100.0f)),
-    tri(window.Gfx()),
-	ball(window.Gfx()),
-	sky(window.Gfx())
+	camera(std::make_shared<Camera>(1.0f, 9.0f / 16.0f, 0.5f, 100.0f)) 
 {
 	window.SetEventCallback([this](Event& e) { OnEvent(e); });
 
 	window.Gfx().SetCamera(camera);
-	m_Light = std::make_shared<LightSphere>(window.Gfx());
+
+	m_ShaderManager = std::make_shared<ShaderManager>(window.Gfx());
+
+	tri = std::make_shared<Triangle>(window.Gfx(),m_ShaderManager->GetShaderProgram("DiffuseNormal"));
+	ball = std::make_shared<Ball>(window.Gfx(),m_ShaderManager->GetShaderProgram("DiffuseNormal"));
+	sky = std::make_shared<SkySphere>(window.Gfx(), m_ShaderManager->GetShaderProgram("SkyShader"));
+	m_Light = std::make_shared<LightSphere>(window.Gfx(),m_ShaderManager->GetShaderProgram("Flat"));
    // m(window.Gfx());
 
 }
@@ -47,20 +50,25 @@ int App::createLoop()
 
 void App::Render()
 {
-    const float t = timer.Peek();
+	const float t = timer.Peek();
 
-    window.Gfx().ClearDepthColor(0.1f, 0.1f, 0.16f);
-	
+	window.Gfx().ClearDepthColor(0.1f, 0.1f, 0.16f);
+
 	DetectInput(t);
 
+	sky->Render(window.Gfx());
 
-	sky.Draw(window.Gfx(), camera->GetPos());
-    tri.Draw(window.Gfx(),camera->GetPos(),camera->GetTarget());
-	m_Light->Draw(window.Gfx());
 
-	ball.SetPos(XMMatrixTranslation(10.0f, 50.0f, 0.0f));
-	ball.Draw(window.Gfx(), camera->GetPos(), camera->GetTarget());
-	
+	tri->SetScale({ 500.0f, 10.0f, 500.0f });
+	tri->SetTranslation({ 0.0f, 10.0f, 0.0f });
+	tri->Render(window.Gfx());
+
+	m_Light->SetTranslation({ 0.0f, 10.0f, 0.0f });
+	m_Light->Render(window.Gfx());
+
+	ball->SetScale({ 10.0f, 10.0f, 10.0f });
+	ball->SetTranslation({ 30.0f, 30.0f,20.0f});
+	ball->Render(window.Gfx());
 	
     window.Gfx().End();
 	
@@ -108,6 +116,13 @@ bool App::OnKeyPressed(KeyPressedEvent& e)
 
 bool App::OnMouseMoved(MouseMovedEvent& e)
 {
+	//float mousePosX = Input::GetMouseX();
+	//float mousePosY = Input::GetMouseY();
+	//
+	//camera->camPitch += mousePosX * 0.00001f;
+	//camera->camYaw += mousePosY * 0.00001f;
+	//
+	//camera->UpdateCamera();
 
 	return true;
 }

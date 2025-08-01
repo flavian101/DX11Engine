@@ -3,6 +3,8 @@
 #include "Sampler.h"
 #include "Texture.h"
 #include <vector>
+#include <shaders/ShaderProgram.h>
+#include "CubeMapTexture.h"
 
 enum TextureSlot : UINT
 {
@@ -16,17 +18,20 @@ public:
 
 	~Material();
 	void Bind(Graphics& gfx);
+	void SetShaderProgram(std::shared_ptr<ShaderProgram> program);
 
 	void SetDiffuseColor(const XMFLOAT4& diffuse);
 	void SetDiffuse(const std::shared_ptr<Texture>& diffuseTexture);
 	void SetNormalMap(const std::shared_ptr<Texture>& normalTexture);
-
-
+	void SetSkyMaterial(const std::shared_ptr<CubeMapTexture>& cubemap);
 
 private:
 	Sampler samp;
 	std::shared_ptr<Texture> m_Diffuse = nullptr;
 	std::shared_ptr<Texture> m_NormalMap = nullptr;
+	std::shared_ptr<CubeMapTexture> m_CubeMap = nullptr;
+	bool isCubemap = false;
 	ConstantBuffer<MaterialBufferData> psBuffer;
+	std::shared_ptr<ShaderProgram> m_Program = nullptr;
 };
 

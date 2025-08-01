@@ -114,7 +114,7 @@ bool Window::Initialize()
 	UpdateWindow(hwnd);
 
 	// create graphics object
-	pGfx = std::make_unique<Graphics>(hwnd, width, height,false);
+	pGfx = std::make_unique<Graphics>(hwnd, width, height);
 
 	Input::Init(new WindowsInput(hwnd));
 

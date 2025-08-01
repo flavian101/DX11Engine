@@ -1,6 +1,6 @@
 #include "IndexBuffer.h"
 
-IndexBuffer::IndexBuffer(Graphics& g, std::vector<unsigned short> indices)
+IndexBuffer::IndexBuffer(Graphics& g, const std::vector<unsigned short>& indices)
 {
 	D3D11_BUFFER_DESC idDesc;
     ZeroMemory(&idDesc, sizeof(idDesc));

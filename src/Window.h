@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX 
 #include "Graphics.h"
 #include "resource.h"
 #include <Windows.h>

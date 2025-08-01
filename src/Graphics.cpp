@@ -2,12 +2,11 @@
 #include <d3d11sdklayers.h>
 
 
-Graphics::Graphics(HWND hwnd, int width, int height, bool enableWireFrame)
+Graphics::Graphics(HWND hwnd, int width, int height)
     :
     hwnd(hwnd),
     width(width),
     height(height),
-    enableWireFrame(enableWireFrame),
     m_Camera(nullptr)
 {
     if (!Intialize())
@@ -147,32 +146,9 @@ bool Graphics::Intialize()
 
    blendDesc.AlphaToCoverageEnable = false;
    blendDesc.RenderTarget[0] = rtbd;
-   pDevice->CreateBlendState(&blendDesc, Tranparency.GetAddressOf());
+   pDevice->CreateBlendState(&blendDesc, Tranparency.GetAddressOf());   
 
-
-   D3D11_RASTERIZER_DESC wfDesc;
-   ZeroMemory(&wfDesc, sizeof(D3D11_RASTERIZER_DESC));
-   if (enableWireFrame)
-   {
-       wfDesc.FillMode = D3D11_FILL_WIREFRAME;
-       wfDesc.CullMode = D3D11_CULL_NONE;
-   }
-   else
-   {
-       wfDesc.FillMode = D3D11_FILL_SOLID;
-       wfDesc.CullMode = D3D11_CULL_BACK;
-   }
-   wfDesc.FrontCounterClockwise = true;
-   hr = pDevice->CreateRasterizerState(&wfDesc, wireFrame.GetAddressOf());
-
-
-   wfDesc.FrontCounterClockwise = false;
-   hr = pDevice->CreateRasterizerState(&wfDesc, CWcullMode.GetAddressOf());
-
-   wfDesc.CullMode = D3D11_CULL_FRONT;
-   hr = pDevice->CreateRasterizerState(&wfDesc, RSCullNone.GetAddressOf());
-
-   
+   CreateRasterizerStates();
     return true;
 }
 
@@ -272,37 +248,6 @@ void Graphics::ShowMessageBox(const wchar_t* title, const char* message)
 
 void Graphics::PrintError(HRESULT ghr)
 {
-  //  ID3D11InfoQueue* pInfoQueue = nullptr;
-  //
-  //  // Query the debug interface
-  //  
-  //   ghr = D3D11GetDebugInterface(__uuidof(ID3D11InfoQueue), (void**)&pInfoQueue);
-  //   
-  //  if (SUCCEEDED(ghr)) {
-  //      // Set up the debug message callback
-  //      pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-  //      pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
-  //
-  //      // Loop through the messages
-  //      SIZE_T numMessages = pInfoQueue->GetNumStoredMessages();
-  //      for (SIZE_T i = 0; i < numMessages; ++i) {
-  //          SIZE_T messageLength = 0;
-  //          pInfoQueue->GetMessage(i, nullptr, &messageLength);
-  //
-  //          D3D11_MESSAGE* pMessage = (D3D11_MESSAGE*)malloc(messageLength);
-  //          if (pMessage) {
-  //              pInfoQueue->GetMessage(i, pMessage, &messageLength);
-  //
-  //              // Display the message in a message box
-  //              ShowMessageBox(L"Direct3D Error", pMessage->pDescription);
-  //
-  //              free(pMessage);
-  //          }
-  //      }
-  //
-  //      // Release the info queue
-  //      pInfoQueue->Release();
-  //  }
 }
 
 void Graphics::ClearDepthColor(float red, float green, float blue)
@@ -320,23 +265,51 @@ void Graphics::ClearDepthColor(float red, float green, float blue)
     //Set the default blend state (no blending) for opaque objects
     pContext->OMSetBlendState(Tranparency.Get(), 0, 0xffffffff);
 
+    SetRasterizerMode(RasterizerMode::SolidBackCull);
+
 }
 
+void Graphics::SetDepthLessEqual()
+{
+    pContext->OMSetDepthStencilState(DSLessEqual.Get(), 1);
+}
+
+void Graphics::SetRasterizerMode(RasterizerMode mode)
+{
+    auto it = rasterizerStates.find(mode);
+    if (it != rasterizerStates.end())
+        pContext->RSSetState(it->second.Get());
+}
+
+void Graphics::CreateRasterizerStates()
+{
+    D3D11_RASTERIZER_DESC desc = {};
+    desc.FillMode = D3D11_FILL_SOLID;
+    desc.FrontCounterClockwise = false;
+    desc.DepthClipEnable = true;
+
+    // Solid, Back-Face Culling
+    desc.CullMode = D3D11_CULL_BACK;
+    pDevice->CreateRasterizerState(&desc, rasterizerStates[RasterizerMode::SolidBackCull].GetAddressOf());
+
+    // Solid, Front-Face Culling
+    desc.CullMode = D3D11_CULL_FRONT;
+    pDevice->CreateRasterizerState(&desc, rasterizerStates[RasterizerMode::SolidFrontCull].GetAddressOf());
+
+    // Solid, No Culling
+    desc.CullMode = D3D11_CULL_NONE;
+    pDevice->CreateRasterizerState(&desc, rasterizerStates[RasterizerMode::SolidNoCull].GetAddressOf());
+
+    // Wireframe
+    desc.FillMode = D3D11_FILL_WIREFRAME;
+    pDevice->CreateRasterizerState(&desc, rasterizerStates[RasterizerMode::Wireframe].GetAddressOf());
+
+
+}
 void Graphics::Draw(UINT indexCount)
 {
-    pContext->RSSetState(wireFrame.Get());
     pContext->DrawIndexed(indexCount, 0,0);
 
-}
-
-void Graphics::DrawSkybox(UINT indexCount)
-{
-    
-    pContext->OMSetDepthStencilState(DSLessEqual.Get(), 1);
-    pContext->RSSetState(RSCullNone.Get());
-    pContext->DrawIndexed(indexCount,0, 0);
-
-   
 }
 
 void Graphics::End()

@@ -115,7 +115,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(SolutionDir)dependencies\stb lib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)src;$(SolutionDir)dependencies\stb lib</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <Optimization>Custom</Optimization>
     </ClCompile>
@@ -135,7 +135,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(SolutionDir)dependencies\stb lib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)src;$(SolutionDir)dependencies\stb lib</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <Optimization>Custom</Optimization>
     </ClCompile>
@@ -147,67 +147,77 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\models\Model.cpp" />
+    <ClCompile Include="src\renderer\RendererCommand.cpp" />
+    <ClCompile Include="src\shaders\ShaderManager.cpp" />
+    <ClCompile Include="src\shaders\ShaderProgram.cpp" />
     <ClCompile Include="src\Core\Input.cpp" />
-    <ClCompile Include="src\Material.cpp" />
+    <ClCompile Include="src\utils\Material.cpp" />
     <ClCompile Include="src\LightSphere.cpp" />
-    <ClCompile Include="src\Light.cpp" />
+    <ClCompile Include="src\utils\Light.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
-    <ClCompile Include="src\CubeMapTexture.cpp" />
+    <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\Ball.cpp" />
-    <ClCompile Include="src\Sampler.cpp" />
+    <ClCompile Include="src\utils\Sampler.cpp" />
     <ClCompile Include="src\Camera.cpp" />
-    <ClCompile Include="src\InputLayout.cpp" />
-    <ClCompile Include="src\Mesh.cpp" />
-    <ClCompile Include="src\PixelShader.cpp" />
-    <ClCompile Include="src\IndexBuffer.cpp" />
+    <ClCompile Include="src\utils\InputLayout.cpp" />
+    <ClCompile Include="src\utils\Mesh.cpp" />
+    <ClCompile Include="src\utils\PixelShader.cpp" />
+    <ClCompile Include="src\utils\IndexBuffer.cpp" />
     <ClCompile Include="src\FrameTime.cpp" />
     <ClCompile Include="src\Graphics.cpp" />
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\Sphere.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
     <ClCompile Include="src\Window.cpp" />
-    <ClCompile Include="src\Vertex.cpp" />
-    <ClCompile Include="src\VertexBuffer.cpp" />
-    <ClCompile Include="src\VertexShader.cpp" />
-    <ClCompile Include="src\Topology.cpp" />
+    <ClCompile Include="src\utils\Vertex.cpp" />
+    <ClCompile Include="src\utils\VertexBuffer.cpp" />
+    <ClCompile Include="src\utils\VertexShader.cpp" />
+    <ClCompile Include="src\utils\Topology.cpp" />
     <ClCompile Include="src\Triangle.cpp" />
-    <ClCompile Include="src\Texture.cpp" />
+    <ClCompile Include="src\utils\Texture.cpp" />
     <ClCompile Include="src\windows\WindowsInput.cpp" />
+    <ClCompile Include="src\utils\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\models\Model.h" />
+    <ClInclude Include="src\renderer\RendererCommand.h" />
+    <ClInclude Include="src\shaders\ShaderManager.h" />
+    <ClInclude Include="src\shaders\ShaderProgram.h" />
     <ClInclude Include="src\Core\Input.h" />
     <ClInclude Include="src\Core\Keycodes.h" />
     <ClInclude Include="src\Event\ApplicationEvent.h" />
     <ClInclude Include="src\Event\Event.h" />
     <ClInclude Include="src\Event\KeyEvent.h" />
     <ClInclude Include="src\Event\MouseEvent.h" />
-    <ClInclude Include="src\Material.h" />
+    <ClInclude Include="src\utils\Material.h" />
     <ClInclude Include="src\LightSphere.h" />
-    <ClInclude Include="src\Light.h" />
+    <ClInclude Include="src\utils\Light.h" />
     <ClInclude Include="src\SkySphere.h" />
-    <ClInclude Include="src\CubeMapTexture.h" />
+    <ClInclude Include="src\utils\CubeMapTexture.h" />
     <ClInclude Include="src\Ball.h" />
-    <ClInclude Include="src\Sampler.h" />
+    <ClInclude Include="src\utils\Sampler.h" />
     <ClInclude Include="src\Camera.h" />
-    <ClInclude Include="src\ConstantBuffer.h" />
-    <ClInclude Include="src\ConstantBufferTypes.h" />
-    <ClInclude Include="src\InputLayout.h" />
-    <ClInclude Include="src\Mesh.h" />
-    <ClInclude Include="src\PixelShader.h" />
-    <ClInclude Include="src\IndexBuffer.h" />
+    <ClInclude Include="src\utils\ConstantBuffer.h" />
+    <ClInclude Include="src\utils\ConstantBufferTypes.h" />
+    <ClInclude Include="src\utils\InputLayout.h" />
+    <ClInclude Include="src\utils\Mesh.h" />
+    <ClInclude Include="src\utils\PixelShader.h" />
+    <ClInclude Include="src\utils\IndexBuffer.h" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\FrameTime.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Sphere.h" />
     <ClInclude Include="src\Window.h" />
-    <ClInclude Include="src\Vertex.h" />
-    <ClInclude Include="src\VertexBuffer.h" />
-    <ClInclude Include="src\VertexShader.h" />
-    <ClInclude Include="src\Topology.h" />
+    <ClInclude Include="src\utils\Vertex.h" />
+    <ClInclude Include="src\utils\VertexBuffer.h" />
+    <ClInclude Include="src\utils\VertexShader.h" />
+    <ClInclude Include="src\utils\Topology.h" />
     <ClInclude Include="src\Triangle.h" />
-    <ClInclude Include="src\Texture.h" />
+    <ClInclude Include="src\utils\Texture.h" />
     <ClInclude Include="src\windows\WindowsInput.h" />
+    <ClInclude Include="src\utils\Transform.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\engine.rc" />

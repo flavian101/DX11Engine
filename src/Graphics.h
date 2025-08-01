@@ -10,12 +10,21 @@
 #include <d3dcompiler.h>
 #include "Camera.h"
 #include <memory>
+#include <unordered_map>
+
+enum class RasterizerMode
+{
+	SolidBackCull,
+	SolidFrontCull,
+	SolidNoCull,
+	Wireframe,
+};
 
 class Graphics
 {
 
 public:
-	Graphics(HWND hwnd,int width, int height, bool enableWireFrame);
+	Graphics(HWND hwnd,int width, int height);
 	Graphics(const Graphics&) = delete;
 	Graphics& operator=(const Graphics&) = delete;
 	~Graphics();
@@ -28,11 +37,15 @@ public:
 	void ShowMessageBox(const wchar_t* title, const char* message);
 	void PrintError(HRESULT ghr);
 	void ClearDepthColor(float red, float green, float blue);
+	void SetDepthLessEqual();
+	void SetRasterizerMode(RasterizerMode mode);
 	void Draw(UINT vertexCount);
-	void DrawSkybox(UINT indexCount);
 	void End();
 	void SetCamera(const std::shared_ptr<Camera>& camera);
 	const Camera& GetCamera() const;
+
+private:
+	void CreateRasterizerStates();
 
 private:
 	HWND hwnd;
@@ -44,15 +57,9 @@ private:
 	Microsoft::WRL::ComPtr<IDXGISwapChain> pSwapChain;
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pRenderTarget;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> pDsv;
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState> wireFrame;
 	Microsoft::WRL::ComPtr<ID3D11BlendState> Tranparency;
-//	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CCWcullMode;
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState> CWcullMode;
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState> RSCullNone;
+	std::unordered_map<RasterizerMode, Microsoft::WRL::ComPtr<ID3D11RasterizerState>> rasterizerStates;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> DSLessEqual;
 
-
-	
-	bool enableWireFrame = false;
 };
 
