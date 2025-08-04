@@ -1,26 +1,28 @@
 #include "ShaderProgram.h"
+namespace DXEngine {
 
-ShaderProgram::ShaderProgram(Graphics& gfx, LPCWSTR vertexShader, LPCWSTR pixelShader)
-	
-{
-	m_VertexShader = std::make_shared<VertexShader>(gfx, vertexShader);
-	layout = std::make_shared<InputLayout>(gfx, m_VertexShader->GetByteCode());
+	ShaderProgram::ShaderProgram(Graphics& gfx, LPCWSTR vertexShader, LPCWSTR pixelShader)
 
-	m_PixelShader = std::make_shared<PixelShader>(gfx, pixelShader);
-}
+	{
+		m_VertexShader = std::make_shared<VertexShader>(gfx, vertexShader);
+		layout = std::make_shared<InputLayout>(gfx, m_VertexShader->GetByteCode());
 
-ShaderProgram::~ShaderProgram()
-{
+		m_PixelShader = std::make_shared<PixelShader>(gfx, pixelShader);
+	}
 
-}
-void ShaderProgram::Bind(Graphics& gfx)
-{
-	layout->Bind(gfx);
-	m_VertexShader->Bind(gfx);
-	m_PixelShader->Bind(gfx);
-}
+	ShaderProgram::~ShaderProgram()
+	{
 
-ID3DBlob* ShaderProgram::GetByteCode()
-{
-	return m_VertexShader->GetByteCode();
+	}
+	void ShaderProgram::Bind(Graphics& gfx)
+	{
+		layout->Bind(gfx);
+		m_VertexShader->Bind(gfx);
+		m_PixelShader->Bind(gfx);
+	}
+
+	ID3DBlob* ShaderProgram::GetByteCode()
+	{
+		return m_VertexShader->GetByteCode();
+	}
 }

@@ -2,17 +2,19 @@
 #include "Graphics.h"
 #include <wrl.h>
 
-class InputLayout
-{
-public:
+namespace DXEngine {
 
-	InputLayout(Graphics& g, Microsoft::WRL::ComPtr<ID3DBlob> pVsBytecode);
-	~InputLayout();
+	class InputLayout
+	{
+	public:
 
-	void Bind(Graphics& g);
+		InputLayout(Graphics& g, Microsoft::WRL::ComPtr<ID3DBlob> pVsBytecode);
+		~InputLayout();
 
-private:
-	HRESULT hr;
-	Microsoft::WRL::ComPtr<ID3D11InputLayout> pInputLayout;
-};
+		void Bind(Graphics& g);
 
+	private:
+		HRESULT hr;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout> pInputLayout;
+	};
+}

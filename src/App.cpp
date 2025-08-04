@@ -5,13 +5,14 @@
 #include "Core/Input.h"
 #include <iostream>
 
+namespace DXEngine {
 
 
 #define BIND_EVENT_FN(fn) std::bind(&App::fn, this, std::placeholders::_1)
 
 App::App(HINSTANCE hInstance, int showWnd)
     :
-    window(hInstance, showWnd, L"engine", L"DirectX", 1270, 720),
+    window(hInstance, showWnd, L"DXEngine", L"DirectX", 1270, 720),
 	camera(std::make_shared<Camera>(1.0f, 9.0f / 16.0f, 0.5f, 100.0f)) 
 {
 	window.SetEventCallback([this](Event& e) { OnEvent(e); });
@@ -96,7 +97,7 @@ bool App::OnWindowResize(WindowResizeEvent& e)
 	float width = e.GetWidth();
 	float height = e.GetHeight();
 	float aspect = height/ width ;
-	XMMATRIX camProjection= DirectX::XMMatrixPerspectiveLH(1.0f, aspect, 0.5f, 100.0f);
+	DirectX::XMMATRIX camProjection= DirectX::XMMatrixPerspectiveLH(1.0f, aspect, 0.5f, 100.0f);
 	camera->SetProjection(camProjection);
 	return true;
 }
@@ -240,4 +241,5 @@ void App::HandlePicking(float mouseX, float mouseY)
 			}
 		}
 	}
+}
 }

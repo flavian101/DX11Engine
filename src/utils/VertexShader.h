@@ -2,22 +2,25 @@
 #include "Graphics.h"
 #include <wrl.h>
 
-class VertexShader
-{
-public:
-	VertexShader(Graphics& g, LPCWSTR filename);
-	~VertexShader();
-	void Bind(Graphics &g);
+namespace DXEngine {
 
-	ID3DBlob* GetByteCode();
+	class VertexShader
+	{
+	public:
+		VertexShader(Graphics& g, LPCWSTR filename);
+		~VertexShader();
+		void Bind(Graphics& g);
 
-private:
-	//void PrintError(HRESULT vhr);
+		ID3DBlob* GetByteCode();
 
-private:
-	HRESULT hr;
-	Microsoft::WRL::ComPtr<ID3D11VertexShader> pVertexShader;
-	Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
+	private:
+		//void PrintError(HRESULT vhr);
 
-};
+	private:
+		HRESULT hr;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader> pVertexShader;
+		Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
+
+	};
+}
 

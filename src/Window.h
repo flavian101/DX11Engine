@@ -8,43 +8,45 @@
 #include "Event/Event.h"
 #include <functional>
 
+namespace DXEngine {
 
-class Window
-{
+	class Window
+	{
 
-	friend class Graphics;
-public:
-	using EventCallbackFn = std::function<void(Event&)>;
+		friend class Graphics;
+	public:
+		using EventCallbackFn = std::function<void(Event&)>;
 
-	Window(HINSTANCE hInstance, int nCmdShow,
-		LPCWSTR windowTitle, LPCWSTR windowClass,
-		int width, int height);
-	Window(const Window&) = delete;
-	Window& operator=(const Window&) = delete;
-	~Window();
-	bool Initialize();
-	static std::optional<int> ProcessMessages();
-	void SetEventCallback(const EventCallbackFn& callback);
-	void QuitWindow();
-	Graphics& Gfx();
+		Window(HINSTANCE hInstance, int nCmdShow,
+			LPCWSTR windowTitle, LPCWSTR windowClass,
+			int width, int height);
+		Window(const Window&) = delete;
+		Window& operator=(const Window&) = delete;
+		~Window();
+		bool Initialize();
+		static std::optional<int> ProcessMessages();
+		void SetEventCallback(const EventCallbackFn& callback);
+		void QuitWindow();
+		Graphics& Gfx();
 
-	HWND GetHwnd() const;
-private:
-	
-	static LRESULT CALLBACK HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
-	static LRESULT CALLBACK HandleMsgThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
-	LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
-	
-private:
-	std::unique_ptr<Graphics> pGfx;
-	HWND hwnd;
-	HINSTANCE hInstance;
-	int nShowWnd;
-	LPCWSTR windowTitle;
-	LPCWSTR windowClass;
-	int width;
-	int height;
-	EventCallbackFn m_EventCallback;
-	
-};
+		HWND GetHwnd() const;
+	private:
 
+		static LRESULT CALLBACK HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+		static LRESULT CALLBACK HandleMsgThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+		LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+
+	private:
+		std::unique_ptr<Graphics> pGfx;
+		HWND hwnd;
+		HINSTANCE hInstance;
+		int nShowWnd;
+		LPCWSTR windowTitle;
+		LPCWSTR windowClass;
+		int width;
+		int height;
+		EventCallbackFn m_EventCallback;
+
+	};
+
+}

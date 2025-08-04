@@ -1,5 +1,7 @@
 #include "LightSphere.h"
 
+namespace DXEngine {
+
 
 LightSphere::LightSphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
 	:Model(gfx, program),
@@ -14,8 +16,9 @@ LightSphere::LightSphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
 
 void LightSphere::Render(Graphics& gfx)
 {
-	DirectX::XMFLOAT3 lightPos = { XMVectorGetX(GetTranslation()),XMVectorGetY(GetTranslation()),XMVectorGetZ(GetTranslation()) };
+	DirectX::XMFLOAT3 lightPos = { DirectX::XMVectorGetX(GetTranslation()),DirectX::XMVectorGetY(GetTranslation()),DirectX::XMVectorGetZ(GetTranslation()) };
 	m_Light->SetPosition(lightPos);
 	m_Light->Bind(gfx);
 	Model::Render(gfx);
+}
 }

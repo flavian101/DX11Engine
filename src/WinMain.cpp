@@ -11,7 +11,7 @@ int CALLBACK WinMain(
 	
 
 
-	return App(hInstance, nCmdShow).createLoop();
+	return DXEngine::App(hInstance, nCmdShow).createLoop();
 
 
 

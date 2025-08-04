@@ -1,29 +1,36 @@
 #pragma once
+#include <vector>
+#include <memory>
 #include "IPickable.h"
-class Graphics;
-class Camera;
-
-class PickingManager
-{
-public:
-	PickingManager() = default;
-
-	void RegisterPickable(std::shared_ptr<IPickable> pickable);
-	void UnRegisterPickable(std::shared_ptr<IPickable> pickable);
-
-	void ClearPickables();
-
-	HitInfo Pick(float screenX, float screenY, int screenWidth, int screenHeight, const Camera& camera);
-
-	std::shared_ptr<IPickable> GetPickedObject() const { return m_CurrentPicked.lock(); }
+#include "Ray.h"
 
 
-	void SetPickedObject(std::shared_ptr<IPickable> pickable);
-	void ClearSelection();
-	void CleanupExpiredPointers();
+namespace DXEngine {
+	class Graphics;
+	class Camera;
+
+	class PickingManager
+	{
+	public:
+		PickingManager() = default;
+
+		void RegisterPickable(std::shared_ptr<IPickable> pickable);
+		void UnRegisterPickable(std::shared_ptr<IPickable> pickable);
+
+		void ClearPickables();
+
+		HitInfo Pick(float screenX, float screenY, int screenWidth, int screenHeight, const Camera& camera);
+
+		std::shared_ptr<IPickable> GetPickedObject() const { return m_CurrentPicked.lock(); }
 
 
-private:
-	std::vector<std::weak_ptr<IPickable>> m_Pickables;
-	std::weak_ptr<IPickable> m_CurrentPicked;
-};
+		void SetPickedObject(std::shared_ptr<IPickable> pickable);
+		void ClearSelection();
+		void CleanupExpiredPointers();
+
+
+	private:
+		std::vector<std::weak_ptr<IPickable>> m_Pickables;
+		std::weak_ptr<IPickable> m_CurrentPicked;
+	};
+}

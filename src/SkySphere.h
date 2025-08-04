@@ -6,21 +6,23 @@
 #include <models/Model.h>
 
 
+namespace DXEngine {
 
-class SkySphere : public Model
-{
-	
-public:
-	SkySphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program);
+	class SkySphere : public Model
+	{
 
-	void Render(Graphics& gfx) override;
-	void Initialize(Graphics& gfx);
+	public:
+		SkySphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program);
 
-
-private:
-	bool initialized = false;
-	std::unique_ptr<Sphere> sphere;
+		void Render(Graphics& gfx) override;
+		void Initialize(Graphics& gfx);
 
 
-};
+	private:
+		bool initialized = false;
+		std::unique_ptr<Sphere> sphere;
 
+
+	};
+
+}

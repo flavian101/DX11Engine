@@ -2,18 +2,21 @@
 #include "ShaderProgram.h"
 #include <unordered_map>
 
-class ShaderManager
-{
-public:
-	ShaderManager(Graphics& gfx);
+namespace DXEngine {
 
-	~ShaderManager();
+	class ShaderManager
+	{
+	public:
+		ShaderManager(Graphics& gfx);
 
-	void BindShaders(Graphics& gfx);
+		~ShaderManager();
 
-	std::shared_ptr<ShaderProgram> GetShaderProgram(std::string name);
+		void BindShaders(Graphics& gfx);
 
-private:
-	std::unordered_map<std::string, std::shared_ptr<ShaderProgram>> m_Programs;
-};
+		std::shared_ptr<ShaderProgram> GetShaderProgram(std::string name);
 
+	private:
+		std::unordered_map<std::string, std::shared_ptr<ShaderProgram>> m_Programs;
+	};
+
+}

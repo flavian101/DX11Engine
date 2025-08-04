@@ -1,27 +1,30 @@
 #include "ShaderManager.h"
 
-ShaderManager::ShaderManager(Graphics& gfx)
-{
-	m_Programs["Flat"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/flatVsShader.cso",
-		L"assets/shaders/flatPsShader.cso");
-	m_Programs["DiffuseNormal"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/vs.cso",
-		L"assets/shaders/ps.cso");
-	m_Programs["SkyShader"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/skyVs.cso",
-		L"assets/shaders/skyPs.cso");
-}
+namespace DXEngine {
 
-ShaderManager::~ShaderManager()
-{
-}
+	ShaderManager::ShaderManager(Graphics& gfx)
+	{
+		m_Programs["Flat"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/flatVsShader.cso",
+			L"assets/shaders/flatPsShader.cso");
+		m_Programs["DiffuseNormal"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/vs.cso",
+			L"assets/shaders/ps.cso");
+		m_Programs["SkyShader"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/skyVs.cso",
+			L"assets/shaders/skyPs.cso");
+	}
 
-void ShaderManager::BindShaders(Graphics& gfx)
-{
+	ShaderManager::~ShaderManager()
+	{
+	}
+
+	void ShaderManager::BindShaders(Graphics& gfx)
+	{
 
 
-}
+	}
 
-std::shared_ptr<ShaderProgram> ShaderManager::GetShaderProgram(std::string name)
-{
-	auto it = m_Programs.find(name);
-	return (it != m_Programs.end()) ? it->second : m_Programs["Flat"];
+	std::shared_ptr<ShaderProgram> ShaderManager::GetShaderProgram(std::string name)
+	{
+		auto it = m_Programs.find(name);
+		return (it != m_Programs.end()) ? it->second : m_Programs["Flat"];
+	}
 }

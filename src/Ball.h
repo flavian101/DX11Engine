@@ -6,17 +6,19 @@
 #include "models/Model.h"
 
 
+namespace DXEngine {
 
-class Ball : public Model
-{
-public:
-	Ball(Graphics& g, std::shared_ptr<ShaderProgram> program);
-	void Render(Graphics& gfx)override;
-private:
-	void Initialize(Graphics& g);
-private:
-	Sphere sphere;
+	class Ball : public Model
+	{
+	public:
+		Ball(Graphics& g, std::shared_ptr<ShaderProgram> program);
+		void Render(Graphics& gfx)override;
+	private:
+		void Initialize(Graphics& g);
+	private:
+		Sphere sphere;
 
 
-};
+	};
 
+}

@@ -1,66 +1,68 @@
 #include "Material.h"
+namespace DXEngine {
 
-Material::Material(Graphics& gfx)
-	: samp(gfx)
-{
-	psBuffer.Initialize(gfx);
-	samp.Bind(gfx);
-	psBuffer.data.difColor = {1.0f,1.0f,1.0f,1.0f};
-	psBuffer.data.hasTexture = static_cast<BOOL>(FALSE);
-	psBuffer.data.hasNormalMap = static_cast<BOOL>(FALSE);
-}
-
-Material::~Material()
-{
-}
-void Material::Bind(Graphics& gfx)
-{
-	if (m_Program)
-		m_Program->Bind(gfx);
-
-	if (isCubemap)
+	Material::Material(Graphics& gfx)
+		: samp(gfx)
 	{
-		m_CubeMap->Bind(gfx);
+		psBuffer.Initialize(gfx);
+		samp.Bind(gfx);
+		psBuffer.data.difColor = { 1.0f,1.0f,1.0f,1.0f };
+		psBuffer.data.hasTexture = static_cast<BOOL>(FALSE);
+		psBuffer.data.hasNormalMap = static_cast<BOOL>(FALSE);
 	}
 
+	Material::~Material()
+	{
+	}
+	void Material::Bind(Graphics& gfx)
+	{
+		if (m_Program)
+			m_Program->Bind(gfx);
 
-	psBuffer.Update(gfx);
-	
-	if (psBuffer.data.hasTexture)
-		m_Diffuse->Bind(gfx,Diffuse);
-	if (psBuffer.data.hasNormalMap)
-		m_NormalMap->Bind(gfx,NormalMap);
+		if (isCubemap)
+		{
+			m_CubeMap->Bind(gfx);
+		}
 
-	gfx.GetContext()->PSSetConstantBuffers(BindSlot::CB_Material, 1, psBuffer.GetAddressOf());
 
-}
+		psBuffer.Update(gfx);
 
-void Material::SetShaderProgram(std::shared_ptr<ShaderProgram> program)
-{
-	m_Program = program;
-}
+		if (psBuffer.data.hasTexture)
+			m_Diffuse->Bind(gfx, Diffuse);
+		if (psBuffer.data.hasNormalMap)
+			m_NormalMap->Bind(gfx, NormalMap);
 
-void Material::SetDiffuseColor(const XMFLOAT4& diffuse)
-{
-	psBuffer.data.difColor = diffuse;
-}
+		gfx.GetContext()->PSSetConstantBuffers(BindSlot::CB_Material, 1, psBuffer.GetAddressOf());
 
-void Material::SetDiffuse(const std::shared_ptr<Texture>& diffuseTexture)
-{
+	}
 
-	m_Diffuse = diffuseTexture;
-	psBuffer.data.hasTexture = static_cast<BOOL>(TRUE);
-}
+	void Material::SetShaderProgram(std::shared_ptr<ShaderProgram> program)
+	{
+		m_Program = program;
+	}
 
-void Material::SetNormalMap(const std::shared_ptr<Texture>& normalTexture)
-{
-	m_NormalMap = normalTexture;
-	psBuffer.data.hasNormalMap = static_cast<BOOL>(TRUE);
+	void Material::SetDiffuseColor(const DirectX::XMFLOAT4& diffuse)
+	{
+		psBuffer.data.difColor = diffuse;
+	}
 
-}
+	void Material::SetDiffuse(const std::shared_ptr<Texture>& diffuseTexture)
+	{
 
-void Material::SetSkyMaterial(const std::shared_ptr<CubeMapTexture>& cubemap)
-{
-	m_CubeMap = cubemap;
-	isCubemap = true;
+		m_Diffuse = diffuseTexture;
+		psBuffer.data.hasTexture = static_cast<BOOL>(TRUE);
+	}
+
+	void Material::SetNormalMap(const std::shared_ptr<Texture>& normalTexture)
+	{
+		m_NormalMap = normalTexture;
+		psBuffer.data.hasNormalMap = static_cast<BOOL>(TRUE);
+
+	}
+
+	void Material::SetSkyMaterial(const std::shared_ptr<CubeMapTexture>& cubemap)
+	{
+		m_CubeMap = cubemap;
+		isCubemap = true;
+	}
 }

@@ -10,8 +10,10 @@
 #include "utils\ConstantBuffer.h"
 #include "utils\Sampler.h"
 
-class RendererCommand
-{
+namespace DXEngine {
+
+	class RendererCommand
+	{
 
 
 
@@ -19,5 +21,5 @@ class RendererCommand
 
 
 
-};
-
+	};
+}

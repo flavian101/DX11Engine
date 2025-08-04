@@ -12,63 +12,65 @@
 #include <vector>
 #include "Material.h"
 
-#include <algorithm>
 
-// Bounding volumes (stubs)
-struct BoundingBox { XMFLOAT3 minimum, maximum; };
-struct BoundingSphere { XMFLOAT3 center; float radius; };
-using namespace DirectX;
+namespace DXEngine {
 
-class MeshResource
-{
-public:
-	using VertexList = std::vector<Vertex>;
-	using IndexList = std::vector<unsigned short>;
+	// Bounding volumes (stubs)
+	struct BoundingBox { DirectX::XMFLOAT3 minimum, maximum; };
+	struct BoundingSphere { DirectX::XMFLOAT3 center; float radius; };
+	;
 
-
-	MeshResource(VertexList&& verts, IndexList&& idxs)
-		:
-		m_Vertices(std::move(verts)),
-		m_Indices(std::move(idxs))
+	class MeshResource
 	{
-		ComputeBounds();
-	}
-
-	const VertexList& GetVertices() const { return m_Vertices; }
-	const IndexList& GetIndices()  const { return m_Indices; }
-	const BoundingBox& GetAABB()     const { return m_AABB; }
-	const BoundingSphere& GetSphere()  const { return m_Sphere; }
-
-private:
-	void ComputeBounds();
+	public:
+		using VertexList = std::vector<Vertex>;
+		using IndexList = std::vector<unsigned short>;
 
 
-private:
-	VertexList      m_Vertices;
-	IndexList       m_Indices;
-	BoundingBox     m_AABB;
-	BoundingSphere  m_Sphere;
-};
+		MeshResource(VertexList&& verts, IndexList&& idxs)
+			:
+			m_Vertices(std::move(verts)),
+			m_Indices(std::move(idxs))
+		{
+			ComputeBounds();
+		}
+
+		const VertexList& GetVertices() const { return m_Vertices; }
+		const IndexList& GetIndices()  const { return m_Indices; }
+		const BoundingBox& GetAABB()     const { return m_AABB; }
+		const BoundingSphere& GetSphere()  const { return m_Sphere; }
+
+	private:
+		void ComputeBounds();
 
 
-class Mesh
-{
-public:
-	Mesh(Graphics& gfx,const std::shared_ptr<MeshResource>& resource);
-	~Mesh();
+	private:
+		VertexList      m_Vertices;
+		IndexList       m_Indices;
+		BoundingBox     m_AABB;
+		BoundingSphere  m_Sphere;
+	};
 
-	void SetMaterial(const std::shared_ptr<Material>& material);
-	void Draw(Graphics& gfx);
-	const std::shared_ptr<MeshResource>& GetResource() const;
-private:
-	std::shared_ptr<MeshResource> m_Resource;
-	Topology tp;
-	UINT m_IndexCount;
-	std::shared_ptr<VertexBuffer> m_VertexBuffer;
-	std::shared_ptr<IndexBuffer> m_IndexBuffer;
-	std::shared_ptr<Material> m_MeshMaterial;
-public:
 
-	
-};
+	class Mesh
+	{
+	public:
+		Mesh(Graphics& gfx, const std::shared_ptr<MeshResource>& resource);
+		~Mesh();
+
+		void SetMaterial(const std::shared_ptr<Material>& material);
+		void Draw(Graphics& gfx);
+		const std::shared_ptr<MeshResource>& GetResource() const;
+	private:
+		std::shared_ptr<MeshResource> m_Resource;
+		Topology tp;
+		UINT m_IndexCount;
+		std::shared_ptr<VertexBuffer> m_VertexBuffer;
+		std::shared_ptr<IndexBuffer> m_IndexBuffer;
+		std::shared_ptr<Material> m_MeshMaterial;
+	public:
+
+
+	};
+}
 

@@ -3,6 +3,7 @@
 #include "Event.h"
 #include <sstream>
 
+namespace DXEngine {
 
 	class  WindowResizeEvent : public Event
 	{
@@ -100,3 +101,4 @@
 		EVENT_CLASS_TYPE(AppRender)
 			EVENT_CLASS_CATEGORY(EventCategoryApplication)
 	};
+}
