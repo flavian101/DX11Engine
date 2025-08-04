@@ -1,5 +1,6 @@
 #include "Ball.h"
 
+
 Ball::Ball(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
 	:
 	Model(gfx,program),

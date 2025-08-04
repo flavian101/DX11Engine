@@ -14,6 +14,8 @@ public:
 	const DirectX::XMVECTOR& GetScale()const;
 	void SetRotation(const DirectX::XMVECTOR& rotation);
 	const DirectX::XMVECTOR& GetRotation()const;
+	const DirectX::XMMATRIX& GetTransform() const;
+
 
 	void Bind(Graphics& gfx);
 

@@ -6,6 +6,7 @@
 #include <iostream>
 
 
+
 #define BIND_EVENT_FN(fn) std::bind(&App::fn, this, std::placeholders::_1)
 
 App::App(HINSTANCE hInstance, int showWnd)
@@ -25,6 +26,7 @@ App::App(HINSTANCE hInstance, int showWnd)
 	m_Light = std::make_shared<LightSphere>(window.Gfx(),m_ShaderManager->GetShaderProgram("Flat"));
    // m(window.Gfx());
 
+	InitializePicking();
 }
 
 App::~App()
@@ -135,6 +137,16 @@ bool App::OnMouseScrolled(MouseScrolledEvent& e)
 
 bool App::OnMouseButtonPressed(MouseButtonPressedEvent& e)
 {
+
+	if (e.GetMouseButton() == VK_LBUTTON)
+	{
+		m_LastMouseX = Input::GetMouseX();
+		m_LastMouseY = Input::GetMouseY();
+		
+		// Handle picking on left mouse button press
+		HandlePicking(m_LastMouseX, m_LastMouseY);
+	}
+
 	return false;
 }
 
@@ -167,4 +179,65 @@ void App::DetectInput(double time)
 	//call update
 
 	return;
+}
+void App::InitializePicking()
+{
+	m_PickingManager = std::make_unique<PickingManager>();
+
+	// Register pickable objects - cast to IPickable interface
+	if (ball)
+		m_PickingManager->RegisterPickable(ball);
+
+	if (tri)
+		m_PickingManager->RegisterPickable(tri);
+
+	if (m_Light)
+		m_PickingManager->RegisterPickable(m_Light);
+
+	// Don't register sky sphere as it should not be pickable
+	if (sky)
+		sky->SetPickable(false);
+}
+
+void App::HandlePicking(float mouseX, float mouseY)
+{
+	if (!m_PickingManager || !camera)
+		return;
+
+	// Get window dimensions
+	RECT clientRect;
+	GetClientRect(window.GetHwnd(), &clientRect);
+	int screenWidth = clientRect.right - clientRect.left;
+	int screenHeight = clientRect.bottom - clientRect.top;
+
+	// Perform picking
+	HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *camera);
+
+	if (hit.Hit)  // Note: lowercase 'hit'
+	{
+		// Object was picked
+		auto pickedObject = m_PickingManager->GetPickedObject();
+		if (pickedObject)
+		{
+			// Since all your objects inherit from Model, cast to Model first
+			// Then check the actual type using the raw pointer approach
+			Model* modelPtr = static_cast<Model*>(hit.ObjectPtr);
+			if (modelPtr)
+			{
+				// Check what type of object was picked
+				if (dynamic_cast<Ball*>(modelPtr))
+				{
+					OutputDebugStringA("Ball picked!\n");
+				}
+				else if (dynamic_cast<Triangle*>(modelPtr))
+				{
+					OutputDebugStringA("Triangle picked!\n");
+				}
+				else if (dynamic_cast<LightSphere*>(modelPtr))
+				{
+					OutputDebugStringA("Light picked!\n");
+				}
+			}
+		}
+	}
 }

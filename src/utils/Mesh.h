@@ -59,9 +59,9 @@ public:
 
 	void SetMaterial(const std::shared_ptr<Material>& material);
 	void Draw(Graphics& gfx);
-	void DrawSky(Graphics& gfx);
-
+	const std::shared_ptr<MeshResource>& GetResource() const;
 private:
+	std::shared_ptr<MeshResource> m_Resource;
 	Topology tp;
 	UINT m_IndexCount;
 	std::shared_ptr<VertexBuffer> m_VertexBuffer;

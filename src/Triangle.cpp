@@ -1,6 +1,7 @@
 #include "Triangle.h"
 
 
+
 Triangle::Triangle(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
 	:
 	Model(gfx, program)

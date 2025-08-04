@@ -1,5 +1,6 @@
 #include "LightSphere.h"
 
+
 LightSphere::LightSphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
 	:Model(gfx, program),
 	m_Sphere(64)

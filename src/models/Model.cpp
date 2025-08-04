@@ -21,6 +21,49 @@ void Model::Render(Graphics& gfx)
 	m_Mesh->Draw(gfx);
 }
 
+const std::shared_ptr<MeshResource>& Model::GetMeshResource() const
+{
+	if(m_Mesh)
+		return m_Mesh->GetResource();
+
+	return nullptr;
+}
+
+HitInfo Model::TestRayIntersection(const Ray& ray)
+{
+	if (!m_Mesh || !IsPickable())
+		return HitInfo();
+
+	auto meshResource = GetMeshResource();
+	if (!meshResource)
+		return HitInfo();
+
+
+	return RayIntersection::IntersectMesh(ray,
+		meshResource,
+		GetModelMatrix(),
+		this);
+}
+
+const XMMATRIX& Model::GetModelMatrix() const
+{
+	if (!m_ModelTransform)
+		return XMMatrixIdentity();
+
+	return m_ModelTransform->GetTransform();
+}
+
+void Model::OnPicked()
+{
+	m_IsSelected = true;
+}
+
+void Model::OnUnpicked()
+{
+	m_IsSelected = false;
+
+}
+
 
 void Model::SetTranslation(const DirectX::XMFLOAT3& translation)
 {

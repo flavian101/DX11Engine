@@ -16,6 +16,7 @@
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
 #include <shaders/ShaderManager.h>
+#include "picking/PickingManager.h"
 
 
 class App
@@ -39,6 +40,10 @@ private:
 
 	void DetectInput(double time);
 
+
+	void HandlePicking(float mouseX, float mouseY);
+	void InitializePicking();
+
 private:
 	Window window;
 	FrameTime timer;
@@ -49,5 +54,11 @@ private:
 	std::shared_ptr<Ball> ball;
 	std::shared_ptr<LightSphere> m_Light;
 	//Window wnd;
+	std::unique_ptr<PickingManager> m_PickingManager;
+
+	// Mouse state for picking
+	float m_LastMouseX = 0.0f;
+	float m_LastMouseY = 0.0f;
+
 };
 

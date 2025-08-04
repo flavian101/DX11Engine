@@ -34,6 +34,7 @@ void MeshResource::ComputeBounds()
 
 Mesh::Mesh(Graphics& gfx, const std::shared_ptr<MeshResource>& resource)
 	:
+	m_Resource(resource),
 	m_IndexCount(resource->GetIndices().size()),
 	tp(gfx, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST),
 	m_MeshMaterial(nullptr)
@@ -71,6 +72,11 @@ void Mesh::Draw(Graphics& gfx)
 	//psBuffer.data.light.dir.y = XMVectorGetY(camTarget) - psBuffer.data.light.spotPos.y;
 	//psBuffer.data.light.dir.z = XMVectorGetZ(camTarget) - psBuffer.data.light.spotPos.z;
 	gfx.Draw(m_IndexCount);
+}
+
+const std::shared_ptr<MeshResource>& Mesh::GetResource() const
+{
+	return m_Resource;
 }
 
 

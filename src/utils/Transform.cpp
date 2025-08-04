@@ -39,6 +39,11 @@ const DirectX::XMVECTOR& Transform::GetRotation() const
 	return m_Rotation;
 }
 
+const DirectX::XMMATRIX& Transform::GetTransform() const
+{
+	return m_Transform;
+}
+
 void Transform::Bind(Graphics& gfx)
 {
 	m_Transform = DirectX::XMMatrixScalingFromVector(m_Scale) *

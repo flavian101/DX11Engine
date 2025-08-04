@@ -147,6 +147,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\picking\IPickable.h" />
+    <ClCompile Include="src\picking\PickingManager.cpp" />
+    <ClCompile Include="src\picking\Ray.cpp" />
+    <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\models\Model.cpp" />
     <ClCompile Include="src\renderer\RendererCommand.cpp" />
     <ClCompile Include="src\shaders\ShaderManager.cpp" />
@@ -180,6 +184,9 @@
     <ClCompile Include="src\utils\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\picking\PickingManager.h" />
+    <ClInclude Include="src\picking\Ray.h" />
+    <ClInclude Include="src\renderer\Renderer.h" />
     <ClInclude Include="src\models\Model.h" />
     <ClInclude Include="src\renderer\RendererCommand.h" />
     <ClInclude Include="src\shaders\ShaderManager.h" />
