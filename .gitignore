@@ -361,4 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/bin-int/Debug-windows-x86_64
+#directories to ignore
+/bin-int/
+/bin/

@@ -20,13 +20,14 @@ public:
 	virtual void OnUIRender() override;
 	void OnEvent(DXEngine::Event& event) override;
 
-	bool OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e);
 
 	void DetectInput(double time);
 
 
 	void HandlePicking(float mouseX, float mouseY);
 	void InitializePicking();
+private:
+	//bool OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e);
 
 private:
 	std::shared_ptr<DXEngine::ShaderManager> m_ShaderManager;

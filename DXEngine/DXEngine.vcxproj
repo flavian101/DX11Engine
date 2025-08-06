@@ -1,0 +1,187 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{377B295C-2348-8467-4C61-720F388DB9F5}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>DXEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>..\bin\Debug-windows-x86_64\DXEngine\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\DXEngine\</IntDir>
+    <TargetName>DXEngine</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>..\bin\Release-windows-x86_64\DXEngine\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\DXEngine\</IntDir>
+    <TargetName>DXEngine</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Application.h" />
+    <ClInclude Include="src\Ball.h" />
+    <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\Core\Input.h" />
+    <ClInclude Include="src\Core\Keycodes.h" />
+    <ClInclude Include="src\Core\Layer.h" />
+    <ClInclude Include="src\Core\LayerStack.h" />
+    <ClInclude Include="src\DXEngine.h" />
+    <ClInclude Include="src\Event\ApplicationEvent.h" />
+    <ClInclude Include="src\Event\Event.h" />
+    <ClInclude Include="src\Event\KeyEvent.h" />
+    <ClInclude Include="src\Event\MouseEvent.h" />
+    <ClInclude Include="src\FrameTime.h" />
+    <ClInclude Include="src\LightSphere.h" />
+    <ClInclude Include="src\Main.h" />
+    <ClInclude Include="src\SkySphere.h" />
+    <ClInclude Include="src\Sphere.h" />
+    <ClInclude Include="src\Triangle.h" />
+    <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\dxpch.h" />
+    <ClInclude Include="src\models\Model.h" />
+    <ClInclude Include="src\picking\InterfacePickable.h" />
+    <ClInclude Include="src\picking\PickingManager.h" />
+    <ClInclude Include="src\picking\Ray.h" />
+    <ClInclude Include="src\renderer\Renderer.h" />
+    <ClInclude Include="src\renderer\RendererCommand.h" />
+    <ClInclude Include="src\resource.h" />
+    <ClInclude Include="src\shaders\ShaderManager.h" />
+    <ClInclude Include="src\shaders\ShaderProgram.h" />
+    <ClInclude Include="src\utils\ConstantBuffer.h" />
+    <ClInclude Include="src\utils\ConstantBufferTypes.h" />
+    <ClInclude Include="src\utils\CubeMapTexture.h" />
+    <ClInclude Include="src\utils\IndexBuffer.h" />
+    <ClInclude Include="src\utils\InputLayout.h" />
+    <ClInclude Include="src\utils\Light.h" />
+    <ClInclude Include="src\utils\Material.h" />
+    <ClInclude Include="src\utils\Mesh.h" />
+    <ClInclude Include="src\utils\PixelShader.h" />
+    <ClInclude Include="src\utils\Sampler.h" />
+    <ClInclude Include="src\utils\Texture.h" />
+    <ClInclude Include="src\utils\Topology.h" />
+    <ClInclude Include="src\utils\Transform.h" />
+    <ClInclude Include="src\utils\Vertex.h" />
+    <ClInclude Include="src\utils\VertexBuffer.h" />
+    <ClInclude Include="src\utils\VertexShader.h" />
+    <ClInclude Include="src\windows\WindowsInput.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\Ball.cpp" />
+    <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\Core\Input.cpp" />
+    <ClCompile Include="src\Core\Layer.cpp" />
+    <ClCompile Include="src\Core\LayerStack.cpp" />
+    <ClCompile Include="src\FrameTime.cpp" />
+    <ClCompile Include="src\LightSphere.cpp" />
+    <ClCompile Include="src\SkySphere.cpp" />
+    <ClCompile Include="src\Sphere.cpp" />
+    <ClCompile Include="src\Triangle.cpp" />
+    <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\dxpch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\models\Model.cpp" />
+    <ClCompile Include="src\picking\PickingManager.cpp" />
+    <ClCompile Include="src\picking\Ray.cpp" />
+    <ClCompile Include="src\renderer\Renderer.cpp" />
+    <ClCompile Include="src\renderer\RendererCommand.cpp" />
+    <ClCompile Include="src\shaders\ShaderManager.cpp" />
+    <ClCompile Include="src\shaders\ShaderProgram.cpp" />
+    <ClCompile Include="src\utils\CubeMapTexture.cpp" />
+    <ClCompile Include="src\utils\IndexBuffer.cpp" />
+    <ClCompile Include="src\utils\InputLayout.cpp" />
+    <ClCompile Include="src\utils\Light.cpp" />
+    <ClCompile Include="src\utils\Material.cpp" />
+    <ClCompile Include="src\utils\Mesh.cpp" />
+    <ClCompile Include="src\utils\PixelShader.cpp" />
+    <ClCompile Include="src\utils\Sampler.cpp" />
+    <ClCompile Include="src\utils\Texture.cpp" />
+    <ClCompile Include="src\utils\Topology.cpp" />
+    <ClCompile Include="src\utils\Transform.cpp" />
+    <ClCompile Include="src\utils\Vertex.cpp" />
+    <ClCompile Include="src\utils\VertexBuffer.cpp" />
+    <ClCompile Include="src\utils\VertexShader.cpp" />
+    <ClCompile Include="src\windows\WindowsInput.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

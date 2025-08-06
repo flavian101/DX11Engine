@@ -1,12 +1,20 @@
 #include "DXEngine.h"
 #include "Sandbox.h"
 
+#include "Main.h"
+
+
 class App: public DXEngine::Application
 {
 public:
 	App()
+		:Application()
 	{
 		PushLayer(new Sandbox());
+
+	}
+	~App()
+	{
 
 	}
 };

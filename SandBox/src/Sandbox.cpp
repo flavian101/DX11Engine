@@ -7,7 +7,7 @@ Sandbox::Sandbox()
 {
 	//DXEngine::RenderCommand::SetCamera(camera);
 	//m_Window.().SetCamera(camera);
-
+	
 }
 
 Sandbox::~Sandbox()
@@ -21,7 +21,7 @@ void Sandbox::OnAttach()
 	tri = std::make_shared<DXEngine::Triangle>(m_ShaderManager->GetShaderProgram("DiffuseNormal"));
 	ball = std::make_shared<DXEngine::Ball>(m_ShaderManager->GetShaderProgram("DiffuseNormal"));
 	sky = std::make_shared<DXEngine::SkySphere>( m_ShaderManager->GetShaderProgram("SkyShader"));
-	m_Light = std::make_shared<DXEngine::LightSphere>( m_ShaderManager->GetShaderProgram("Flat"));
+	m_Light = std::make_shared<DXEngine::LightSphere>(m_ShaderManager->GetShaderProgram("Flat"));
 }
 
 void Sandbox::OnDetach()
@@ -61,20 +61,20 @@ void Sandbox::OnEvent(DXEngine::Event& event)
 {
 }
 
-bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
-{
-
-	if (e.GetMouseButton() == VK_LBUTTON)
-	{
-		m_LastMouseX = DXEngine::Input::GetMouseX();
-		m_LastMouseY = DXEngine::Input::GetMouseY();
-
-		// Handle picking on left mouse button press
-		HandlePicking(m_LastMouseX, m_LastMouseY);
-	}
-
-	return false;
-}
+//bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
+//{
+//
+//	if (e.GetMouseButton() == VK_LBUTTON)
+//	{
+//		m_LastMouseX = DXEngine::Input::GetMouseX();
+//		m_LastMouseY = DXEngine::Input::GetMouseY();
+//
+//		// Handle picking on left mouse button press
+//		HandlePicking(m_LastMouseX, m_LastMouseY);
+//	}
+//
+//	return false;
+//}
 void Sandbox::DetectInput(double time)
 {
 	float speed = time * 0.025f;
@@ -104,7 +104,7 @@ void Sandbox::InitializePicking()
 {
 	m_PickingManager = std::make_unique<DXEngine::PickingManager>();
 
-	// Register pickable objects - cast to IPickable interface
+	// Register pickable objects - cast to InterfacePickable interface
 	if (ball)
 		m_PickingManager->RegisterPickable(ball);
 
@@ -125,12 +125,13 @@ void Sandbox::HandlePicking(float mouseX, float mouseY)
 		return;
 
 	// Get window dimensions
-	RECT clientRect;
-	//GetClientRect(window.GetHwnd(), &clientRect); TO-DO
-	int screenWidth = clientRect.right - clientRect.left;
-	int screenHeight = clientRect.bottom - clientRect.top;
+	//RECT clientRect;
+	////GetClientRect(window.GetHwnd(), &clientRect); TO-DO
+	//int screenWidth = clientRect.right - clientRect.left;
+	//int screenHeight = clientRect.bottom - clientRect.top;
 
-	
+	int screenWidth = 200;
+		int screenHeight = 200;
 	// Perform picking
 	DXEngine::HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *camera);
 

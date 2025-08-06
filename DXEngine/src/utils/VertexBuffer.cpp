@@ -1,0 +1,39 @@
+#include "dxpch.h"
+#include "VertexBuffer.h"
+
+
+namespace DXEngine {
+
+    VertexBuffer::VertexBuffer( const std::vector< Vertex>& v)
+        :
+        stride(sizeof(Vertex))
+    {
+        D3D11_BUFFER_DESC vbDesc;
+        ZeroMemory(&vbDesc, sizeof(vbDesc));
+
+        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        vbDesc.Usage = D3D11_USAGE_DEFAULT;
+        vbDesc.CPUAccessFlags = 0u;
+        vbDesc.MiscFlags = 0u;
+        vbDesc.ByteWidth = v.size() * sizeof(Vertex);
+        vbDesc.StructureByteStride = stride;
+
+        D3D11_SUBRESOURCE_DATA vbData = {};
+        ZeroMemory(&vbData, sizeof(vbData));
+        vbData.pSysMem = v.data();
+        vbData.SysMemPitch = 0;
+        vbData.SysMemSlicePitch = 0;
+        hr = RenderCommand:: GetDevice()->CreateBuffer(&vbDesc, &vbData, &pVertexBuffer);
+    }
+
+    VertexBuffer::~VertexBuffer()
+    {
+        pVertexBuffer.Reset();
+    }
+
+    void VertexBuffer::Bind()
+    {
+        UINT offset = 0;
+        RenderCommand::GetContext()->IASetVertexBuffers(0, 1, pVertexBuffer.GetAddressOf(), &stride, &offset);
+    }
+}
