@@ -15,7 +15,7 @@ namespace DXEngine
 		const DirectX::XMVECTOR& GetPos() const noexcept;
 		const DirectX::XMVECTOR& GetTarget() const noexcept;
 
-		void SetProjection(DirectX::FXMMATRIX proj) noexcept;
+		void SetProjection(const DirectX::FXMMATRIX& proj) noexcept;
 		const DirectX::XMMATRIX& GetProjection() const noexcept;
 
 		DirectX::XMVECTOR DefaultForward = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);

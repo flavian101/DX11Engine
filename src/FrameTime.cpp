@@ -7,7 +7,7 @@ namespace DXEngine {
 		last = steady_clock::now();
 	}
 
-	float FrameTime::Mark() noexcept
+	float FrameTime::Mark()  noexcept
 	{
 		const auto old = last;
 		last = steady_clock::now();

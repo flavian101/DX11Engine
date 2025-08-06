@@ -51,7 +51,7 @@ namespace DXEngine {
 		return camTarget;
 	}
 
-	void Camera::SetProjection(DirectX::FXMMATRIX proj) noexcept
+	void Camera::SetProjection(const DirectX::FXMMATRIX& proj) noexcept
 	{
 		camProjection = proj;
 	}

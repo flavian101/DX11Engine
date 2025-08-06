@@ -7,10 +7,13 @@ namespace DXEngine {
 	class Renderer
 	{
 	public:
-		void BeginScene(Camera& camera);
+		static void Init();
+		static void BeginScene(Camera& camera);
+		static void EndScene();
 
-		void Submit(Model& model);
-		void EndScene();
+
+		static void Submit(Model& model,std::shared_ptr<ShaderProgram> program);
+
 	private:
 	};
 }

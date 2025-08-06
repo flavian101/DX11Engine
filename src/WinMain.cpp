@@ -1,6 +1,6 @@
 #include "Window.h"
 #include <optional>
-#include "App.h"
+#include "Application.h"
 
 int CALLBACK WinMain(
 	HINSTANCE hInstance,
@@ -11,7 +11,7 @@ int CALLBACK WinMain(
 	
 
 
-	return DXEngine::App(hInstance, nCmdShow).createLoop();
+	return DXEngine::Application(hInstance, nCmdShow).createLoop();
 
 
 
