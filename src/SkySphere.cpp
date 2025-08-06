@@ -1,11 +1,11 @@
 #include "SkySphere.h"
 namespace DXEngine {
 
-	SkySphere::SkySphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
-		:Model(gfx, program)
+	SkySphere::SkySphere( std::shared_ptr<ShaderProgram> program)
+		:Model(, program)
 	{
 		sphere = std::make_unique<Sphere>("flavian", 4);
-		Initialize(gfx);
+		Initialize();
 
 		const char* skyFilename[6] = {
 		"assets/textures/NightSky/nightBack.png",
@@ -34,32 +34,32 @@ namespace DXEngine {
 	   //	"assets/textures/SpaceBox/4.png",
 	   //	"assets/textures/SpaceBox/5.png"
 	   //};
-		auto skyTexture = std::make_shared<CubeMapTexture>(gfx, skyFilename);
-		auto skyMaterial = std::make_shared<Material>(gfx);
+		auto skyTexture = std::make_shared<CubeMapTexture>(, skyFilename);
+		auto skyMaterial = std::make_shared<Material>();
 		skyMaterial->SetShaderProgram(program);
 		skyMaterial->SetSkyMaterial(skyTexture);
 		m_Mesh->SetMaterial(skyMaterial);
 	}
 
-	void SkySphere::Initialize(Graphics& gfx) {
+	void SkySphere::Initialize() {
 		//if (!initialized) {
 			// Create mesh once
-		m_Mesh = std::make_shared<Mesh>(gfx, sphere->getMeshResource());
+		m_Mesh = std::make_shared<Mesh>(, sphere->getMeshResource());
 		initialized = true;
 		//}
 	}
 
-	void SkySphere::Render(Graphics& gfx)
+	void SkySphere::Render()
 	{
 		// Use stored resources instead of creating new ones
-		DirectX::XMFLOAT3 camPos = { DirectX::XMVectorGetX(gfx.GetCamera().GetPos()),
-							DirectX::XMVectorGetY(gfx.GetCamera().GetPos()) ,
-							DirectX::XMVectorGetZ(gfx.GetCamera().GetPos()) };
+		DirectX::XMFLOAT3 camPos = { DirectX::XMVectorGetX(RenderCommand:: GetCamera().GetPos()),
+							DirectX::XMVectorGetY(RenderCommand:: GetCamera().GetPos())
+							DirectX::XMVectorGetZ(RenderCommand:: GetCamera().GetPos()) };
 
 		SetTranslation(camPos);
-		gfx.SetRasterizerMode(RasterizerMode::SolidFrontCull);
-		gfx.SetDepthLessEqual();
-		Model::Render(gfx);
+		RenderCommand:: SetRasterizerMode(RasterizerMode::SolidFrontCull);
+		RenderCommand:: SetDepthLessEqual();
+		Model::Render();
 
 
 	}

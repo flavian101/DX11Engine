@@ -1,14 +1,14 @@
 #pragma once
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include <wrl.h>
 namespace DXEngine {
 
 	class Sampler
 	{
 	public:
-		Sampler(Graphics& g);
+		Sampler();
 		~Sampler();
-		void Bind(Graphics& g);
+		void Bind();
 	private:
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
 	};

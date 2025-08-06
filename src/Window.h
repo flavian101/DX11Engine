@@ -1,6 +1,6 @@
 #pragma once
 #define NOMINMAX 
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include "resource.h"
 #include <Windows.h>
 #include <optional>
@@ -27,9 +27,10 @@ namespace DXEngine {
 		static std::optional<int> ProcessMessages();
 		void SetEventCallback(const EventCallbackFn& callback);
 		void QuitWindow();
-		Graphics& Gfx();
 
 		HWND GetHwnd() const;
+		int GetWidth() const { return m_Width; }
+		int GetHeight() const { return m_Height; }
 	private:
 
 		static LRESULT CALLBACK HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
@@ -37,14 +38,14 @@ namespace DXEngine {
 		LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 
 	private:
-		std::unique_ptr<Graphics> pGfx;
+		std::unique_ptr<Graphics> p;
 		HWND hwnd;
 		HINSTANCE hInstance;
 		int nShowWnd;
 		LPCWSTR windowTitle;
 		LPCWSTR windowClass;
-		int width;
-		int height;
+		int m_Width;
+		int m_Height;
 		EventCallbackFn m_EventCallback;
 
 	};

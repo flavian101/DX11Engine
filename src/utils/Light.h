@@ -1,16 +1,16 @@
 #pragma once
 #include <DirectXMath.h>
 #include "ConstantBuffer.h"
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 
 namespace DXEngine {
 
 	class Light
 	{
 	public:
-		Light(Graphics& gfx);
+		Light();
 		virtual ~Light() = default;
-		virtual void Bind(Graphics& gfx) = 0;
+		virtual void Bind() = 0;
 
 	protected:
 		DirectX::XMFLOAT4 m_LightColor;
@@ -22,10 +22,10 @@ namespace DXEngine {
 	class DirectionalLight : Light
 	{
 	public:
-		DirectionalLight(Graphics& gfx);
+		DirectionalLight();
 		virtual ~DirectionalLight();
 
-		void Bind(Graphics& gfx) override;
+		void Bind() override;
 	private:
 		ConstantBuffer<DirectionalLightData> psBuffer;
 
@@ -34,9 +34,9 @@ namespace DXEngine {
 	class PointLight : public Light
 	{
 	public:
-		PointLight(Graphics& gfx);
+		PointLight();
 		virtual ~PointLight();
-		void Bind(Graphics& gfx) override;
+		void Bind() override;
 		void SetPosition(const DirectX::XMFLOAT3& pos);
 	private:
 		ConstantBuffer<PointLightData> psBuffer;
@@ -46,10 +46,10 @@ namespace DXEngine {
 	class SpotLight :public Light
 	{
 	public:
-		SpotLight(Graphics& gfx);
+		SpotLight();
 		virtual ~SpotLight();
 
-		void Bind(Graphics& gfx) override;
+		void Bind() override;
 		void SetPosition(const DirectX::XMFLOAT3& pos);
 
 	private:

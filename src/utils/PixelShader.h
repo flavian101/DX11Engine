@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include <wrl.h>
 
 namespace DXEngine {
@@ -9,9 +9,9 @@ namespace DXEngine {
 	{
 	public:
 
-		PixelShader(Graphics& g, LPCWSTR filename);
+		PixelShader(LPCWSTR filename);
 		~PixelShader();
-		void Bind(Graphics& g);
+		void Bind();
 
 	private:
 		HRESULT hr;

@@ -16,10 +16,10 @@ namespace DXEngine {
 	class Material
 	{
 	public:
-		Material(Graphics& gfx);
+		Material();
 
 		~Material();
-		void Bind(Graphics& gfx);
+		void Bind();
 		void SetShaderProgram(std::shared_ptr<ShaderProgram> program);
 
 		void SetDiffuseColor(const DirectX::XMFLOAT4& diffuse);

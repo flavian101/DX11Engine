@@ -3,20 +3,20 @@
 namespace DXEngine {
 
 
-	Triangle::Triangle(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
+	Triangle::Triangle( std::shared_ptr<ShaderProgram> program)
 		:
-		Model(gfx, program)
+		Model(, program)
 	{
-		Initialize(gfx);
-		auto grassMaterial = std::make_shared<Material>(gfx);
-		auto grassDiffuse = std::make_shared<Texture>(gfx, "assets/textures/grass.jpg");
-		auto grassNormal = std::make_shared<Texture>(gfx, "assets/textures/grassNormal.jpg");
+		Initialize();
+		auto grassMaterial = std::make_shared<Material>();
+		auto grassDiffuse = std::make_shared<Texture>(, "assets/textures/grass.jpg");
+		auto grassNormal = std::make_shared<Texture>(, "assets/textures/grassNormal.jpg");
 		grassMaterial->SetShaderProgram(program);
 		grassMaterial->SetDiffuse(grassDiffuse);
 		grassMaterial->SetNormalMap(grassNormal);
 		m_Mesh->SetMaterial(grassMaterial);
 	}
-	void Triangle::Initialize(Graphics& gfx)
+	void Triangle::Initialize()
 	{
 		std::vector<Vertex> vertices;
 		std::vector<unsigned short> ind;
@@ -37,12 +37,12 @@ namespace DXEngine {
 		ind.push_back(3);
 
 		auto meshData = std::make_shared<MeshResource>(std::move(vertices), std::move(ind));
-		m_Mesh = std::make_shared<Mesh>(gfx, meshData);
+		m_Mesh = std::make_shared<Mesh>(, meshData);
 
 	}
-	void Triangle::Render(Graphics& gfx)
+	void Triangle::Render()
 	{
-		Model::Render(gfx);
+		Model::Render();
 	}
 
 

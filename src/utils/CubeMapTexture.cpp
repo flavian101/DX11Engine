@@ -3,7 +3,7 @@
 
 namespace DXEngine {
 
-    CubeMapTexture::CubeMapTexture(Graphics& g, const char* filename[6], UINT slot)
+    CubeMapTexture::CubeMapTexture(const char* filename[6], UINT slot)
         :
         slot(slot)
     {
@@ -47,7 +47,7 @@ namespace DXEngine {
             subresourceData[i].SysMemSlicePitch = 0;
         }
 
-        g.GetDevice()->CreateTexture2D(&desc, subresourceData, skyTexture.GetAddressOf());
+        RenderCommand::GetDevice()->CreateTexture2D(&desc, subresourceData, skyTexture.GetAddressOf());
 
 
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -58,7 +58,7 @@ namespace DXEngine {
 
 
 
-        hr = g.GetDevice()->CreateShaderResourceView(skyTexture.Get(), &srvDesc, skyTextureView.GetAddressOf());
+        hr = RenderCommand::GetDevice()->CreateShaderResourceView(skyTexture.Get(), &srvDesc, skyTextureView.GetAddressOf());
 
         if (FAILED(hr))
         {
@@ -78,8 +78,8 @@ namespace DXEngine {
         skyTexture.Reset();
     }
 
-    void CubeMapTexture::Bind(Graphics& g)
+    void CubeMapTexture::Bind()
     {
-        g.GetContext()->PSSetShaderResources(slot, 1, skyTextureView.GetAddressOf());
+        RenderCommand::GetContext()->PSSetShaderResources(slot, 1, skyTextureView.GetAddressOf());
     }
 }

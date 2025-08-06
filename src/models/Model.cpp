@@ -2,9 +2,9 @@
 
 namespace DXEngine {
 
-	Model::Model(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
+	Model::Model( std::shared_ptr<ShaderProgram> program)
 	{
-		m_ModelTransform = std::make_shared<Transform>(gfx);
+		m_ModelTransform = std::make_shared<Transform>();
 	}
 
 	Model::~Model()
@@ -16,10 +16,10 @@ namespace DXEngine {
 
 	}
 
-	void Model::Render(Graphics& gfx)
+	void Model::Render()
 	{
-		m_ModelTransform->Bind(gfx);
-		m_Mesh->Draw(gfx);
+		m_ModelTransform->Bind();
+		m_Mesh->Draw();
 	}
 
 	const std::shared_ptr<MeshResource>& Model::GetMeshResource() const

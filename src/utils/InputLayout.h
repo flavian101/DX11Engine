@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include <wrl.h>
 
 namespace DXEngine {
@@ -8,10 +8,10 @@ namespace DXEngine {
 	{
 	public:
 
-		InputLayout(Graphics& g, Microsoft::WRL::ComPtr<ID3DBlob> pVsBytecode);
+		InputLayout(Microsoft::WRL::ComPtr<ID3DBlob> pVsBytecode);
 		~InputLayout();
 
-		void Bind(Graphics& g);
+		void Bind();
 
 	private:
 		HRESULT hr;

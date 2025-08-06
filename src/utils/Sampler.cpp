@@ -2,7 +2,7 @@
 
 namespace DXEngine {
 
-	Sampler::Sampler(Graphics& g)
+	Sampler::Sampler()
 	{
 		D3D11_SAMPLER_DESC sp;
 		ZeroMemory(&sp, sizeof(sp));
@@ -17,17 +17,17 @@ namespace DXEngine {
 		sp.MinLOD = 0;
 		sp.MaxLOD = D3D11_FLOAT32_MAX;
 
-		g.GetDevice()->CreateSamplerState(&sp, samplerState.GetAddressOf());
+		RenderCommand:: GetDevice()->CreateSamplerState(&sp, samplerState.GetAddressOf());
 	}
 
 	Sampler::~Sampler()
 	{
-		//g.GetContext()->PSSetSamplers(0, 1, samplerState.GetAddressOf());
+		//RenderCommand::GetContext()->PSSetSamplers(0, 1, samplerState.GetAddressOf());
 
 	}
 
-	void Sampler::Bind(Graphics& g)
+	void Sampler::Bind()
 	{
-		g.GetContext()->PSSetSamplers(0, 1, samplerState.GetAddressOf());
+		RenderCommand::GetContext()->PSSetSamplers(0, 1, samplerState.GetAddressOf());
 	}
 }

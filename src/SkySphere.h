@@ -12,10 +12,10 @@ namespace DXEngine {
 	{
 
 	public:
-		SkySphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program);
+		SkySphere( std::shared_ptr<ShaderProgram> program);
 
-		void Render(Graphics& gfx) override;
-		void Initialize(Graphics& gfx);
+		void Render() override;
+		void Initialize();
 
 
 	private:

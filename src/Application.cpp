@@ -18,14 +18,20 @@ namespace DXEngine {
 		m_Window = std::make_unique<Window>(hInstance, showWnd, L"DXEngine", L"DirectX", 1270, 720);
 		m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
+		Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight());
+
+		// Set clear color
+		Renderer::SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
 
-   // m(window.Gfx());
+   // m(window.());
 
 }
 
 Application::~Application()
 {
+	Renderer::Shutdown();
+
 }
 
 int Application::createLoop()
@@ -75,6 +81,9 @@ void Application::Render()
 	//}
 	//m_ImGuiLayer->End();
 	//m_Window->OnUpdate();
+
+	RenderCommand::Clear();
+	Renderer::EndScene();
 	
 }
 
@@ -100,14 +109,7 @@ void Application::OnEvent(Event& e)
 
 bool Application::OnWindowResize(WindowResizeEvent& e)
 {
-	m_Window->Gfx().Resize(e.GetWidth(), e.GetHeight());
-
-	// also update the camera’s aspect ratio
-	float width = e.GetWidth();
-	float height = e.GetHeight();
-	float aspect = height/ width ;
-	DirectX::XMMATRIX camProjection= DirectX::XMMatrixPerspectiveLH(1.0f, aspect, 0.5f, 100.0f);
-	m_Window->Gfx().GetCamera().SetProjection(camProjection);
+	Renderer::OnWindowResize(e.GetWidth(), e.GetHeight());
 	return true;
 }
 

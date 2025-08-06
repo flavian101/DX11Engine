@@ -2,7 +2,7 @@
 
 namespace DXEngine {
 
-	InputLayout::InputLayout(Graphics& g, Microsoft::WRL::ComPtr<ID3DBlob> pVsBytecode)
+	InputLayout::InputLayout(Microsoft::WRL::ComPtr<ID3DBlob> pVsBytecode)
 	{
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
@@ -13,7 +13,7 @@ namespace DXEngine {
 		};
 		UINT numElements = ARRAYSIZE(layout);
 
-		hr = g.GetDevice()->CreateInputLayout(layout, numElements, pVsBytecode->GetBufferPointer()
+		hr = RenderCommand:: GetDevice()->CreateInputLayout(layout, numElements, pVsBytecode->GetBufferPointer()
 			, pVsBytecode->GetBufferSize(), &pInputLayout);
 
 	}
@@ -23,8 +23,8 @@ namespace DXEngine {
 		pInputLayout.Reset();
 	}
 
-	void InputLayout::Bind(Graphics& g)
+	void InputLayout::Bind()
 	{
-		g.GetContext()->IASetInputLayout(pInputLayout.Get());
+		RenderCommand::GetContext()->IASetInputLayout(pInputLayout.Get());
 	}
 }

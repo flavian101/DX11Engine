@@ -1,38 +1,86 @@
 #pragma once
-#include "utils\Vertex.h"
-#include "Graphics.h"
-#include "utils\VertexBuffer.h"
-#include "utils\VertexShader.h"
-#include "utils\PixelShader.h"
-#include "utils\InputLayout.h"
-#include "utils\Topology.h"
-#include "utils\IndexBuffer.h"
-#include "utils\ConstantBuffer.h"
-#include "utils\Sampler.h"
-#include "Renderer.h"
+#include <wrl.h>
+#include <d3d11.h>
+#include <d3dcompiler.h>
+#include <DirectXMath.h>
+#include <unordered_map>
+#include <memory>
+#include "Camera.h"
+
+#pragma comment(lib,"d3d11.lib")
+#pragma comment(lib,"D3DCompiler.lib")
+#pragma comment (lib, "dxguid.lib")
 
 namespace DXEngine {
 
-	class RendererCommand
+	enum class RasterizerMode
 	{
+		SolidBackCull,
+		SolidFrontCull,
+		SolidNoCull,
+		Wireframe,
+	};
 
+	class RenderCommand
+	{
 	public:
-		inline static void Init();
-		
-		inline static void SetClearColor();
-		inline static void SetDepthClearColor();
+		static void Init(HWND hwnd, int width, int height);
+		static void Shutdown();
 
-		inline static void Clear();
+		// Basic rendering commands
+		static void SetClearColor(float red, float green, float blue, float alpha = 1.0f);
+		static void Clear();
+		static void Present();
 
-		inline static void DrawIndexd();
+		// Viewport and rendering state
+		static void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+		static void SetRasterizerMode(RasterizerMode mode);
+		static void SetDepthLessEqual();
 
-		inline static void setViewPort(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+		// Drawing commands
+		static void DrawIndexed(uint32_t indexCount);
 
+		// Window/Swapchain management
+		static void Resize(int newWidth, int newHeight);
+
+		// Device access for creating resources
+		static Microsoft::WRL::ComPtr<ID3D11Device> GetDevice();
+		static Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetContext();
+
+		// Camera management
+		static void SetCamera(const std::shared_ptr<Camera>& camera);
+		static const Camera& GetCamera();
+
+		//D3D Wrappers
+		static void CreateTexture2D();
 
 	private:
+		static bool InitializeD3D();
+		static void CreateRasterizerStates();
+		static void PrintError(HRESULT hr);
 
-		static Renderer s_Renderer;
+	private:
+		// D3D11 Core objects
+		static Microsoft::WRL::ComPtr<ID3D11Device> s_Device;
+		static Microsoft::WRL::ComPtr<ID3D11DeviceContext> s_Context;
+		static Microsoft::WRL::ComPtr<IDXGISwapChain> s_SwapChain;
+		static Microsoft::WRL::ComPtr<ID3D11RenderTargetView> s_RenderTargetView;
+		static Microsoft::WRL::ComPtr<ID3D11DepthStencilView> s_DepthStencilView;
 
+		// States
+		static Microsoft::WRL::ComPtr<ID3D11BlendState> s_TransparencyBlendState;
+		static Microsoft::WRL::ComPtr<ID3D11DepthStencilState> s_DepthStencilState;
+		static std::unordered_map<RasterizerMode, Microsoft::WRL::ComPtr<ID3D11RasterizerState>> s_RasterizerStates;
 
+		// Window data
+		static HWND s_WindowHandle;
+		static int s_ViewportWidth;
+		static int s_ViewportHeight;
+
+		// Camera
+		static std::shared_ptr<Camera> s_Camera;
+
+		// Clear color
+		static float s_ClearColor[4];
 	};
 }

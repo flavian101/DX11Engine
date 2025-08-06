@@ -2,12 +2,12 @@
 
 namespace DXEngine {
 
-	PixelShader::PixelShader(Graphics& g, LPCWSTR filename)
+	PixelShader::PixelShader(LPCWSTR filename)
 	{
 		//hr = D3DCompileFromFile(
 		//	filename, nullptr, nullptr, "main", "ps_5_0", 0, 0, &pShaderBlob, NULL);
 		D3DReadFileToBlob(filename, &pShaderBlob);
-		g.GetDevice()->CreatePixelShader(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), NULL, &pPixelShader);
+		RenderCommand:: GetDevice()->CreatePixelShader(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), NULL, &pPixelShader);
 	}
 
 	PixelShader::~PixelShader()
@@ -16,8 +16,8 @@ namespace DXEngine {
 		pPixelShader.Reset();
 	}
 
-	void PixelShader::Bind(Graphics& g)
+	void PixelShader::Bind()
 	{
-		g.GetContext()->PSSetShader(pPixelShader.Get(), nullptr, 0);
+		RenderCommand::GetContext()->PSSetShader(pPixelShader.Get(), nullptr, 0);
 	}
 }

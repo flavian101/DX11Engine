@@ -2,7 +2,7 @@
 #include "..\utils\VertexShader.h"
 #include "..\utils\PixelShader.h"
 #include <memory>
-#include "..\Graphics.h"
+#include "renderer/Renderer.h"
 #include <utils/InputLayout.h>
 
 namespace DXEngine {
@@ -11,12 +11,12 @@ namespace DXEngine {
 	class ShaderProgram
 	{
 	public:
-		ShaderProgram(Graphics& gfx, LPCWSTR vertexShader, LPCWSTR pixelShader);
+		ShaderProgram( LPCWSTR vertexShader, LPCWSTR pixelShader);
 		~ShaderProgram();
 
 		ID3DBlob* GetByteCode();
 
-		void Bind(Graphics& gfx);
+		void Bind();
 	private:
 		std::shared_ptr<InputLayout> layout;
 		std::shared_ptr<VertexShader> m_VertexShader;

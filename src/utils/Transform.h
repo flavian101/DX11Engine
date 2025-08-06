@@ -6,7 +6,7 @@ namespace DXEngine {
 	class Transform
 	{
 	public:
-		Transform(Graphics& gfx);
+		Transform();
 
 		//getters and setters 
 		void SetTranslation(const DirectX::XMFLOAT3& translation);
@@ -18,7 +18,7 @@ namespace DXEngine {
 		const DirectX::XMMATRIX& GetTransform() const;
 
 
-		void Bind(Graphics& gfx);
+		void Bind();
 
 	private:
 		ConstantBuffer<TransfomBufferData> vsBuffer;

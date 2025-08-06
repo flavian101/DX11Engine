@@ -4,11 +4,12 @@
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
-#pragma comment (lib, "dxguid.lib")
 #include <wrl.h>
 #include <memory>
 #include <Core/Layer.h>
 #include <Core/LayerStack.h>
+#include "renderer/Renderer.h"
+
 
 
 namespace DXEngine {

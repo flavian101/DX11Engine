@@ -2,7 +2,7 @@
 
 namespace DXEngine {
 
-    IndexBuffer::IndexBuffer(Graphics& g, const std::vector<unsigned short>& indices)
+    IndexBuffer::IndexBuffer(const std::vector<unsigned short>& indices)
     {
         D3D11_BUFFER_DESC idDesc;
         ZeroMemory(&idDesc, sizeof(idDesc));
@@ -17,7 +17,7 @@ namespace DXEngine {
         D3D11_SUBRESOURCE_DATA idData;
         idData.pSysMem = indices.data();
 
-        hr = g.GetDevice()->CreateBuffer(&idDesc, &idData, pIndexBuffer.GetAddressOf());
+        hr = RenderCommand::GetDevice()->CreateBuffer(&idDesc, &idData, pIndexBuffer.GetAddressOf());
 
     }
 
@@ -26,8 +26,8 @@ namespace DXEngine {
         pIndexBuffer.Reset();
     }
 
-    void IndexBuffer::Bind(Graphics& g)
+    void IndexBuffer::Bind()
     {
-        g.GetContext()->IASetIndexBuffer(pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+        RenderCommand::GetContext()->IASetIndexBuffer(pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
     }
 }

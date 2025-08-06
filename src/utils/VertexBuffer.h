@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include <wrl.h>
 #include"Vertex.h"
 
@@ -8,9 +8,9 @@ namespace DXEngine {
 	class VertexBuffer
 	{
 	public:
-		VertexBuffer(Graphics& g, const std::vector< Vertex>& v);
+		VertexBuffer( const std::vector< Vertex>& v);
 		~VertexBuffer();
-		void Bind(Graphics& g);
+		void Bind();
 
 
 	private:

@@ -1,21 +1,21 @@
 #include "VertexShader.h"
 namespace DXEngine {
 
-	VertexShader::VertexShader(Graphics& g, LPCWSTR filename)
+	VertexShader::VertexShader( LPCWSTR filename)
 	{
 		//hr = D3DCompileFromFile(
 	//filename, nullptr, nullptr, "main", "vs_5_0", 0, 0, &shaderBlob, NULL);
 		D3DReadFileToBlob(filename, &shaderBlob);
 		if (shaderBlob == NULL)
 		{
-			MessageBoxA(g.getHwnd(), "empty vshader blob", "ERROE", MB_OK | MB_ICONEXCLAMATION);
+			//MessageBoxA(RenderCommand:: getHwnd(), "empty vshader blob", "ERROE", MB_OK | MB_ICONEXCLAMATION);
 		}
 
 		if (FAILED(hr))
 		{
 			//PrintError(hr);
 		}
-		g.GetDevice()->CreateVertexShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, &pVertexShader);
+		RenderCommand:: GetDevice()->CreateVertexShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, &pVertexShader);
 	}
 
 	VertexShader::~VertexShader()
@@ -24,9 +24,9 @@ namespace DXEngine {
 		pVertexShader.Reset();
 	}
 
-	void VertexShader::Bind(Graphics& g)
+	void VertexShader::Bind()
 	{
-		g.GetContext()->VSSetShader(pVertexShader.Get(), nullptr, 0);
+		RenderCommand::GetContext()->VSSetShader(pVertexShader.Get(), nullptr, 0);
 	}
 
 	ID3DBlob* VertexShader::GetByteCode()

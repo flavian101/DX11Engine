@@ -4,7 +4,7 @@
 
 namespace DXEngine {
 
-    VertexBuffer::VertexBuffer(Graphics& g, const std::vector< Vertex>& v)
+    VertexBuffer::VertexBuffer( const std::vector< Vertex>& v)
         :
         stride(sizeof(Vertex))
     {
@@ -23,7 +23,7 @@ namespace DXEngine {
         vbData.pSysMem = v.data();
         vbData.SysMemPitch = 0;
         vbData.SysMemSlicePitch = 0;
-        hr = g.GetDevice()->CreateBuffer(&vbDesc, &vbData, &pVertexBuffer);
+        hr = RenderCommand:: GetDevice()->CreateBuffer(&vbDesc, &vbData, &pVertexBuffer);
     }
 
     VertexBuffer::~VertexBuffer()
@@ -31,9 +31,9 @@ namespace DXEngine {
         pVertexBuffer.Reset();
     }
 
-    void VertexBuffer::Bind(Graphics& g)
+    void VertexBuffer::Bind()
     {
         UINT offset = 0;
-        g.GetContext()->IASetVertexBuffers(0, 1, pVertexBuffer.GetAddressOf(), &stride, &offset);
+        RenderCommand::GetContext()->IASetVertexBuffers(0, 1, pVertexBuffer.GetAddressOf(), &stride, &offset);
     }
 }

@@ -2,13 +2,13 @@
 
 namespace DXEngine {
 
-	ShaderManager::ShaderManager(Graphics& gfx)
+	ShaderManager::ShaderManager()
 	{
-		m_Programs["Flat"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/flatVsShader.cso",
+		m_Programs["Flat"] = std::make_shared<ShaderProgram>(, L"assets/shaders/flatVsShader.cso",
 			L"assets/shaders/flatPsShader.cso");
-		m_Programs["DiffuseNormal"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/vs.cso",
+		m_Programs["DiffuseNormal"] = std::make_shared<ShaderProgram>(, L"assets/shaders/vs.cso",
 			L"assets/shaders/ps.cso");
-		m_Programs["SkyShader"] = std::make_shared<ShaderProgram>(gfx, L"assets/shaders/skyVs.cso",
+		m_Programs["SkyShader"] = std::make_shared<ShaderProgram>(, L"assets/shaders/skyVs.cso",
 			L"assets/shaders/skyPs.cso");
 	}
 
@@ -16,7 +16,7 @@ namespace DXEngine {
 	{
 	}
 
-	void ShaderManager::BindShaders(Graphics& gfx)
+	void ShaderManager::BindShaders()
 	{
 
 

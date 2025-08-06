@@ -7,11 +7,11 @@ namespace DXEngine {
 	class ShaderManager
 	{
 	public:
-		ShaderManager(Graphics& gfx);
+		ShaderManager();
 
 		~ShaderManager();
 
-		void BindShaders(Graphics& gfx);
+		void BindShaders();
 
 		std::shared_ptr<ShaderProgram> GetShaderProgram(std::string name);
 

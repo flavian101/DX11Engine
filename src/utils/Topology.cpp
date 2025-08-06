@@ -1,7 +1,7 @@
 #include "Topology.h"
 namespace DXEngine {
 
-	Topology::Topology(Graphics& g, D3D11_PRIMITIVE_TOPOLOGY type)
+	Topology::Topology( D3D11_PRIMITIVE_TOPOLOGY type)
 		:
 		type(type)
 	{
@@ -11,8 +11,8 @@ namespace DXEngine {
 	{
 	}
 
-	void Topology::Bind(Graphics& g)
+	void Topology::Bind()
 	{
-		g.GetContext()->IASetPrimitiveTopology(type);
+		RenderCommand::GetContext()->IASetPrimitiveTopology(type);
 	}
 }

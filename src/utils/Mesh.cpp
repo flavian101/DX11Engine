@@ -36,17 +36,17 @@ namespace DXEngine {
 		m_Sphere.radius = std::sqrt(r2);
 	}
 
-	Mesh::Mesh(Graphics& gfx, const std::shared_ptr<MeshResource>& resource)
+	Mesh::Mesh( const std::shared_ptr<MeshResource>& resource)
 		:
 		m_Resource(resource),
 		m_IndexCount(resource->GetIndices().size()),
-		tp(gfx, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST),
+		tp(, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST),
 		m_MeshMaterial(nullptr)
 
 	{
-		m_VertexBuffer = std::make_shared<VertexBuffer>(gfx, resource->GetVertices());
-		m_IndexBuffer = std::make_shared<IndexBuffer>(gfx, resource->GetIndices());
-		tp.Bind(gfx);
+		m_VertexBuffer = std::make_shared<VertexBuffer>(, resource->GetVertices());
+		m_IndexBuffer = std::make_shared<IndexBuffer>(, resource->GetIndices());
+		tp.Bind();
 	}
 
 	Mesh::~Mesh()
@@ -60,13 +60,13 @@ namespace DXEngine {
 
 	}
 
-	void Mesh::Draw(Graphics& gfx)
+	void Mesh::Draw()
 	{
 		if (m_MeshMaterial)
-			m_MeshMaterial->Bind(gfx);
+			m_MeshMaterial->Bind();
 
-		m_VertexBuffer->Bind(gfx);
-		m_IndexBuffer->Bind(gfx);
+		m_VertexBuffer->Bind();
+		m_IndexBuffer->Bind();
 		//psBuffer.data.light.spotPos.x = XMVectorGetX(camPos);
 		//psBuffer.data.light.spotPos.y = XMVectorGetY(camPos);
 		//psBuffer.data.light.spotPos.z = XMVectorGetZ(camPos);
@@ -75,7 +75,7 @@ namespace DXEngine {
 		//psBuffer.data.light.dir.x = XMVectorGetX(camTarget) - psBuffer.data.light.spotPos.x;
 		//psBuffer.data.light.dir.y = XMVectorGetY(camTarget) - psBuffer.data.light.spotPos.y;
 		//psBuffer.data.light.dir.z = XMVectorGetZ(camTarget) - psBuffer.data.light.spotPos.z;
-		gfx.Draw(m_IndexCount);
+		RenderCommand:: Draw(m_IndexCount);
 	}
 
 	const std::shared_ptr<MeshResource>& Mesh::GetResource() const

@@ -1,11 +1,11 @@
 #include "Material.h"
 namespace DXEngine {
 
-	Material::Material(Graphics& gfx)
-		: samp(gfx)
+	Material::Material()
+		: samp()
 	{
-		psBuffer.Initialize(gfx);
-		samp.Bind(gfx);
+		psBuffer.Initialize();
+		samp.Bind();
 		psBuffer.data.difColor = { 1.0f,1.0f,1.0f,1.0f };
 		psBuffer.data.hasTexture = static_cast<BOOL>(FALSE);
 		psBuffer.data.hasNormalMap = static_cast<BOOL>(FALSE);
@@ -14,25 +14,25 @@ namespace DXEngine {
 	Material::~Material()
 	{
 	}
-	void Material::Bind(Graphics& gfx)
+	void Material::Bind()
 	{
 		if (m_Program)
-			m_Program->Bind(gfx);
+			m_Program->Bind();
 
 		if (isCubemap)
 		{
-			m_CubeMap->Bind(gfx);
+			m_CubeMap->Bind();
 		}
 
 
-		psBuffer.Update(gfx);
+		psBuffer.Update();
 
 		if (psBuffer.data.hasTexture)
-			m_Diffuse->Bind(gfx, Diffuse);
+			m_Diffuse->Bind(Diffuse);
 		if (psBuffer.data.hasNormalMap)
-			m_NormalMap->Bind(gfx, NormalMap);
+			m_NormalMap->Bind(NormalMap);
 
-		gfx.GetContext()->PSSetConstantBuffers(BindSlot::CB_Material, 1, psBuffer.GetAddressOf());
+		RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Material, 1, psBuffer.GetAddressOf());
 
 	}
 

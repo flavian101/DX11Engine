@@ -8,7 +8,7 @@ namespace DXEngine {
 	class Model : public IPickable
 	{
 	public:
-		Model(Graphics& gfx, std::shared_ptr<ShaderProgram> program);
+		Model( std::shared_ptr<ShaderProgram> program);
 
 		~Model();
 
@@ -21,7 +21,7 @@ namespace DXEngine {
 
 
 		virtual void Update();
-		virtual void Render(Graphics& gfx);
+		virtual void Render();
 
 		bool IsSelected()const { return m_IsSelected; }
 		const std::shared_ptr<MeshResource>& GetMeshResource() const;

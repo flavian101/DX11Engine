@@ -5,7 +5,7 @@
 
 namespace DXEngine {
 
-	Texture::Texture(Graphics& g, const char* filename)
+	Texture::Texture( const char* filename)
 	{
 		int image_Width, image_height, image_Channels, image_Desired_channels = 4;
 
@@ -14,8 +14,8 @@ namespace DXEngine {
 
 		if (data == NULL)
 		{
-			MessageBox(g.getHwnd(), L"Failed to load the texture", L"ERROR", MB_ICONWARNING | MB_OK);
-			//MessageBox(g.getHwnd(), (L"Failed to load the texture"+ (LPCWSTR)filename), L"ERROR", MB_ICONWARNING | MB_OK);
+			//MessageBox(RenderCommand::getHwnd(), L"Failed to load the texture", L"ERROR", MB_ICONWARNING | MB_OK);
+			//MessageBox(RenderCommand:: getHwnd(), (L"Failed to load the texture"+ (LPCWSTR)filename), L"ERROR", MB_ICONWARNING | MB_OK);
 		}
 		int image_pitch = image_Width * 4;
 
@@ -37,7 +37,7 @@ namespace DXEngine {
 		sts.SysMemPitch = image_pitch;
 
 		HRESULT hr;
-		hr = g.GetDevice()->CreateTexture2D(&ts, &sts, &imageTexture);
+		hr = RenderCommand:: GetDevice()->CreateTexture2D(&ts, &sts, &imageTexture);
 
 		// create the resource view on the texture
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -46,13 +46,13 @@ namespace DXEngine {
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Texture2D.MipLevels = 1;
 
-		hr = g.GetDevice()->CreateShaderResourceView(imageTexture.Get(), &srvDesc, textureView.GetAddressOf());
+		hr = RenderCommand:: GetDevice()->CreateShaderResourceView(imageTexture.Get(), &srvDesc, textureView.GetAddressOf());
 
 		stbi_image_free(data);
 	}
 
-	void Texture::Bind(Graphics& g, UINT slot)
+	void Texture::Bind( UINT slot)
 	{
-		g.GetContext()->PSSetShaderResources(slot, 1, textureView.GetAddressOf());
+		RenderCommand::GetContext()->PSSetShaderResources(slot, 1, textureView.GetAddressOf());
 	}
 }

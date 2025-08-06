@@ -1,5 +1,5 @@
 #pragma 
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include <wrl.h>
 
 namespace DXEngine {
@@ -7,9 +7,9 @@ namespace DXEngine {
 	class CubeMapTexture
 	{
 	public:
-		CubeMapTexture(Graphics& g, const char* filename[6], UINT slot = 1u);
+		CubeMapTexture(const char* filename[6], UINT slot = 1u);
 		~CubeMapTexture();
-		void Bind(Graphics& g);
+		void Bind();
 
 	private:
 		UINT slot;

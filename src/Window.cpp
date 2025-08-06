@@ -15,23 +15,14 @@ namespace DXEngine {
 		nShowWnd(nCmdShow),
 		windowTitle(windowTitle),
 		windowClass(windowClass),
-		width(width),
-		height(height)
+		m_Width(width),
+		m_Height(height)
 	{
 
 		if (!Initialize())
 		{
 			MessageBox(hwnd, L"failed to create Window", L"ERROR", MB_OK | MB_ICONERROR);
 		}
-	}
-
-	Graphics& Window::Gfx()
-	{
-		if (!pGfx)
-		{
-			MessageBox(hwnd, L"failed initialize graphics Object", L"error", MB_OK);
-		}
-		return *pGfx;
 	}
 
 	HWND Window::GetHwnd() const
@@ -97,7 +88,7 @@ namespace DXEngine {
 			windowTitle,
 			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT,
-			width, height,
+			m_Width, m_Height,
 			NULL,
 			NULL,
 			hInstance,
@@ -113,9 +104,6 @@ namespace DXEngine {
 
 		ShowWindow(hwnd, nShowWnd);
 		UpdateWindow(hwnd);
-
-		// create graphics object
-		pGfx = std::make_unique<Graphics>(hwnd, width, height);
 
 		Input::Init(new WindowsInput(hwnd));
 
@@ -243,9 +231,9 @@ namespace DXEngine {
 		MSG msg;
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
-			if (msg.message == WM_QUIT)
+			if (msRenderCommand:: message == WM_QUIT)
 			{
-				return (int)msg.wParam;
+				return (int)msRenderCommand:: wParam;
 			}
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);

@@ -2,21 +2,21 @@
 
 namespace DXEngine {
 
-	Ball::Ball(Graphics& gfx, std::shared_ptr<ShaderProgram> program)
+	Ball::Ball( std::shared_ptr<ShaderProgram> program)
 		:
-		Model(gfx, program),
+		Model(, program),
 		sphere(64)
 	{
-		Initialize(gfx);
+		Initialize();
 
-		auto moonMaterial = std::make_shared<Material>(gfx);
-		auto moonTexture = std::make_shared<Texture>(gfx, "assets/textures/8k_moon.jpg");
+		auto moonMaterial = std::make_shared<Material>();
+		auto moonTexture = std::make_shared<Texture>(, "assets/textures/8k_moon.jpg");
 		moonMaterial->SetDiffuse(moonTexture);
 		moonMaterial->SetShaderProgram(program);
 		m_Mesh->SetMaterial(moonMaterial);
 
 	}
-	void  Ball::Initialize(Graphics& g)
+	void  Ball::Initialize()
 	{
 		if (!m_Mesh)
 		{
@@ -24,9 +24,9 @@ namespace DXEngine {
 		}
 	}
 
-	void Ball::Render(Graphics& gfx)
+	void Ball::Render()
 	{
-		Model::Render(gfx);
+		Model::Render();
 	}
 }
 

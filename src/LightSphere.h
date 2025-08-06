@@ -8,8 +8,8 @@ namespace DXEngine {
 	class LightSphere : public Model
 	{
 	public:
-		LightSphere(Graphics& gfx, std::shared_ptr<ShaderProgram> program);
-		void Render(Graphics& gfx) override;
+		LightSphere( std::shared_ptr<ShaderProgram> program);
+		void Render() override;
 	private:
 		Sphere m_Sphere;
 		std::shared_ptr <PointLight> m_Light;

@@ -1,6 +1,6 @@
 #pragma once
 #include "Vertex.h"
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include "VertexBuffer.h"
 #include "VertexShader.h"
 #include "PixelShader.h"
@@ -55,11 +55,11 @@ namespace DXEngine {
 	class Mesh
 	{
 	public:
-		Mesh(Graphics& gfx, const std::shared_ptr<MeshResource>& resource);
+		Mesh( const std::shared_ptr<MeshResource>& resource);
 		~Mesh();
 
 		void SetMaterial(const std::shared_ptr<Material>& material);
-		void Draw(Graphics& gfx);
+		void Draw();
 		const std::shared_ptr<MeshResource>& GetResource() const;
 	private:
 		std::shared_ptr<MeshResource> m_Resource;

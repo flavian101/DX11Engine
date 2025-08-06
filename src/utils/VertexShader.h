@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics.h"
+#include "renderer/RendererCommand.h"
 #include <wrl.h>
 
 namespace DXEngine {
@@ -7,9 +7,9 @@ namespace DXEngine {
 	class VertexShader
 	{
 	public:
-		VertexShader(Graphics& g, LPCWSTR filename);
+		VertexShader( LPCWSTR filename);
 		~VertexShader();
-		void Bind(Graphics& g);
+		void Bind();
 
 		ID3DBlob* GetByteCode();
 

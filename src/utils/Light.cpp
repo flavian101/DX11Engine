@@ -2,15 +2,15 @@
 
 namespace DXEngine {
 
-	Light::Light(Graphics& gfx)
+	Light::Light()
 		:m_LightColor(1.0, 0.85, 0.6, 1.0), m_lightDir(0.0f, -1.0f, 0.0f)
 	{
 	}
 
-	DirectionalLight::DirectionalLight(Graphics& gfx)
-		:Light(gfx)
+	DirectionalLight::DirectionalLight()
+		:Light()
 	{
-		psBuffer.Initialize(gfx);
+		psBuffer.Initialize();
 		psBuffer.data.d_Direction = m_lightDir;
 		psBuffer.data.d_Color = m_LightColor;
 		psBuffer.data.d_Ambient = DirectX::XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
@@ -23,16 +23,16 @@ namespace DXEngine {
 	}
 
 
-	void DirectionalLight::Bind(Graphics& gfx)
+	void DirectionalLight::Bind()
 	{
-		psBuffer.Update(gfx);
-		gfx.GetContext()->PSSetConstantBuffers(BindSlot::CB_Direction_Light, 1, psBuffer.GetAddressOf());
+		psBuffer.Update();
+		RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Direction_Light, 1, psBuffer.GetAddressOf());
 	}
 
-	PointLight::PointLight(Graphics& gfx)
-		:Light(gfx)
+	PointLight::PointLight()
+		:Light()
 	{
-		psBuffer.Initialize(gfx);
+		psBuffer.Initialize();
 		psBuffer.data.p_Color = m_LightColor;
 		psBuffer.data.p_Position = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);
 		psBuffer.data.p_Attenuation = DirectX::XMFLOAT3(0.4f, 0.02f, 0.0f);
@@ -45,10 +45,10 @@ namespace DXEngine {
 	{
 	}
 
-	void PointLight::Bind(Graphics& gfx)
+	void PointLight::Bind()
 	{
-		psBuffer.Update(gfx);
-		gfx.GetContext()->PSSetConstantBuffers(BindSlot::CB_Point_Light, 1, psBuffer.GetAddressOf());
+		psBuffer.Update();
+		RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Point_Light, 1, psBuffer.GetAddressOf());
 
 	}
 
@@ -58,10 +58,10 @@ namespace DXEngine {
 
 	}
 
-	SpotLight::SpotLight(Graphics& gfx)
-		:Light(gfx)
+	SpotLight::SpotLight()
+		:Light()
 	{
-		psBuffer.Initialize(gfx);
+		psBuffer.Initialize();
 		psBuffer.data.s_Color = m_LightColor;
 		psBuffer.data.s_Direction = m_lightDir;
 		psBuffer.data.s_Position = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);
@@ -75,10 +75,10 @@ namespace DXEngine {
 	{
 	}
 
-	void SpotLight::Bind(Graphics& gfx)
+	void SpotLight::Bind()
 	{
-		psBuffer.Update(gfx);
-		gfx.GetContext()->PSSetConstantBuffers(BindSlot::CB_Spot_Light, 1, psBuffer.GetAddressOf());
+		psBuffer.Update();
+		RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Spot_Light, 1, psBuffer.GetAddressOf());
 	}
 	void SpotLight::SetPosition(const DirectX::XMFLOAT3& pos)
 	{
