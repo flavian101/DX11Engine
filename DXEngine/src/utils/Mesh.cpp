@@ -60,22 +60,11 @@ namespace DXEngine {
 
 	}
 
-	void Mesh::Draw()
+	void Mesh::BindBuffers()
 	{
-		if (m_MeshMaterial)
-			m_MeshMaterial->Bind();
-
 		m_VertexBuffer->Bind();
 		m_IndexBuffer->Bind();
-		//psBuffer.data.light.spotPos.x = XMVectorGetX(camPos);
-		//psBuffer.data.light.spotPos.y = XMVectorGetY(camPos);
-		//psBuffer.data.light.spotPos.z = XMVectorGetZ(camPos);
-		//
-		////light dir
-		//psBuffer.data.light.dir.x = XMVectorGetX(camTarget) - psBuffer.data.light.spotPos.x;
-		//psBuffer.data.light.dir.y = XMVectorGetY(camTarget) - psBuffer.data.light.spotPos.y;
-		//psBuffer.data.light.dir.z = XMVectorGetZ(camTarget) - psBuffer.data.light.spotPos.z;
-	//	RenderCommand:: Draw(m_IndexCount);
+		//RenderCommand:: Draw(m_IndexCount);
 	}
 
 	const std::shared_ptr<MeshResource>& Mesh::GetResource() const

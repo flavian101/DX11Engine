@@ -50,18 +50,18 @@ namespace DXEngine {
 		//}
 	}
 
-	void SkySphere::Render()
-	{
-		// Use stored resources instead of creating new ones
-		DirectX::XMFLOAT3 camPos = { DirectX::XMVectorGetX(RenderCommand:: GetCamera().GetPos()),
-							DirectX::XMVectorGetY(RenderCommand:: GetCamera().GetPos()),
-							DirectX::XMVectorGetZ(RenderCommand:: GetCamera().GetPos()) };
-
-		SetTranslation(camPos);
-		RenderCommand:: SetRasterizerMode(RasterizerMode::SolidFrontCull);
-		RenderCommand:: SetDepthLessEqual();
-		Model::Render();
-
-
-	}
+	//void SkySphere::Render()
+	//{
+	//	// Use stored resources instead of creating new ones
+	//	DirectX::XMFLOAT3 camPos = { DirectX::XMVectorGetX(RenderCommand:: GetCamera().GetPos()),
+	//						DirectX::XMVectorGetY(RenderCommand:: GetCamera().GetPos()),
+	//						DirectX::XMVectorGetZ(RenderCommand:: GetCamera().GetPos()) };
+	//
+	//	SetTranslation(camPos);
+	//	RenderCommand:: SetRasterizerMode(RasterizerMode::SolidFrontCull);
+	//	RenderCommand:: SetDepthLessEqual();
+	//	Model::Render();
+	//
+	//
+	//}
 }

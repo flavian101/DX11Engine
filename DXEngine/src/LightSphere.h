@@ -11,7 +11,6 @@ namespace DXEngine {
 	{
 	public:
 		LightSphere(const std::shared_ptr<ShaderProgram>& program);
-		void Render() override;
 	private:
 		Sphere m_Sphere;
 		std::shared_ptr <PointLight> m_Light;

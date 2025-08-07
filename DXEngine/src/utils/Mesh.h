@@ -60,7 +60,11 @@ namespace DXEngine {
 		~Mesh();
 
 		void SetMaterial(const std::shared_ptr<Material>& material);
-		void Draw();
+		const std::shared_ptr<Material>& GetMaterial() const { return m_MeshMaterial; }
+		uint32_t GetIndexCount() const { return m_IndexCount; }
+		const Topology& GetTopology() const { return tp; }
+
+		void BindBuffers();
 		const std::shared_ptr<MeshResource>& GetResource() const;
 	private:
 		std::shared_ptr<MeshResource> m_Resource;

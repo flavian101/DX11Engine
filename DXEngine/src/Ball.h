@@ -12,7 +12,6 @@ namespace DXEngine {
 	{
 	public:
 		Ball(const std::shared_ptr<ShaderProgram>& program);
-		void Render()override;
 	private:
 		void Initialize();
 	private:

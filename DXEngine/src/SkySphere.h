@@ -14,7 +14,6 @@ namespace DXEngine {
 	public:
 		SkySphere(std::shared_ptr<ShaderProgram> program);
 
-		void Render() override;
 		void Initialize();
 
 

@@ -1,5 +1,12 @@
 #include "dxpch.h"
 #include "Renderer.h"
+#include <utils/Material.h>
+#include "models/Model.h"
+#include "utils/Mesh.h"
+#include "utils/ConstantBuffer.h"
+
+
+
 
 namespace DXEngine {
 
@@ -16,32 +23,47 @@ namespace DXEngine {
 		RenderCommand::Shutdown();
 	}
 
-	void Renderer::BeginScene(Camera& camera)
+	void Renderer::BeginScene(const std::shared_ptr<Camera>& camera)
 	{
-		RenderCommand::SetCamera(std::make_shared<Camera>(camera));
+		RenderCommand::SetCamera(camera);
 		RenderCommand::Clear();
 		ResetStats();
 	}
 
-	void Renderer::Submit(Model& model, std::shared_ptr<ShaderProgram> program)
+	void Renderer::Submit(const std::shared_ptr<Model>& model)
 	{
-		// This is where you would bind the model's vertex/index buffers,
-		// set the shader program, update constant buffers with model matrices, etc.
-		// For now, this is a placeholder that shows the structure
+		if (!model->GetMesh())
+			return;
 
-		// Example of what would happen here:
-		// 1. Bind vertex and index buffers from the model
-		// 2. Set the shader program
-		// 3. Update constant buffers (world matrix, view matrix, projection matrix)
-		// 4. Set textures and samplers
-		// 5. Call RenderCommand::DrawIndexed()
+		RenderMesh(model->GetMesh(), model->GetModelMatrix(), model->GetMesh()->GetMaterial());
 
-		// Update statistics
+	}
+
+	void Renderer::Submit(const std::shared_ptr<Model>& model, const std::shared_ptr<Material>& materialOverride)
+	{
+
+		if (!model->GetMesh())
+			return;
+
+		RenderMesh(model->GetMesh(), model->GetModelMatrix(), materialOverride);
+
 		s_Stats.DrawCalls++;
-		// s_Stats.IndexCount += model.GetIndexCount();
-		// s_Stats.VertexCount += model.GetVertexCount();
+	}
 
-		// RenderCommand::DrawIndexed(model.GetIndexCount());
+	void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const DirectX::XMMATRIX& transform)
+	{
+		if (!mesh)
+			return;
+
+		RenderMesh(mesh, transform, mesh->GetMaterial());
+	}
+
+	void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const DirectX::XMMATRIX& transform, const std::shared_ptr<Material>& material)
+	{
+		if (!mesh)
+			return;
+
+		RenderMesh(mesh, transform, material);
 	}
 
 	void Renderer::EndScene()
@@ -59,7 +81,7 @@ namespace DXEngine {
 
 		float aspect = height / width;
 		DirectX::XMMATRIX camProjection = DirectX::XMMatrixPerspectiveLH(1.0f, aspect, 0.5f, 100.0f);
-		//RenderCommand::GetCamera().   //set the projection of the new camera
+		//RenderCommand::GetCamera().   //set the projection of the new camera TO-DO
 		RenderCommand::Resize(width, height);
 	}
 
@@ -71,5 +93,30 @@ namespace DXEngine {
 	Renderer::Statistics Renderer::GetStats()
 	{
 		return s_Stats;
+	}
+	void Renderer::RenderMesh(const std::shared_ptr<Mesh>& mesh, const DirectX::XMMATRIX& transform, const std::shared_ptr<Material>& material)
+	{
+		ConstantBuffer<TransfomBufferData> vsBuffer;
+		vsBuffer.Initialize();
+		vsBuffer.data.WVP = XMMatrixTranspose(transform * RenderCommand::GetCamera().GetView() * RenderCommand::GetCamera().GetProjection());
+		vsBuffer.data.Model = XMMatrixTranspose(transform);
+		vsBuffer.Update();
+		RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Transform, 1, vsBuffer.GetAddressOf());
+
+		if (material)
+			material->Bind();
+
+		mesh->BindBuffers();
+
+		//mesh->GetTopology()Bind();
+
+		RenderCommand::DrawIndexed(mesh->GetIndexCount());
+
+		s_Stats.DrawCalls++;
+		s_Stats.IndexCount += mesh->GetIndexCount();
+
+		//std::cout << "draw calls" << " " << s_Stats.DrawCalls << std::endl;
+		std::cout << "Index Count" << " " << s_Stats.IndexCount<< std::endl;
+
 	}
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include "Camera.h"
-#include "models/Model.h"
 #include "RendererCommand.h"
 #include <memory>
 
@@ -8,6 +7,9 @@ namespace DXEngine {
 
 	// Forward declarations
 	class ShaderProgram;
+	class Model;
+	class Mesh;
+	class Material;
 
 	class Renderer
 	{
@@ -15,10 +17,14 @@ namespace DXEngine {
 		static void Init(HWND hwnd, int width, int height);
 		static void Shutdown();
 
-		static void BeginScene(Camera& camera);
+		static void BeginScene(const std::shared_ptr<Camera>& camera);
 		static void EndScene();
 
-		static void Submit(Model& model, std::shared_ptr<ShaderProgram> program);
+		static void Submit(const std::shared_ptr<Model>& model, const std::shared_ptr<Material>& materialOverride);
+		static void Submit(const std::shared_ptr<Model>& model);
+		static void Submit(const std::shared_ptr<Mesh>& mesh, const DirectX::XMMATRIX& transform);
+		static void Submit(const std::shared_ptr<Mesh>& mesh, const DirectX::XMMATRIX& transform, const std::shared_ptr<Material>& material);
+
 
 		// Scene management
 		static void SetClearColor(float red, float green, float blue, float alpha = 1.0f);
@@ -38,6 +44,7 @@ namespace DXEngine {
 		static Statistics GetStats();
 
 	private:
+		static void RenderMesh(const std::shared_ptr<Mesh>& mesh, const DirectX::XMMATRIX& transform, const std::shared_ptr<Material>& material);
 		static Statistics s_Stats;
 	};
 }

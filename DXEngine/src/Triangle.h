@@ -9,7 +9,6 @@ namespace DXEngine {
 	public:
 		Triangle(const std::shared_ptr<ShaderProgram>& program);
 
-		void Render()override;
 		void Initialize();
 	private:
 

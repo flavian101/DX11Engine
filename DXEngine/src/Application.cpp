@@ -22,12 +22,8 @@ namespace DXEngine {
 
 		Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight());
 
-		// Set clear color
-		Renderer::SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
-
-		// m(window.());
 	}
+
 	bool Application::OnMouseButtonPressed(MouseButtonPressedEvent& e)
 	{
 		return true;
@@ -84,10 +80,6 @@ namespace DXEngine {
 		//}
 		//m_ImGuiLayer->End();
 		//m_Window->OnUpdate();
-
-		RenderCommand::Clear();
-		Renderer::EndScene();
-
 	}
 
 	void Application::OnEvent(Event& e)

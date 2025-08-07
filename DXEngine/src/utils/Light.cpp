@@ -79,6 +79,16 @@ namespace DXEngine {
 	void SpotLight::Bind()
 	{
 		psBuffer.Update();
+		//TO-DO
+
+		//psBuffer.data.light.spotPos.x = XMVectorGetX(camPos);
+		//psBuffer.data.light.spotPos.y = XMVectorGetY(camPos);
+		//psBuffer.data.light.spotPos.z = XMVectorGetZ(camPos);
+		//
+		////light dir
+		//psBuffer.data.light.dir.x = XMVectorGetX(camTarget) - psBuffer.data.light.spotPos.x;
+		//psBuffer.data.light.dir.y = XMVectorGetY(camTarget) - psBuffer.data.light.spotPos.y;
+		//psBuffer.data.light.dir.z = XMVectorGetZ(camTarget) - psBuffer.data.light.spotPos.z;
 		RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Spot_Light, 1, psBuffer.GetAddressOf());
 	}
 	void SpotLight::SetPosition(const DirectX::XMFLOAT3& pos)

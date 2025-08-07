@@ -44,12 +44,4 @@ namespace DXEngine {
 		m_Mesh = std::make_shared<Mesh>(meshData);
 
 	}
-	void Triangle::Render()
-	{
-		Model::Render();
-	}
-
-
-
-
 }

@@ -1,5 +1,4 @@
 #pragma once
-#include "ConstantBuffer.h"
 
 namespace DXEngine {
 
@@ -21,8 +20,7 @@ namespace DXEngine {
 		void Bind();
 
 	private:
-		ConstantBuffer<TransfomBufferData> vsBuffer;
-		DirectX::XMMATRIX m_Transform;
+		DirectX::XMMATRIX m_WorldTransform;
 		DirectX::XMVECTOR m_Scale;
 		DirectX::XMVECTOR m_Translation;
 		DirectX::XMVECTOR m_Rotation;

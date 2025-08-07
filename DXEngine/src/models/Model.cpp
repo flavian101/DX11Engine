@@ -21,18 +21,9 @@ namespace DXEngine {
 
 	}
 
-	void Model::Render()
+	const std::shared_ptr<Mesh>& Model::GetMesh() const
 	{
-		m_ModelTransform->Bind();
-		m_Mesh->Draw();
-	}
-
-	const std::shared_ptr<MeshResource>& Model::GetMeshResource() const
-	{
-		if (m_Mesh)
-			return m_Mesh->GetResource();
-
-		return nullptr;
+		return m_Mesh;
 	}
 
 	HitInfo Model::TestRayIntersection(const Ray& ray)
@@ -40,7 +31,7 @@ namespace DXEngine {
 		if (!m_Mesh || !IsPickable())
 			return HitInfo();
 
-		auto meshResource = GetMeshResource();
+		auto meshResource = m_Mesh->GetResource();
 		if (!meshResource)
 			return HitInfo();
 

@@ -221,6 +221,7 @@ namespace DXEngine {
 	void RenderCommand::DrawIndexed(uint32_t indexCount)
 	{
 		s_Context->DrawIndexed(indexCount, 0, 0);
+
 	}
 
 	void RenderCommand::Resize(int newWidth, int newHeight)
@@ -306,6 +307,7 @@ namespace DXEngine {
 	void RenderCommand::SetCamera(const std::shared_ptr<Camera>& camera)
 	{
 		s_Camera = camera;
+
 	}
 
 	const Camera& RenderCommand::GetCamera()

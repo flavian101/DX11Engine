@@ -1,14 +1,10 @@
 #include "Sandbox.h"
 
 Sandbox::Sandbox()
-	:
+	:Layer("sanbox"),
 	camera(std::make_shared<DXEngine::Camera>(1.0f, 9.0f / 16.0f, 0.5f, 100.0f))
 
-{
-	//DXEngine::RenderCommand::SetCamera(camera);
-	//m_Window.().SetCamera(camera);
-	
-}
+{}
 
 Sandbox::~Sandbox()
 {
@@ -30,24 +26,28 @@ void Sandbox::OnDetach()
 
 void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 {
-	DetectInput(dt);
+	DXEngine::Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
 
 	//window.().ClearDepthColor(0.1f, 0.1f, 0.16f);
 
+	DXEngine::Renderer::BeginScene(camera);
+	DetectInput(dt);
 
-	sky->Render();
-
+	//DXEngine::Renderer::Submit(sky);
 
 	tri->SetScale({ 500.0f, 10.0f, 500.0f });
 	tri->SetTranslation({ 0.0f, 10.0f, 0.0f });
-	tri->Render();
+	DXEngine::Renderer::Submit(tri);
 
 	m_Light->SetTranslation({ 0.0f, 10.0f, 0.0f });
-	m_Light->Render();
+	DXEngine::Renderer::Submit(m_Light);
 
 	ball->SetScale({ 10.0f, 10.0f, 10.0f });
-	ball->SetTranslation({ 30.0f, 30.0f,20.0f });
-	ball->Render();
+	ball->SetTranslation({ 30.0f, 30.0f, 20.0f });
+	DXEngine::Renderer::Submit(ball);
+
+	// End rendering
+	DXEngine::Renderer::EndScene();
 
 }
 

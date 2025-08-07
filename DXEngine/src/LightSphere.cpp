@@ -15,11 +15,11 @@ LightSphere::LightSphere(const std::shared_ptr<ShaderProgram>& program)
 	m_Light = std::make_shared<PointLight>();
 }
 
-void LightSphere::Render()
-{
-	DirectX::XMFLOAT3 lightPos = { DirectX::XMVectorGetX(GetTranslation()),DirectX::XMVectorGetY(GetTranslation()),DirectX::XMVectorGetZ(GetTranslation()) };
-	m_Light->SetPosition(lightPos);
-	m_Light->Bind();
-	Model::Render();
-}
+//void LightSphere::Render()
+//{
+//	DirectX::XMFLOAT3 lightPos = { DirectX::XMVectorGetX(GetTranslation()),DirectX::XMVectorGetY(GetTranslation()),DirectX::XMVectorGetZ(GetTranslation()) };
+//	m_Light->SetPosition(lightPos);
+//	m_Light->Bind();
+//	Model::Render();
+//}
 }

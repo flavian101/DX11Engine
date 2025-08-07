@@ -21,13 +21,14 @@ namespace DXEngine {
 		const DirectX::XMVECTOR& GetScale()const;
 		void SetRotation(const DirectX::XMVECTOR& rotation);
 		const DirectX::XMVECTOR& GetRotation()const;
+		const DirectX::XMMATRIX& GetModelMatrix() const override;
+
 
 
 		virtual void Update();
-		virtual void Render();
 
 		bool IsSelected()const { return m_IsSelected; }
-		const std::shared_ptr<MeshResource>& GetMeshResource() const;
+		const std::shared_ptr<Mesh>& GetMesh()const;
 
 
 
@@ -42,7 +43,6 @@ namespace DXEngine {
 		// Inherited via InterfacePickable
 		HitInfo TestRayIntersection(const Ray& ray)override;
 
-		const DirectX::XMMATRIX& GetModelMatrix() const override;
 
 		void OnPicked()override;
 

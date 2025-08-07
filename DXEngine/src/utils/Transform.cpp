@@ -5,8 +5,7 @@ namespace DXEngine {
 
 	Transform::Transform()
 	{
-		vsBuffer.Initialize();
-		m_Transform = DirectX::XMMatrixIdentity();
+		m_WorldTransform = DirectX::XMMatrixIdentity();
 		m_Translation = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 		m_Scale = DirectX::XMVectorSet(1.0f, 1.0f, 1.0f, 0.0f);
 		m_Rotation = DirectX::XMQuaternionIdentity();
@@ -44,20 +43,11 @@ namespace DXEngine {
 
 	const DirectX::XMMATRIX& Transform::GetTransform() const
 	{
-		return m_Transform;
+		return DirectX::XMMatrixScalingFromVector(m_Scale) *
+				DirectX::XMMatrixRotationQuaternion(m_Rotation) *
+				DirectX::XMMatrixTranslationFromVector(m_Translation);
 	}
 
-	void Transform::Bind()
-	{
-		m_Transform = DirectX::XMMatrixScalingFromVector(m_Scale) *
-			DirectX::XMMatrixRotationQuaternion(m_Rotation) *
-			DirectX::XMMatrixTranslationFromVector(m_Translation);
 
-		vsBuffer.data.WVP = XMMatrixTranspose(m_Transform * RenderCommand:: GetCamera().GetView() * RenderCommand:: GetCamera().GetProjection());
-		vsBuffer.data.Model = XMMatrixTranspose(m_Transform);
-		vsBuffer.Update();
-		RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Transform, 1, vsBuffer.GetAddressOf());
-
-	}
 
 }

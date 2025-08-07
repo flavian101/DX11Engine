@@ -24,10 +24,5 @@ namespace DXEngine {
 			m_Mesh = std::make_shared<Mesh>(sphere.getMeshResource());
 		}
 	}
-
-	void Ball::Render()
-	{
-		Model::Render();
-	}
 }
 
