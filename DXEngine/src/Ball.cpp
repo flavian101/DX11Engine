@@ -1,20 +1,24 @@
 #include "dxpch.h"
 #include "Ball.h"
+#include <utils/material/Material.h>
 
 namespace DXEngine {
 
-	Ball::Ball(const std::shared_ptr<ShaderProgram>& program)
+	Ball::Ball()
 		:
-		Model(program),
+		Model(),
 		sphere(64)
 	{
 		Initialize();
 
-		auto moonMaterial = std::make_shared<Material>();
+		auto moonMaterial = DXEngine::MaterialFactory::CreateTexturedMaterial("MoonMaterial");
 		auto moonTexture = std::make_shared<Texture>("assets/textures/8k_moon.jpg");
-		moonMaterial->SetDiffuse(moonTexture);
-		moonMaterial->SetShaderProgram(program);
+		moonMaterial->SetDiffuseTexture(moonTexture);
+		moonMaterial->SetSpecularColor({ 0.2f, 0.2f, 0.2f, 1.0f });
+		moonMaterial->SetShininess(16.0f);
+
 		m_Mesh->SetMaterial(moonMaterial);
+
 
 	}
 	void  Ball::Initialize()

@@ -11,7 +11,7 @@ namespace DXEngine {
 	class Model : public InterfacePickable
 	{
 	public:
-		Model(const std::shared_ptr<ShaderProgram>& program);
+		Model();
 
 		~Model();
 
@@ -21,7 +21,7 @@ namespace DXEngine {
 		const DirectX::XMVECTOR& GetScale()const;
 		void SetRotation(const DirectX::XMVECTOR& rotation);
 		const DirectX::XMVECTOR& GetRotation()const;
-		const DirectX::XMMATRIX& GetModelMatrix() const override;
+		DirectX::XMMATRIX GetModelMatrix() const override;
 
 
 

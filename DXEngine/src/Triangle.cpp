@@ -1,23 +1,25 @@
 #include "dxpch.h"
 #include "Triangle.h"
-#include "utils/Material.h"
+#include "utils/material/Material.h"
 #include <utils/Vertex.h>
 #include <utils/Mesh.h>
+#include "utils/Texture.h"
 
 namespace DXEngine {
 
 
-	Triangle::Triangle(const std::shared_ptr<ShaderProgram>& program)
+	Triangle::Triangle()
 		:
-		Model(program)
+		Model()
 	{
 		Initialize();
-		auto grassMaterial = std::make_shared<Material>();
+		auto grassMaterial = MaterialFactory::CreateTexturedNormalMaterial("Ground Material");
 		auto grassDiffuse = std::make_shared<Texture>("assets/textures/grass.jpg");
 		auto grassNormal = std::make_shared<Texture>("assets/textures/grassNormal.jpg");
-		grassMaterial->SetShaderProgram(program);
-		grassMaterial->SetDiffuse(grassDiffuse);
-		grassMaterial->SetNormalMap(grassNormal);
+		grassMaterial->SetDiffuseTexture(grassDiffuse);
+		grassMaterial->SetNormalTexture(grassNormal);
+		grassMaterial->SetTextureScale({ 100.0f, 100.0f });
+
 		m_Mesh->SetMaterial(grassMaterial);
 	}
 	void Triangle::Initialize()

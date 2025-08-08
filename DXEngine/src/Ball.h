@@ -11,7 +11,7 @@ namespace DXEngine {
 	class Ball : public Model
 	{
 	public:
-		Ball(const std::shared_ptr<ShaderProgram>& program);
+		Ball();
 	private:
 		void Initialize();
 	private:

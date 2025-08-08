@@ -7,7 +7,7 @@ namespace DXEngine {
 	class Triangle : public Model
 	{
 	public:
-		Triangle(const std::shared_ptr<ShaderProgram>& program);
+		Triangle();
 
 		void Initialize();
 	private:

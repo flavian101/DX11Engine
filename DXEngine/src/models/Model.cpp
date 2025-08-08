@@ -7,7 +7,7 @@
 
 namespace DXEngine {
 
-	Model::Model(const std::shared_ptr<ShaderProgram>& program)
+	Model::Model()
 	{
 		m_ModelTransform = std::make_shared<Transform>();
 	}
@@ -42,7 +42,7 @@ namespace DXEngine {
 			this);
 	}
 
-	const  DirectX::XMMATRIX& Model::GetModelMatrix() const
+	DirectX::XMMATRIX Model::GetModelMatrix() const
 	{
 		if (!m_ModelTransform)
 			return  DirectX::XMMatrixIdentity();
@@ -60,7 +60,6 @@ namespace DXEngine {
 		m_IsSelected = false;
 
 	}
-
 
 	void Model::SetTranslation(const DirectX::XMFLOAT3& translation)
 	{

@@ -2,7 +2,7 @@
 
 Sandbox::Sandbox()
 	:Layer("sanbox"),
-	camera(std::make_shared<DXEngine::Camera>(1.0f, 9.0f / 16.0f, 0.5f, 100.0f))
+	camera(std::make_shared<DXEngine::Camera>(1.0f, 16.0f / 9.0f, 0.5f, 100.0f))
 
 {}
 
@@ -13,11 +13,14 @@ Sandbox::~Sandbox()
 void Sandbox::OnAttach()
 {
 	m_ShaderManager = std::make_shared<DXEngine::ShaderManager>();
+	m_ShaderManager->Initialize();
 
-	tri = std::make_shared<DXEngine::Triangle>(m_ShaderManager->GetShaderProgram("DiffuseNormal"));
-	ball = std::make_shared<DXEngine::Ball>(m_ShaderManager->GetShaderProgram("DiffuseNormal"));
-	sky = std::make_shared<DXEngine::SkySphere>( m_ShaderManager->GetShaderProgram("SkyShader"));
-	m_Light = std::make_shared<DXEngine::LightSphere>(m_ShaderManager->GetShaderProgram("Flat"));
+	DXEngine::Renderer::InitShaderManager(m_ShaderManager);
+
+	tri = std::make_shared<DXEngine::Triangle>();
+	ball = std::make_shared<DXEngine::Ball>();
+	sky = std::make_shared<DXEngine::SkySphere>();
+	m_Light = std::make_shared<DXEngine::LightSphere>();
 }
 
 void Sandbox::OnDetach()
@@ -33,20 +36,43 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	DXEngine::Renderer::BeginScene(camera);
 	DetectInput(dt);
 
-	//DXEngine::Renderer::Submit(sky);
+	if (sky)
+	{
+		// Position sky sphere at camera position
+		DirectX::XMFLOAT3 camPos = {
+			DirectX::XMVectorGetX(camera->GetPos()),
+			DirectX::XMVectorGetY(camera->GetPos()),
+			DirectX::XMVectorGetZ(camera->GetPos())
+		};
+		sky->SetTranslation(camPos);
+		sky->SetScale({ 50.0f, 50.0f, 50.0f });
+		DXEngine::Renderer::Submit(sky);
 
-	tri->SetScale({ 500.0f, 10.0f, 500.0f });
-	tri->SetTranslation({ 0.0f, 10.0f, 0.0f });
-	DXEngine::Renderer::Submit(tri);
+	}
 
-	m_Light->SetTranslation({ 0.0f, 10.0f, 0.0f });
-	DXEngine::Renderer::Submit(m_Light);
+	// Ground
+	if (tri)
+	{
+		tri->SetScale({ 500.0f, 10.0f, 500.0f });
+		tri->SetTranslation({ 0.0f, 10.0f, 0.0f });
+		DXEngine::Renderer::SubmitImmediate(tri);
+	}
 
-	ball->SetScale({ 10.0f, 10.0f, 10.0f });
-	ball->SetTranslation({ 30.0f, 30.0f, 20.0f });
-	DXEngine::Renderer::Submit(ball);
+	// Moon/Ball
+	if (ball)
+	{
+		ball->SetScale({ 10.0f, 10.0f, 10.0f });
+		ball->SetTranslation({ 30.0f, 30.0f, 20.0f });
+		DXEngine::Renderer::Submit(ball);
+	}
 
-	// End rendering
+	// Light sphere
+	if (m_Light)
+	{
+		m_Light->SetTranslation({ 0.0f, 10.0f, 0.0f });
+		m_Light->SetScale({ 2.0f, 2.0f, 2.0f });
+		DXEngine::Renderer::Submit(m_Light);
+	}
 	DXEngine::Renderer::EndScene();
 
 }
@@ -93,6 +119,41 @@ void Sandbox::DetectInput(double time)
 	if (DXEngine::Input::IsKeyPressed('D'))
 	{
 		camera->moveLeftRight += speed;
+		std::cout << "D was pressed" << std::endl;
+	}
+
+	// Toggle wireframe mode
+	if (DXEngine::Input::IsKeyPressed('T'))
+	{
+		static bool wireframeToggled = false;
+		if (!wireframeToggled)
+		{
+			DXEngine::Renderer::EnableWireframe(!m_WireframeMode);
+			m_WireframeMode = !m_WireframeMode;
+			wireframeToggled = true;
+		}
+	}
+	else
+	{
+		static bool wireframeToggled = false;
+		wireframeToggled = false;
+	}
+
+	// Toggle debug info
+	if (DXEngine::Input::IsKeyPressed('I'))
+	{
+		static bool debugToggled = false;
+		if (!debugToggled)
+		{
+			DXEngine::Renderer::EnableDebugInfo(!m_DebugMode);
+			m_DebugMode = !m_DebugMode;
+			debugToggled = true;
+		}
+	}
+	else
+	{
+		static bool debugToggled = false;
+		debugToggled = false;
 	}
 
 	camera->UpdateCamera();

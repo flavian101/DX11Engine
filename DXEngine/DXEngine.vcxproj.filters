@@ -106,7 +106,7 @@
     <ClInclude Include="src\utils\Light.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Material.h">
+    <ClInclude Include="src\utils\material\Material.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Mesh.h">
@@ -139,6 +139,8 @@
     <ClInclude Include="src\windows\WindowsInput.h">
       <Filter>windows</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\material\MaterialTypes.h" />
+    <ClInclude Include="src\utils\material\MaterialProperties.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -193,7 +195,7 @@
     <ClCompile Include="src\utils\Light.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\Material.cpp">
+    <ClCompile Include="src\utils\material\Material.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Mesh.cpp">

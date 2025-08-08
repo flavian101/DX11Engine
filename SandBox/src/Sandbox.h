@@ -42,5 +42,7 @@ private:
 	// Mouse state for picking
 	float m_LastMouseX = 0.0f;
 	float m_LastMouseY = 0.0f;
+	bool m_WireframeMode = false;
+	bool m_DebugMode = false;
 };
 

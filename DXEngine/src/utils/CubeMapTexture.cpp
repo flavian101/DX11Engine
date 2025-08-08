@@ -4,10 +4,8 @@
 
 namespace DXEngine {
 
-    CubeMapTexture::CubeMapTexture(const char* filename[6], UINT slot)
-        :
-        slot(slot)
-    {
+    CubeMapTexture::CubeMapTexture(const char* filename[6])
+     {
         // Load the cubemap faces from the specified files
         int width, height, channels;
         unsigned char* pData[6];
@@ -79,7 +77,7 @@ namespace DXEngine {
         skyTexture.Reset();
     }
 
-    void CubeMapTexture::Bind()
+    void CubeMapTexture::Bind(UINT slot)
     {
         RenderCommand::GetContext()->PSSetShaderResources(slot, 1, skyTextureView.GetAddressOf());
     }

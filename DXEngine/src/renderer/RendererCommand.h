@@ -40,7 +40,7 @@ namespace DXEngine {
 
 		// Camera management
 		static void SetCamera(const std::shared_ptr<Camera>& camera);
-		static const Camera& GetCamera();
+		static const std::shared_ptr<Camera>& GetCamera();
 
 		//D3D Wrappers
 		static void CreateTexture2D();

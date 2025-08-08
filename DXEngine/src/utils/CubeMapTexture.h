@@ -7,12 +7,11 @@ namespace DXEngine {
 	class CubeMapTexture
 	{
 	public:
-		CubeMapTexture(const char* filename[6], UINT slot = 1u);
+		CubeMapTexture(const char* filename[6]);
 		~CubeMapTexture();
-		void Bind();
+		void Bind(UINT slot);
 
 	private:
-		UINT slot;
 		Microsoft::WRL::ComPtr< ID3D11ShaderResourceView> skyTextureView;
 		Microsoft::WRL::ComPtr < ID3D11Texture2D>skyTexture;
 	};

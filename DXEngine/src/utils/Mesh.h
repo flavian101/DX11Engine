@@ -9,7 +9,7 @@
 #include "IndexBuffer.h"
 #include "ConstantBuffer.h"
 #include "Sampler.h"
-#include "Material.h"
+#include "material/Material.h"
 #include <memory>
 
 

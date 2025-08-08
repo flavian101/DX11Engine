@@ -1,16 +1,17 @@
 #include "dxpch.h"
 #include "LightSphere.h"
+#include "utils/Texture.h"
+
 
 namespace DXEngine {
 
 
-LightSphere::LightSphere(const std::shared_ptr<ShaderProgram>& program)
-	:Model(program),
+LightSphere::LightSphere()
+	:Model(),
 	m_Sphere(64)
 {
 	m_Mesh = std::make_shared<Mesh>(m_Sphere.getMeshResource());
 	auto flat = std::make_shared<Material>();
-	flat->SetShaderProgram(program);
 	m_Mesh->SetMaterial(flat);
 	m_Light = std::make_shared<PointLight>();
 }

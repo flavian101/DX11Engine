@@ -1,8 +1,16 @@
 cbuffer MaterialBufferData : register(b1)
 {
-    float4 difColor;
-    bool hasTexture;
-    bool hasNormalMap;
+    float4 diffuseColor;
+    float4 specularColor;
+    float4 emissiveColor;
+    float shininess;
+    float metallic;
+    float roughness;
+    float alpha;
+    float2 textureScale;
+    float2 textureOffset;
+    uint flags;
+    float padding;
 };
 
 cbuffer DirectionalLightData : register(b2)
@@ -11,7 +19,7 @@ cbuffer DirectionalLightData : register(b2)
     float4 d_Ambient;
     float4 d_Diffuse;
     float3 d_Direction;
-    int d_Enable;
+    int d_Enabled;
 };
 
 cbuffer PointLightData : register(b3)
@@ -43,52 +51,40 @@ struct PS_input
     float4 tangents : TANGENT;
 };
 
-Texture2D tex : register(t0);
+Texture2D diffuseTexture : register(t0);
 Texture2D normalMap : register(t1);
-SamplerState samp;
+SamplerState textureSampler : register(s0);
 
-// Helper function to calculate basic lighting components
-struct LightResult
-{
-    float3 diffuse;
-    float3 ambient;
-};
-
-float3 CalculateSpotLight(PS_input input, float4 baseColor)
+float3 CalculateSpotLight(PS_input input, float4 baseColor, float3 worldNormal)
 {
     float3 lightToPixelVec = s_Position - input.worldPos.xyz;
     float distance = length(lightToPixelVec);
     
-    // Early exit if beyond range
     if (distance > s_Range)
         return float3(0.0f, 0.0f, 0.0f);
         
-    lightToPixelVec /= distance; // Normalize
+    lightToPixelVec /= distance;
     
-    // Calculate diffuse lighting
-    float nDotL = saturate(dot(lightToPixelVec, input.normal));
+    float nDotL = saturate(dot(lightToPixelVec, worldNormal));
     
     if (nDotL <= 0.0f)
         return float3(0.0f, 0.0f, 0.0f);
     
-    // Calculate attenuation
     float attenuation = 1.0f / (s_Attenuation[0] +
                                (s_Attenuation[1] * distance) +
                                (s_Attenuation[2] * distance * distance));
     
-    // Calculate spot cone falloff
     float spotEffect = pow(max(dot(-lightToPixelVec, normalize(s_Direction)), 0.0f), s_Cone);
     
-    // Combine all factors
     float3 lightContrib = baseColor.rgb * s_Color.rgb * nDotL * attenuation * spotEffect;
     
     return lightContrib;
 }
 
-float3 CalculateDirectionalLight(float3 nWorld, float4 baseColor)
+float3 CalculateDirectionalLight(float3 worldNormal, float4 baseColor)
 {
-    float3 lightDir = normalize(-d_Direction); // Assuming d_Direction points away from light
-    float nDotL = saturate(dot(nWorld, lightDir));
+    float3 lightDir = normalize(-d_Direction);
+    float nDotL = saturate(dot(worldNormal, lightDir));
     
     // Ambient contribution
     float3 ambient = baseColor.rgb * d_Ambient.rgb;
@@ -99,30 +95,25 @@ float3 CalculateDirectionalLight(float3 nWorld, float4 baseColor)
     return ambient + diffuse;
 }
 
-float3 CalculatePointLight(PS_input input, float4 baseColor, float3 nWorld)
+float3 CalculatePointLight(PS_input input, float4 baseColor, float3 worldNormal)
 {
-    
     float3 lightToPixelVec = p_Position - input.worldPos.xyz;
     float distance = length(lightToPixelVec);
     
-    // Early exit if beyond range
     if (distance > p_Range)
         return float3(0.0f, 0.0f, 0.0f);
         
-    lightToPixelVec /= distance; // Normalize
+    lightToPixelVec /= distance;
     
-    // Calculate diffuse lighting
-    float nDotL = saturate(dot(nWorld,lightToPixelVec));
+    float nDotL = saturate(dot(worldNormal, lightToPixelVec));
     
     if (nDotL <= 0.0f)
         return float3(0.0f, 0.0f, 0.0f);
     
-    // Calculate attenuation
     float attenuation = 1.0f / (p_Attenuation[0] +
                                (p_Attenuation[1] * distance) +
                                (p_Attenuation[2] * distance * distance));
     
-    // Combine factors
     float3 lightContrib = baseColor.rgb * p_Color.rgb * nDotL * attenuation;
     
     return lightContrib;
@@ -134,61 +125,55 @@ float4 main(PS_input input) : SV_Target
     input.normal = normalize(input.normal);
     
     // Sample the base texture
-    float4 baseColor =  float4(1.0f, 1.0f, 1.0f, 1.0f);
-    if(hasTexture)
+    float4 baseColor = diffuseColor;
+    if (flags & 1) // HasDiffuseTexture flag
     {
-        baseColor = tex.Sample(samp, input.texCoords);
+        float2 scaledUV = input.texCoords * textureScale + textureOffset;
+        baseColor = diffuseTexture.Sample(textureSampler, scaledUV);
+        baseColor *= diffuseColor; // Modulate with material color
     }
-    else
+    
+    // Calculate world space normal
+    float3 worldNormal;
+    if (flags & 2) // HasNormalMap flag
     {
-        baseColor = difColor;
+        float2 scaledUV = input.texCoords * textureScale + textureOffset;
+        float3 normalSampleTS = normalMap.Sample(textureSampler, scaledUV).rgb * 2.0f - 1.0f;
 
-    }
-    float3 nWorld;
-    if(hasNormalMap)
-    {
-        float3 nSampleTS = normalMap.Sample(samp, input.texCoords).rgb * 2.0f - 1.0f;
-
-    // Normalize vertex axes
+        // Normalize vertex axes
         float3 T = normalize(input.tangents.xyz);
         float3 N = normalize(input.normal);
         float3 B = normalize(cross(N, T) * input.tangents.w);
 
-        nWorld = normalize(
-        nSampleTS.x * T +
-        nSampleTS.y * B +
-        nSampleTS.z * N
-    );
-        
+        worldNormal = normalize(
+            normalSampleTS.x * T +
+            normalSampleTS.y * B +
+            normalSampleTS.z * N
+        );
     }
     else
     {
-        nWorld = input.normal;
-
+        worldNormal = input.normal;
     }
     
-    // Initialize final color (start with black, no ambient globally)
-    float3 finalColor = float3(0.0f, 0.0f, 0.0f);
+    // Initialize final color with emissive
+    float3 finalColor = emissiveColor.rgb;
     
     // Add contributions from each active light type
-    if (d_Enable)
+    if (d_Enabled)
     {
-        finalColor += CalculateDirectionalLight(nWorld, baseColor);
+        finalColor += CalculateDirectionalLight(worldNormal, baseColor);
     }
     
     if (p_Enabled)
     {
-        finalColor += CalculatePointLight(input, baseColor, nWorld);
+        finalColor += CalculatePointLight(input, baseColor, worldNormal);
     }
     
     if (s_Enabled)
     {
-        finalColor += CalculateSpotLight(input, baseColor);
+        finalColor += CalculateSpotLight(input, baseColor, worldNormal);
     }
     
-    // Ensure we don't exceed 1.0 (optional, depending on your HDR setup)
-    // finalColor = saturate(finalColor);
-    
-    // Return final color with original alpha
-    return float4(finalColor, baseColor.a);
+    return float4(finalColor, baseColor.a * alpha);
 }

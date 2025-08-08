@@ -21,6 +21,7 @@ namespace DXEngine {
 		m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
 		Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight());
+		
 
 	}
 

@@ -13,7 +13,7 @@ namespace DXEngine {
 
 		virtual HitInfo TestRayIntersection(const Ray& ray) = 0; 
 
-		virtual const DirectX::XMMATRIX& GetModelMatrix() const = 0;
+		virtual DirectX::XMMATRIX GetModelMatrix() const = 0;
 
 		virtual void OnPicked() = 0;
 

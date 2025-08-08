@@ -12,7 +12,7 @@ namespace DXEngine {
 	{
 
 	public:
-		SkySphere(std::shared_ptr<ShaderProgram> program);
+		SkySphere();
 
 		void Initialize();
 

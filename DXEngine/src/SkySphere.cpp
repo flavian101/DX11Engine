@@ -1,12 +1,17 @@
 #include "dxpch.h"
 #include "SkySphere.h"
+#include <utils/material/Material.h>
+#include "utils/CubeMapTexture.h"
+
 namespace DXEngine {
 
-	SkySphere::SkySphere( std::shared_ptr<ShaderProgram> program)
-		:Model(program)
+	SkySphere::SkySphere()
+		:Model()
 	{
 		sphere = std::make_unique<Sphere>("flavian", 4);
 		Initialize();
+
+		auto skyMaterial = DXEngine::MaterialFactory::CreateSkyboxMaterial("SkyMaterial");
 
 		const char* skyFilename[6] = {
 		"assets/textures/NightSky/nightBack.png",
@@ -36,9 +41,7 @@ namespace DXEngine {
 	   //	"assets/textures/SpaceBox/5.png"
 	   //};
 		auto skyTexture = std::make_shared<CubeMapTexture>(skyFilename);
-		auto skyMaterial = std::make_shared<Material>();
-		skyMaterial->SetShaderProgram(program);
-		skyMaterial->SetSkyMaterial(skyTexture);
+		skyMaterial->SetEnvironmentTexture(skyTexture);
 		m_Mesh->SetMaterial(skyMaterial);
 	}
 

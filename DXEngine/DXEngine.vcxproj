@@ -113,6 +113,8 @@
     <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\Sphere.h" />
     <ClInclude Include="src\Triangle.h" />
+    <ClInclude Include="src\utils\material\MaterialProperties.h" />
+    <ClInclude Include="src\utils\material\MaterialTypes.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\dxpch.h" />
     <ClInclude Include="src\models\Model.h" />
@@ -130,7 +132,7 @@
     <ClInclude Include="src\utils\IndexBuffer.h" />
     <ClInclude Include="src\utils\InputLayout.h" />
     <ClInclude Include="src\utils\Light.h" />
-    <ClInclude Include="src\utils\Material.h" />
+    <ClInclude Include="src\utils\material\Material.h" />
     <ClInclude Include="src\utils\Mesh.h" />
     <ClInclude Include="src\utils\PixelShader.h" />
     <ClInclude Include="src\utils\Sampler.h" />
@@ -169,7 +171,7 @@
     <ClCompile Include="src\utils\IndexBuffer.cpp" />
     <ClCompile Include="src\utils\InputLayout.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
-    <ClCompile Include="src\utils\Material.cpp" />
+    <ClCompile Include="src\utils\material\Material.cpp" />
     <ClCompile Include="src\utils\Mesh.cpp" />
     <ClCompile Include="src\utils\PixelShader.cpp" />
     <ClCompile Include="src\utils\Sampler.cpp" />

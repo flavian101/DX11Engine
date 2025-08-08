@@ -53,7 +53,7 @@ namespace DXEngine {
 		stbi_image_free(data);
 	}
 
-	void Texture::Bind( UINT slot)
+	void Texture::Bind(UINT slot)
 	{
 		RenderCommand::GetContext()->PSSetShaderResources(slot, 1, textureView.GetAddressOf());
 	}
