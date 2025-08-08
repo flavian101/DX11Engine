@@ -9,6 +9,7 @@
 #include "Event/MouseEvent.h"
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
+#include "utils/Light.h"
 
 #include "Core/LayerStack.h"
 #include <FrameTime.h>

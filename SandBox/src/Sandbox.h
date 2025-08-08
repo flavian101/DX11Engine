@@ -36,6 +36,7 @@ private:
 	std::shared_ptr<DXEngine::SkySphere> sky;
 	std::shared_ptr<DXEngine::Ball> ball;
 	std::shared_ptr<DXEngine::LightSphere> m_Light;
+
 	//Window wnd;
 	std::unique_ptr<DXEngine::PickingManager> m_PickingManager;
 

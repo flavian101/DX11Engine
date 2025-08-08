@@ -10,6 +10,7 @@ namespace DXEngine {
 		Light();
 		virtual ~Light() = default;
 		virtual void Bind() = 0;
+		const DirectX::XMFLOAT4& GetLightColor() { return m_LightColor; }
 
 	protected:
 		DirectX::XMFLOAT4 m_LightColor;
@@ -18,7 +19,7 @@ namespace DXEngine {
 	};
 
 
-	class DirectionalLight : Light
+	class DirectionalLight : public Light
 	{
 	public:
 		DirectionalLight();

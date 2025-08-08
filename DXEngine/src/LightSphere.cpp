@@ -11,9 +11,15 @@ LightSphere::LightSphere()
 	m_Sphere(64)
 {
 	m_Mesh = std::make_shared<Mesh>(m_Sphere.getMeshResource());
-	auto flat = std::make_shared<Material>();
+	auto flat = MaterialFactory::CreateUnlitMaterial("TestUnlit");
 	m_Mesh->SetMaterial(flat);
-	m_Light = std::make_shared<PointLight>();
+	m_Light = std::make_shared<DirectionalLight>();
+
+	flat->SetDiffuseColor(m_Light->GetLightColor());
+}
+void LightSphere::BindLight()
+{
+	m_Light->Bind();
 }
 
 //void LightSphere::Render()

@@ -66,6 +66,7 @@ namespace DXEngine {
 	void Application::Render()
 	{
 		FrameTime deltatime;
+		deltatime.Mark();
 
 		if (!m_Minimized)
 		{

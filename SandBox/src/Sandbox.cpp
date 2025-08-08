@@ -2,7 +2,7 @@
 
 Sandbox::Sandbox()
 	:Layer("sanbox"),
-	camera(std::make_shared<DXEngine::Camera>(1.0f, 16.0f / 9.0f, 0.5f, 100.0f))
+	camera(std::make_shared<DXEngine::Camera>(1.0f,  9.0f/ 16.0f, 0.5f, 100.0f))
 
 {}
 
@@ -54,15 +54,15 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	if (tri)
 	{
 		tri->SetScale({ 500.0f, 10.0f, 500.0f });
-		tri->SetTranslation({ 0.0f, 10.0f, 0.0f });
-		DXEngine::Renderer::SubmitImmediate(tri);
+		tri->SetTranslation({ 0.0f,0.0f, 0.0f });
+		DXEngine::Renderer::Submit(tri);
 	}
 
 	// Moon/Ball
 	if (ball)
 	{
-		ball->SetScale({ 10.0f, 10.0f, 10.0f });
-		ball->SetTranslation({ 30.0f, 30.0f, 20.0f });
+		//ball->SetScale({ 10.0f, 10.0f, 10.0f });
+		ball->SetTranslation({ 0.0f, 5.0f, 0.0f });
 		DXEngine::Renderer::Submit(ball);
 	}
 
@@ -70,7 +70,8 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	if (m_Light)
 	{
 		m_Light->SetTranslation({ 0.0f, 10.0f, 0.0f });
-		m_Light->SetScale({ 2.0f, 2.0f, 2.0f });
+		m_Light->SetScale({ 1.0f, 1.0f, 1.0f });
+		m_Light->BindLight();
 		DXEngine::Renderer::Submit(m_Light);
 	}
 	DXEngine::Renderer::EndScene();
@@ -103,7 +104,8 @@ void Sandbox::OnEvent(DXEngine::Event& event)
 //}
 void Sandbox::DetectInput(double time)
 {
-	float speed = time * 0.025f;
+	float speed = time * 300.5f;
+
 	if (DXEngine::Input::IsKeyPressed('W'))
 	{
 		camera->moveBackForward += speed;
@@ -119,7 +121,6 @@ void Sandbox::DetectInput(double time)
 	if (DXEngine::Input::IsKeyPressed('D'))
 	{
 		camera->moveLeftRight += speed;
-		std::cout << "D was pressed" << std::endl;
 	}
 
 	// Toggle wireframe mode

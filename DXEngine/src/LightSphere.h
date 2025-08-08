@@ -11,9 +11,10 @@ namespace DXEngine {
 	{
 	public:
 		LightSphere();
+		void BindLight();
 	private:
 		Sphere m_Sphere;
-		std::shared_ptr <PointLight> m_Light;
+		std::shared_ptr <DirectionalLight> m_Light;
 
 	};
 

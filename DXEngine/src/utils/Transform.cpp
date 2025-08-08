@@ -41,7 +41,7 @@ namespace DXEngine {
 		return m_Rotation;
 	}
 
-	const DirectX::XMMATRIX& Transform::GetTransform() const
+	DirectX::XMMATRIX Transform::GetTransform() const
 	{
 		return DirectX::XMMatrixScalingFromVector(m_Scale) *
 				DirectX::XMMatrixRotationQuaternion(m_Rotation) *
