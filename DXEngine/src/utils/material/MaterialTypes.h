@@ -13,7 +13,8 @@ namespace DXEngine
 		Skybox,
 		Transparent,
 		Emissive,
-		PBR
+		PBR,
+		UI,
 	};
 
 	//material config flags 
@@ -46,7 +47,8 @@ namespace DXEngine
 		Background = 1000,
 		Opaque = 2000,
 		Transparent = 3000,
-		Overlay = 4000
+		UI = 4000,
+		Overlay = 5000
 	};
 
 }

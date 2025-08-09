@@ -144,6 +144,11 @@
     <ClInclude Include="src\utils\VertexShader.h" />
     <ClInclude Include="src\windows\WindowsInput.h" />
     <ClInclude Include="src\utils\UI\UIElement.h" />
+    <ClInclude Include="src\utils\UI\UIPanel.h" />
+    <ClInclude Include="src\utils\UI\UIButton.h" />
+    <ClInclude Include="src\utils\UI\UIText.h" />
+    <ClInclude Include="src\utils\UI\UILayer.h" />
+    <ClInclude Include="src\utils\UI\UIManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -184,6 +189,11 @@
     <ClCompile Include="src\utils\VertexShader.cpp" />
     <ClCompile Include="src\windows\WindowsInput.cpp" />
     <ClCompile Include="src\utils\UI\UIElement.cpp" />
+    <ClCompile Include="src\utils\UI\UIPanel.cpp" />
+    <ClCompile Include="src\utils\UI\UIButton.cpp" />
+    <ClCompile Include="src\utils\UI\UIText.cpp" />
+    <ClCompile Include="src\utils\UI\UILayer.cpp" />
+    <ClCompile Include="src\utils\UI\UIManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

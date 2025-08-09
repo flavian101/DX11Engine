@@ -142,6 +142,11 @@
     <ClInclude Include="src\utils\material\MaterialTypes.h" />
     <ClInclude Include="src\utils\material\MaterialProperties.h" />
     <ClInclude Include="src\utils\UI\UIElement.h" />
+    <ClInclude Include="src\utils\UI\UIPanel.h" />
+    <ClInclude Include="src\utils\UI\UIButton.h" />
+    <ClInclude Include="src\utils\UI\UIText.h" />
+    <ClInclude Include="src\utils\UI\UILayer.h" />
+    <ClInclude Include="src\utils\UI\UIManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -230,5 +235,10 @@
       <Filter>windows</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\UI\UIElement.cpp" />
+    <ClCompile Include="src\utils\UI\UIPanel.cpp" />
+    <ClCompile Include="src\utils\UI\UIButton.cpp" />
+    <ClCompile Include="src\utils\UI\UIText.cpp" />
+    <ClCompile Include="src\utils\UI\UILayer.cpp" />
+    <ClCompile Include="src\utils\UI\UIManager.cpp" />
   </ItemGroup>
 </Project>
