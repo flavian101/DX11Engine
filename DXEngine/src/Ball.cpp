@@ -15,7 +15,8 @@ namespace DXEngine {
 		auto moonTexture = std::make_shared<Texture>("assets/textures/8k_moon.jpg");
 		moonMaterial->SetDiffuseTexture(moonTexture);
 		moonMaterial->SetSpecularColor({ 0.2f, 0.2f, 0.2f, 1.0f });
-		moonMaterial->SetShininess(16.0f);
+		moonMaterial->SetShininess(100.0f);
+		
 
 		m_Mesh->SetMaterial(moonMaterial);
 

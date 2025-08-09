@@ -276,6 +276,11 @@ namespace DXEngine {
 		return std::make_shared<Material>(name, MaterialType::Lit);
 	}
 
+	std::shared_ptr<Material> MaterialFactory::CreateEmissiveMaterial(const std::string& name)
+	{
+		return std::make_shared<Material>(name, MaterialType::Emissive);
+	}
+
 	std::shared_ptr<Material> MaterialFactory::CreateTexturedMaterial(const std::string& name)
 	{
 		return std::make_shared<Material>(name, MaterialType::LitTextured);

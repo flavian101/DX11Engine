@@ -79,8 +79,9 @@ namespace DXEngine {
 	public:
 		static std::shared_ptr<Material> CreateUnlitMaterial(const std::string& name = "Unlit");
 		static std::shared_ptr<Material> CreateLitMaterial(const std::string& name = "Lit");
+		static std::shared_ptr<Material> CreateEmissiveMaterial(const std::string& name = "Emissive");
 		static std::shared_ptr<Material> CreateTexturedMaterial(const std::string& name = "Textured");
-		static std::shared_ptr<Material> CreateTexturedNormalMaterial(const std::string& name);
+		static std::shared_ptr<Material> CreateTexturedNormalMaterial(const std::string& name = "NormalTextured");
 		static std::shared_ptr<Material> CreateSkyboxMaterial(const std::string& name = "Skybox");
 		static std::shared_ptr<Material> CreateTransparentMaterial(const std::string& name = "Transparent");
 

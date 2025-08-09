@@ -1,5 +1,6 @@
 #include "Sandbox.h"
 
+
 Sandbox::Sandbox()
 	:Layer("sanbox"),
 	camera(std::make_shared<DXEngine::Camera>(1.0f,  9.0f/ 16.0f, 0.5f, 100.0f))
@@ -21,6 +22,8 @@ void Sandbox::OnAttach()
 	ball = std::make_shared<DXEngine::Ball>();
 	sky = std::make_shared<DXEngine::SkySphere>();
 	m_Light = std::make_shared<DXEngine::LightSphere>();
+
+	InitializePicking();
 }
 
 void Sandbox::OnDetach()
@@ -86,22 +89,25 @@ void Sandbox::OnUIRender()
 
 void Sandbox::OnEvent(DXEngine::Event& event)
 {
+	DXEngine::EventDispatcher dispatcher(event);
+	dispatcher.Dispatch<DXEngine::MouseButtonPressedEvent>(DX_BIND_EVENT_FN(Sandbox::OnMouseButtonPressed));
+
 }
 
-//bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
-//{
-//
-//	if (e.GetMouseButton() == VK_LBUTTON)
-//	{
-//		m_LastMouseX = DXEngine::Input::GetMouseX();
-//		m_LastMouseY = DXEngine::Input::GetMouseY();
-//
-//		// Handle picking on left mouse button press
-//		HandlePicking(m_LastMouseX, m_LastMouseY);
-//	}
-//
-//	return false;
-//}
+bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
+{
+
+	if (e.GetMouseButton() == VK_LBUTTON)
+	{
+		m_LastMouseX = DXEngine::Input::GetMouseX();
+		m_LastMouseY = DXEngine::Input::GetMouseY();
+
+		// Handle picking on left mouse button press
+		HandlePicking(m_LastMouseX, m_LastMouseY);
+	}
+
+	return false;
+}
 void Sandbox::DetectInput(double time)
 {
 	float speed = time * 300.5f;
@@ -191,9 +197,10 @@ void Sandbox::HandlePicking(float mouseX, float mouseY)
 	////GetClientRect(window.GetHwnd(), &clientRect); TO-DO
 	//int screenWidth = clientRect.right - clientRect.left;
 	//int screenHeight = clientRect.bottom - clientRect.top;
+	
 
-	int screenWidth = 200;
-		int screenHeight = 200;
+	int screenWidth = 1270;
+		int screenHeight = 720;
 	// Perform picking
 	DXEngine::HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *camera);
 
@@ -211,15 +218,15 @@ void Sandbox::HandlePicking(float mouseX, float mouseY)
 				// Check what type of object was picked
 				if (dynamic_cast<DXEngine::Ball*>(modelPtr))
 				{
-					OutputDebugStringA("Ball picked!\n");
+					std::cout << "Ball was picked" << std::endl;
 				}
 				else if (dynamic_cast<DXEngine::Triangle*>(modelPtr))
 				{
-					OutputDebugStringA("Triangle picked!\n");
+					std::cout << "triangle was picked" << std::endl;
 				}
 				else if (dynamic_cast<DXEngine::LightSphere*>(modelPtr))
 				{
-					OutputDebugStringA("Light picked!\n");
+					std::cout << "light sphere was picked" << std::endl;
 				}
 			}
 		}

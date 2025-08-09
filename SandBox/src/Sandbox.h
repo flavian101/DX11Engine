@@ -8,6 +8,7 @@
 
 
 
+
 class Sandbox :public DXEngine::Layer
 {
 public:
@@ -19,6 +20,8 @@ public:
 	void OnUpdate(DXEngine::FrameTime dt) override;
 	virtual void OnUIRender() override;
 	void OnEvent(DXEngine::Event& event) override;
+
+	bool OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e);
 
 
 	void DetectInput(double time);

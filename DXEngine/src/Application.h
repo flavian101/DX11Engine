@@ -18,7 +18,6 @@ namespace DXEngine {
 	public:
 		Application();
 
-		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 
 		virtual ~Application();
 

@@ -141,6 +141,7 @@
     </ClInclude>
     <ClInclude Include="src\utils\material\MaterialTypes.h" />
     <ClInclude Include="src\utils\material\MaterialProperties.h" />
+    <ClInclude Include="src\utils\UI\UIElement.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -228,5 +229,6 @@
     <ClCompile Include="src\windows\WindowsInput.cpp">
       <Filter>windows</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils\UI\UIElement.cpp" />
   </ItemGroup>
 </Project>

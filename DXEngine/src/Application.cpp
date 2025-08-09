@@ -25,12 +25,6 @@ namespace DXEngine {
 
 	}
 
-	bool Application::OnMouseButtonPressed(MouseButtonPressedEvent& e)
-	{
-		return true;
-	}
-
-
 	Application::~Application()
 	{
 		Renderer::Shutdown();
