@@ -19,6 +19,9 @@ namespace DXEngine {
 		case MaterialType::Transparent:
 			m_RenderQueue = RenderQueue::Transparent;
 			break;
+		case MaterialType::UI:
+			m_RenderQueue = RenderQueue::UI;
+			break;
 		default:
 			m_RenderQueue = RenderQueue::Opaque;
 			break;
@@ -41,6 +44,11 @@ namespace DXEngine {
 
 		case MaterialType::Transparent:
 			m_Properties.alpha = 0.5f;
+			SetFlag(MaterialFlags::IsTransparent, true);
+			break;
+		case MaterialType::UI:
+			m_Properties.alpha = 0.5f;
+			SetFlag(MaterialFlags::IsTransparent, true);
 			SetFlag(MaterialFlags::IsTransparent, true);
 			break;
 
@@ -298,6 +306,15 @@ namespace DXEngine {
 	std::shared_ptr<Material> MaterialFactory::CreateTransparentMaterial(const std::string& name)
 	{
 		return std::make_shared<Material>(name, MaterialType::Transparent);
+	}
+
+	std::shared_ptr<Material> MaterialFactory::CreateUIMaterial(const std::string& name)
+	{
+		auto material = std::make_shared<Material>(name, MaterialType::UI);
+		material->SetRenderQueue(RenderQueue::UI);
+		material->SetFlag(MaterialFlags::IsTransparent, true);
+		material->SetFlag(MaterialFlags::IsTwoSided, true);
+		return material;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateFromConfig(const std::string& configPath)

@@ -85,6 +85,14 @@ namespace DXEngine {
                     "assets/shaders/Emissive.ps.cso",
                     "Emissive",
                     MaterialType::Emissive
+                ),
+
+                // UI shader
+                ShaderConfig(
+                    "assets/shaders/UI.vs.cso",
+                    "assets/shaders/UI.ps.cso",
+                    "UI",
+                    MaterialType::UI
                 )
         };
 
@@ -102,6 +110,7 @@ namespace DXEngine {
         m_MaterialTypeToShader[MaterialType::Skybox] = "Skybox";
         m_MaterialTypeToShader[MaterialType::Transparent] = "Transparent";
         m_MaterialTypeToShader[MaterialType::Emissive] = "Emissive";
+        m_MaterialTypeToShader[MaterialType::UI] = "UI";
         m_MaterialTypeToShader[MaterialType::PBR] = "Lit"; // Fallback for now
     }
 

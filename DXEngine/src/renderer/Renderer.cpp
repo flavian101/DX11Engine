@@ -7,6 +7,8 @@
 #include "shaders/ShaderManager.h"
 #include <algorithm>
 #include "utils/UI/UIElement.h"
+#include <utils/UI/UIButton.h>
+#include <utils/UI/UIPanel.h>
 
 
 namespace DXEngine {
@@ -100,7 +102,7 @@ namespace DXEngine {
 		RenderCommand::SetClearColor(red, green, blue, alpha);
 	}
 
-	void Renderer::Submit(const std::shared_ptr<Model>& model)
+	void Renderer::Submit(std::shared_ptr<Model> model)
 	{
 		if (!model || !model->GetMesh())
 			return;
@@ -116,7 +118,7 @@ namespace DXEngine {
 		s_RenderItems.push_back(item);
 
 	}
-	void Renderer::Submit(const std::shared_ptr<Model>& model, std::shared_ptr<Material> materialOverride)
+	void Renderer::Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride)
 	{
 		if (!model || !model->GetMesh())
 			return;
@@ -173,27 +175,8 @@ namespace DXEngine {
 			auto queueIt = s_SortedQueues.find(queue);
 			if (queueIt != s_SortedQueues.end())
 			{
-				//set appropriate render state
-				switch (queue)
-				{
-				case RenderQueue::Background:
-				{
-					RenderCommand::SetRasterizerMode(RasterizerMode::SolidFrontCull);
-					RenderCommand::SetDepthLessEqual();
-					break;
-				}
-				case RenderQueue::Transparent:
-				{
-					RenderCommand::SetRasterizerMode(RasterizerMode::SolidBackCull);
-					//TO-DO enable alpha blending
-					break;
-				}
-				default:
-					RenderCommand::SetRasterizerMode(s_WireframeEnabled ?
-						RasterizerMode::Wireframe : RasterizerMode::SolidBackCull);
-					break;
 
-				}
+				SetRenderStateForQueue(queue);
 
 				// Render all items in this queue
 				for (DXEngine::RenderItem* item : queueIt->second)
@@ -203,6 +186,7 @@ namespace DXEngine {
 
 			}
 		}
+		Set3DRenderState();
 	}
 	void Renderer::SortRenderItems()
 	{
@@ -302,6 +286,12 @@ namespace DXEngine {
 		if (!item.uiElement)
 			return;
 
+		// Save current render state
+		PushRenderState();
+
+		// Set UI render state
+		SetUIRenderState();
+
 		// Get UI element bounds and properties
 		const UIRect& bounds = item.uiElement->GetBounds();
 
@@ -312,8 +302,26 @@ namespace DXEngine {
 
 		// Bind UI material
 		auto materialToUse = item.materialOverride ? item.materialOverride : s_DefaultUIMaterial;
+
+		if (auto button = std::dynamic_pointer_cast<UIButton>(item.uiElement))
+		{
+			// Create dynamic material properties based on button state
+			UIColor buttonColor = GetButtonColorForState(button);
+
+			// Update material color (you might want to create a separate UI material instance)
+			materialToUse->SetDiffuseColor({ buttonColor.r, buttonColor.g, buttonColor.b, buttonColor.a });
+		}
+
+		else if (auto panel = std::dynamic_pointer_cast<UIPanel>(item.uiElement))
+		{
+			// Handle panel-specific rendering
+			UIColor panelColor = GetPanelColor(panel);
+			materialToUse->SetDiffuseColor({ panelColor.r, panelColor.g, panelColor.b, panelColor.a });
+		}
+
 		BindMaterial(materialToUse);
 		BindShaderForMaterial(materialToUse);
+
 
 		// Setup UI transform buffer
 		ConstantBuffer<TransfomBufferData> vsBuffer;
@@ -324,6 +332,18 @@ namespace DXEngine {
 
 		RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Transform, 1, vsBuffer.GetAddressOf());
 
+		// Setup UI-specific constant buffer
+		ConstantBuffer<UIConstantBuffer> uiBuffer;
+		uiBuffer.Initialize();
+		uiBuffer.data.projection = DirectX::XMMatrixTranspose(s_UIProjectionMatrix);
+		uiBuffer.data.screenWidth = static_cast<float>(RenderCommand::GetViewportWidth());
+		uiBuffer.data.screenHeight = static_cast<float>(RenderCommand::GetViewportHeight());
+		uiBuffer.data.time = static_cast<float>(s_FrameCount) / 60.0f; // Approximate time
+		uiBuffer.data.padding = 0.0f;
+		uiBuffer.Update();
+
+		RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_UI, 1, uiBuffer.GetAddressOf());
+
 		// Use the UI quad mesh
 		if (s_UIQuadModel && s_UIQuadModel->GetMesh())
 		{
@@ -332,10 +352,14 @@ namespace DXEngine {
 			RenderCommand::DrawIndexed(mesh->GetIndexCount());
 		}
 
+		// Restore previous render state
+		PopRenderState();
+
 		// Update statistics
 		s_Stats.drawCalls++;
 		s_Stats.uiElements++;
 	}
+
 
 	void Renderer::SubmitUI(std::shared_ptr<UIElement> element)
 	{
@@ -374,18 +398,21 @@ namespace DXEngine {
 		{
 		case RenderQueue::Background:
 			RenderCommand::SetRasterizerMode(RasterizerMode::SolidFrontCull);
-			RenderCommand::SetDepthLessEqual();
+			RenderCommand::SetDepthTestEnabled(true);
+			RenderCommand::SetBlendEnabled(false);
 			// Disable blending
 			break;
 
 		case RenderQueue::Opaque:
 			RenderCommand::SetRasterizerMode(s_WireframeEnabled ?
 				RasterizerMode::Wireframe : RasterizerMode::SolidBackCull);
+			RenderCommand::SetDepthTestEnabled(true);
 			// Disable blending, enable depth
 			break;
 
 		case RenderQueue::Transparent:
 			RenderCommand::SetRasterizerMode(RasterizerMode::SolidBackCull);
+			RenderCommand::SetBlendEnabled(true);
 			// Enable alpha blending, disable depth writes
 			break;
 
@@ -398,27 +425,24 @@ namespace DXEngine {
 			break;
 		}
 	}
+
 	void Renderer::SetUIRenderState()
 	{
-		// Disable depth testing and writing for UI
-		// Enable alpha blending
-		// Set orthographic projection
-		// Disable culling
-
+		//set Orthographic projection
+		//disable culling
 		RenderCommand::SetRasterizerMode(RasterizerMode::SolidNoCull);
-		// RenderCommand::SetDepthTestEnabled(false);
-		// RenderCommand::SetBlendEnabled(true);
+		RenderCommand::SetDepthTestEnabled(false);
+		RenderCommand::SetBlendEnabled(true);
 	}
 
 	void Renderer::Set3DRenderState()
 	{
-		// Enable depth testing
+		RenderCommand::SetDepthTestEnabled(true);
 		// Disable blending (unless transparent)
 		// Set perspective projection
 		// Enable back-face culling
 
 		RenderCommand::SetRasterizerMode(RasterizerMode::SolidBackCull);
-		RenderCommand::SetDepthLessEqual();
 	}
 
 	void Renderer::PushRenderState()
@@ -440,8 +464,8 @@ namespace DXEngine {
 			s_RenderStateStack.pop_back();
 
 			// Restore state
-			// RenderCommand::SetDepthTestEnabled(state.depthEnabled);
-			// RenderCommand::SetBlendEnabled(state.blendEnabled);
+			RenderCommand::SetDepthTestEnabled(state.depthEnabled);
+			RenderCommand::SetBlendEnabled(state.blendEnabled);
 			RenderCommand::SetRasterizerMode(state.rasterizerMode);
 		}
 	}
@@ -463,7 +487,9 @@ namespace DXEngine {
 
 		auto meshResource = std::make_shared<MeshResource>(std::move(vertices), std::move(indices));
 		auto mesh = std::make_shared<Mesh>(meshResource);
-		s_UIQuadModel = std::make_shared<Model>(mesh);
+		s_UIQuadModel = std::make_shared<Model>();
+		s_UIQuadModel->SetMesh(mesh);
+		
 	}
 
 	void Renderer::CreateDefaultUIMaterial()
@@ -472,6 +498,13 @@ namespace DXEngine {
 		s_DefaultUIMaterial->SetRenderQueue(RenderQueue::UI);
 		s_DefaultUIMaterial->SetFlag(MaterialFlags::IsTransparent, true);
 		s_DefaultUIMaterial->SetFlag(MaterialFlags::IsTwoSided, true);
+
+		// Set a default white color for UI
+		s_DefaultUIMaterial->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+	}
+
+	void Renderer::BindUIShader()
+	{
 	}
 
 	void Renderer::UpdateUIProjectionMatrix(int width, int height)
@@ -611,5 +644,25 @@ namespace DXEngine {
 		DirectX::XMMATRIX camProjection = DirectX::XMMatrixPerspectiveLH(1.0f, aspect, 0.5f, 100.0f);
 		//RenderCommand::GetCamera().   //set the projection of the new camera TO-DO
 		RenderCommand::Resize(width, height);
+	}
+
+	UIColor Renderer::GetButtonColorForState(std::shared_ptr<UIButton> button)
+	{
+		switch (button->GetState())
+		{
+		case ButtonState::Hovered:
+			return button->GetHoverColor(); 
+		case ButtonState::Pressed:
+			return button->GetPressedColor();
+		case ButtonState::Disabled:
+			return UIColor(0.3f, 0.3f, 0.3f, 0.5f);
+		default:
+			return button->GetNormalColor();
+		}
+	}
+
+	UIColor Renderer::GetPanelColor(std::shared_ptr<UIPanel> panel)
+	{
+		return panel->GetBackgroundColor(); 
 	}
 }

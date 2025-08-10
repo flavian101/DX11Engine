@@ -29,6 +29,7 @@ namespace DXEngine {
 
 		bool IsSelected()const { return m_IsSelected; }
 		const std::shared_ptr<Mesh>& GetMesh()const;
+		void SetMesh(const std::shared_ptr<Mesh>& mesh) { m_Mesh = mesh; }
 
 
 

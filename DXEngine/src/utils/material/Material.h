@@ -84,6 +84,8 @@ namespace DXEngine {
 		static std::shared_ptr<Material> CreateTexturedNormalMaterial(const std::string& name = "NormalTextured");
 		static std::shared_ptr<Material> CreateSkyboxMaterial(const std::string& name = "Skybox");
 		static std::shared_ptr<Material> CreateTransparentMaterial(const std::string& name = "Transparent");
+		static std::shared_ptr<Material> CreateUIMaterial(const std::string& name = "UI");
+
 
 		// Create material from config
 		static std::shared_ptr<Material> CreateFromConfig(const std::string& configPath);

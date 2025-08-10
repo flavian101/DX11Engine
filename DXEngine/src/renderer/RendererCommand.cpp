@@ -9,6 +9,7 @@ namespace DXEngine {
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> RenderCommand::s_RenderTargetView;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> RenderCommand::s_DepthStencilView;
 	Microsoft::WRL::ComPtr<ID3D11BlendState> RenderCommand::s_TransparencyBlendState;
+	Microsoft::WRL::ComPtr<ID3D11BlendState> RenderCommand::s_UIBlendState;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> RenderCommand::s_DepthStencilState;
 	std::unordered_map<RasterizerMode, Microsoft::WRL::ComPtr<ID3D11RasterizerState>> RenderCommand::s_RasterizerStates;
 	HWND RenderCommand::s_WindowHandle;
@@ -177,6 +178,11 @@ namespace DXEngine {
 		// Set render targets
 		s_Context->OMSetRenderTargets(1u, s_RenderTargetView.GetAddressOf(), s_DepthStencilView.Get());
 
+		if (!s_UIBlendState)
+		{
+			CreateUIBlendState();
+		}
+
 		// Set default blend state
 		s_Context->OMSetBlendState(s_TransparencyBlendState.Get(), nullptr, 0xffffffff);
 
@@ -217,6 +223,51 @@ namespace DXEngine {
 	{
 		s_Context->OMSetDepthStencilState(s_DepthStencilState.Get(), 1);
 	}
+
+	void RenderCommand::SetDepthTestEnabled(bool enabled)
+	{
+		if (enabled)
+		{
+			s_Context->OMSetDepthStencilState(s_DepthStencilState.Get(), 1);
+		}
+		else
+		{
+			static Microsoft::WRL::ComPtr<ID3D11DepthStencilState> noDepthState = nullptr;
+			if (!noDepthState)
+			{
+				D3D11_DEPTH_STENCIL_DESC desc;
+				desc.DepthEnable = false;
+				desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+				desc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+				s_Device->CreateDepthStencilState(&desc, noDepthState.GetAddressOf());
+			}
+			s_Context->OMSetDepthStencilState(noDepthState.Get(), 1);
+		}
+
+	}
+
+	void RenderCommand::SetBlendEnabled(bool enabled)
+	{
+		if (enabled)
+		{
+			if (!s_UIBlendState)
+			{
+				CreateUIBlendState();
+			}
+			s_Context->OMSetBlendState(s_UIBlendState.Get(), nullptr, 0xffffffff);
+		}
+		else
+		{
+			// Set default blend state (no blending)
+			s_Context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+		}
+	}
+
+	void RenderCommand::SetBlendState(Microsoft::WRL::ComPtr<ID3D11BlendState> blendState)
+	{
+		s_Context->OMSetBlendState(blendState.Get(), nullptr, 0xffffffff);
+	}
+
 
 	void RenderCommand::DrawIndexed(uint32_t indexCount)
 	{
@@ -336,6 +387,31 @@ namespace DXEngine {
 		// Wireframe
 		desc.FillMode = D3D11_FILL_WIREFRAME;
 		s_Device->CreateRasterizerState(&desc, s_RasterizerStates[RasterizerMode::Wireframe].GetAddressOf());
+	}
+	void RenderCommand::CreateUIBlendState()
+	{
+		D3D11_BLEND_DESC blendDesc = {};
+		ZeroMemory(&blendDesc, sizeof(blendDesc));
+
+		// Enable alpha blending for UI
+		blendDesc.AlphaToCoverageEnable = false;
+		blendDesc.IndependentBlendEnable = false;
+
+		D3D11_RENDER_TARGET_BLEND_DESC& rtBlendDesc = blendDesc.RenderTarget[0];
+		rtBlendDesc.BlendEnable = true;
+		rtBlendDesc.SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		rtBlendDesc.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		rtBlendDesc.BlendOp = D3D11_BLEND_OP_ADD;
+		rtBlendDesc.SrcBlendAlpha = D3D11_BLEND_ONE;
+		rtBlendDesc.DestBlendAlpha = D3D11_BLEND_ZERO;
+		rtBlendDesc.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		rtBlendDesc.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+		HRESULT hr = s_Device->CreateBlendState(&blendDesc, s_UIBlendState.GetAddressOf());
+		if (FAILED(hr))
+		{
+			OutputDebugStringA("Failed to create UI blend state\n");
+		}
 	}
 
 	void RenderCommand::PrintError(HRESULT hr)

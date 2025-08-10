@@ -72,39 +72,37 @@ namespace DXEngine
     void UILayer::OnWindowResize(int width, int height)
     {
         m_UIManager->SetScreenSize(width, height);
+
+        Renderer::UpdateUIProjectionMatrix(width, height);
     }
 
     void UILayer::HandleInput()
     {
-        // Get mouse position and button states
         auto mousePos = Input::GetMousePosition();
-        bool leftClick = Input::IsMouseButtonPressed(0); // Left mouse button
-        bool rightClick = Input::IsMouseButtonPressed(1); // Right mouse button
+        bool leftClick = Input::IsMouseButtonPressed(0); 
+        bool rightClick = Input::IsMouseButtonPressed(1); 
 
         // Pass input to UI manager
         m_UIManager->HandleMouseInput(mousePos.first, mousePos.second, leftClick, rightClick);
 
         // Handle debug toggle
-        if (Input::IsKeyPressed(VK_F1)) // F1 key to toggle debug
+        static bool lastF1State = false;
+        bool currentF1State = Input::IsKeyPressed(VK_F1);
+
+        if (currentF1State && !lastF1State) // Key pressed (not held)
         {
-            static bool lastF1State = false;
-            if (!lastF1State)
-            {
-                m_ShowDebugInfo = !m_ShowDebugInfo;
-                m_UIManager->SetDebugMode(m_ShowDebugInfo);
-            }
-            lastF1State = true;
+            m_ShowDebugInfo = !m_ShowDebugInfo;
+            m_UIManager->SetDebugMode(m_ShowDebugInfo);
+
+            std::string debugMsg = m_ShowDebugInfo ? "UI Debug mode enabled\n" : "UI Debug mode disabled\n";
+            OutputDebugStringA(debugMsg.c_str());
         }
-        else
-        {
-            static bool lastF1State = false;
-            lastF1State = false;
-        }
+
+        lastF1State = currentF1State;
     }
 
     void UILayer::CreateExampleUI()
     {
-        // Create a main menu panel
         auto mainPanel = CreatePanel(UIRect(50, 50, 300, 400), UIColor(0.1f, 0.1f, 0.1f, 0.9f));
 
         // Create title text
@@ -152,5 +150,7 @@ namespace DXEngine
         auto fpsText = CreateText("FPS: 60", UIRect(410, 120, 180, 15));
         fpsText->SetColor(UIColor(0.8f, 0.8f, 0.8f, 1.0f));
         fpsText->SetFontSize(12.0f);
+
+        OutputDebugStringA("Example UI created successfully\n");
     }
 }

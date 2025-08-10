@@ -1,4 +1,23 @@
-cbuffer UIConstants : register(b0)
+cbuffer TransformBuffer : register(b0)
+{
+    matrix WVP;
+    matrix Model;
+};
+cbuffer MaterialBuffer : register(b1)
+{
+    float4 diffuseColor;
+    float4 specularColor;
+    float4 emissiveColor;
+    float shininess;
+    float metallic;
+    float roughness;
+    float alpha;
+    float2 textureScale;
+    float2 textureOffset;
+    uint flags;
+    float3 materialPadding;
+};
+cbuffer UIConstants : register(b5)
 {
     matrix projection;
     float screenWidth;
@@ -6,13 +25,16 @@ cbuffer UIConstants : register(b0)
     float time;
     float padding;
 };
-
 struct VSInput
 {
-    float2 position : POSITION;
+    float3 position : POSITION;
     float2 texCoord : TEXCOORD0;
-    float4 color : COLOR;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float3 bitangent : BITANGENT;
+    float3 color : COLOR;
 };
+
 
 struct VSOutput
 {
@@ -21,18 +43,18 @@ struct VSOutput
     float4 color : COLOR;
 };
 
-VSOutput VSMain(VSInput input)
+VSOutput main(VSInput input)
 {
     VSOutput output;
     
-    // Convert screen space coordinates to normalized device coordinates
-    float2 screenPos;
-    screenPos.x = (input.position.x / screenWidth) * 2.0f - 1.0f;
-    screenPos.y = -((input.position.y / screenHeight) * 2.0f - 1.0f); // Flip Y
+    // Transform position using the WVP matrix (which includes UI projection)
+    output.position = mul(float4(input.position, 1.0f), WVP);
     
-    output.position = float4(screenPos, 0.0f, 1.0f);
-    output.texCoord = input.texCoord;
-    output.color = input.color;
+    // Pass through texture coordinates with tiling and offset
+    output.texCoord = input.texCoord * textureScale + textureOffset;
+    
+    // Use material diffuse color combined with vertex color
+    output.color = diffuseColor * float4(input.color, 1.0f);
     
     return output;
 }

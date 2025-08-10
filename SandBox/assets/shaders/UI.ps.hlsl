@@ -1,12 +1,20 @@
-struct VSInput
-{
-    float2 position : POSITION;
-    float2 texCoord : TEXCOORD0;
-    float4 color : COLOR;
-};
-
 Texture2D uiTexture : register(t0);
 SamplerState uiSampler : register(s0);
+
+cbuffer MaterialBuffer : register(b1)
+{
+    float4 diffuseColor;
+    float4 specularColor;
+    float4 emissiveColor;
+    float shininess;
+    float metallic;
+    float roughness;
+    float alpha;
+    float2 textureScale;
+    float2 textureOffset;
+    uint flags;
+    float3 materialPadding;
+};
 
 struct PSInput
 {
@@ -15,20 +23,24 @@ struct PSInput
     float4 color : COLOR;
 };
 
-float4 PSMain(PSInput input) : SV_TARGET
+float4 main(PSInput input) : SV_TARGET
 {
-    // Sample texture if available, otherwise use vertex color
-    float4 texColor = uiTexture.Sample(uiSampler, input.texCoord);
-    
-    // Combine texture color with vertex color
     float4 finalColor = input.color;
     
-    // If texture has alpha, use it for text rendering
-    if (texColor.a > 0.0f)
+    // Check if we have a diffuse texture (flag bit 0)
+    if (flags & 1)
     {
-        finalColor.rgb = input.color.rgb;
-        finalColor.a = texColor.a * input.color.a;
+        float4 texColor = uiTexture.Sample(uiSampler, input.texCoord);
+        
+        // For UI, we typically want to modulate the texture with the color
+        finalColor = finalColor * texColor;
     }
+    
+    // Apply material alpha
+    finalColor.a *= alpha;
+    
+    // Ensure we don't exceed valid color ranges
+    finalColor = saturate(finalColor);
     
     return finalColor;
 }

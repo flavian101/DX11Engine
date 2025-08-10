@@ -27,6 +27,10 @@ namespace DXEngine {
 		static void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 		static void SetRasterizerMode(RasterizerMode mode);
 		static void SetDepthLessEqual();
+		static void SetDepthTestEnabled(bool enabled);
+		static void SetBlendEnabled(bool enabled);
+		static void SetBlendState(Microsoft::WRL::ComPtr<ID3D11BlendState> blendState);
+
 
 		// Drawing commands
 		static void DrawIndexed(uint32_t indexCount);
@@ -41,7 +45,9 @@ namespace DXEngine {
 		// Camera management
 		static void SetCamera(const std::shared_ptr<Camera>& camera);
 		static const std::shared_ptr<Camera>& GetCamera();
-
+		
+		static int GetViewportWidth() { return s_ViewportWidth; }
+		static int GetViewportHeight() { return s_ViewportHeight; }
 		//D3D Wrappers
 		static void CreateTexture2D();
 
@@ -49,6 +55,7 @@ namespace DXEngine {
 		static bool InitializeD3D();
 		static void CreateRasterizerStates();
 		static void PrintError(HRESULT hr);
+		static void CreateUIBlendState();
 
 	private:
 		// D3D11 Core objects
@@ -60,6 +67,7 @@ namespace DXEngine {
 
 		// States
 		static Microsoft::WRL::ComPtr<ID3D11BlendState> s_TransparencyBlendState;
+		static Microsoft::WRL::ComPtr<ID3D11BlendState> s_UIBlendState;
 		static Microsoft::WRL::ComPtr<ID3D11DepthStencilState> s_DepthStencilState;
 		static std::unordered_map<RasterizerMode, Microsoft::WRL::ComPtr<ID3D11RasterizerState>> s_RasterizerStates;
 

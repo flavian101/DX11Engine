@@ -59,12 +59,13 @@ namespace DXEngine
     bool UIPanel::HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick)
     {
         if (!IsEnabled() || !IsVisible())
-            return;
+            return false;
 
         const UIRect& bounds = GetBounds();
         bool isMouseInside = bounds.Contains(mouseX, mouseY);
 
-        auto& children = GetChildren();
+        // Check children first (reverse order for proper hit testing)
+        const auto& children = GetChildren();
         for (auto it = children.rbegin(); it != children.rend(); ++it)
         {
             auto& child = *it;

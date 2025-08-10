@@ -15,6 +15,10 @@ namespace DXEngine {
 	class Mesh;
 	class Camera;
 	class UIElement;
+	class UIButton;
+	class UIText;
+	class UIPanel;
+	struct UIColor;
 
 
 	struct RenderItem
@@ -58,24 +62,27 @@ namespace DXEngine {
 
 
 		//3d
-		static void Submit(const std::shared_ptr<Model>& model);
-		static void Submit(const std::shared_ptr<Model>& model, std::shared_ptr<Material> materialOverride);
+		static void Submit(std::shared_ptr<Model> model);
+		static void Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride);
 		static void SubmitImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> material = nullptr);
 		
 
 		//UI
 		static void SubmitUI(std::shared_ptr<UIElement> element);
 		static void SubmitUIImmediate(std::shared_ptr<UIElement> element, std::shared_ptr<Material> material = nullptr);
+		static void UpdateUIProjectionMatrix(int width, int height);
+
 
 		//Render state management
 		static void PushRenderState();
 		static void PopRenderState();
-		void SetRenderStateForQueue(RenderQueue queue);
+		static void SetRenderStateForQueue(RenderQueue queue);
 		static void SetUIRenderState();
 		static void Set3DRenderState();
 
 		// Window management
 		static void OnWindowResize(int width, int height);
+
 
 		// Statistics
 		struct RenderStatistics
@@ -108,15 +115,15 @@ namespace DXEngine {
 		static void Render3DItem(const DXEngine::RenderItem& item);
 		static void RenderUIItem(const DXEngine::RenderItem& item);
 
-		// State management
-		static void SetupUIRenderState();
-		static void SetupDefaultRenderState();
 
 		// UI-specific helpers
 		static void CreateUIQuad();
-		void CreateDefaultUIMaterial();
-		void UpdateUIProjectionMatrix(int width, int height);
+		static void CreateDefaultUIMaterial();
 		static void BindUIShader();
+		static bool HandleElementInputRecursive(std::shared_ptr<UIElement> element, float mouseX, float mouseY, bool leftClick, bool rightClick);
+		static UIColor GetButtonColorForState(std::shared_ptr<UIButton> button);
+		static UIColor GetPanelColor(std::shared_ptr<UIPanel> panel);
+
 
 		static void BindMaterial(std::shared_ptr<Material> material);
 		static void BindShaderForMaterial(std::shared_ptr<Material> material);

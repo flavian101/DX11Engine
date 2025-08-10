@@ -22,6 +22,8 @@ namespace DXEngine {
 
 		Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight());
 		
+		m_UILayer = new UILayer();
+		PushOverlay(m_UILayer);
 
 	}
 
@@ -70,10 +72,10 @@ namespace DXEngine {
 			}
 		}
 		//m_ImGuiLayer->Begin();
-		//for (Layer* layer : m_LayerStack)
-		//{
-		//	layer->OnImGuiRender();
-		//}
+		for (Layer* layer : m_LayerStack)
+		{
+			layer->OnUIRender();
+		}
 		//m_ImGuiLayer->End();
 		//m_Window->OnUpdate();
 	}

@@ -20,6 +20,8 @@ namespace DXEngine
         m_ScreenWidth = screenWidth;
         m_ScreenHeight = screenHeight;
 
+        Renderer::UpdateUIProjectionMatrix(screenWidth, screenHeight);
+
         // Initialize UI renderer if you have one
         // m_UIRenderer.Initialize(screenWidth, screenHeight);
     }
@@ -40,6 +42,28 @@ namespace DXEngine
             }
         }
     }
+    void UIManager::UpdateElementRecursive(std::shared_ptr<UIElement> element, FrameTime dt)
+    {
+        if (!element)return;
+
+        for (const auto& child : element->GetChildren())
+        {
+            if (child && child->IsEnabled())
+            {
+                UpdateElementRecursive(child, dt);
+            }
+        }
+    }
+    void UIManager::Render()
+    {
+        SubmitForRendering();
+
+        if (m_DebugMode)
+        {
+            RenderDebugInfo();
+        }
+            
+    }
 
     void UIManager::SubmitForRendering()
     {
@@ -54,8 +78,7 @@ namespace DXEngine
 
         if (m_DebugMode)
         {
-            // Submit debug UI elements
-            // Could create debug panels and submit them too
+            RenderDebugInfo();
         }
     }
 
@@ -73,8 +96,19 @@ namespace DXEngine
             SubmitElementForRendering(child);
         }
     }
-}
+    void UIManager::SubmitDebugElements()
+    {
 
+        //debug UI elements such as ui to show mouse pos click etc
+
+        if (m_DebugFrameCounter++ % 60 == 0) // Every second at 60fps
+        {
+            std::string debugMsg = "UI Debug - Elements: " + std::to_string(m_RootElements.size()) +
+                ", Mouse: (" + std::to_string(m_LastMouseX) + ", " + std::to_string(m_LastMouseY) + ")\n";
+            OutputDebugStringA(debugMsg.c_str());
+        }
+
+    }
 
     void UIManager::OnEvent(Event& event)
     {
@@ -126,8 +160,8 @@ namespace DXEngine
         m_ScreenWidth = width;
         m_ScreenHeight = height;
 
-        // Update UI renderer if you have one
-        // m_UIRenderer.SetScreenSize(width, height);
+        Renderer::UpdateUIProjectionMatrix(width, height);
+
     }
 
     void UIManager::GetScreenSize(int& width, int& height) const
@@ -141,22 +175,41 @@ namespace DXEngine
         m_LastMouseX = mouseX;
         m_LastMouseY = mouseY;
 
+        bool inputConsumed = false;
+
         // Process input for all elements (in reverse order for proper hit testing)
+        // Later elements are drawn on top, so they should get input first
         for (auto it = m_RootElements.rbegin(); it != m_RootElements.rend(); ++it)
         {
             auto& element = *it;
             if (element && element->IsEnabled() && element->IsVisible())
             {
-                if (element->HandleInput(mouseX, mouseY, leftClick, rightClick))
+                if (HandleElementInputRecursive(element, mouseX, mouseY, leftClick, rightClick))
                 {
-                    // Input was consumed by this element
-                    break;
+                    inputConsumed = true;
+                    break; // Input was consumed by this element
                 }
             }
         }
 
         m_LastLeftClick = leftClick;
         m_LastRightClick = rightClick;
+    }
+    bool UIManager::HandleElementInputRecursive(std::shared_ptr<UIElement> element, float mouseX, float mouseY, bool leftClick, bool rightClick)
+    {
+        if (!element || !element->IsEnabled() || !element->IsVisible())
+            return false;
+
+        const auto& children = element->GetChildren();
+        for (auto it = children.rbegin(); it != children.rend(); ++it)
+        {
+            if (HandleElementInputRecursive(*it, mouseX, mouseY, leftClick, rightClick))
+            {
+                return true;
+            }
+        }
+
+        return element->HandleInput(mouseX, mouseY, leftClick, rightClick);
     }
 
     std::shared_ptr<UIButton> UIManager::CreateButton(const std::string& text, const UIRect& bounds)
@@ -175,7 +228,7 @@ namespace DXEngine
     std::shared_ptr<UIText> UIManager::CreateText(const std::string& text, const UIRect& bounds)
     {
         auto textElement = std::make_shared<UIText>(text, bounds);
-        AddElement(std::dynamic_pointer_cast<UIElement>(textElement));
+        AddElement(std::reinterpret_pointer_cast<UIElement>(textElement));
         return textElement;
     }
 
@@ -214,11 +267,31 @@ namespace DXEngine
         for (auto it = m_RootElements.rbegin(); it != m_RootElements.rend(); ++it)
         {
             auto& element = *it;
-            if (element && element->IsVisible() && element->GetBounds().Contains(x, y))
+            if (element && element->IsVisible())
             {
-                return element.get();
+                UIElement* found = FindElementAtRecursive(element.get(), x, y);
+                if (found) return found;
             }
         }
+        return nullptr;
+    }
+    UIElement* UIManager::FindElementAtRecursive(UIElement* element, float x, float y)
+    {
+        if (!element || !element->IsVisible()) return nullptr;
+
+        const auto& children = element->GetChildren();
+        for (auto it = children.rbegin(); it != children.rend(); ++it)
+        {
+            UIElement* found = FindElementAtRecursive(it->get(), x, y);
+            if (found) return found;
+        }
+
+        //check this element
+        if (element->GetBounds().Contains(x, y))
+        {
+            return element;
+        }
+
         return nullptr;
     }
 }

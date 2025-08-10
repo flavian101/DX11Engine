@@ -51,18 +51,25 @@ namespace DXEngine
         const UIRect& bounds = GetBounds();
         bool isMouseInside = bounds.Contains(mouseX, mouseY);
 
+        // Update button state
+        ButtonState previousState = m_State;
         UpdateState(mouseX, mouseY, leftClick);
 
-        // Handle click
+        // Handle click events
         if (isMouseInside && leftClick && !m_WasPressed && m_OnClick)
         {
             m_OnClick();
+
+            // Debug output for click
+            OutputDebugStringA(("Button '" + m_Text + "' clicked!\n").c_str());
+
             return true; // Consume the input
         }
 
         m_WasPressed = leftClick && isMouseInside;
 
-        return isMouseInside; // Return true if mouse is over button to consume input
+        // Return true if mouse is over button to consume input
+        return isMouseInside;
     }
 
     void UIButton::UpdateState(float mouseX, float mouseY, bool leftClick)

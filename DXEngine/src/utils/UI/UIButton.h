@@ -38,6 +38,12 @@ namespace DXEngine
 		void SetHoverColor(const UIColor& color) { m_HoverColor = color; }
 		void SetPressedColor(const UIColor& color) { m_PressedColor = color; }
 		void SetTextColor(const UIColor& color) { m_TextColor = color; }
+		
+		UIColor GetHoverColor() { return m_HoverColor; }
+		UIColor GetNormalColor() { return m_NormalColor; }
+		UIColor GetPressedColor(){ return m_PressedColor; }
+		UIColor GetTextColor() { return m_TextColor; }
+
 
 		//state of the button
 		ButtonState GetState() const { return m_State; }

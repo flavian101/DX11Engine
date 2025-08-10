@@ -4,7 +4,7 @@
 
 namespace DXEngine {
 
-	 ;
+	 
 	class Vertex
 	{
 	public:
@@ -30,5 +30,17 @@ namespace DXEngine {
 		//XMFLOAT3 normals;
 		//XMFLOAT2 texCoords;
 
+	};
+
+	struct UIVertex
+	{
+		DirectX::XMFLOAT2 position;
+		DirectX::XMFLOAT2 texCoord;
+		DirectX::XMFLOAT4 color;
+
+		UIVertex() = default;
+		UIVertex(float x, float y, float u, float v, float r, float g, float b, float a)
+			: position(x, y), texCoord(u, v), color(r, g, b, a) {
+		}
 	};
 }

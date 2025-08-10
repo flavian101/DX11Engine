@@ -18,6 +18,7 @@ namespace DXEngine
 		//panel specific
 		void SetBorderColor(const UIColor& color) { m_BorderColor = color; }
 		const UIColor& GetBorderColor() const { return m_BorderColor; }
+		const UIColor& GetBackgroundColor() const { return m_BackgroundColor; }
 
 		void SetBorderWidth(float width) { m_BorderWidth = width; }
 		float GetBorderWidth() const { return m_BorderWidth; }

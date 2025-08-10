@@ -10,6 +10,7 @@
 #include "Event/ApplicationEvent.h"
 #include "Event/KeyEvent.h"
 #include "utils/Light.h"
+#include "utils/UI/UILayer.h"
 
 #include "Core/LayerStack.h"
 #include <FrameTime.h>

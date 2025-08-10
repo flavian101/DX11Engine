@@ -21,7 +21,8 @@ namespace DXEngine
 
         // Update and render - now submits to unified renderer
         void Update(FrameTime dt);
-        void SubmitForRendering(); // Changed from Render()
+        void Render();
+        void SubmitForRendering(); 
 
         // Event handling
         void OnEvent(Event& event);
@@ -50,16 +51,25 @@ namespace DXEngine
         void SetDebugMode(bool enabled) { m_DebugMode = enabled; }
         bool IsDebugMode() const { return m_DebugMode; }
 
+        UIElement* FindElementAt(float x, float y);
+
     private:
         void SubmitElementForRendering(std::shared_ptr<UIElement> element);
+        void SubmitDebugElements();
         void RenderDebugInfo();
-        UIElement* FindElementAt(float x, float y);
+
+        void UpdateElementRecursive(std::shared_ptr<UIElement> element,FrameTime dt);
+
+        bool HandleElementInputRecursive(std::shared_ptr <UIElement> element, float mouseX, float mouseY, bool leftClick, bool rightClick);
+        UIElement* FindElementAtRecursive(UIElement* element, float x, float y);
+
 
     private:
         std::vector<std::shared_ptr<UIElement>> m_RootElements;
         int m_ScreenWidth = 1920;
         int m_ScreenHeight = 1080;
         bool m_DebugMode = false;
+        uint32_t m_DebugFrameCounter = 0;
 
         // Style defaults
         UIColor m_DefaultButtonNormal = UIColor(0.3f, 0.3f, 0.3f, 1.0f);

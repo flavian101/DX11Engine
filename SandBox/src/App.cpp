@@ -10,8 +10,8 @@ public:
 	App()
 		:Application()
 	{
+		
 		PushLayer(new Sandbox());
-
 	}
 	~App()
 	{

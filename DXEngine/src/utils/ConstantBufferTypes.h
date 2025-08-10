@@ -59,13 +59,23 @@ namespace DXEngine {
 
     };
 
-    enum BindSlot
+    struct UIConstantBuffer
+    {
+        DirectX::XMMATRIX projection;
+        float screenWidth;
+        float screenHeight;
+        float time;
+        float padding;
+    };
+
+    enum BindSlot : uint32_t
     {
         CB_Transform = 0,
         CB_Material = 1,
         CB_Direction_Light = 2,
         CB_Point_Light = 3,
         CB_Spot_Light = 4,
+        CB_UI = 5,
 
     };
 }
