@@ -109,7 +109,7 @@
     <ClInclude Include="src\utils\material\Material.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Mesh.h">
+    <ClInclude Include="src\utils\Mesh\Mesh.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\PixelShader.h">
@@ -127,7 +127,7 @@
     <ClInclude Include="src\utils\Transform.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Vertex.h">
+    <ClInclude Include="src\utils\Mesh\Vertex.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\VertexBuffer.h">
@@ -147,6 +147,9 @@
     <ClInclude Include="src\utils\UI\UIText.h" />
     <ClInclude Include="src\utils\UI\UILayer.h" />
     <ClInclude Include="src\utils\UI\UIManager.h" />
+    <ClInclude Include="src\utils\Mesh\VertexAttribute.h" />
+    <ClInclude Include="src\utils\Mesh\MeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\InputManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -204,7 +207,7 @@
     <ClCompile Include="src\utils\material\Material.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\Mesh.cpp">
+    <ClCompile Include="src\utils\Mesh\Mesh.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\PixelShader.cpp">
@@ -222,7 +225,7 @@
     <ClCompile Include="src\utils\Transform.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\Vertex.cpp">
+    <ClCompile Include="src\utils\Mesh\Vertex.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\VertexBuffer.cpp">
@@ -240,5 +243,8 @@
     <ClCompile Include="src\utils\UI\UIText.cpp" />
     <ClCompile Include="src\utils\UI\UILayer.cpp" />
     <ClCompile Include="src\utils\UI\UIManager.cpp" />
+    <ClCompile Include="src\utils\Mesh\VertexAttribute.cpp" />
+    <ClCompile Include="src\utils\Mesh\MeshResource.cpp" />
+    <ClCompile Include="src\utils\Mesh\InputManager.cpp" />
   </ItemGroup>
 </Project>

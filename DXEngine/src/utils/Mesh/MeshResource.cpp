@@ -1,0 +1,844 @@
+#include "dxpch.h"
+#include "MeshResource.h"
+#include <algorithm>
+#include <sstream>
+#include <cassert>
+
+namespace DXEngine
+{
+    // BoundingBox Implementation
+    DirectX::XMFLOAT3 BoundingBox::GetCenter() const
+    {
+        return DirectX::XMFLOAT3(
+            (min.x + max.x) * 0.5f,
+            (min.y + max.y) * 0.5f,
+            (min.z + max.z) * 0.5f
+        );
+    }
+
+    DirectX::XMFLOAT3 BoundingBox::GetExtents() const
+    {
+        return DirectX::XMFLOAT3(
+            (max.x - min.x) * 0.5f,
+            (max.y - min.y) * 0.5f,
+            (max.z - min.z) * 0.5f
+        );
+    }
+
+    float BoundingBox::GetRadius() const
+    {
+        DirectX::XMFLOAT3 extents = GetExtents();
+        return sqrtf(extents.x * extents.x + extents.y * extents.y + extents.z * extents.z);
+    }
+
+    void BoundingBox::Expand(const DirectX::XMFLOAT3& point)
+    {
+        min.x = std::min(min.x, point.x);
+        min.y = std::min(min.y, point.y);
+        min.z = std::min(min.z, point.z);
+        max.x = std::max(max.x, point.x);
+        max.y = std::max(max.y, point.y);
+        max.z = std::max(max.z, point.z);
+    }
+
+    void BoundingBox::Expand(const BoundingBox& other)
+    {
+        Expand(other.min);
+        Expand(other.max);
+    }
+
+    bool BoundingBox::Contains(const DirectX::XMFLOAT3& point) const
+    {
+        return point.x >= min.x && point.x <= max.x &&
+            point.y >= min.y && point.y <= max.y &&
+            point.z >= min.z && point.z <= max.z;
+    }
+
+    bool BoundingBox::Intersects(const BoundingBox& other) const
+    {
+        return !(other.min.x > max.x || other.max.x < min.x ||
+            other.min.y > max.y || other.max.y < min.y ||
+            other.min.z > max.z || other.max.z < min.z);
+    }
+
+    // BoundingSphere Implementation
+    bool BoundingSphere::Contains(const DirectX::XMFLOAT3& point) const
+    {
+        float dx = point.x - center.x;
+        float dy = point.y - center.y;
+        float dz = point.z - center.z;
+        float distanceSquared = dx * dx + dy * dy + dz * dz;
+        return distanceSquared <= radius * radius;
+    }
+
+    bool BoundingSphere::Intersects(const BoundingSphere& other) const
+    {
+        float dx = center.x - other.center.x;
+        float dy = center.y - other.center.y;
+        float dz = center.z - other.center.z;
+        float distanceSquared = dx * dx + dy * dy + dz * dz;
+        float radiusSum = radius + other.radius;
+        return distanceSquared <= radiusSum * radiusSum;
+    }
+
+    bool BoundingSphere::Intersects(const BoundingBox& box) const
+    {
+        // Find closest point on box to sphere center
+        DirectX::XMFLOAT3 closest;
+        closest.x = std::max(box.min.x, std::min(center.x, box.max.x));
+        closest.y = std::max(box.min.y, std::min(center.y, box.max.y));
+        closest.z = std::max(box.min.z, std::min(center.z, box.max.z));
+
+        return Contains(closest);
+    }
+    // BoundingSphere Implementation
+    bool BoundingSphere::Contains(const DirectX::XMFLOAT3& point) const
+    {
+        float dx = point.x - center.x;
+        float dy = point.y - center.y;
+        float dz = point.z - center.z;
+        float distanceSquared = dx * dx + dy * dy + dz * dz;
+        return distanceSquared <= radius * radius;
+    }
+
+    bool BoundingSphere::Intersects(const BoundingSphere& other) const
+    {
+        float dx = center.x - other.center.x;
+        float dy = center.y - other.center.y;
+        float dz = center.z - other.center.z;
+        float distanceSquared = dx * dx + dy * dy + dz * dz;
+        float radiusSum = radius + other.radius;
+        return distanceSquared <= radiusSum * radiusSum;
+    }
+
+    bool BoundingSphere::Intersects(const BoundingBox& box) const
+    {
+        // Find closest point on box to sphere center
+        DirectX::XMFLOAT3 closest;
+        closest.x = std::max(box.min.x, std::min(center.x, box.max.x));
+        closest.y = std::max(box.min.y, std::min(center.y, box.max.y));
+        closest.z = std::max(box.min.z, std::min(center.z, box.max.z));
+
+        return Contains(closest);
+    }
+    void IndexData::OptimizeForCache()
+    {
+        // Implement vertex cache optimization algorithm (Forsyth or similar)
+        // This is a simplified version - you might want to use a library like meshoptimizer
+
+        size_t indexCount = GetIndexCount();
+        if (indexCount < 3) return;
+
+        // For now, just implement a basic optimization
+        // In a real implementation, you'd use algorithms like:
+        // - Tom Forsyth's vertex cache optimization
+        // - Linear-speed vertex cache optimization
+        OutputDebugStringA("IndexData::OptimizeForCache - Basic optimization applied\n");
+    }
+
+    void IndexData::GenerateAdjacency(const VertexData& vertices, std::vector<uint32_t>& adjacency)
+    {
+        size_t indexCount = GetIndexCount();
+        adjacency.clear();
+        adjacency.reserve(indexCount * 2); // Each edge can have adjacent triangle
+
+        // This is a simplified adjacency generation
+        // Real implementation would build edge-to-triangle mapping
+        for (size_t i = 0; i < indexCount; i += 3)
+        {
+            // For each triangle, find adjacent triangles sharing edges
+            // This is a stub implementation
+            adjacency.push_back(GetIndex(i));
+            adjacency.push_back(0); // Adjacent index (simplified)
+            adjacency.push_back(GetIndex(i + 1));
+            adjacency.push_back(0);
+            adjacency.push_back(GetIndex(i + 2));
+            adjacency.push_back(0);
+        }
+    }
+
+    // MeshResource Implementation
+    void MeshResource::SetVertexData(std::unique_ptr<VertexData> vertexData)
+    {
+        m_VertexData = std::move(vertexData);
+        InvalidateBounds();
+        OnDataChanged();
+    }
+
+    void MeshResource::SetIndexData(std::unique_ptr<IndexData> indexData)
+    {
+        m_IndexData = std::move(indexData);
+        OnDataChanged();
+    }
+
+    void MeshResource::AddSubMesh(const SubMesh& submesh)
+    {
+        m_SubMeshes.push_back(submesh);
+    }
+
+    void MeshResource::AddSubMesh(const std::string& name, uint32_t indexStart, uint32_t indexCount, uint32_t materialIndex)
+    {
+        SubMesh submesh(name, indexStart, indexCount, 0, 0, materialIndex);
+        AddSubMesh(submesh);
+    }
+
+    void MeshResource::ComputeBounds()
+    {
+        if (!m_VertexData || m_VertexData->GetVertexCount() == 0)
+        {
+            m_BoundingBox = BoundingBox();
+            m_BoundingSphere = BoundingSphere();
+            m_BoundsDirty = false;
+            return;
+        }
+
+        const VertexLayout& layout = m_VertexData->GetLayout();
+        const VertexAttribute* posAttr = layout.FindAttribute(VertexAttributeType::Position);
+
+        if (!posAttr)
+        {
+            m_BoundingBox = BoundingBox();
+            m_BoundingSphere = BoundingSphere();
+            m_BoundsDirty = false;
+            return;
+        }
+
+        // Initialize bounds with first vertex
+        auto firstPos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(0, VertexAttributeType::Position);
+        m_BoundingBox = BoundingBox(firstPos, firstPos);
+
+        // Expand bounds with all vertices
+        for (size_t i = 1; i < m_VertexData->GetVertexCount(); ++i)
+        {
+            auto pos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Position);
+            m_BoundingBox.Expand(pos);
+        }
+
+        // Compute bounding sphere
+        DirectX::XMFLOAT3 center = m_BoundingBox.GetCenter();
+        float maxRadiusSquared = 0.0f;
+
+        for (size_t i = 0; i < m_VertexData->GetVertexCount(); ++i)
+        {
+            auto pos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Position);
+            float dx = pos.x - center.x;
+            float dy = pos.y - center.y;
+            float dz = pos.z - center.z;
+            float radiusSquared = dx * dx + dy * dy + dz * dz;
+            maxRadiusSquared = std::max(maxRadiusSquared, radiusSquared);
+        }
+
+        m_BoundingSphere = BoundingSphere(center, sqrtf(maxRadiusSquared));
+        m_BoundsDirty = false;
+
+        OnBoundsChanged();
+    }
+
+    void MeshResource::SetBounds(const BoundingBox& box, const BoundingSphere& sphere)
+    {
+        m_BoundingBox = box;
+        m_BoundingSphere = sphere;
+        m_BoundsDirty = false;
+        OnBoundsChanged();
+    }
+
+    bool MeshResource::IsValid() const
+    {
+        if (!m_VertexData || m_VertexData->GetVertexCount() == 0)
+            return false;
+
+        if (!m_VertexData->IsValid())
+            return false;
+
+        // Check submeshes are valid
+        for (const auto& submesh : m_SubMeshes)
+        {
+            if (m_IndexData)
+            {
+                if (submesh.indexStart + submesh.indexCount > m_IndexData->GetIndexCount())
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    void MeshResource::GenerateNormals()
+    {
+        if (!m_VertexData || !m_IndexData)
+            return;
+
+        const VertexLayout& layout = m_VertexData->GetLayout();
+        if (!layout.HasAttribute(VertexAttributeType::Position) ||
+            !layout.HasAttribute(VertexAttributeType::Normal))
+            return;
+
+        // Zero out existing normals
+        DirectX::XMFLOAT3 zeroNormal(0.0f, 0.0f, 0.0f);
+        for (size_t i = 0; i < m_VertexData->GetVertexCount(); ++i)
+        {
+            m_VertexData->SetAttribute(i, VertexAttributeType::Normal, zeroNormal);
+        }
+
+        // Calculate face normals and accumulate
+        size_t indexCount = m_IndexData->GetIndexCount();
+        for (size_t i = 0; i < indexCount; i += 3)
+        {
+            uint32_t i0 = m_IndexData->GetIndex(i);
+            uint32_t i1 = m_IndexData->GetIndex(i + 1);
+            uint32_t i2 = m_IndexData->GetIndex(i + 2);
+
+            auto p0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, VertexAttributeType::Position);
+            auto p1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, VertexAttributeType::Position);
+            auto p2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, VertexAttributeType::Position);
+
+            // Calculate face normal
+            DirectX::XMVECTOR v0 = DirectX::XMLoadFloat3(&p0);
+            DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&p1);
+            DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&p2);
+
+            DirectX::XMVECTOR edge1 = DirectX::XMVectorSubtract(v1, v0);
+            DirectX::XMVECTOR edge2 = DirectX::XMVectorSubtract(v2, v0);
+            DirectX::XMVECTOR normal = DirectX::XMVector3Cross(edge1, edge2);
+
+            DirectX::XMFLOAT3 faceNormal;
+            DirectX::XMStoreFloat3(&faceNormal, normal);
+
+            // Accumulate to vertex normals
+            auto n0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, VertexAttributeType::Normal);
+            auto n1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, VertexAttributeType::Normal);
+            auto n2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, VertexAttributeType::Normal);
+
+            n0.x += faceNormal.x; n0.y += faceNormal.y; n0.z += faceNormal.z;
+            n1.x += faceNormal.x; n1.y += faceNormal.y; n1.z += faceNormal.z;
+            n2.x += faceNormal.x; n2.y += faceNormal.y; n2.z += faceNormal.z;
+
+            m_VertexData->SetAttribute(i0, VertexAttributeType::Normal, n0);
+            m_VertexData->SetAttribute(i1, VertexAttributeType::Normal, n1);
+            m_VertexData->SetAttribute(i2, VertexAttributeType::Normal, n2);
+        }
+
+        // Normalize all normals
+        for (size_t i = 0; i < m_VertexData->GetVertexCount(); ++i)
+        {
+            auto normal = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Normal);
+            DirectX::XMVECTOR normalVec = DirectX::XMLoadFloat3(&normal);
+            normalVec = DirectX::XMVector3Normalize(normalVec);
+            DirectX::XMStoreFloat3(&normal, normalVec);
+            m_VertexData->SetAttribute(i, VertexAttributeType::Normal, normal);
+        }
+
+        OnDataChanged();
+    }
+
+    void MeshResource::GenerateTangents()
+    {
+        if (!m_VertexData || !m_IndexData)
+            return;
+
+        const VertexLayout& layout = m_VertexData->GetLayout();
+        if (!layout.HasAttribute(VertexAttributeType::Position) ||
+            !layout.HasAttribute(VertexAttributeType::Normal) ||
+            !layout.HasAttribute(VertexAttributeType::Tangent) ||
+            !layout.HasAttribute(VertexAttributeType::TexCoord0))
+            return;
+
+        size_t vertexCount = m_VertexData->GetVertexCount();
+
+        // Initialize tangent vectors
+        std::vector<DirectX::XMFLOAT3> tangents(vertexCount, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+        std::vector<DirectX::XMFLOAT3> bitangents(vertexCount, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+
+        // Calculate tangents using Lengyel's method
+        size_t indexCount = m_IndexData->GetIndexCount();
+        for (size_t i = 0; i < indexCount; i += 3)
+        {
+            uint32_t i0 = m_IndexData->GetIndex(i);
+            uint32_t i1 = m_IndexData->GetIndex(i + 1);
+            uint32_t i2 = m_IndexData->GetIndex(i + 2);
+
+            auto p0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, VertexAttributeType::Position);
+            auto p1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, VertexAttributeType::Position);
+            auto p2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, VertexAttributeType::Position);
+
+            auto uv0 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i0, VertexAttributeType::TexCoord0);
+            auto uv1 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i1, VertexAttributeType::TexCoord0);
+            auto uv2 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i2, VertexAttributeType::TexCoord0);
+
+            DirectX::XMFLOAT3 edge1(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
+            DirectX::XMFLOAT3 edge2(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z);
+
+            DirectX::XMFLOAT2 deltaUV1(uv1.x - uv0.x, uv1.y - uv0.y);
+            DirectX::XMFLOAT2 deltaUV2(uv2.x - uv0.x, uv2.y - uv0.y);
+
+            float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+            DirectX::XMFLOAT3 tangent(
+                f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
+                f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
+                f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
+            );
+
+            DirectX::XMFLOAT3 bitangent(
+                f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
+                f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
+                f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
+            );
+
+            // Accumulate tangents
+            tangents[i0].x += tangent.x; tangents[i0].y += tangent.y; tangents[i0].z += tangent.z;
+            tangents[i1].x += tangent.x; tangents[i1].y += tangent.y; tangents[i1].z += tangent.z;
+            tangents[i2].x += tangent.x; tangents[i2].y += tangent.y; tangents[i2].z += tangent.z;
+
+            bitangents[i0].x += bitangent.x; bitangents[i0].y += bitangent.y; bitangents[i0].z += bitangent.z;
+            bitangents[i1].x += bitangent.x; bitangents[i1].y += bitangent.y; bitangents[i1].z += bitangent.z;
+            bitangents[i2].x += bitangent.x; bitangents[i2].y += bitangent.y; bitangents[i2].z += bitangent.z;
+        }
+
+        // Orthogonalize and normalize tangents
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            auto normal = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Normal);
+
+            DirectX::XMVECTOR n = DirectX::XMLoadFloat3(&normal);
+            DirectX::XMVECTOR t = DirectX::XMLoadFloat3(&tangents[i]);
+            DirectX::XMVECTOR b = DirectX::XMLoadFloat3(&bitangents[i]);
+
+            // Gram-Schmidt orthogonalize
+            t = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(t, DirectX::XMVectorMultiply(n, DirectX::XMVector3Dot(n, t))));
+
+            // Calculate handedness
+            float handedness = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(n, t), b)) < 0.0f ? -1.0f : 1.0f;
+
+            DirectX::XMFLOAT4 finalTangent;
+            DirectX::XMStoreFloat3(reinterpret_cast<DirectX::XMFLOAT3*>(&finalTangent), t);
+            finalTangent.w = handedness;
+
+            m_VertexData->SetAttribute(i, VertexAttributeType::Tangent, finalTangent);
+        }
+
+        OnDataChanged();
+    }
+
+    void MeshResource::GenerateBounds()
+    {
+        ComputeBounds();
+    }
+
+    void MeshResource::OptimizeForRendering()
+    {
+        if (m_IndexData)
+        {
+            m_IndexData->OptimizeForCache();
+        }
+
+        // Additional optimizations could be added here:
+        // - Vertex deduplication
+        // - Vertex fetch optimization
+        // - LOD generation
+
+        OnDataChanged();
+    }
+
+    size_t MeshResource::GetMemoryUsage() const
+    {
+        size_t usage = 0;
+
+        if (m_VertexData)
+        {
+            for (const auto& attr : m_VertexData->GetLayout().GetAttributes())
+            {
+                usage += m_VertexData->GetDataSize(attr.Slot);
+            }
+        }
+
+        if (m_IndexData)
+        {
+            usage += m_IndexData->GetDataSize();
+        }
+
+        usage += m_SubMeshes.size() * sizeof(SubMesh);
+
+        return usage;
+    }
+
+    std::string MeshResource::GetDebugInfo() const
+    {
+        std::ostringstream oss;
+        oss << "MeshResource: " << m_Name << "\n";
+        oss << "Vertices: " << (m_VertexData ? m_VertexData->GetVertexCount() : 0) << "\n";
+        oss << "Indices: " << (m_IndexData ? m_IndexData->GetIndexCount() : 0) << "\n";
+        oss << "Submeshes: " << m_SubMeshes.size() << "\n";
+        oss << "Topology: " << static_cast<int>(m_Topology) << "\n";
+        oss << "Memory: " << GetMemoryUsage() << " bytes\n";
+
+        if (m_VertexData)
+        {
+            oss << "Layout:\n" << m_VertexData->GetLayout().GetDebugString();
+        }
+
+        return oss.str();
+    }
+
+    void MeshResource::InvalidateBounds()
+    {
+        m_BoundsDirty = true;
+    }
+
+    // Factory methods
+    std::unique_ptr<MeshResource> MeshResource::CreateQuad(const std::string& name, float width, float height)
+    {
+        auto layout = VertexLayout::CreateBasic();
+        auto vertexData = std::make_unique<VertexData>(layout);
+        vertexData->Resize(4);
+
+        float halfWidth = width * 0.5f;
+        float halfHeight = height * 0.5f;
+
+        // Positions
+        vertexData->SetAttribute(0, VertexAttributeType::Position, DirectX::XMFLOAT3(-halfWidth, -halfHeight, 0.0f));
+        vertexData->SetAttribute(1, VertexAttributeType::Position, DirectX::XMFLOAT3(halfWidth, -halfHeight, 0.0f));
+        vertexData->SetAttribute(2, VertexAttributeType::Position, DirectX::XMFLOAT3(halfWidth, halfHeight, 0.0f));
+        vertexData->SetAttribute(3, VertexAttributeType::Position, DirectX::XMFLOAT3(-halfWidth, halfHeight, 0.0f));
+
+        // Normals
+        DirectX::XMFLOAT3 normal(0.0f, 0.0f, 1.0f);
+        for (int i = 0; i < 4; ++i)
+        {
+            vertexData->SetAttribute(i, VertexAttributeType::Normal, normal);
+        }
+
+        // Texture coordinates
+        vertexData->SetAttribute(0, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.0f, 1.0f));
+        vertexData->SetAttribute(1, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(1.0f, 1.0f));
+        vertexData->SetAttribute(2, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(1.0f, 0.0f));
+        vertexData->SetAttribute(3, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.0f, 0.0f));
+
+        auto indexData = std::make_unique<IndexData>(IndexType::UInt16);
+        indexData->AddTriangle(0, 1, 2);
+        indexData->AddTriangle(2, 3, 0);
+
+        auto resource = std::make_unique<MeshResource>(name);
+        resource->SetVertexData(std::move(vertexData));
+        resource->SetIndexData(std::move(indexData));
+        resource->SetTopology(PrimitiveTopology::TriangleList);
+
+        return resource;
+    }
+
+    std::unique_ptr<MeshResource> MeshResource::CreateCube(const std::string& name, float size)
+    {
+        auto layout = VertexLayout::CreateBasic();
+        auto vertexData = std::make_unique<VertexData>(layout);
+        vertexData->Resize(24); // 6 faces * 4 vertices per face
+
+        float half = size * 0.5f;
+
+        // Cube vertices (6 faces, 4 vertices each)
+        DirectX::XMFLOAT3 positions[24] = {
+            // Front face
+            {-half, -half,  half}, { half, -half,  half}, { half,  half,  half}, {-half,  half,  half},
+            // Back face
+            { half, -half, -half}, {-half, -half, -half}, {-half,  half, -half}, { half,  half, -half},
+            // Left face
+            {-half, -half, -half}, {-half, -half,  half}, {-half,  half,  half}, {-half,  half, -half},
+            // Right face
+            { half, -half,  half}, { half, -half, -half}, { half,  half, -half}, { half,  half,  half},
+            // Top face
+            {-half,  half,  half}, { half,  half,  half}, { half,  half, -half}, {-half,  half, -half},
+            // Bottom face
+            {-half, -half, -half}, { half, -half, -half}, { half, -half,  half}, {-half, -half,  half}
+        };
+
+        DirectX::XMFLOAT3 normals[24] = {
+            // Front face
+            {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {0, 0, 1},
+            // Back face
+            {0, 0, -1}, {0, 0, -1}, {0, 0, -1}, {0, 0, -1},
+            // Left face
+            {-1, 0, 0}, {-1, 0, 0}, {-1, 0, 0}, {-1, 0, 0},
+            // Right face
+            {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {1, 0, 0},
+            // Top face
+            {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0},
+            // Bottom face
+            {0, -1, 0}, {0, -1, 0}, {0, -1, 0}, {0, -1, 0}
+        };
+
+        DirectX::XMFLOAT2 texCoords[4] = {
+            {0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f}
+        };
+
+        // Set vertex data
+        for (int i = 0; i < 24; ++i)
+        {
+            vertexData->SetAttribute(i, VertexAttributeType::Position, positions[i]);
+            vertexData->SetAttribute(i, VertexAttributeType::Normal, normals[i]);
+            vertexData->SetAttribute(i, VertexAttributeType::TexCoord0, texCoords[i % 4]);
+        }
+
+        // Create indices (6 faces * 2 triangles * 3 vertices = 36 indices)
+        auto indexData = std::make_unique<IndexData>(IndexType::UInt16);
+        for (uint16_t face = 0; face < 6; ++face)
+        {
+            uint16_t offset = face * 4;
+            indexData->AddTriangle(offset + 0, offset + 1, offset + 2);
+            indexData->AddTriangle(offset + 2, offset + 3, offset + 0);
+        }
+
+        auto resource = std::make_unique<MeshResource>(name);
+        resource->SetVertexData(std::move(vertexData));
+        resource->SetIndexData(std::move(indexData));
+        resource->SetTopology(PrimitiveTopology::TriangleList);
+
+        return resource;
+    }
+
+    std::unique_ptr<MeshResource> MeshResource::CreateSphere(const std::string& name, float radius, uint32_t segments)
+    {
+        auto layout = VertexLayout::CreateBasic();
+
+        uint32_t rings = segments / 2;
+        uint32_t vertexCount = (rings + 1) * (segments + 1);
+
+        auto vertexData = std::make_unique<VertexData>(layout);
+        vertexData->Resize(vertexCount);
+
+        // Generate vertices
+        uint32_t vertexIndex = 0;
+        for (uint32_t ring = 0; ring <= rings; ++ring)
+        {
+            float phi = static_cast<float>(ring) / rings * DirectX::XM_PI;
+            float y = radius * cosf(phi);
+            float ringRadius = radius * sinf(phi);
+
+            for (uint32_t segment = 0; segment <= segments; ++segment)
+            {
+                float theta = static_cast<float>(segment) / segments * DirectX::XM_2PI;
+                float x = ringRadius * cosf(theta);
+                float z = ringRadius * sinf(theta);
+
+                DirectX::XMFLOAT3 position(x, y, z);
+                DirectX::XMFLOAT3 normal = position;
+                DirectX::XMStoreFloat3(&normal, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&normal)));
+
+                DirectX::XMFLOAT2 texCoord(
+                    static_cast<float>(segment) / segments,
+                    static_cast<float>(ring) / rings
+                );
+
+                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, position);
+                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
+                vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+
+                ++vertexIndex;
+            }
+        }
+
+        // Generate indices
+        auto indexData = std::make_unique<IndexData>(IndexType::UInt32);
+        for (uint32_t ring = 0; ring < rings; ++ring)
+        {
+            for (uint32_t segment = 0; segment < segments; ++segment)
+            {
+                uint32_t current = ring * (segments + 1) + segment;
+                uint32_t next = current + segments + 1;
+
+                indexData->AddTriangle(current, next, current + 1);
+                indexData->AddTriangle(current + 1, next, next + 1);
+            }
+        }
+
+        auto resource = std::make_unique<MeshResource>(name);
+        resource->SetVertexData(std::move(vertexData));
+        resource->SetIndexData(std::move(indexData));
+        resource->SetTopology(PrimitiveTopology::TriangleList);
+
+        return resource;
+    }
+
+    std::unique_ptr<MeshResource> MeshResource::CreateCylinder(const std::string& name, float radius, float height, uint32_t segments)
+    {
+        auto layout = VertexLayout::CreateBasic();
+
+        // Vertices: segments+1 for each cap, segments+1 for each of 2 rings = (segments+1)*4
+        uint32_t vertexCount = (segments + 1) * 4;
+
+        auto vertexData = std::make_unique<VertexData>(layout);
+        vertexData->Resize(vertexCount);
+
+        float halfHeight = height * 0.5f;
+        uint32_t vertexIndex = 0;
+
+        // Bottom cap center
+        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(0.0f, -halfHeight, 0.0f));
+        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f));
+        vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.5f, 0.5f));
+        ++vertexIndex;
+
+        // Top cap center
+        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(0.0f, halfHeight, 0.0f));
+        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f));
+        vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.5f, 0.5f));
+        ++vertexIndex;
+
+        // Side vertices (bottom and top rings)
+        for (uint32_t segment = 0; segment <= segments; ++segment)
+        {
+            float theta = static_cast<float>(segment) / segments * DirectX::XM_2PI;
+            float x = radius * cosf(theta);
+            float z = radius * sinf(theta);
+
+            DirectX::XMFLOAT3 normal(x / radius, 0.0f, z / radius);
+            DirectX::XMFLOAT2 texCoord(static_cast<float>(segment) / segments, 0.0f);
+
+            // Bottom ring
+            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(x, -halfHeight, z));
+            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
+            vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+            ++vertexIndex;
+
+            // Top ring
+            texCoord.y = 1.0f;
+            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(x, halfHeight, z));
+            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
+            vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+            ++vertexIndex;
+        }
+
+        // Generate indices
+        auto indexData = std::make_unique<IndexData>(IndexType::UInt32);
+
+        // Side faces
+        for (uint32_t segment = 0; segment < segments; ++segment)
+        {
+            uint32_t bottomCurrent = 2 + segment * 2;
+            uint32_t topCurrent = bottomCurrent + 1;
+            uint32_t bottomNext = bottomCurrent + 2;
+            uint32_t topNext = topCurrent + 2;
+
+            indexData->AddTriangle(bottomCurrent, topCurrent, bottomNext);
+            indexData->AddTriangle(bottomNext, topCurrent, topNext);
+        }
+
+        // Bottom cap (triangle fan)
+        for (uint32_t segment = 0; segment < segments; ++segment)
+        {
+            uint32_t current = 2 + segment * 2;
+            uint32_t next = current + 2;
+            indexData->AddTriangle(0, next, current); // Note: reversed winding for bottom face
+        }
+
+        // Top cap (triangle fan)
+        for (uint32_t segment = 0; segment < segments; ++segment)
+        {
+            uint32_t current = 3 + segment * 2;
+            uint32_t next = current + 2;
+            indexData->AddTriangle(1, current, next);
+        }
+
+        auto resource = std::make_unique<MeshResource>(name);
+        resource->SetVertexData(std::move(vertexData));
+        resource->SetIndexData(std::move(indexData));
+        resource->SetTopology(PrimitiveTopology::TriangleList);
+
+        return resource;
+    }
+
+    std::unique_ptr<MeshResource> MeshResource::CreatePlane(const std::string& name, float width, float depth, uint32_t widthSegments, uint32_t depthSegments)
+    {
+        auto layout = VertexLayout::CreateBasic();
+
+        uint32_t vertexCount = (widthSegments + 1) * (depthSegments + 1);
+        auto vertexData = std::make_unique<VertexData>(layout);
+        vertexData->Resize(vertexCount);
+
+        float halfWidth = width * 0.5f;
+        float halfDepth = depth * 0.5f;
+
+        // Generate vertices
+        uint32_t vertexIndex = 0;
+        for (uint32_t z = 0; z <= depthSegments; ++z)
+        {
+            for (uint32_t x = 0; x <= widthSegments; ++x)
+            {
+                float px = (static_cast<float>(x) / widthSegments - 0.5f) * width;
+                float pz = (static_cast<float>(z) / depthSegments - 0.5f) * depth;
+
+                DirectX::XMFLOAT3 position(px, 0.0f, pz);
+                DirectX::XMFLOAT3 normal(0.0f, 1.0f, 0.0f);
+                DirectX::XMFLOAT2 texCoord(
+                    static_cast<float>(x) / widthSegments,
+                    static_cast<float>(z) / depthSegments
+                );
+
+                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, position);
+                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
+                vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+
+                ++vertexIndex;
+            }
+        }
+
+        // Generate indices
+        auto indexData = std::make_unique<IndexData>(IndexType::UInt32);
+        for (uint32_t z = 0; z < depthSegments; ++z)
+        {
+            for (uint32_t x = 0; x < widthSegments; ++x)
+            {
+                uint32_t topLeft = z * (widthSegments + 1) + x;
+                uint32_t topRight = topLeft + 1;
+                uint32_t bottomLeft = topLeft + (widthSegments + 1);
+                uint32_t bottomRight = bottomLeft + 1;
+
+                indexData->AddTriangle(topLeft, bottomLeft, topRight);
+                indexData->AddTriangle(topRight, bottomLeft, bottomRight);
+            }
+        }
+
+        auto resource = std::make_unique<MeshResource>(name);
+        resource->SetVertexData(std::move(vertexData));
+        resource->SetIndexData(std::move(indexData));
+        resource->SetTopology(PrimitiveTopology::TriangleList);
+
+        return resource;
+    }
+
+    // SkinnedMeshResource Implementation
+    void SkinnedMeshResource::AddBone(const BoneInfo& bone)
+    {
+        m_Bones.push_back(bone);
+    }
+
+    int32_t SkinnedMeshResource::FindBoneIndex(const std::string& name) const
+    {
+        for (size_t i = 0; i < m_Bones.size(); ++i)
+        {
+            if (m_Bones[i].name == name)
+                return static_cast<int32_t>(i);
+        }
+        return -1;
+    }
+
+    // InstancedMeshResource Implementation
+    void InstancedMeshResource::SetInstanceLayout(const VertexLayout& layout)
+    {
+        m_InstanceLayout = layout;
+        if (!layout.IsFinalized())
+        {
+            m_InstanceLayout.Finalize();
+        }
+    }
+
+    void InstancedMeshResource::SetInstanceData(std::unique_ptr<VertexData> instanceData)
+    {
+        m_InstanceData = std::move(instanceData);
+    }
+
+    size_t InstancedMeshResource::GetInstanceCount() const
+    {
+        return m_InstanceData ? m_InstanceData->GetVertexCount() : 0;
+    }
+
+
+}

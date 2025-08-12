@@ -1,8 +1,4 @@
-cbuffer TransformBuffer : register(b0)
-{
-    matrix WVP;
-    matrix Model;
-};
+
 cbuffer MaterialBuffer : register(b1)
 {
     float4 diffuseColor;
@@ -28,11 +24,8 @@ cbuffer UIConstants : register(b5)
 struct VSInput
 {
     float3 position : POSITION;
+    float4 color : COLOR;
     float2 texCoord : TEXCOORD0;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float3 bitangent : BITANGENT;
-    float3 color : COLOR;
 };
 
 
@@ -48,13 +41,13 @@ VSOutput main(VSInput input)
     VSOutput output;
     
     // Transform position using the WVP matrix (which includes UI projection)
-    output.position = mul(float4(input.position, 1.0f), WVP);
+    output.position = mul(float4(input.position, 1.0f), projection);
     
     // Pass through texture coordinates with tiling and offset
     output.texCoord = input.texCoord * textureScale + textureOffset;
     
     // Use material diffuse color combined with vertex color
-    output.color = diffuseColor * float4(input.color, 1.0f);
+    output.color = diffuseColor * input.color;
     
     return output;
 }
