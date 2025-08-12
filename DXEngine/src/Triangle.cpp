@@ -4,6 +4,8 @@
 #include <utils/Vertex.h>
 #include <utils/Mesh.h>
 #include "utils/Texture.h"
+#include <utils/Mesh/VertexAttribute.h>
+#include <utils/Mesh/MeshResource.h>
 
 namespace DXEngine {
 
