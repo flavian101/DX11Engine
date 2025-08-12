@@ -1,7 +1,7 @@
 #include "dxpch.h"
 #include "Renderer.h"
 #include "models/Model.h"
-#include "utils/Mesh.h"
+#include "utils/Mesh/Mesh.h"
 #include "utils/ConstantBuffer.h"
 #include "Camera.h"
 #include "shaders/ShaderManager.h"

@@ -163,6 +163,11 @@ namespace DXEngine
         return elements;
     }
 
+    bool VertexLayout::HasAttribute(VertexAttributeType type, uint32_t slot) const
+    {
+        return FindAttribute(type, slot) != nullptr;
+    }
+
     const VertexAttribute* VertexLayout::FindAttribute(VertexAttributeType type, uint32_t slot) const
     {
         auto it = std::find_if(m_Attributes.begin(), m_Attributes.end(),
@@ -332,6 +337,72 @@ namespace DXEngine
         }
 
         return true;
+    }
+    template<>
+    void VertexData::SetAttribute<float>(size_t vertexIndex, VertexAttributeType type,
+        const float& value, uint32_t slot)
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        auto& slotData = m_Data[slot];
+        uint32_t stride = m_Layout.GetStride(slot);
+        uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        uint8_t* attrStart = vertexStart + attr->Offset;
+
+        memcpy(attrStart, &value, sizeof(float));
+    }
+
+    template<>
+    float VertexData::GetAttribute<float>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        const auto& slotData = m_Data.at(slot);
+        uint32_t stride = m_Layout.GetStride(slot);
+        const uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        const uint8_t* attrStart = vertexStart + attr->Offset;
+
+        float result;
+        memcpy(&result, attrStart, sizeof(float));
+        return result;
+    }
+
+    // Additional template specializations for integer types
+    template<>
+    void VertexData::SetAttribute<uint32_t>(size_t vertexIndex, VertexAttributeType type,
+        const uint32_t& value, uint32_t slot)
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        auto& slotData = m_Data[slot];
+        uint32_t stride = m_Layout.GetStride(slot);
+        uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        uint8_t* attrStart = vertexStart + attr->Offset;
+
+        memcpy(attrStart, &value, sizeof(uint32_t));
+    }
+
+    template<>
+    uint32_t VertexData::GetAttribute<uint32_t>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        const auto& slotData = m_Data.at(slot);
+        uint32_t stride = m_Layout.GetStride(slot);
+        const uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        const uint8_t* attrStart = vertexStart + attr->Offset;
+
+        uint32_t result;
+        memcpy(&result, attrStart, sizeof(uint32_t));
+        return result;
     }
 
     template<>

@@ -118,7 +118,7 @@ namespace DXEngine {
         void SetResource(std::shared_ptr<MeshResource> resource);
 
         // GPU resources
-        bool EnsureGPUResources();
+        bool EnsureGPUResources()const;
         void ReleaseGPUResources();
         const MeshBuffers& GetBuffers() const { return m_Buffers; }
 
@@ -207,7 +207,7 @@ namespace DXEngine {
         void DrawAllInstanced() const;
 
         // Update instance data on GPU
-        bool UpdateInstanceData();
+        bool UpdateInstanceData() const;
 
     protected:
         void OnResourceChanged() override;
@@ -219,36 +219,36 @@ namespace DXEngine {
 
     // Mesh loading / creation utilities
         namespace MeshUtils
-    {
-        // Generate common mesh shapes
-        std::shared_ptr<MeshResource> GenerateQuad(float width = 1.0f, float height = 1.0f,
-            bool generateNormals = true, bool generateTangents = true);
+        {
+            // Generate common mesh shapes
+            std::shared_ptr<MeshResource> GenerateQuad(float width = 1.0f, float height = 1.0f,
+                bool generateNormals = true, bool generateTangents = true);
 
-        std::shared_ptr<MeshResource> GenerateCube(float size = 1.0f,
-            bool generateNormals = true, bool generateTangents = true);
+            std::shared_ptr<MeshResource> GenerateCube(float size = 1.0f,
+                bool generateNormals = true, bool generateTangents = true);
 
-        std::shared_ptr<MeshResource> GenerateSphere(float radius = 1.0f, uint32_t rings = 32, uint32_t segments = 32,
-            bool generateNormals = true, bool generateTangents = true);
+            std::shared_ptr<MeshResource> GenerateSphere(float radius = 1.0f, uint32_t rings = 32, uint32_t segments = 32,
+                bool generateNormals = true, bool generateTangents = true);
 
-        std::shared_ptr<MeshResource> GenerateCylinder(float radius = 1.0f, float height = 2.0f,
-            uint32_t segments = 32, uint32_t rings = 1,
-            bool generateNormals = true, bool generateTangents = true);
+            std::shared_ptr<MeshResource> GenerateCylinder(float radius = 1.0f, float height = 2.0f,
+                uint32_t segments = 32, uint32_t rings = 1,
+                bool generateNormals = true, bool generateTangents = true);
 
-        std::shared_ptr<MeshResource> GeneratePlane(float width = 10.0f, float depth = 10.0f,
-            uint32_t widthSegments = 10, uint32_t depthSegments = 10,
-            bool generateNormals = true, bool generateTangents = true);
+            std::shared_ptr<MeshResource> GeneratePlane(float width = 10.0f, float depth = 10.0f,
+                uint32_t widthSegments = 10, uint32_t depthSegments = 10,
+                bool generateNormals = true, bool generateTangents = true);
 
-        // Mesh processing utilities
-        void ComputeNormals(VertexData& vertices, const IndexData& indices);
-        void ComputeTangents(VertexData& vertices, const IndexData& indices);
-        void ComputeBounds(const VertexData& vertices, BoundingBox& box, BoundingSphere& sphere);
+            // Mesh processing utilities
+            void ComputeNormals(VertexData& vertices, const IndexData& indices);
+            void ComputeTangents(VertexData& vertices, const IndexData& indices);
+            void ComputeBounds(const VertexData& vertices, BoundingBox& box, BoundingSphere& sphere);
 
-        // Mesh optimization
-        void OptimizeVertexCache(IndexData& indices);
-        void OptimizeVertexFetch(VertexData& vertices, IndexData& indices);
+            // Mesh optimization
+            void OptimizeVertexCache(IndexData& indices);
+            void OptimizeVertexFetch(VertexData& vertices, IndexData& indices);
 
-        // Validation
-        bool ValidateMesh(const MeshResource& resource, std::string& errorMessage);
-    }
+            // Validation
+            bool ValidateMesh(const MeshResource& resource, std::string& errorMessage);
+        }
 }
 
