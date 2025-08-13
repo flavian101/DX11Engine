@@ -79,8 +79,8 @@ namespace DXEngine {
         // 3D Model rendering
         static void Submit(std::shared_ptr<Model> model);
         static void Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride);
-        static void Submit(std::shared_ptr<Model> model, uint32_t submeshIndex, std::shared_ptr<Material> material = nullptr);
-        static void SubmitImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> material = nullptr);
+        static void SubmitImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride = nullptr);
+        static void SubmitSubmesh(std::shared_ptr<Model> model, size_t submeshIndex, std::shared_ptr<Material> materialOverride = nullptr);
 
         // UI rendering
         static void SubmitUI(std::shared_ptr<UIElement> element);

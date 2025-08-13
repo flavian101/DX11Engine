@@ -126,108 +126,145 @@ namespace DXEngine {
     // 3D Model submission methods
     void Renderer::Submit(std::shared_ptr<Model> model)
     {
-        if (!model || !model->GetMesh())
+        if (!model || !model->IsValid())
+            return;
+
+        // Ensure the model has a material
+        model->EnsureDefaultMaterial();
+
+        auto material = model->GetMaterial();
+        if (!material)
         {
-            OutputDebugStringA("Warning: Attempting to submit invalid model\n");
+            OutputDebugStringA("Warning: Model submitted without valid material\n");
             return;
         }
 
-        auto mesh = model->GetMesh();
-        if (!mesh->IsValid())
-        {
-            OutputDebugStringA("Warning: Model has invalid mesh\n");
-            return;
-        }
-
-        // Submit each submesh as a separate render item
-        size_t submeshCount = std::max(size_t(1), mesh->GetSubmeshCount());
-        for (size_t i = 0; i < submeshCount; ++i)
-        {
-            auto material = mesh->GetMaterial(i);
-            if (!material)
-            {
-                material = MaterialFactory::CreateLitMaterial("DefaultModelMaterial_" + std::to_string(i));
-                mesh->SetMaterial(i, material);
-            }
-
-            DXEngine::RenderItem item(model, material, static_cast<uint32_t>(i));
-            ValidateRenderItem(item);
-            s_RenderItems.push_back(item);
-        }
-    }
-
-    void Renderer::Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride)
-    {
-        if (!model || !model->GetMesh() || !materialOverride)
-        {
-            OutputDebugStringA("Warning: Invalid parameters for model submission with material override\n");
-            return;
-        }
-
-        auto mesh = model->GetMesh();
-        size_t submeshCount = std::max(size_t(1), mesh->GetSubmeshCount());
-
-        for (size_t i = 0; i < submeshCount; ++i)
-        {
-            auto baseMaterial = mesh->GetMaterial(i);
-            if (!baseMaterial)
-            {
-                baseMaterial = MaterialFactory::CreateLitMaterial("DefaultBaseMaterial");
-            }
-
-            DXEngine::RenderItem item(model, baseMaterial, static_cast<uint32_t>(i));
-            item.materialOverride = materialOverride;
-            item.queue = materialOverride->GetRenderQueue();
-
-            ValidateRenderItem(item);
-            s_RenderItems.push_back(item);
-        }
-    }
-
-    void Renderer::Submit(std::shared_ptr<Model> model, uint32_t submeshIndex, std::shared_ptr<Material> material)
-    {
-        if (!model || !model->GetMesh())
-        {
-            OutputDebugStringA("Warning: Invalid model for submesh submission\n");
-            return;
-        }
-
-        auto mesh = model->GetMesh();
-        if (submeshIndex >= mesh->GetSubmeshCount() && mesh->GetSubmeshCount() > 0)
-        {
-            OutputDebugStringA("Warning: Submesh index out of range\n");
-            return;
-        }
-
-        auto useMaterial = material ? material : mesh->GetMaterial(submeshIndex);
-        if (!useMaterial)
-        {
-            useMaterial = MaterialFactory::CreateLitMaterial("DefaultSubmeshMaterial");
-        }
-
-        DXEngine::RenderItem item(model, useMaterial, submeshIndex);
+        DXEngine::RenderItem item(model, material);
         ValidateRenderItem(item);
         s_RenderItems.push_back(item);
     }
 
-    void Renderer::SubmitImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> material)
+    void Renderer::Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride)
     {
-        if (!model || !model->GetMesh())
+        if (!model || !model->IsValid())
+            return;
+
+        // Ensure base material exists
+        model->EnsureDefaultMaterial();
+        auto baseMaterial = model->GetMaterial();
+
+        if (!baseMaterial)
         {
-            OutputDebugStringA("Warning: Invalid model for immediate rendering\n");
+            baseMaterial = MaterialFactory::CreateLitMaterial("DefaultModelMaterial");
+            model->SetMaterial(baseMaterial);
+        }
+
+        DXEngine::RenderItem item(model, baseMaterial);
+        item.materialOverride = materialOverride;
+        item.queue = materialOverride ? materialOverride->GetRenderQueue() : baseMaterial->GetRenderQueue();
+
+        ValidateRenderItem(item);
+        s_RenderItems.push_back(item);
+    }
+
+    void Renderer::SubmitImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride)
+    {
+        if (!model || !model->IsValid())
+            return;
+
+        // Ensure material exists
+        std::shared_ptr<Material> materialToUse = materialOverride;
+        if (!materialToUse)
+        {
+            model->EnsureDefaultMaterial();
+            materialToUse = model->GetMaterial();
+        }
+
+        if (!materialToUse)
+        {
+            materialToUse = MaterialFactory::CreateLitMaterial("ImmediateMaterial");
+        }
+
+        DXEngine::RenderItem item(model, materialToUse);
+        ValidateRenderItem(item);
+        Render3DItem(item);
+    }
+
+    void Renderer::Render3DItem(const DXEngine::RenderItem& item)
+    {
+        if (!item.model || !item.model->IsValid())
+            return;
+
+        auto materialToUse = item.materialOverride ? item.materialOverride : item.material;
+        if (!materialToUse)
+            return;
+
+        // Bind Shader first
+        BindShaderForMaterial(materialToUse);
+
+        // Get shader bytecode for input layout creation
+        const void* shaderByteCode = nullptr;
+        size_t byteCodeLength = 0;
+
+        if (s_CurrentShader)
+        {
+            auto blob = s_CurrentShader->GetByteCode();
+            if (blob)
+            {
+                shaderByteCode = blob->GetBufferPointer();
+                byteCodeLength = blob->GetBufferSize();
+            }
+        }
+
+        // Bind material
+        BindMaterial(materialToUse);
+
+        // Setup transformation constant buffer
+        ConstantBuffer<TransfomBufferData> vsBuffer;
+        vsBuffer.Initialize();
+        DirectX::XMMATRIX modelMatrix = item.model->GetModelMatrix();
+
+        auto view = RenderCommand::GetCamera()->GetView();
+        auto proj = RenderCommand::GetCamera()->GetProjection();
+        vsBuffer.data.WVP = DirectX::XMMatrixTranspose(modelMatrix * view * proj);
+        vsBuffer.data.Model = DirectX::XMMatrixTranspose(modelMatrix);
+        vsBuffer.Update();
+
+        RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Transform, 1, vsBuffer.GetAddressOf());
+
+        // Use Model's encapsulated rendering methods
+        item.model->BindForRendering(shaderByteCode, byteCodeLength);
+        item.model->DrawAll();
+
+        // Update statistics
+        s_Stats.drawCalls++;
+        s_Stats.trianglesRendered += static_cast<uint32_t>(item.model->GetTotalTriangleCount());
+    }
+
+    void Renderer::ValidateRenderItem(const DXEngine::RenderItem& item)
+    {
+        if (!item.model)
+        {
+            OutputDebugStringA("Warning: RenderItem has null model\n");
             return;
         }
 
-        auto mesh = model->GetMesh();
-        auto useMaterial = material ? material : mesh->GetMaterial(0);
-        if (!useMaterial)
+        if (!item.model->IsValid())
         {
-            useMaterial = MaterialFactory::CreateLitMaterial("ImmediateMaterial");
+            OutputDebugStringA("Warning: RenderItem model is invalid\n");
+            return;
         }
 
-        DXEngine::RenderItem item(model, useMaterial);
-        ValidateRenderItem(item);
-        Render3DItem(item);
+        if (!item.material)
+        {
+            OutputDebugStringA("Warning: RenderItem has null material\n");
+            return;
+        }
+
+        if (!item.material->IsValid())
+        {
+            OutputDebugStringA(("Warning: Invalid material: " + item.material->GetName() + "\n").c_str());
+        }
     }
 
     // UI submission methods

@@ -4,7 +4,6 @@
 #include <utils/material/Material.h>
 #include <utils/VertexBuffer.h>
 #include <utils/IndexBuffer.h>
-#include <utils/InputLayout.h>
 #include <cassert>
 #include <sstream>
 #include <algorithm>

@@ -124,9 +124,6 @@
     <ClInclude Include="src\utils\Transform.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Mesh\Vertex.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\VertexBuffer.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -217,9 +214,6 @@
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Transform.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\Mesh\Vertex.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\VertexBuffer.cpp">
