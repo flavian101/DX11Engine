@@ -259,4 +259,27 @@ namespace DXEngine
 		VertexLayout m_InstanceLayout;
 		std::unique_ptr<VertexData> m_InstanceData;
 	};
+	template<typename T>
+	inline void IndexData::SetIndices(const std::vector<T>& indices)
+	{
+	}
+	inline size_t IndexData::GetDataSize() const
+	{
+		return size_t();
+	}
+	inline const void* IndexData::GetData() const
+	{
+		return nullptr;
+	}
+	inline void* IndexData::GetData()
+	{
+		return nullptr;
+	}
+	inline uint32_t IndexData::GetIndex(size_t index) const
+	{
+		return 0;
+	}
+	inline void IndexData::SetIndex(size_t index, uint32_t value)
+	{
+	}
 }
