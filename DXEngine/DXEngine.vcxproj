@@ -113,7 +113,6 @@
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
     <ClInclude Include="src\SkySphere.h" />
-    <ClInclude Include="src\Sphere.h" />
     <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\utils\material\MaterialProperties.h" />
     <ClInclude Include="src\utils\material\MaterialTypes.h" />
@@ -140,7 +139,6 @@
     <ClInclude Include="src\utils\Texture.h" />
     <ClInclude Include="src\utils\Topology.h" />
     <ClInclude Include="src\utils\Transform.h" />
-    <ClInclude Include="src\utils\VertexBuffer.h" />
     <ClInclude Include="src\utils\VertexShader.h" />
     <ClInclude Include="src\windows\WindowsInput.h" />
     <ClInclude Include="src\utils\UI\UIElement.h" />
@@ -163,7 +161,6 @@
     <ClCompile Include="src\FrameTime.cpp" />
     <ClCompile Include="src\LightSphere.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
-    <ClCompile Include="src\Sphere.cpp" />
     <ClCompile Include="src\Ground.cpp" />
     <ClCompile Include="src\Window.cpp" />
     <ClCompile Include="src\dxpch.cpp">
@@ -186,7 +183,6 @@
     <ClCompile Include="src\utils\Texture.cpp" />
     <ClCompile Include="src\utils\Topology.cpp" />
     <ClCompile Include="src\utils\Transform.cpp" />
-    <ClCompile Include="src\utils\VertexBuffer.cpp" />
     <ClCompile Include="src\utils\VertexShader.cpp" />
     <ClCompile Include="src\windows\WindowsInput.cpp" />
     <ClCompile Include="src\utils\UI\UIElement.cpp" />

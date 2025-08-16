@@ -12,7 +12,7 @@ struct VS_out
     float3 normal : NORMAL;
 };
 
-VS_out main(float3 Pos : POSITION, float2 inTexCoord : TEXCOORD, float3 normal : NORMAL, float4 tangents : TANGENT)
+VS_out main(float3 Pos : POSITION, float3 normal : NORMAL,float2 inTexCoord : TEXCOORD)
 {
     VS_out output;
     

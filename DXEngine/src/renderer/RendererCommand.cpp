@@ -378,10 +378,12 @@ namespace DXEngine {
 
 		// Solid, Front-Face Culling
 		desc.CullMode = D3D11_CULL_FRONT;
+		desc.FrontCounterClockwise = TRUE;
 		s_Device->CreateRasterizerState(&desc, s_RasterizerStates[RasterizerMode::SolidFrontCull].GetAddressOf());
 
 		// Solid, No Culling
 		desc.CullMode = D3D11_CULL_NONE;
+		desc.FrontCounterClockwise = FALSE;
 		s_Device->CreateRasterizerState(&desc, s_RasterizerStates[RasterizerMode::SolidNoCull].GetAddressOf());
 
 		// Wireframe

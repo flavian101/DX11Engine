@@ -59,7 +59,7 @@ namespace DXEngine {
         bool isUIElement = false;
 
         RenderSubmission() = default;
-        static RenderSubmission CreateFromModel(const Model* model, size_t meshIndex = 0, size_t submeshIndex);
+        static RenderSubmission CreateFromModel(const Model* model = nullptr, size_t meshIndex = 0, size_t submeshIndex = 0);
         static RenderSubmission CreateFromInstanceModel(const InstanceModel* model, size_t meshIndex, size_t subMeshIndex);
         static RenderSubmission CreateFromSkinnedModel(const SkinnedModel* model, size_t meshIndex, size_t submeshIndex);
         static RenderSubmission CreateFromUIElement(std::shared_ptr<UIElement> element, std::shared_ptr<Material> material);

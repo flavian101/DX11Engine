@@ -6,8 +6,6 @@ namespace DXEngine {
 
 	{
 		m_VertexShader = std::make_shared<VertexShader>(vertexShader);
-		layout = std::make_shared<InputLayout>(m_VertexShader->GetByteCode());
-
 		m_PixelShader = std::make_shared<PixelShader>(pixelShader);
 	}
 
@@ -17,7 +15,6 @@ namespace DXEngine {
 	}
 	void ShaderProgram::Bind()
 	{
-		layout->Bind();
 		m_VertexShader->Bind();
 		m_PixelShader->Bind();
 	}

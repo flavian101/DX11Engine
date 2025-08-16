@@ -1,35 +1,88 @@
 #include "dxpch.h"
 #include "LightSphere.h"
 #include "utils/Texture.h"
+#include "utils/material/Material.h"
+
 
 
 namespace DXEngine {
 
 
-LightSphere::LightSphere()
-	:Model(),
-	m_Sphere(64)
-{
-	m_Mesh = std::make_shared<Mesh>(m_Sphere.getMeshResource());
-	auto flat = MaterialFactory::CreateEmissiveMaterial("TestUnlit");
+    LightSphere::LightSphere()
+        : Model()
+    {
+        Initialize();
 
+        auto emissiveMaterial = MaterialFactory::CreateEmissiveMaterial("LightSphere");
 
-	m_Mesh->SetMaterial(flat);
-	m_Light = std::make_shared<PointLight>();
-	flat->SetEmissiveColor(m_Light->GetLightColor());
-	flat->SetDiffuseColor(m_Light->GetLightColor());
+        m_Light = std::make_shared<PointLight>();
+        emissiveMaterial->SetEmissiveColor(m_Light->GetLightColor());
+        emissiveMaterial->SetDiffuseColor(m_Light->GetLightColor());
 
-}
-void LightSphere::BindLight()
-{
-	m_Light->Bind();
-}
+        GetMesh()->SetMaterial(emissiveMaterial);
+    }
 
-//void LightSphere::Render()
-//{
-//	DirectX::XMFLOAT3 lightPos = { DirectX::XMVectorGetX(GetTranslation()),DirectX::XMVectorGetY(GetTranslation()),DirectX::XMVectorGetZ(GetTranslation()) };
-//	m_Light->SetPosition(lightPos);
-//	m_Light->Bind();
-//	Model::Render();
-//}
+    void LightSphere::Initialize()
+    {
+        // Create small sphere for light representation
+        float radius = 1.5f; 
+        uint32_t segments = 16; // Lower detail for light sphere
+
+        auto lightMesh = Mesh::CreateSphere(radius, segments);
+        SetMesh(lightMesh);
+    }
+
+    void LightSphere::BindLight()
+    {
+        if (m_Light)
+        {
+            // Update light position based on model position
+            DirectX::XMFLOAT3 lightPos;
+            DirectX::XMStoreFloat3(&lightPos, GetTranslation());
+            m_Light->SetPosition(lightPos);
+            m_Light->Bind();
+        }
+    }
+
+    void LightSphere::Update(float deltaTime)
+    {
+        Model::Update(deltaTime);
+
+        // Update light position automatically
+        if (m_Light)
+        {
+            DirectX::XMFLOAT3 lightPos;
+            DirectX::XMStoreFloat3(&lightPos, GetTranslation());
+            m_Light->SetPosition(lightPos);
+        }
+    }
+
+    std::shared_ptr<PointLight> LightSphere::GetLight() const
+    {
+        return m_Light;
+    }
+
+    void LightSphere::SetLightColor(const DirectX::XMFLOAT4& color)
+    {
+        if (m_Light)
+        {
+           // m_Light->SetLightColor(color);
+
+            // Update material to match light color
+            auto material = GetMaterial();
+            if (material)
+            {
+                material->SetEmissiveColor(color);
+                material->SetDiffuseColor(color);
+            }
+        }
+    }
+
+    void LightSphere::SetLightIntensity(float intensity)
+    {
+        if (m_Light)
+        {
+            //m_Light->SetIntensity(intensity);
+        }
+    }
 }

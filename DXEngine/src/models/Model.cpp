@@ -276,8 +276,8 @@ namespace DXEngine {
 	{
 		BoundingSphere localSphere = GetLocalBoundingSphere();
 
-		if (!m_Transform)
-			return;
+		//if (!m_Transform) TO-DO solve for return Type
+		//	return ;
 
 		DirectX::XMMATRIX worldMatrix = GetModelMatrix();
 		DirectX::XMVECTOR centerVec = DirectX::XMLoadFloat3(&localSphere.center);
@@ -344,6 +344,7 @@ namespace DXEngine {
 
 			}
 		}
+		return total;
 	}
 	
 	size_t Model::GetMemoryUsage() const

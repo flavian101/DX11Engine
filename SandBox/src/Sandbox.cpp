@@ -3,7 +3,7 @@
 
 Sandbox::Sandbox()
 	:Layer("sanbox"),
-	camera(std::make_shared<DXEngine::Camera>(1.0f,  9.0f/ 16.0f, 0.5f, 100.0f))
+	m_Camera(std::make_shared<DXEngine::Camera>(1.0f,  9.0f/ 16.0f, 0.5f, 10000.0f))
 
 {}
 
@@ -18,9 +18,9 @@ void Sandbox::OnAttach()
 
 	DXEngine::Renderer::InitShaderManager(m_ShaderManager);
 
-	tri = std::make_shared<DXEngine::Ground>();
-	ball = std::make_shared<DXEngine::Ball>();
-	sky = std::make_shared<DXEngine::SkySphere>();
+	m_Ground = std::make_shared<DXEngine::Ground>();
+	m_Moon = std::make_shared<DXEngine::Ball>();
+	m_Sky = std::make_shared<DXEngine::SkySphere>();
 	m_Light = std::make_shared<DXEngine::LightSphere>();
 
 	InitializePicking();
@@ -36,47 +36,49 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 
 	//window.().ClearDepthColor(0.1f, 0.1f, 0.16f);
 
-	DXEngine::Renderer::BeginScene(camera);
+	DXEngine::Renderer::BeginScene(m_Camera);
 	DetectInput(dt);
 
-	if (sky)
+	if (m_Sky)
 	{
 		// Position sky sphere at camera position
 		DirectX::XMFLOAT3 camPos = {
-			DirectX::XMVectorGetX(camera->GetPos()),
-			DirectX::XMVectorGetY(camera->GetPos()),
-			DirectX::XMVectorGetZ(camera->GetPos())
+			DirectX::XMVectorGetX(m_Camera->GetPos()),
+			DirectX::XMVectorGetY(m_Camera->GetPos()),
+			DirectX::XMVectorGetZ(m_Camera->GetPos())
 		};
-		sky->SetTranslation(camPos);
-		sky->SetScale({ 50.0f, 50.0f, 50.0f });
-		DXEngine::Renderer::Submit(sky);
-
+		m_Sky->SetTranslation(camPos);
+		m_Sky->SetScale({ 50.0f, 50.0f, 50.0f });
+		DXEngine::Renderer::Submit(m_Sky);
+	
 	}
 
 	// Ground
-	if (tri)
+	if (m_Ground)
 	{
-		tri->SetScale({ 500.0f, 10.0f, 500.0f });
-		tri->SetTranslation({ 0.0f,0.0f, 0.0f });
-		DXEngine::Renderer::Submit(tri);
+		m_Ground->SetScale({ 500.0f, 10.0f, 500.0f });
+		m_Ground->SetTranslation({ 0.0f,0.0f, 0.0f });
+		DXEngine::Renderer::Submit(m_Ground);
 	}
 
 	// Moon/Ball
-	if (ball)
+	if (m_Moon)
 	{
 		//ball->SetScale({ 10.0f, 10.0f, 10.0f });
-		ball->SetTranslation({ 0.0f, 5.0f, 0.0f });
-		DXEngine::Renderer::Submit(ball);
+		m_Moon->SetTranslation({ 20.0f, 5.0f, 0.0f });
+		DXEngine::Renderer::Submit(m_Moon);
 	}
-
+	
 	// Light sphere
 	if (m_Light)
 	{
-		m_Light->SetTranslation({ 0.0f, 10.0f, 0.0f });
+		m_Light->SetTranslation({ 0.0f, 10.0f, 10.0f });
 		m_Light->SetScale({ 1.0f, 1.0f, 1.0f });
 		m_Light->BindLight();
 		DXEngine::Renderer::Submit(m_Light);
 	}
+
+	
 	DXEngine::Renderer::EndScene();
 
 }
@@ -110,23 +112,23 @@ bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
 }
 void Sandbox::DetectInput(double time)
 {
-	float speed = time * 300.5f;
+	float speed = time * 600.5f;
 
 	if (DXEngine::Input::IsKeyPressed('W'))
 	{
-		camera->moveBackForward += speed;
+		m_Camera->moveBackForward += speed;
 	}
 	if (DXEngine::Input::IsKeyPressed('S'))
 	{
-		camera->moveBackForward -= speed;
+		m_Camera->moveBackForward -= speed;
 	}
 	if (DXEngine::Input::IsKeyPressed('A'))
 	{
-		camera->moveLeftRight -= speed;
+		m_Camera->moveLeftRight -= speed;
 	}
 	if (DXEngine::Input::IsKeyPressed('D'))
 	{
-		camera->moveLeftRight += speed;
+		m_Camera->moveLeftRight += speed;
 	}
 
 	// Toggle wireframe mode
@@ -163,7 +165,7 @@ void Sandbox::DetectInput(double time)
 		debugToggled = false;
 	}
 
-	camera->UpdateCamera();
+	m_Camera->UpdateCamera();
 	//call update
 
 	return;
@@ -173,23 +175,23 @@ void Sandbox::InitializePicking()
 	m_PickingManager = std::make_unique<DXEngine::PickingManager>();
 
 	// Register pickable objects - cast to InterfacePickable interface
-	if (ball)
-		m_PickingManager->RegisterPickable(ball);
+	if (m_Moon)
+		m_PickingManager->RegisterPickable(m_Moon);
 
-	if (tri)
-		m_PickingManager->RegisterPickable(tri);
+	if (m_Ground)
+		m_PickingManager->RegisterPickable(m_Ground);
 
 	if (m_Light)
 		m_PickingManager->RegisterPickable(m_Light);
 
 	// Don't register sky sphere as it should not be pickable
-	if (sky)
-		sky->SetPickable(false);
+	if (m_Sky)
+		m_Sky->SetPickable(false);
 }
 
 void Sandbox::HandlePicking(float mouseX, float mouseY)
 {
-	if (!m_PickingManager || !camera)
+	if (!m_PickingManager || !m_Camera)
 		return;
 
 	// Get window dimensions
@@ -202,7 +204,7 @@ void Sandbox::HandlePicking(float mouseX, float mouseY)
 	int screenWidth = 1270;
 		int screenHeight = 720;
 	// Perform picking
-	DXEngine::HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *camera);
+	DXEngine::HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *m_Camera);
 
 	if (hit.Hit)  // Note: lowercase 'hit'
 	{

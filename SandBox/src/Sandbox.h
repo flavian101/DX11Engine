@@ -1,7 +1,7 @@
 #pragma once
 #include "DXEngine.h"
 #include <memory>
-#include "Triangle.h"
+#include "Ground.h"
 #include "Ball.h"
 #include "SkySphere.h"
 #include "LightSphere.h"
@@ -34,10 +34,10 @@ private:
 
 private:
 	std::shared_ptr<DXEngine::ShaderManager> m_ShaderManager;
-	std::shared_ptr<DXEngine::Camera> camera;
-	std::shared_ptr<DXEngine::Ground> tri;
-	std::shared_ptr<DXEngine::SkySphere> sky;
-	std::shared_ptr<DXEngine::Ball> ball;
+	std::shared_ptr<DXEngine::Camera> m_Camera;
+	std::shared_ptr<DXEngine::Ground> m_Ground;
+	std::shared_ptr<DXEngine::SkySphere> m_Sky;
+	std::shared_ptr<DXEngine::Ball> m_Moon;
 	std::shared_ptr<DXEngine::LightSphere> m_Light;
 
 	//Window wnd;

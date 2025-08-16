@@ -74,7 +74,7 @@ namespace DXEngine {
 		void SetIsVisible(bool visible) { m_Visible = visible; }
 
 		bool CastsShadows()const { return m_CastsShadows; }
-		bool setCastsShadows(bool casts) { m_CastsShadows = casts; }
+		void setCastsShadows(bool casts) { m_CastsShadows = casts; }
 	
 		bool ReceivesShadows()const { return m_ReceivesShadows; }
 		void SetReceivesShadows(bool receives){ m_ReceivesShadows = receives; }

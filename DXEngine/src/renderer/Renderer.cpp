@@ -56,7 +56,12 @@ namespace DXEngine {
             }
         }
 
-        DirectX::XMMATRIX normalMatrix = model->GetModelMatrix();
+        // Store transform
+        DirectX::XMMATRIX  modelMatrix = model->GetModelMatrix();
+        DirectX::XMStoreFloat4x4(&submission.modelMatrix, modelMatrix);
+
+        // Calculate normal matrix
+        DirectX::XMMATRIX normalMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, modelMatrix));
         DirectX::XMStoreFloat4x4(&submission.normalMatrix, normalMatrix);
 
         submission.visible = model->IsVisible();
@@ -594,7 +599,7 @@ namespace DXEngine {
         model->EnsureDefaultMaterials();
 
         //frustum culling check
-        if (s_FrustumCullingEnabled && IsModelVisible(model.get(), RenderCommand::GetCamera()))
+        if (s_FrustumCullingEnabled && !IsModelVisible(model.get(), RenderCommand::GetCamera()))
         {
             return;
         }

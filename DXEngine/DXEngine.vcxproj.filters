@@ -59,7 +59,6 @@
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
     <ClInclude Include="src\SkySphere.h" />
-    <ClInclude Include="src\Sphere.h" />
     <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\dxpch.h" />
@@ -124,9 +123,6 @@
     <ClInclude Include="src\utils\Transform.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\VertexBuffer.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\VertexShader.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -161,7 +157,6 @@
     <ClCompile Include="src\FrameTime.cpp" />
     <ClCompile Include="src\LightSphere.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
-    <ClCompile Include="src\Sphere.cpp" />
     <ClCompile Include="src\Ground.cpp" />
     <ClCompile Include="src\Window.cpp" />
     <ClCompile Include="src\dxpch.cpp" />
@@ -214,9 +209,6 @@
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Transform.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\VertexBuffer.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\VertexShader.cpp">

@@ -1,8 +1,7 @@
 #pragma once
-#include "Sphere.h"
 #include "renderer/RendererCommand.h"
 #include "utils/Texture.h"
-#include <utils/Mesh.h>
+#include <utils/mesh/Mesh.h>
 #include "models/Model.h"
 
 
@@ -14,8 +13,7 @@ namespace DXEngine {
 		Ball();
 	private:
 		void Initialize();
-	private:
-		Sphere sphere;
+
 
 
 	};

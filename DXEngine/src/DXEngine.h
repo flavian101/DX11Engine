@@ -4,7 +4,7 @@
 #include "picking/PickingManager.h"
 #include "picking/InterfacePickable.h"
 #include "picking/Ray.h"
-#include "utils\Mesh.h"
+#include "utils/mesh\Mesh.h"
 #include "Camera.h"
 #include "Event/MouseEvent.h"
 #include "Event/ApplicationEvent.h"

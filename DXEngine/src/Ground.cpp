@@ -14,38 +14,67 @@ namespace DXEngine {
 		Model()
 	{
 		Initialize();
-		auto grassMaterial = MaterialFactory::CreateTexturedNormalMaterial("Ground Material");
-		auto grassDiffuse = std::make_shared<Texture>("assets/textures/grass.jpg");
-		auto grassNormal = std::make_shared<Texture>("assets/textures/grassNormal.jpg");
-		grassMaterial->SetDiffuseTexture(grassDiffuse);
-		grassMaterial->SetNormalTexture(grassNormal);
-		grassMaterial->SetTextureScale({ 100.0f, 100.0f });
+		
 
-		m_Mesh->SetMaterial(grassMaterial);
 	}
 	void Ground::Initialize()
 	{
-		std::vector<Vertex> vertices;
-		std::vector<unsigned short> ind;
+		auto layout = VertexLayout::CreateLit();
+		auto vertexData = std::make_unique<VertexData>(layout);
+		vertexData->Resize(4); // 4 vertices for a quad
 
-		DirectX::XMFLOAT4 tangent(1.0f, 0.0f, 0.0f, 1.0f);
+        // Define ground vertices (large plane)
+        float size = 1.0f; // Unit size, will be scaled by transform if needed
+        DirectX::XMFLOAT3 positions[4] = {
+            {-size, 0.0f, -size}, // Bottom-left
+            { size, 0.0f, -size}, // Bottom-right  
+            { size, 0.0f,  size}, // Top-right
+            {-size, 0.0f,  size}  // Top-left
+        };
 
+        DirectX::XMFLOAT3 normal(0.0f, 1.0f, 0.0f); // Up normal
+        DirectX::XMFLOAT4 tangent(1.0f, 0.0f, 0.0f, 1.0f); // Right tangent
 
-		vertices.push_back(Vertex(-1.0f, 0.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
-		vertices.push_back(Vertex( 1.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
-		vertices.push_back(Vertex( 1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
-		vertices.push_back(Vertex(-1.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, tangent.x, tangent.y, tangent.z, tangent.w));
+        DirectX::XMFLOAT2 texCoords[4] = {
+            {0.0f, 1.0f}, // Bottom-left
+            {1.0f, 1.0f}, // Bottom-right
+            {1.0f, 0.0f}, // Top-right
+            {0.0f, 0.0f}  // Top-left
+        };
 
+        // Set vertex attributes
+        for (int i = 0; i < 4; ++i)
+        {
+            vertexData->SetAttribute(i, VertexAttributeType::Position, positions[i]);
+            vertexData->SetAttribute(i, VertexAttributeType::Normal, normal);
+            vertexData->SetAttribute(i, VertexAttributeType::TexCoord0, texCoords[i]);
+            vertexData->SetAttribute(i, VertexAttributeType::Tangent, tangent);
+        }
 
-		ind.push_back(0);
-		ind.push_back(2);
-		ind.push_back(1);
-		ind.push_back(0);
-		ind.push_back(3);
-		ind.push_back(2);
+        // Create index data
+        auto indexData = std::make_unique<IndexData>(IndexType::UInt16);
+        indexData->AddTriangle(0, 2, 1); // First triangle
+        indexData->AddTriangle(0, 3, 2); // Second triangle
 
-		auto meshData = std::make_shared<MeshResource>(std::move(vertices), std::move(ind));
-		m_Mesh = std::make_shared<Mesh>(meshData);
+        // Create mesh resource
+        auto meshResource = std::make_shared<MeshResource>("GroundMesh");
+        meshResource->SetVertexData(std::move(vertexData));
+        meshResource->SetIndexData(std::move(indexData));
+        meshResource->SetTopology(PrimitiveTopology::TriangleList);
 
+        // Generate bounds
+        meshResource->GenerateBounds();
+
+        // Create mesh
+        auto mesh = std::make_shared<Mesh>(meshResource);
+
+        auto grassMaterial = MaterialFactory::CreateTexturedNormalMaterial("Ground Material");
+        auto grassDiffuse = std::make_shared<Texture>("assets/textures/grass.jpg");
+        auto grassNormal = std::make_shared<Texture>("assets/textures/grassNormal.jpg");
+        grassMaterial->SetDiffuseTexture(grassDiffuse);
+        grassMaterial->SetNormalTexture(grassNormal);
+        grassMaterial->SetTextureScale({ 100.0f, 100.0f });
+        mesh->SetMaterial(grassMaterial);
+        SetMesh(std::move(mesh));
 	}
 }

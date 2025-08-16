@@ -2,7 +2,6 @@
 #include "Mesh.h"
 #include "renderer/RendererCommand.h"
 #include <utils/material/Material.h>
-#include <utils/VertexBuffer.h>
 #include <utils/IndexBuffer.h>
 #include <cassert>
 #include <sstream>

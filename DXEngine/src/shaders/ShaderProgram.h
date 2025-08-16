@@ -3,7 +3,6 @@
 #include "..\utils\PixelShader.h"
 #include <memory>
 #include "renderer/Renderer.h"
-#include <utils/InputLayout.h>
 
 namespace DXEngine {
 
@@ -18,7 +17,6 @@ namespace DXEngine {
 
 		void Bind();
 	private:
-		std::shared_ptr<InputLayout> layout;
 		std::shared_ptr<VertexShader> m_VertexShader;
 		std::shared_ptr <PixelShader> m_PixelShader;;
 	};
