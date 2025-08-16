@@ -19,13 +19,12 @@ cbuffer MaterialBuffer : register(b1)
 struct PSInput
 {
     float4 position : SV_POSITION;
-    float2 texCoord : TEXCOORD0;
-    float4 color : COLOR;
+    float2 texCoord : TEXCOORD;
 };
 
 float4 main(PSInput input) : SV_TARGET
 {
-    float4 finalColor = input.color;
+    float4 finalColor = diffuseColor;
     
     // Check if we have a diffuse texture (flag bit 0)
     if (flags & 1)

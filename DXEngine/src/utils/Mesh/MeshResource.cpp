@@ -1065,7 +1065,7 @@ namespace DXEngine
 
         return resource;
     }
-
+   
     std::unique_ptr<MeshResource> MeshResource::CreateCube(const std::string& name, float size)
     {
         auto layout = VertexLayout::CreateBasic();

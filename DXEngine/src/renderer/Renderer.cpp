@@ -9,6 +9,7 @@
 #include "utils/UI/UIElement.h"
 #include <utils/UI/UIButton.h>
 #include <utils/UI/UIPanel.h>
+#include <utils/UI/UIText.h>
 
 
 namespace DXEngine {
@@ -925,28 +926,24 @@ namespace DXEngine {
                 UIColor panelColor = GetPanelColor(panel);
                 materialToUse->SetDiffuseColor({ panelColor.r, panelColor.g, panelColor.b, panelColor.a });
             }
+            else if (auto text = std::dynamic_pointer_cast<UIText>(submission.uiElement))
+            {
+                UIColor textColor = text->GetColor();
+                materialToUse->SetDiffuseColor({ textColor.r, textColor.g, textColor.b, textColor.a });
+            }
 
-            //bind Material and shader
+            // Bind Material and shader
             BindMaterial(materialToUse);
             BindShaderForMaterial(materialToUse);
 
-            // Setup UI transform buffer
-            ConstantBuffer<TransfomBufferData> vsBuffer;
-            vsBuffer.Initialize();
-            vsBuffer.data.WVP = DirectX::XMMatrixTranspose(modelMatrix * s_UIProjectionMatrix);
-            vsBuffer.data.Model = DirectX::XMMatrixTranspose(modelMatrix);
-            vsBuffer.Update();
-
-            RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Transform, 1, vsBuffer.GetAddressOf());
-
-            // Setup UI-specific constant buffer
+            // Setup UI constant buffer (register b5)
             ConstantBuffer<UIConstantBuffer> uiBuffer;
             uiBuffer.Initialize();
-            uiBuffer.data.projection = DirectX::XMMatrixTranspose(s_UIProjectionMatrix);
+            uiBuffer.data.projection = DirectX::XMMatrixTranspose(modelMatrix * s_UIProjectionMatrix);
             uiBuffer.data.screenWidth = static_cast<float>(RenderCommand::GetViewportWidth());
             uiBuffer.data.screenHeight = static_cast<float>(RenderCommand::GetViewportHeight());
             uiBuffer.data.time = static_cast<float>(s_FrameCount) / 60.0f;
-            uiBuffer.data.padding = 3.0f;
+            uiBuffer.data.padding = 0.0f;
             uiBuffer.Update();
 
             RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_UI, 1, uiBuffer.GetAddressOf());
@@ -1309,6 +1306,8 @@ namespace DXEngine {
             s_DefaultUIMaterial->SetFlag(MaterialFlags::IsTransparent, true);
             s_DefaultUIMaterial->SetFlag(MaterialFlags::IsTwoSided, true);
             s_DefaultUIMaterial->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            s_DefaultUIMaterial->SetAlpha(1.0f);
+
 
             OutputDebugStringA("Default UI Material created successfully\n");
         }

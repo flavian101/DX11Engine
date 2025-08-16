@@ -13,7 +13,7 @@ cbuffer MaterialBuffer : register(b1)
     uint flags;
     float3 materialPadding;
 };
-cbuffer UIConstants : register(b5)
+cbuffer UIConstantBuffer : register(b5)
 {
     matrix projection;
     float screenWidth;
@@ -24,16 +24,15 @@ cbuffer UIConstants : register(b5)
 struct VSInput
 {
     float3 position : POSITION;
-    float4 color : COLOR;
-    float2 texCoord : TEXCOORD0;
+    float3 normal : NORMAL;
+    float2 texCoord : TEXCOORD;
 };
 
 
 struct VSOutput
 {
     float4 position : SV_POSITION;
-    float2 texCoord : TEXCOORD0;
-    float4 color : COLOR;
+    float2 texCoord : TEXCOORD;
 };
 
 VSOutput main(VSInput input)
@@ -45,9 +44,6 @@ VSOutput main(VSInput input)
     
     // Pass through texture coordinates with tiling and offset
     output.texCoord = input.texCoord * textureScale + textureOffset;
-    
-    // Use material diffuse color combined with vertex color
-    output.color = diffuseColor * input.color;
-    
+      
     return output;
 }

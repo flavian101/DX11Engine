@@ -17,7 +17,7 @@ namespace DXEngine
     void UILayer::OnAttach()
     {
         // Initialize UI system with default screen size
-        m_UIManager->Initialize(1920, 1080);
+        m_UIManager->Initialize(1270, 720);
 
         // Create some example UI elements for testing
         CreateExampleUI();

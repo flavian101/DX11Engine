@@ -100,6 +100,23 @@ namespace DXEngine {
 		dsDesc.DepthEnable = TRUE;
 		dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 		dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+
+		dsDesc.StencilEnable = FALSE;
+		dsDesc.StencilReadMask = 0xFF;
+		dsDesc.StencilWriteMask = 0xFF;
+
+		// Front face
+		dsDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		dsDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+		dsDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		dsDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+		// Back face stencil
+		dsDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		dsDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+		dsDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		dsDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
 		hr = s_Device->CreateDepthStencilState(&dsDesc, s_DepthStencilState.GetAddressOf());
 		if (FAILED(hr)) return false;
 
@@ -143,7 +160,7 @@ namespace DXEngine {
 		ZeroMemory(&rtbd, sizeof(rtbd));
 
 		rtbd.BlendEnable = true;
-		rtbd.SrcBlend = D3D11_BLEND_SRC_COLOR;
+		rtbd.SrcBlend = D3D11_BLEND_SRC_ALPHA;
 		rtbd.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
 		rtbd.BlendOp = D3D11_BLEND_OP_ADD;
 		rtbd.SrcBlendAlpha = D3D11_BLEND_ONE;
@@ -235,10 +252,25 @@ namespace DXEngine {
 			static Microsoft::WRL::ComPtr<ID3D11DepthStencilState> noDepthState = nullptr;
 			if (!noDepthState)
 			{
-				D3D11_DEPTH_STENCIL_DESC desc;
+				D3D11_DEPTH_STENCIL_DESC desc = {};
 				desc.DepthEnable = false;
 				desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 				desc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+				desc.StencilEnable = false;
+				desc.StencilReadMask = 0xFF;
+				desc.StencilWriteMask = 0xFF;
+
+				// Proper stencil values
+				desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+				desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+				desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+				desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+				desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+				desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+				desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+				desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
 				s_Device->CreateDepthStencilState(&desc, noDepthState.GetAddressOf());
 			}
 			s_Context->OMSetDepthStencilState(noDepthState.Get(), 1);
