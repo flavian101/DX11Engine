@@ -37,7 +37,6 @@ namespace DXEngine
 		virtual ~UIElement() = default;
 
 		virtual void Update(FrameTime dt){}
-		virtual void Render() = 0;
 		virtual bool HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick) { return false; }
 
 

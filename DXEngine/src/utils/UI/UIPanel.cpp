@@ -19,43 +19,7 @@ namespace DXEngine
             }
         }
     }
-    void UIPanel::Render()
-    {
-        if (!IsVisible())return;
-
-        const UIRect& bounds = GetBounds();
-
-        // Draw panel background
-        if (m_BackgroundColor.a > 0.0f)
-        {
-            // Draw background (placeholder - you'd use your UIRenderer here)
-            // UIRenderer::DrawRect(bounds, m_BackgroundColor);
-        }
-
-        // Draw border if needed
-        if (m_BorderWidth > 0.0f && m_BorderColor.a > 0.0f)
-        {
-            // Draw border (placeholder - you'd use your UIRenderer here)
-            // UIRenderer::DrawRectOutline(bounds, m_BorderColor, m_BorderWidth);
-        }
-        for (auto& child : GetChildren())
-        {
-            if (child && child->IsVisible())
-            {
-                child->Render();
-            }
-        }
-
-        // Debug output
-        static int frameCount = 0;
-        if (frameCount++ % 180 == 0 && IsVisible()) // Every 180 frames (3 seconds at 60fps)
-        {
-            std::string debugMsg = "Rendering panel with " + std::to_string(GetChildren().size()) +
-                " children at (" + std::to_string(bounds.x) + "," + std::to_string(bounds.y) + ")\n";
-            OutputDebugStringA(debugMsg.c_str());
-        }
-    }
-
+  
     bool UIPanel::HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick)
     {
         if (!IsEnabled() || !IsVisible())

@@ -231,7 +231,7 @@ namespace DXEngine {
 
     void Renderer::Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride)
     {
-        if (!model || !model->IsValid()||model->IsVisible())
+        if (!model || !model->IsValid()||!model->IsVisible())
             return;
         s_Stats.modelsSubmitted++;
         ProcessModelSubmission(model, materialOverride);
@@ -955,9 +955,26 @@ namespace DXEngine {
             auto mesh = s_UIQuadModel->GetMesh();
             if (mesh && mesh->IsValid())
             {
+                // Get shader bytecode for input layout
+                const void* shaderByteCode = nullptr;
+                size_t byteCodeLength = 0;
+                if (s_CurrentShader)
+                {
+                    auto blob = s_CurrentShader->GetByteCode();
+                    if (blob)
+                    {
+                        shaderByteCode = blob->GetBufferPointer();
+                        byteCodeLength = blob->GetBufferSize();
+                    }
+                }
+
                 mesh->EnsureGPUResources();
-                mesh->Bind();
+                mesh->Bind(shaderByteCode, byteCodeLength);
                 mesh->Draw();
+            }
+            else
+            {
+                OutputDebugStringA("Warning: UI quad mesh is invalid\n");
             }
 
             // Restore previous render state
@@ -1287,7 +1304,7 @@ namespace DXEngine {
     {
         try
         {
-            s_DefaultUIMaterial = MaterialFactory::CreateUnlitMaterial("DefaultUI");
+            s_DefaultUIMaterial = MaterialFactory::CreateUIMaterial("DefaultUI");
             s_DefaultUIMaterial->SetRenderQueue(RenderQueue::UI);
             s_DefaultUIMaterial->SetFlag(MaterialFlags::IsTransparent, true);
             s_DefaultUIMaterial->SetFlag(MaterialFlags::IsTwoSided, true);

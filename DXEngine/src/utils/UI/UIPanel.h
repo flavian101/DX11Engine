@@ -12,7 +12,6 @@ namespace DXEngine
 
 		//element interface
 		void Update(FrameTime dt) override;
-		void Render() override;
 		bool HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick);
 	
 		//panel specific

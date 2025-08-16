@@ -12,37 +12,7 @@ namespace DXEngine
 		// Update any animations or time-based effects here
 		// For now, basic button doesn't need complex updates
 	}
-	void UIButton::Render()
-	{
-        if (!IsVisible()) return;
-
-        // Get current color based on state
-        UIColor currentColor = GetCurrentColor();
-
-        // This is where you'd use your UI renderer to draw the button
-        // For now, we'll use placeholder rendering
-
-        const UIRect& bounds = GetBounds();
-
-        // Draw button background (placeholder - you'd use your UIRenderer here)
-        // UIRenderer::DrawRect(bounds, currentColor);
-
-        // Draw button border if needed
-        // UIRenderer::DrawRectOutline(bounds, UIColor(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
-
-        // Draw button text (placeholder - you'd use your UIRenderer here)
-        // UIRenderer::DrawText(m_Text, bounds, m_TextColor, 16.0f);
-
-        // For debugging, output to console
-        static int frameCount = 0;
-        if (frameCount++ % 60 == 0 && IsVisible()) // Only every 60 frames to avoid spam
-        {
-            std::string debugMsg = "Rendering button: " + m_Text +
-                " at (" + std::to_string(bounds.x) + "," + std::to_string(bounds.y) +
-                ") size (" + std::to_string(bounds.width) + "x" + std::to_string(bounds.height) + ")\n";
-            OutputDebugStringA(debugMsg.c_str());
-        }
-	}
+	
 	bool UIButton::HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick)
 	{
         if (!IsEnabled() || !IsVisible() || !m_Interactable)

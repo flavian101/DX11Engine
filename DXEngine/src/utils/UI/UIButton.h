@@ -24,7 +24,6 @@ namespace DXEngine
 
 		//element interface
 		virtual void Update(FrameTime dt) override;
-		virtual void Render() override;
 		virtual bool HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick) override;
 
 		//button
