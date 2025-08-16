@@ -38,6 +38,7 @@ namespace DXEngine
 
 		DirectX::XMFLOAT3 GetCenter() const;
 		DirectX::XMFLOAT3 GetExtents() const;
+		void GetCorners(DirectX::XMVECTOR corners[8]) const;
 		float GetRadius() const;
 		void Expand(const DirectX::XMFLOAT3& point);
 		void Expand(const BoundingBox& other);

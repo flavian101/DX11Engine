@@ -18,7 +18,7 @@ void Sandbox::OnAttach()
 
 	DXEngine::Renderer::InitShaderManager(m_ShaderManager);
 
-	tri = std::make_shared<DXEngine::Triangle>();
+	tri = std::make_shared<DXEngine::Ground>();
 	ball = std::make_shared<DXEngine::Ball>();
 	sky = std::make_shared<DXEngine::SkySphere>();
 	m_Light = std::make_shared<DXEngine::LightSphere>();
@@ -220,7 +220,7 @@ void Sandbox::HandlePicking(float mouseX, float mouseY)
 				{
 					std::cout << "Ball was picked" << std::endl;
 				}
-				else if (dynamic_cast<DXEngine::Triangle*>(modelPtr))
+				else if (dynamic_cast<DXEngine::Ground*>(modelPtr))
 				{
 					std::cout << "triangle was picked" << std::endl;
 				}

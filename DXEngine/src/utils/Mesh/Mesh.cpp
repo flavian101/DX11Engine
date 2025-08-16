@@ -540,6 +540,15 @@ namespace DXEngine {
         return m_Resource ? m_Resource->GetSubMeshCount() : 0;
     }
 
+    size_t Mesh::GetVertexCount()const
+    {
+        return m_Resource ? m_Resource->GetVertexData()->GetVertexCount() : 0;
+    }
+    size_t Mesh::GetIndexCount()const
+    {
+        return m_Resource ? m_Resource->GetIndexData()->GetIndexCount() : 0;
+    }
+
     bool Mesh::HasMaterial(size_t submeshIndex) const
     {
         return submeshIndex < m_Materials.size() && m_Materials[submeshIndex] != nullptr;

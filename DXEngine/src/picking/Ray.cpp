@@ -1,6 +1,6 @@
 #include "dxpch.h"
 #include "Ray.h"
-#include "utils/Mesh.h"
+#include "utils/mesh/Mesh.h"
 #include "Camera.h"
 
 namespace DXEngine {
@@ -114,34 +114,34 @@ namespace DXEngine {
 
         Ray localRay(localOrigin, localDirection);
 
-        std::vector<Vertex> vertices = mesh->GetVertices();
-        std::vector<unsigned short> indices = mesh->GetIndices();
-
-        // Test against all triangles
-        for (size_t i = 0; i < mesh->GetIndices().size(); i += 3)
-        {
-            DirectX::XMVECTOR v0 = DirectX::XMLoadFloat3(&vertices[indices[i]].pos);
-            DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&vertices[indices[i + 1]].pos);
-            DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&vertices[indices[i + 2]].pos);
-
-            HitInfo hit = IntersectPlane(localRay, v0, v1, v2, objectPtr);
-
-            if (hit.Hit && hit.Distance < closestDistance)
-            {
-                closestDistance = hit.Distance;
-                closestHit = hit;
-
-                // Transform hit point and normal back to world space
-                closestHit.Point = DirectX::XMVector3Transform(hit.Point, modelMatrix);
-                closestHit.Normal = DirectX::XMVector3TransformNormal(hit.Normal, modelMatrix);
-                closestHit.Normal = DirectX::XMVector3Normalize(closestHit.Normal);
-
-                // Recalculate distance in world space
-                DirectX::XMVECTOR worldDistance = closestHit.Point - ray.Origin;
-                closestHit.Distance = DirectX::XMVectorGetX(DirectX::XMVector3Length(worldDistance));
-            }
-        }
-
+      //  std::vector<Vertex> vertices = mesh->GetVertexData();
+      //  std::vector<unsigned short> indices = mesh->GetIndices();
+      //
+      //  // Test against all triangles
+      //  for (size_t i = 0; i < mesh->GetIndices().size(); i += 3)
+      //  {
+      //      DirectX::XMVECTOR v0 = DirectX::XMLoadFloat3(&vertices[indices[i]].pos);
+      //      DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&vertices[indices[i + 1]].pos);
+      //      DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&vertices[indices[i + 2]].pos);
+      //
+      //      HitInfo hit = IntersectPlane(localRay, v0, v1, v2, objectPtr);
+      //
+      //      if (hit.Hit && hit.Distance < closestDistance)
+      //      {
+      //          closestDistance = hit.Distance;
+      //          closestHit = hit;
+      //
+      //          // Transform hit point and normal back to world space
+      //          closestHit.Point = DirectX::XMVector3Transform(hit.Point, modelMatrix);
+      //          closestHit.Normal = DirectX::XMVector3TransformNormal(hit.Normal, modelMatrix);
+      //          closestHit.Normal = DirectX::XMVector3Normalize(closestHit.Normal);
+      //
+      //          // Recalculate distance in world space
+      //          DirectX::XMVECTOR worldDistance = closestHit.Point - ray.Origin;
+      //          closestHit.Distance = DirectX::XMVectorGetX(DirectX::XMVector3Length(worldDistance));
+      //      }
+      //  }
+      //
         return closestHit;
     }
 

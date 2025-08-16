@@ -143,10 +143,10 @@ namespace DXEngine
 
 		// Bulk operations
 		void* GetVertexData(uint32_t slot = 0) { return m_Data[slot].data(); }
-		const void* GetVertexData(uint32_t slot = 0) const { return m_Data[slot].data(); }
+		const void* GetVertexData(uint32_t slot = 0) const { return m_Data.at(slot).data(); }
 
 		size_t GetVertexCount() const { return m_VertexCount; }
-		size_t GetDataSize(uint32_t slot = 0) const { return m_Data[slot].size(); }
+		size_t GetDataSize(uint32_t slot = 0) const { return m_Data.at(slot).size(); }
 
 		const VertexLayout& GetLayout() const { return m_Layout; }
 

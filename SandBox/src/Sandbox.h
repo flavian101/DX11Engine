@@ -35,7 +35,7 @@ private:
 private:
 	std::shared_ptr<DXEngine::ShaderManager> m_ShaderManager;
 	std::shared_ptr<DXEngine::Camera> camera;
-	std::shared_ptr<DXEngine::Triangle> tri;
+	std::shared_ptr<DXEngine::Ground> tri;
 	std::shared_ptr<DXEngine::SkySphere> sky;
 	std::shared_ptr<DXEngine::Ball> ball;
 	std::shared_ptr<DXEngine::LightSphere> m_Light;

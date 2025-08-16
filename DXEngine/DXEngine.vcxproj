@@ -114,7 +114,7 @@
     <ClInclude Include="src\Main.h" />
     <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\Sphere.h" />
-    <ClInclude Include="src\Triangle.h" />
+    <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\utils\material\MaterialProperties.h" />
     <ClInclude Include="src\utils\material\MaterialTypes.h" />
     <ClInclude Include="src\Window.h" />
@@ -164,7 +164,7 @@
     <ClCompile Include="src\LightSphere.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
     <ClCompile Include="src\Sphere.cpp" />
-    <ClCompile Include="src\Triangle.cpp" />
+    <ClCompile Include="src\Ground.cpp" />
     <ClCompile Include="src\Window.cpp" />
     <ClCompile Include="src\dxpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

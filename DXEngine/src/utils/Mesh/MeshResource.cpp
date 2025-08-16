@@ -25,6 +25,36 @@ namespace DXEngine
         );
     }
 
+    void BoundingBox::GetCorners(DirectX::XMVECTOR corners[8]) const
+    {
+        using namespace DirectX;
+
+        // Load min and max into vectors
+        XMVECTOR vMin = XMLoadFloat3(&min);
+        XMVECTOR vMax = XMLoadFloat3(&max);
+
+        // Extract min/max components
+        float minX = XMVectorGetX(vMin);
+        float minY = XMVectorGetY(vMin);
+        float minZ = XMVectorGetZ(vMin);
+
+        float maxX = XMVectorGetX(vMax);
+        float maxY = XMVectorGetY(vMax);
+        float maxZ = XMVectorGetZ(vMax);
+
+        // Bottom face (y = minY)
+        corners[0] = XMVectorSet(minX, minY, minZ, 0.0f); // Left-bottom-near
+        corners[1] = XMVectorSet(maxX, minY, minZ, 0.0f); // Right-bottom-near
+        corners[2] = XMVectorSet(maxX, minY, maxZ, 0.0f); // Right-bottom-far
+        corners[3] = XMVectorSet(minX, minY, maxZ, 0.0f); // Left-bottom-far
+
+        // Top face (y = maxY)
+        corners[4] = XMVectorSet(minX, maxY, minZ, 0.0f); // Left-top-near
+        corners[5] = XMVectorSet(maxX, maxY, minZ, 0.0f); // Right-top-near
+        corners[6] = XMVectorSet(maxX, maxY, maxZ, 0.0f); // Right-top-far
+        corners[7] = XMVectorSet(minX, maxY, maxZ, 0.0f); // Left-top-far
+    }
+
     float BoundingBox::GetRadius() const
     {
         DirectX::XMFLOAT3 extents = GetExtents();

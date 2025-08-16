@@ -1,8 +1,7 @@
 #include "dxpch.h"
-#include "Triangle.h"
+#include "Ground.h"
 #include "utils/material/Material.h"
-#include <utils/Vertex.h>
-#include <utils/Mesh.h>
+#include <utils/mesh/Mesh.h>
 #include "utils/Texture.h"
 #include <utils/Mesh/VertexAttribute.h>
 #include <utils/Mesh/MeshResource.h>
@@ -10,7 +9,7 @@
 namespace DXEngine {
 
 
-	Triangle::Triangle()
+	Ground::Ground()
 		:
 		Model()
 	{
@@ -24,7 +23,7 @@ namespace DXEngine {
 
 		m_Mesh->SetMaterial(grassMaterial);
 	}
-	void Triangle::Initialize()
+	void Ground::Initialize()
 	{
 		std::vector<Vertex> vertices;
 		std::vector<unsigned short> ind;

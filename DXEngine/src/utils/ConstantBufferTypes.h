@@ -76,6 +76,7 @@ namespace DXEngine {
         CB_Point_Light = 3,
         CB_Spot_Light = 4,
         CB_UI = 5,
+        CB_Bones = 6.
 
     };
 }

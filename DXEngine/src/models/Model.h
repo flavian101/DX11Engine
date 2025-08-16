@@ -3,17 +3,46 @@
 #include "utils/Transform.h"
 #include <memory>
 #include <DirectXMath.h>
+#include <utils/Mesh/MeshResource.h>
 
 namespace DXEngine {
+
 	class Mesh;
-	class ShaderProgram;
+	class Material;
+	struct RenderSubmission;
+	class Renderer;
 
 	class Model : public InterfacePickable
 	{
 	public:
 	public:
 		Model();
+		explicit Model(std::shared_ptr<Mesh> mesh);
 		virtual ~Model();
+
+		virtual void Update(float deltaTime = 0.0f);
+		bool IsValid()const;
+		std::string GetDebugInfo()const;
+
+		//mesh managment
+		void SetMesh(std::shared_ptr<Mesh> mesh);//primary
+		const std::shared_ptr<Mesh>& GetMesh()const { return m_PrimaryMesh; }
+
+		void AddMesh(std::shared_ptr<Mesh> mesh, const std::string& name = "");// secondary meshes
+		std::shared_ptr<Mesh> GetMesh(size_t index)const;
+		std::shared_ptr<Mesh> GetMesh(const std::string& name)const;
+		size_t GetMeshCount()const { return m_Meshes.size(); }
+		void ClearMeshes();
+
+		//material
+		void SetMaterial(std::shared_ptr<Material> material); //primary mesh
+		void SetMaterial(size_t meshIndex, size_t subMeshIndex, std::shared_ptr<Material> material);
+		const std::shared_ptr<Material>& GetMaterial(size_t submeshIndex = 0)const;
+		const std::shared_ptr<Material>& GetMaterial(size_t meshIndex,size_t submeshIndex = 0) const;
+
+		bool HasMaterial(size_t submeshIndex = 0)const;
+		void EnsureDefaultMaterials();
+
 
 		// Transform operations
 		void SetTranslation(const DirectX::XMFLOAT3& translation);
@@ -25,74 +54,129 @@ namespace DXEngine {
 		DirectX::XMMATRIX GetModelMatrix() const override;
 
 		// Transform management
-		void SetTransform(const std::shared_ptr<Transform>& transform);
+		void SetTransform(std::shared_ptr<Transform> transform);
 		const std::shared_ptr<Transform>& GetTransform() const;
 
-		// Mesh management
-		const std::shared_ptr<Mesh>& GetMesh() const;
-		void SetMesh(const std::shared_ptr<Mesh>& mesh);
+		//bounding volume operations
+		BoundingBox GetLocalBoundingBox() const;
+		BoundingSphere GetLocalBoundingSphere() const;
 
-		// Material management (higher level interface)
-		void SetMaterial(std::shared_ptr<Material> material);
-		void SetMaterial(size_t submeshIndex, std::shared_ptr<Material> material);
-		const std::shared_ptr<Material>& GetMaterial(size_t submeshIndex = 0) const;
-		bool HasMaterial(size_t submeshIndex = 0) const;
-		void EnsureDefaultMaterial();
+		virtual BoundingBox GetWorldBoundingBox()const;
+		virtual BoundingSphere GetWorldBoundingSphere()const;
 
-		// Rendering interface (higher level than mesh)
-		void Render(const void* shaderByteCode = nullptr, size_t byteCodeLength = 0) const;
-		void RenderSubmesh(size_t submeshIndex, const void* shaderByteCode = nullptr, size_t byteCodeLength = 0) const;
-		void RenderInstanced(uint32_t instanceCount, const void* shaderByteCode = nullptr, size_t byteCodeLength = 0) const;
-
-		// Lower-level rendering control for the renderer
-		void BindForRendering(const void* shaderByteCode = nullptr, size_t byteCodeLength = 0) const;
-		void DrawAll() const;
-		void Draw(size_t submeshIndex = 0) const;
-		void DrawInstanced(uint32_t instanceCount, size_t submeshIndex = 0) const;
-
-		// Mesh information (encapsulated)
-		uint32_t GetIndexCount(size_t submeshIndex = 0) const;
-		uint32_t GetVertexCount() const;
-		size_t GetTotalTriangleCount() const;
-
-		// Properties
-		bool IsValid() const;
-		bool IsSelected() const { return m_IsSelected; }
-		size_t GetSubmeshCount() const;
-
-		// Bounding information
-		const BoundingBox& GetBoundingBox() const;           // Local space
-		const BoundingSphere& GetBoundingSphere() const;     // Local space  
-		BoundingBox GetWorldBoundingBox() const;             // World space
-
-		// Update loop
-		virtual void Update();
-
-		// Debug and utility
-		std::string GetDebugInfo() const;
+		//rendering data access
+		size_t GetTotalSubmeshCount()const;
+		uint32_t GetTotalVertexCount() const;
+		size_t GetTotalTriangleCount()const;
 		size_t GetMemoryUsage() const;
 
-		// Factory methods for common shapes
+		bool IsVisible() const { return m_Visible; }
+		void SetIsVisible(bool visible) { m_Visible = visible; }
+
+		bool CastsShadows()const { return m_CastsShadows; }
+		bool setCastsShadows(bool casts) { m_CastsShadows = casts; }
+	
+		bool ReceivesShadows()const { return m_ReceivesShadows; }
+		void SetReceivesShadows(bool receives){ m_ReceivesShadows = receives; }
+
+		//picking
+		bool IsSelected()const { return m_IsSelected; }
+		void SetSelected(bool select){ m_IsSelected = select; }
+
 		static std::shared_ptr<Model> CreateQuad(float width = 1.0f, float height = 1.0f);
 		static std::shared_ptr<Model> CreateCube(float size = 1.0f);
 		static std::shared_ptr<Model> CreateSphere(float radius = 1.0f, uint32_t segments = 32);
 		static std::shared_ptr<Model> CreatePlane(float width = 10.0f, float depth = 10.0f,
 			uint32_t widthSegments = 10, uint32_t depthSegments = 10);
-
 	protected:
-		// InterfacePickable implementation
+
 		HitInfo TestRayIntersection(const Ray& ray) override;
 		void OnPicked() override;
 		void OnUnpicked() override;
 
-		// Virtual callbacks for derived classes
-		virtual void OnMeshChanged();
-
+		//virtual callbacks
+		virtual void OnMeshChanged(size_t meshIndex);
+		virtual void OnMaterialChanged(size_t meshIndex, size_t submeshIndex);
 	protected:
-		std::shared_ptr<Mesh> m_Mesh;
-		std::shared_ptr<Transform> m_ModelTransform;
-		bool m_IsSelected;
+		void InvalidateBounds();
+
+	private:
+
+		void ComputeBounds()const;
+		void EnsureMeshMaterials(size_t meshIndex);
+
+		//mesh Storage
+		struct MeshEntry
+		{
+			std::shared_ptr<Mesh> Mesh;
+			std::string Name;
+
+			MeshEntry(std::shared_ptr<DXEngine::Mesh> m, const std::string& name)
+				:Mesh(m),Name(name)
+			{}
+		};
+
+		std::vector<MeshEntry> m_Meshes;
+		std::shared_ptr<Mesh> m_PrimaryMesh;
+		std::shared_ptr<Transform> m_Transform;
+
+		//cache Bounds ( mutable for lazy computations)
+		mutable BoundingBox m_LocalBoundingBox;
+		mutable BoundingSphere m_LocalBoundingSphere;
+		mutable bool m_BoundsDirty = true;
+
+		//render State
+		bool m_Visible = true;
+		bool m_CastsShadows = true;
+		bool m_ReceivesShadows = true;
+		bool m_IsSelected = false;
+	};
+
+	class InstanceModel :public Model
+	{
+	public:
+		InstanceModel();
+		explicit InstanceModel(std::shared_ptr<Mesh> mesh);
+
+		void SetInstanceTransform(const std::vector<DirectX::XMFLOAT4X4>& transforms);
+		void AddInstance(const DirectX::XMFLOAT4X4& transform);
+
+		void ClearInstances();
+
+		size_t GetInstanceCount()const { return m_InstanceTransforms.size(); }
+		const std::vector<DirectX::XMFLOAT4X4>& GetInstanceTransforms() const { return m_InstanceTransforms; }
+
+		BoundingBox GetWorldBoundingBox()const override;
+		BoundingSphere GetWorldBoundingSphere()const override;
+
+	private:
+		std::vector<DirectX::XMFLOAT4X4> m_InstanceTransforms;
 
 	};
+
+	class SkinnedModel : public Model
+	{
+	public:
+		SkinnedModel();
+		explicit SkinnedModel(std::shared_ptr<Mesh> mesh);
+
+		void SetBoneMatrices(const std::vector< DirectX::XMFLOAT4X4>& boneMatrices);
+
+		const std::vector< DirectX::XMFLOAT4X4>& GetBoneMatrices() const { return m_BoneMatrices; }
+
+		void Update(float deltaTime) override;
+
+	private:
+		std::vector< DirectX::XMFLOAT4X4> m_BoneMatrices;
+
+	};
+
+	namespace ModelUtils
+	{
+		std::shared_ptr<Model> CombineModels(const std::vector<std::shared_ptr<Model>>& models);
+		std::shared_ptr<Model> CreateFromMeshResource(std::shared_ptr<MeshResource> resource);
+		std::shared_ptr<Model> CreateLODModel(const std::vector<std::shared_ptr<Mesh>>& lodMeshes);
+
+	}
 
 }

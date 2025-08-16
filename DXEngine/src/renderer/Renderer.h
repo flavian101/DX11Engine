@@ -7,12 +7,12 @@
 
 
 namespace DXEngine {
-
-
     // Forward declarations
     class ShaderManager;
     class ShaderProgram;
     class Model;
+    class InstanceModel;
+    class SkinnedModel;
     class Mesh;
     class Camera;
     class UIElement;
@@ -21,46 +21,70 @@ namespace DXEngine {
     class UIPanel;
     struct UIColor;
 
-    // Improved RenderItem structure with better type safety
-    struct RenderItem
+    struct RenderSubmission
     {
-        // 3D Model data
-        std::shared_ptr<Model> model = nullptr;
+        // Geometry data
+        std::shared_ptr<Mesh> mesh= nullptr;
+        size_t meshIndex = 0;
+        size_t submeshIndex = 0; 
+
         std::shared_ptr<Material> material = nullptr;
         std::shared_ptr<Material> materialOverride = nullptr;
+        
+        // === Transform Data ===
+        DirectX::XMFLOAT4X4 modelMatrix;
+        DirectX::XMFLOAT4X4 normalMatrix;
 
-        // UI Element data
-        std::shared_ptr<UIElement> uiElement = nullptr;
+          //Render state
+        bool visible = true;
+        bool castsShadow = true;
+        bool receivesShadows = true;
 
-        // Common properties
+            //model reference
+        const Model* sourceModel = nullptr;
+        
+            //render Queue and Sorting
         RenderQueue queue = RenderQueue::Opaque;
         float sortKey = 0.0f;
+        uint64_t batchKey = 0;
+
+            //specialized Renderring data
+        const std::vector<DirectX::XMFLOAT4X4>* instanceTransforms = nullptr;
+        size_t instanceCount = 0;
+
+        const std::vector<DirectX::XMFLOAT4X4>* boneMatrices = nullptr;//skeletal animation support
+
+             // UI Element data
+        std::shared_ptr<UIElement> uiElement = nullptr;
         bool isUIElement = false;
-        uint32_t submeshIndex = 0;  // For multi-submesh models
 
-        // 3D Model constructor
-        RenderItem(std::shared_ptr<Model> m, std::shared_ptr<Material> mat, uint32_t submesh = 0)
-            : model(m), material(mat), submeshIndex(submesh)
-            , queue(mat ? mat->GetRenderQueue() : RenderQueue::Opaque)
-        {
-            isUIElement = false;
-        }
+        RenderSubmission() = default;
+        static RenderSubmission CreateFromModel(const Model* model, size_t meshIndex = 0, size_t submeshIndex);
+        static RenderSubmission CreateFromInstanceModel(const InstanceModel* model, size_t meshIndex, size_t subMeshIndex);
+        static RenderSubmission CreateFromSkinnedModel(const SkinnedModel* model, size_t meshIndex, size_t submeshIndex);
+        static RenderSubmission CreateFromUIElement(std::shared_ptr<UIElement> element, std::shared_ptr<Material> material);
 
-        // UI Element constructor
-        RenderItem(std::shared_ptr<UIElement> ui, std::shared_ptr<Material> mat)
-            : uiElement(ui), material(mat), queue(RenderQueue::UI)
-        {
-            isUIElement = true;
-        }
 
-        // Validation
-        bool IsValid() const
+        bool IsValid()const;
+
+        std::shared_ptr<Material> GetEffectiveMaterial()const
         {
-            if (isUIElement)
-                return uiElement != nullptr && material != nullptr;
-            else
-                return model != nullptr && material != nullptr;
+            return materialOverride ? materialOverride : material;
         }
+    };
+
+    struct RenderBatch
+    {
+        std::vector<RenderSubmission> submissions;
+        std::shared_ptr<Material> batchMaterial = nullptr;
+        std::shared_ptr<Mesh> batchMesh = nullptr;
+        RenderQueue queue = RenderQueue::Opaque;
+        bool requiresDepthSorting = false;
+        bool IsInstanced = false;
+
+        void Clear() { submissions.clear(); }
+        bool IsEmpty() const { return submissions.empty(); }
+        size_t Size()const { return submissions.size(); }
     };
 
     class Renderer
@@ -79,13 +103,18 @@ namespace DXEngine {
         // 3D Model rendering
         static void Submit(std::shared_ptr<Model> model);
         static void Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride);
-        static void SubmitImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride = nullptr);
-        static void SubmitSubmesh(std::shared_ptr<Model> model, size_t submeshIndex, std::shared_ptr<Material> materialOverride = nullptr);
+        static void SubmitMesh(std::shared_ptr<Model> model,size_t meshIndex, std::shared_ptr<Material> materialOverride = nullptr);
+        static void SubmitSubmesh(std::shared_ptr<Model> model,size_t meshIndex,size_t submeshIndex, std::shared_ptr<Material> materialOverride = nullptr);
+        static void Submit(std::shared_ptr<InstanceModel> model);
+        static void Submit(std::shared_ptr<SkinnedModel> model);
+
+        static void RenderImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride = nullptr);
+        static void RenderMeshImmediate(std::shared_ptr<Model> model, size_t meshIndex, std::shared_ptr<Material> materialOverride = nullptr);
 
         // UI rendering
         static void SubmitUI(std::shared_ptr<UIElement> element);
         static void SubmitUI(std::shared_ptr<UIElement> element, std::shared_ptr<Material> materialOverride);
-        static void SubmitUIImmediate(std::shared_ptr<UIElement> element, std::shared_ptr<Material> material = nullptr);
+        static void RenderUIImmediate(std::shared_ptr<UIElement> element, std::shared_ptr<Material> material = nullptr);
 
         // Render state management
         static void PushRenderState();
@@ -102,14 +131,28 @@ namespace DXEngine {
         struct RenderStatistics
         {
             uint32_t drawCalls = 0;
+            uint32_t instanceDrawCalls = 0;
             uint32_t verticesRendered = 0;
             uint32_t trianglesRendered = 0;
             uint32_t materialsChanged = 0;
             uint32_t shadersChanged = 0;
-            uint32_t uiElements = 0;
             uint32_t renderStateChanges = 0;
-            uint32_t modelsRendered = 0;
+
+            //model specific
+            uint32_t modelsSubmitted = 0;
+            uint32_t meshesRendered = 0;
             uint32_t submeshesRendered = 0;
+            uint32_t instancesRendered = 0;
+
+            //UI stats
+            uint32_t uiElementsRendered = 0;
+
+            //batch status
+            uint32_t batchesProcessed = 0;
+            uint32_t submissionProcessed = 0;
+
+            //memory stats
+            size_t totalMemoryUsed = 0;
         };
 
         static const RenderStatistics& GetStats() { return s_Stats; }
@@ -118,47 +161,71 @@ namespace DXEngine {
         static void EnableDebugInfo(bool enable);
         static std::string GetDebugInfo();
 
+        static void EnableInstancing(bool enable) { s_InstanceEnabled = enable; }
+        static void SetInstanceBatchSize(size_t size) { s_InstanceBatchSize = size; }
+        static void EnableFrustrumCulling(bool enable) { s_FrustumCullingEnabled = enable; }
+
     private:
         // Core rendering pipeline
         static void ProcessRenderQueue();
-        static void SortRenderItems();
-        static float CalculateSortKey(const DXEngine::RenderItem& item);
-        static void ValidateRenderItem(const DXEngine::RenderItem& item);
-        static void RenderItem(const DXEngine::RenderItem& item);
+        static void CreateRenderBatches();
+        static void SortSubmissions();
+        static void ProcessRenderBatch(const DXEngine::RenderBatch& batch);
 
-        // 3D rendering
-        static void Render3DItem(const DXEngine::RenderItem& item);
-        static void RenderModel(std::shared_ptr<Model> model, std::shared_ptr<Material> material, uint32_t submeshIndex = 0);
-        static void RenderMesh(std::shared_ptr<Mesh> mesh, std::shared_ptr<Material> material,
-            const DirectX::XMMATRIX& modelMatrix, uint32_t submeshIndex = 0);
+        //Submissiom processing
+        static void ProcessModelSubmission(std::shared_ptr<Model> model, std::shared_ptr<Material> overrideMaterial = nullptr);
+        static void ProcessInstanceModelSubmission(std::shared_ptr<InstanceModel> model);
+        static void ProcessSkinnedModelSubmission(std::shared_ptr<SkinnedModel> model);
 
-        // UI rendering
-        static void RenderUIItem(const DXEngine::RenderItem& item);
+        //culling and Lod
+        static bool IsModelVisible(const Model* model, const std::shared_ptr<Camera>& camera);
+        static size_t SelectLODLevel(const Model* model, const std::shared_ptr<Camera>& camera);
+
+        //Rendering methods
+        static void RenderSubmission(const DXEngine::RenderSubmission& submission);
+        static void RenderMesh(const DXEngine::RenderSubmission& submission);
+        static void RenderInstanceMesh(const DXEngine::RenderSubmission& submission);
+        static void RenderSkinnedMesh(const DXEngine::RenderSubmission& submission);
+        static void RenderUIElement(const DXEngine::RenderSubmission& submission);
+
+        //material and shader managment
+        static void BindMaterial(std::shared_ptr<Material> material);
+        static void BindShaderForMaterial(std::shared_ptr<Material> material);
+        static void SetupTransformBuffer(const DXEngine::RenderSubmission& submission);
+        static void SetupInstanceBuffer(const DXEngine::RenderSubmission& submission);
+        static void SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission);
+
+
+        //sorting and Batching
+        static float CalculateDistancetoCamera(const DXEngine::RenderSubmission& submission);
+        static uint64_t GenarateBatchKey(const DXEngine::RenderSubmission& submission);
+        static uint64_t GenerateSortKey(const DXEngine::RenderSubmission& submission);
+        
+        //validation
+        static void ValidateSubmission(const DXEngine::RenderSubmission& submission);
+
+        //UI specific
         static void CreateUIQuad();
         static void CreateDefaultUIMaterial();
         static UIColor GetButtonColorForState(std::shared_ptr<UIButton> button);
-        static UIColor GetPanelColor(std::shared_ptr<UIPanel> panel);
+        static UIColor GetPanelColor(std::shared_ptr<UIPanel> button);
 
-        // Material and shader management
-        static void BindMaterial(std::shared_ptr<Material> material);
-        static void BindShaderForMaterial(std::shared_ptr<Material> material);
+    private:
 
-        // Static data
         static RenderStatistics s_Stats;
         static std::shared_ptr<ShaderManager> s_ShaderManager;
-        static std::vector<DXEngine::RenderItem> s_RenderItems;
-        static std::map<RenderQueue, std::vector<DXEngine::RenderItem*>> s_SortedQueues;
+        static std::vector<DXEngine::RenderSubmission> s_RenderSubmissions;
+        static std::map<RenderQueue, std::vector<DXEngine::RenderSubmission*>> s_SortedQueues;
+        static std::vector<DXEngine::RenderBatch> s_RenderBatches;
 
         static std::shared_ptr<Material> s_CurrentMaterial;
         static std::shared_ptr<ShaderProgram> s_CurrentShader;
         static MaterialType s_CurrentMaterialType;
 
-        // UI-specific resources
         static std::shared_ptr<Model> s_UIQuadModel;
         static std::shared_ptr<Material> s_DefaultUIMaterial;
         static DirectX::XMMATRIX s_UIProjectionMatrix;
 
-        // Render state management
         struct RenderState
         {
             bool depthEnabled = true;
@@ -167,10 +234,13 @@ namespace DXEngine {
             DirectX::XMMATRIX projection = DirectX::XMMatrixIdentity();
         };
         static std::vector<RenderState> s_RenderStateStack;
-
-        // Debug and performance
         static bool s_WireframeEnabled;
         static bool s_DebugInfoEnabled;
+        static bool s_InstanceEnabled;
+        static bool s_FrustumCullingEnabled;
+        static size_t s_InstanceBatchSize;
+        
         static uint32_t s_FrameCount;
+      
 	};
 }

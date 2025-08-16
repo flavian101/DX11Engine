@@ -4,10 +4,10 @@
 
 namespace DXEngine {
 
-	class Triangle : public Model
+	class Ground : public Model
 	{
 	public:
-		Triangle();
+		Ground();
 
 		void Initialize();
 	private:

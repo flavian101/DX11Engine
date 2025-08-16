@@ -137,6 +137,8 @@ namespace DXEngine {
         // Properties
         bool IsValid() const;
         size_t GetSubmeshCount() const;
+        size_t GetVertexCount()const;
+        size_t GetIndexCount()const;
         bool HasMaterial(size_t submeshIndex = 0) const;
 
         // Bounding information
