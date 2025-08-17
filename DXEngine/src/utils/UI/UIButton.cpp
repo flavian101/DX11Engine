@@ -5,6 +5,9 @@
 namespace DXEngine
 {
 	UIButton::UIButton(const std::string& text, const UIRect& bounds)
+        :
+        UIElement(bounds),
+        m_Text(text)
 	{
 	}
 	void UIButton::Update(FrameTime dt)

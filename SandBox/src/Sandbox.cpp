@@ -78,8 +78,8 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		DXEngine::Renderer::Submit(m_Light);
 	}
 
-	auto button = std::make_shared<DXEngine::UIButton>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));
-	button->SetNormalColor(DXEngine::UIColor::UIColor(0.3f, 0.3f, 0.8f, 1.0f));
+	auto button = std::make_shared<DXEngine::UIPanel>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));
+	//button->SetNormalColor(DXEngine::UIColor::UIColor(0.3f, 0.3f, 0.8f, 0.5f));
 	// Submit to renderer
 	DXEngine::Renderer::SubmitUI(button);
 	

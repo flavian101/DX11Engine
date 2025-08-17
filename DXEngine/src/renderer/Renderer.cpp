@@ -939,7 +939,9 @@ namespace DXEngine {
             // Setup UI constant buffer (register b5)
             ConstantBuffer<UIConstantBuffer> uiBuffer;
             uiBuffer.Initialize();
-            uiBuffer.data.projection = DirectX::XMMatrixTranspose(modelMatrix * s_UIProjectionMatrix);
+            DirectX::XMMATRIX identityView = DirectX::XMMatrixIdentity();
+
+            uiBuffer.data.projection = DirectX::XMMatrixTranspose(modelMatrix * identityView * s_UIProjectionMatrix);
             uiBuffer.data.screenWidth = static_cast<float>(RenderCommand::GetViewportWidth());
             uiBuffer.data.screenHeight = static_cast<float>(RenderCommand::GetViewportHeight());
             uiBuffer.data.time = static_cast<float>(s_FrameCount) / 60.0f;
@@ -1277,7 +1279,7 @@ namespace DXEngine {
             (float)width,   // Right  
             (float)height,  // Bottom
             0.0f,           // Top
-            0.0f,           // Near
+            -1.0f,          // Near
             1.0f            // Far
         );
 
