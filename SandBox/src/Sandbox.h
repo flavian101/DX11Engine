@@ -33,8 +33,8 @@ private:
 	//bool OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e);
 
 private:
+	std::shared_ptr<DXEngine::CameraController> m_CameraController;
 	std::shared_ptr<DXEngine::ShaderManager> m_ShaderManager;
-	std::shared_ptr<DXEngine::Camera> m_Camera;
 	std::shared_ptr<DXEngine::Ground> m_Ground;
 	std::shared_ptr<DXEngine::SkySphere> m_Sky;
 	std::shared_ptr<DXEngine::Ball> m_Moon;

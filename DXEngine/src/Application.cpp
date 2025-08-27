@@ -87,7 +87,6 @@ namespace DXEngine {
 		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OnWindowResize));
 		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(OnKeyPressed));
 
-
 		for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
 		{
 			(*--it)->OnEvent(e);
@@ -98,8 +97,16 @@ namespace DXEngine {
 
 	bool Application::OnWindowResize(WindowResizeEvent& e)
 	{
+		if (e.GetWidth() == 0 || e.GetHeight() == 0)
+		{
+			m_Minimized = true;
+			return false;
+		}
+
+		m_Minimized = false;
+
 		Renderer::OnWindowResize(e.GetWidth(), e.GetHeight());
-		return true;
+		return false;
 	}
 
 	bool Application::OnKeyPressed(KeyPressedEvent& e)

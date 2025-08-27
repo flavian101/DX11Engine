@@ -3,7 +3,7 @@
 #include "Ray.h"
 #include "utils/mesh/Mesh.h"
 #include "utils/mesh/MeshResource.h"
-#include "Camera.h"
+#include "camera/Camera.h"
 
 namespace DXEngine {
 

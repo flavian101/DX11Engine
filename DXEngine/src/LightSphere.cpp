@@ -15,7 +15,7 @@ namespace DXEngine {
 
         auto emissiveMaterial = MaterialFactory::CreateEmissiveMaterial("LightSphere");
 
-        m_Light = std::make_shared<PointLight>();
+        m_Light = std::make_shared<DirectionalLight>();
         emissiveMaterial->SetEmissiveColor(m_Light->GetLightColor());
         emissiveMaterial->SetDiffuseColor(m_Light->GetLightColor());
 
@@ -39,7 +39,7 @@ namespace DXEngine {
             // Update light position based on model position
             DirectX::XMFLOAT3 lightPos;
             DirectX::XMStoreFloat3(&lightPos, GetTranslation());
-            m_Light->SetPosition(lightPos);
+           // m_Light->SetPosition(lightPos);
             m_Light->Bind();
         }
     }
@@ -53,13 +53,14 @@ namespace DXEngine {
         {
             DirectX::XMFLOAT3 lightPos;
             DirectX::XMStoreFloat3(&lightPos, GetTranslation());
-            m_Light->SetPosition(lightPos);
+            //m_Light->SetPosition(lightPos);
         }
     }
 
     std::shared_ptr<PointLight> LightSphere::GetLight() const
     {
-        return m_Light;
+        //return m_Light;
+        return std::make_shared<PointLight>();
     }
 
     void LightSphere::SetLightColor(const DirectX::XMFLOAT4& color)

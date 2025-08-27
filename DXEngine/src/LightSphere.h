@@ -26,7 +26,7 @@ namespace DXEngine {
         void Initialize();
 
     private:
-        std::shared_ptr<PointLight> m_Light;
+        std::shared_ptr<DirectionalLight> m_Light;
     };
 
 }

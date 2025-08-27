@@ -1,5 +1,5 @@
 #pragma once
-#include "Camera.h"
+#include "camera/Camera.h"
 #include "dxpch.h"
 
 namespace DXEngine {

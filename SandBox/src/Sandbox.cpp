@@ -2,9 +2,7 @@
 
 
 Sandbox::Sandbox()
-	:Layer("sanbox"),
-	m_Camera(std::make_shared<DXEngine::Camera>(1.0f,  9.0f/ 16.0f, 0.5f, 10000.0f))
-
+	:Layer("sanbox")
 {}
 
 Sandbox::~Sandbox()
@@ -17,6 +15,8 @@ void Sandbox::OnAttach()
 	m_ShaderManager->Initialize();
 
 	DXEngine::Renderer::InitShaderManager(m_ShaderManager);
+
+	m_CameraController = std::make_shared<DXEngine::CameraController>();
 
 	m_Ground = std::make_shared<DXEngine::Ground>();
 	m_Moon = std::make_shared<DXEngine::Ball>();
@@ -35,17 +35,17 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	DXEngine::Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
 
 	//window.().ClearDepthColor(0.1f, 0.1f, 0.16f);
-
-	DXEngine::Renderer::BeginScene(m_Camera);
+	m_CameraController->Update(dt);
+	DXEngine::Renderer::BeginScene(m_CameraController->GetCamera());
 	DetectInput(dt);
 
 	if (m_Sky)
 	{
 		// Position sky sphere at camera position
 		DirectX::XMFLOAT3 camPos = {
-			DirectX::XMVectorGetX(m_Camera->GetPos()),
-			DirectX::XMVectorGetY(m_Camera->GetPos()),
-			DirectX::XMVectorGetZ(m_Camera->GetPos())
+			DirectX::XMVectorGetX(m_CameraController->GetCamera()->GetPos()),
+			DirectX::XMVectorGetY(m_CameraController->GetCamera()->GetPos()),
+			DirectX::XMVectorGetZ(m_CameraController->GetCamera()->GetPos())
 		};
 		m_Sky->SetTranslation(camPos);
 		m_Sky->SetScale({ 50.0f, 50.0f, 50.0f });
@@ -78,8 +78,9 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		DXEngine::Renderer::Submit(m_Light);
 	}
 
-	auto button = std::make_shared<DXEngine::UIPanel>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));
-	//button->SetNormalColor(DXEngine::UIColor::UIColor(0.3f, 0.3f, 0.8f, 0.5f));
+
+	auto button = std::make_shared<DXEngine::UIButton>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));
+	button->SetNormalColor(DXEngine::UIColor::UIColor(0.3f, 0.3f, 0.8f, 0.5f));
 	// Submit to renderer
 	DXEngine::Renderer::SubmitUI(button);
 	
@@ -95,9 +96,9 @@ void Sandbox::OnUIRender()
 
 void Sandbox::OnEvent(DXEngine::Event& event)
 {
+	m_CameraController->OnEvent(event);
 	DXEngine::EventDispatcher dispatcher(event);
 	dispatcher.Dispatch<DXEngine::MouseButtonPressedEvent>(DX_BIND_EVENT_FN(Sandbox::OnMouseButtonPressed));
-
 }
 
 bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
@@ -116,25 +117,6 @@ bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
 }
 void Sandbox::DetectInput(double time)
 {
-	float speed = time * 600.5f;
-
-	if (DXEngine::Input::IsKeyPressed('W'))
-	{
-		m_Camera->moveBackForward += speed;
-	}
-	if (DXEngine::Input::IsKeyPressed('S'))
-	{
-		m_Camera->moveBackForward -= speed;
-	}
-	if (DXEngine::Input::IsKeyPressed('A'))
-	{
-		m_Camera->moveLeftRight -= speed;
-	}
-	if (DXEngine::Input::IsKeyPressed('D'))
-	{
-		m_Camera->moveLeftRight += speed;
-	}
-
 	// Toggle wireframe mode
 	if (DXEngine::Input::IsKeyPressed('T'))
 	{
@@ -169,7 +151,6 @@ void Sandbox::DetectInput(double time)
 		debugToggled = false;
 	}
 
-	m_Camera->UpdateCamera();
 	//call update
 
 	return;
@@ -195,7 +176,7 @@ void Sandbox::InitializePicking()
 
 void Sandbox::HandlePicking(float mouseX, float mouseY)
 {
-	if (!m_PickingManager || !m_Camera)
+	if (!m_PickingManager || !m_CameraController->GetCamera()) 
 		return;
 
 	// Get window dimensions
@@ -208,7 +189,7 @@ void Sandbox::HandlePicking(float mouseX, float mouseY)
 	int screenWidth = 1270;
 		int screenHeight = 720;
 	// Perform picking
-	DXEngine::HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *m_Camera);
+	DXEngine::HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *m_CameraController->GetCamera());
 
 	if (hit.Hit)  // Note: lowercase 'hit'
 	{

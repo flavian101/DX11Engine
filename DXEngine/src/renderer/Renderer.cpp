@@ -3,7 +3,7 @@
 #include "models/Model.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/ConstantBuffer.h"
-#include "Camera.h"
+#include "camera/Camera.h"
 #include "shaders/ShaderManager.h"
 #include <algorithm>
 #include "utils/UI/UIElement.h"
@@ -1263,13 +1263,6 @@ namespace DXEngine {
 
         RenderCommand::Resize(width, height);
         UpdateUIProjectionMatrix(width, height);
-
-        auto camera = RenderCommand::GetCamera();
-        if (camera)
-        {
-            float aspect = static_cast<float>(width) / static_cast<float>(height);
-            // camera->SetAspectRatio(aspect); // Uncomment when Camera class has this method
-        }
     }
 
     void Renderer::UpdateUIProjectionMatrix(int width, int height)
