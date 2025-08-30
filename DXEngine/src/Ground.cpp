@@ -73,7 +73,7 @@ namespace DXEngine {
         auto grassNormal = std::make_shared<Texture>("assets/textures/grassNormal.jpg");
         grassMaterial->SetDiffuseTexture(grassDiffuse);
         grassMaterial->SetNormalTexture(grassNormal);
-        grassMaterial->SetTextureScale({ 100.0f, 100.0f });
+        grassMaterial->SetTextureScale({ 50.0f, 50.0f });
         mesh->SetMaterial(grassMaterial);
         SetMesh(std::move(mesh));
 	}

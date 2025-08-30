@@ -4,28 +4,30 @@
 
 namespace DXEngine
 {
-	FreeLookBehavior::FreeLookBehavior(float sensitivity, float pitchLimit)
+	FreeLookBehavior::FreeLookBehavior(float sensitivity)
 		: CameraBehavior(1.0f)  // High priority for player input
 		, m_MouseSensitivity(sensitivity)
-		, m_PitchLimit(pitchLimit)
-		, m_CurrentPitch(0.0f)
-		, m_CurrentYaw(0.0f)
+		, m_FramePitchChange(0.0f)
+		, m_FrameYawChange(0.0f)
 		, m_LastMouseX(0)
 		, m_LastMouseY(0)
 		, m_FirstMouse(true)
 	{
 	}
-	void FreeLookBehavior::Update(Camera& camera, FrameTime deltatime)
+	RotationContribution FreeLookBehavior::GetRotationContribution(Camera& camera, FrameTime deltatime)
 	{
 		if (!IsActive())
-			return;
-		DirectX::XMFLOAT3 currentRotation = camera.GetRotation();
+			return RotationContribution({0.0f,0.0f,0.0f}, 0.0f);
 
-		//TO-DO add blending for complex behaviors
-		currentRotation.x = m_CurrentPitch;
-		currentRotation.y = m_CurrentYaw;
+		DirectX::XMFLOAT3 rotationChange(m_FramePitchChange, m_FrameYawChange, 0.0f);
+		
+		float weight = GetPriority();
 
-		camera.SetRotation(currentRotation);
+		m_FrameYawChange = 0.0f;
+		m_FramePitchChange = 0.0f;
+
+
+		return RotationContribution(rotationChange, weight);
 	}
 	void FreeLookBehavior::HandleMouseInput(int mouseX, int mouseY)
 	{
@@ -44,15 +46,11 @@ namespace DXEngine
 
 		//convert pixel movemnt to rotation changes
 		float yawChange = deltaX * m_MouseSensitivity;
-		float pitchChange = deltaY * m_MouseSensitivity;
+		float pitchChange = -deltaY * m_MouseSensitivity;
 
 		//update our rotation values
-		m_CurrentYaw += yawChange;
-		m_CurrentPitch += pitchChange;
-
-		//clamp pith to prevent over-rotation(looking too far up/down)
-		m_CurrentPitch = std::max(-m_PitchLimit, std::min(m_PitchLimit, m_CurrentPitch));
-
+		m_FrameYawChange = yawChange;
+		m_FramePitchChange = pitchChange;
 
 		m_LastMouseX = mouseX;
 		m_LastMouseY = mouseY;

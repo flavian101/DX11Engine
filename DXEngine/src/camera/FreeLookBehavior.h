@@ -8,31 +8,29 @@ namespace DXEngine
 	class FreeLookBehavior: public CameraBehavior
 	{
 	public:
-		FreeLookBehavior(float sensitivity = 0.002f, float pitchLimit = 1.5f);
+		FreeLookBehavior(float sensitivity = 0.002f);
 		~FreeLookBehavior() = default;
 
-		virtual void Update(Camera& camera, FrameTime deltatime) override;
+		virtual RotationContribution GetRotationContribution(Camera& camera, FrameTime deltatime) override;
 		
 		void HandleMouseInput(int MouseX, int MouseY);
 
 
 		void SetSensitivity(float sensitivity) { m_MouseSensitivity = sensitivity; }
-		void SetPitchLimit(float limit) { m_PitchLimit = limit; }
 
-		float GetCurrentPitch() const { return m_CurrentPitch; }
-		float GetCurrentYaw() const { return m_CurrentYaw; }
+		float GetFramePitchChange() const { return m_FramePitchChange; }
+		float GetFrameYawChange() const { return m_FrameYawChange; }
 
 
 
 	private:
 		float m_MouseSensitivity;
-		float m_PitchLimit;
-
-		float m_CurrentPitch;
-		float m_CurrentYaw;
 
 		float m_LastMouseX;
 		float m_LastMouseY;
 		bool m_FirstMouse;
+
+		float m_FrameYawChange;
+		float m_FramePitchChange;
 	};
 }

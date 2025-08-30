@@ -8,6 +8,21 @@ namespace DXEngine
 	class CameraBehavior;
 	class FrameTime;
 
+	struct RotationContribution
+	{
+		DirectX::XMFLOAT3 rotationChange;
+		float weight;
+
+		RotationContribution(): rotationChange(0.0f,0.0f,0.0f), weight(0.0f)
+		{}
+		RotationContribution(const DirectX::XMFLOAT3& rotation, float weight)
+			:
+			rotationChange(rotation),
+			weight(weight)
+		{}
+
+	};
+
 	class Camera
 	{
 	public:
@@ -40,7 +55,11 @@ namespace DXEngine
 		DirectX::XMFLOAT3 GetForwardVector()const;
 		DirectX::XMFLOAT3 GetRightVector() const;
 		DirectX::XMFLOAT3 GetUpVector() const;
-	
+		void SetPitchLimit(float limitRadians) { m_PitchLimit = limitRadians; }
+		float GetPithLimit() { return m_PitchLimit; }
+
+	private:
+		DirectX::XMFLOAT3 BlendRotationContribution(const std::vector<RotationContribution>& contribution);
 	private:
 		DirectX::XMFLOAT3 m_Position;
 		DirectX::XMFLOAT3 m_Rotation;
@@ -55,6 +74,7 @@ namespace DXEngine
 		float m_AspectRatio;
 		float m_NearPlane;
 		float m_FarPlane;
+		float m_PitchLimit;
 
 
 		std::vector<std::shared_ptr<CameraBehavior>> m_Behaviors;

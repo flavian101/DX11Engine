@@ -7,13 +7,14 @@
 namespace DXEngine {
 
 	Camera::Camera()
-		: m_Position(0.0f, 20.0f, 0.0f)
+		: m_Position(-10.0f, 8.0f, 0.0f)
 		, m_Rotation(0.0f, 0.0f, 0.0f)
 		, m_ViewMatrixDirty(true)
 		, m_FieldOfView(DirectX::XM_PIDIV4)//45 
 		, m_AspectRatio((float)16.0f / (float)9.0f)
 		, m_NearPlane(0.5f)
 		, m_FarPlane(1000.0f)
+		, m_PitchLimit(1.5f)
 	{
 		DirectX::XMStoreFloat4x4(&m_ViewMatrix, DirectX::XMMatrixIdentity());
 		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, DirectX::XMMatrixIdentity());
@@ -31,13 +32,34 @@ namespace DXEngine {
 
 	void Camera::Update(FrameTime deltatime)
 	{
+		std::vector<RotationContribution> contributions;
+
 		for (auto& behavior : m_Behaviors)
 		{
 			if (behavior->IsActive())
 			{
-				behavior->Update(*this, deltatime);
+				RotationContribution contribution = behavior->GetRotationContribution(*this, deltatime);
+				if (contribution.weight > 0.0f)
+				{
+					contributions.push_back(contribution);
+				}
 			}
 		}
+
+		DirectX::XMFLOAT3 finalRotationChange = BlendRotationContribution(contributions);
+
+		m_Rotation.x += finalRotationChange.x;  // Pitch
+		m_Rotation.y += finalRotationChange.y;  // Yaw
+		m_Rotation.z += finalRotationChange.z;  // Roll
+
+		//clamp pith to prevent over-rotation(looking too far up/down)
+		m_Rotation.x = std::max(-m_PitchLimit, std::min(m_PitchLimit, m_Rotation.x));
+
+
+		// Mark view matrix as needing update
+		m_ViewMatrixDirty = true;
+
+
 		if (m_ViewMatrixDirty)
 		{
 			UpdateViewMatrix();
@@ -132,6 +154,34 @@ namespace DXEngine {
 		DirectX::XMFLOAT3 result;
 		DirectX::XMStoreFloat3(&result, right);
 		return result;
+	}
+
+	DirectX::XMFLOAT3 Camera::BlendRotationContribution(const std::vector<RotationContribution>& contributions)
+	{
+		if (contributions.empty())
+			return DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+		DirectX::XMFLOAT3 blendedRotation(0.0f, 0.0f, 0.0f);
+		float totalWeight = 0.0f;
+		
+		for (const auto& contribution : contributions)
+		{
+			blendedRotation.x += contribution.rotationChange.x * contribution.weight;
+			blendedRotation.y += contribution.rotationChange.y * contribution.weight;
+			blendedRotation.z += contribution.rotationChange.z * contribution.weight;
+			totalWeight += contribution.weight;
+		}
+
+		//Normalize by total weight to get Weighted average 
+		if (totalWeight > 0.0f)
+		{
+			blendedRotation.x /= totalWeight;
+			blendedRotation.y /= totalWeight;
+			blendedRotation.z /= totalWeight;
+
+		}
+
+		return blendedRotation;
 	}
 
 }
