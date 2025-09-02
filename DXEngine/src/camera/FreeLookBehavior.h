@@ -11,10 +11,9 @@ namespace DXEngine
 		FreeLookBehavior(float sensitivity = 0.002f);
 		~FreeLookBehavior() = default;
 
-		virtual RotationContribution GetRotationContribution(Camera& camera, FrameTime deltatime) override;
+		virtual CameraContribution GetCameraContribution(Camera& camera, FrameTime deltatime) override;
 		
-		void HandleMouseInput(int MouseX, int MouseY);
-
+		void HandleMouseInput(int MouseX, int MouseY, bool isCaptured);
 
 		void SetSensitivity(float sensitivity) { m_MouseSensitivity = sensitivity; }
 

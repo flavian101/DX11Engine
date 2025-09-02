@@ -8,18 +8,29 @@ namespace DXEngine
 	class CameraBehavior;
 	class FrameTime;
 
-	struct RotationContribution
+	struct CameraContribution
 	{
 		DirectX::XMFLOAT3 rotationChange;
+		DirectX::XMFLOAT3 positionChange;
 		float weight;
 
-		RotationContribution(): rotationChange(0.0f,0.0f,0.0f), weight(0.0f)
+		CameraContribution(): rotationChange(0.0f,0.0f,0.0f), positionChange(0.0f, 0.0f, 0.0f), weight(0.0f)
 		{}
-		RotationContribution(const DirectX::XMFLOAT3& rotation, float weight)
+		CameraContribution(const DirectX::XMFLOAT3& position,const DirectX::XMFLOAT3& rotation, float weight)
 			:
+			positionChange(position),
 			rotationChange(rotation),
 			weight(weight)
 		{}
+
+		static CameraContribution Rotation(const DirectX::XMFLOAT3 rotation, float weight)
+		{
+			return CameraContribution(DirectX::XMFLOAT3(0.0, 0.0f, 0.0f), rotation, weight);
+		}
+		static CameraContribution Position(const DirectX::XMFLOAT3 position, float weight)
+		{
+			return CameraContribution( position, DirectX::XMFLOAT3(0.0, 0.0f, 0.0f), weight);
+		}
 
 	};
 
@@ -34,6 +45,7 @@ namespace DXEngine
 		void Update(FrameTime deltatime);
 		void UpdateViewMatrix();
 		void UpdateProjectionMatrix();
+		void SetAspectRatio(float aspect);
 
 		void AddBehaviour(std::shared_ptr<CameraBehavior> behavior);
 		void RemoveBehaviour(std::shared_ptr<CameraBehavior> behavior);
@@ -59,7 +71,7 @@ namespace DXEngine
 		float GetPithLimit() { return m_PitchLimit; }
 
 	private:
-		DirectX::XMFLOAT3 BlendRotationContribution(const std::vector<RotationContribution>& contribution);
+		CameraContribution BlendRotationContribution(const std::vector<CameraContribution>& contribution);
 	private:
 		DirectX::XMFLOAT3 m_Position;
 		DirectX::XMFLOAT3 m_Rotation;

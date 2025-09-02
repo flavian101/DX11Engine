@@ -143,6 +143,7 @@
     <ClInclude Include="src\camera\CameraController.h" />
     <ClInclude Include="src\camera\CameraBehavior.h" />
     <ClInclude Include="src\camera\FreeLookBehavior.h" />
+    <ClInclude Include="src\camera\MovementBehavior.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -231,5 +232,6 @@
     <ClCompile Include="src\utils\Mesh\InputManager.cpp" />
     <ClCompile Include="src\camera\CameraController.cpp" />
     <ClCompile Include="src\camera\FreeLookBehavior.cpp" />
+    <ClCompile Include="src\camera\MovementBehavior.cpp" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-#include "dxpch.h"
+﻿#include "dxpch.h"
 #include "Window.h"
 #include "Event/KeyEvent.h"
 #include "windows/WindowsInput.h"
@@ -17,7 +17,8 @@ namespace DXEngine {
 		windowTitle(windowTitle),
 		windowClass(windowClass),
 		m_Width(width),
-		m_Height(height)
+		m_Height(height),
+		m_IsCursorCaptured(false)
 	{
 
 		if (!Initialize())
@@ -181,10 +182,44 @@ namespace DXEngine {
 		{
 			float x = static_cast<float>(GET_X_LPARAM(lParam));
 			float y = static_cast<float>(GET_Y_LPARAM(lParam));
-			MouseMovedEvent e(x, y);
-			if (m_EventCallback)
-				m_EventCallback(e);
-			return e.Handled ? 0 : DefWindowProcW(hwnd, msg, wParam, lParam);
+
+			if (m_IsCursorCaptured)
+			{
+				RECT rect;
+				GetClientRect(hwnd, &rect);
+				float centerX = rect.right / 2.0f;
+				float centerY = rect.bottom / 2.0f;
+
+				float deltaX = x - centerX;
+				float deltaY = y - centerY;
+
+				//reset cursor to center to prvent hitting window edges
+				if (abs(deltaX) > 1.0f || abs(deltaY) > 1.0f)
+				{
+					// Create a mouse moved event with the delta values
+					MouseMovedEvent e(deltaX, deltaY);
+					e.SetIsCaptured(true); // Mouse IS captured
+					if (m_EventCallback)
+						m_EventCallback(e);
+
+					// Reset cursor to center to prevent hitting window edges
+					POINT center = { (int)centerX, (int)centerY };
+					ClientToScreen(hwnd, &center);
+					SetCursorPos(center.x, center.y);
+
+					return e.Handled ? 0 : DefWindowProcW(hwnd, msg, wParam, lParam);
+				}
+				// If we're at center (or very close), don't process the event
+				return 0;
+			}
+			else
+			{
+				MouseMovedEvent e(x, y);
+				e.SetIsCaptured(false);
+				if (m_EventCallback)
+					m_EventCallback(e);
+				return e.Handled ? 0 : DefWindowProcW(hwnd, msg, wParam, lParam);
+			}
 		}
 		case WM_MOUSEWHEEL:
 		{
@@ -205,7 +240,18 @@ namespace DXEngine {
 			if (m_EventCallback) m_EventCallback(e);
 			return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
 		}
-
+		case WM_MBUTTONDOWN:
+		{
+			MouseButtonPressedEvent e(VK_MBUTTON);
+			if (m_EventCallback) m_EventCallback(e);
+			return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+		}
+		case WM_MBUTTONUP:
+		{
+			MouseButtonReleasedEvent e(VK_MBUTTON);
+			if (m_EventCallback) m_EventCallback(e);
+			return e.Handled ? 0 : DefWindowProc(hWnd, msg, wParam, lParam);
+		}
 		case WM_RBUTTONDOWN:
 		{
 			MouseButtonPressedEvent e(VK_RBUTTON);
@@ -252,5 +298,18 @@ namespace DXEngine {
 	void Window::QuitWindow()
 	{
 		DestroyWindow(hwnd);
+	}
+	void Window::CaptureCursor()
+	{
+		SetCapture(hwnd);
+		ShowCursor(FALSE);
+		m_IsCursorCaptured = true;
+	}
+	void Window::ReleaseCursor()
+	{
+		ReleaseCapture();
+		ShowCursor(TRUE);
+		m_IsCursorCaptured = false;
+
 	}
 }

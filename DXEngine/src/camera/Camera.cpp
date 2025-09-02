@@ -32,13 +32,13 @@ namespace DXEngine {
 
 	void Camera::Update(FrameTime deltatime)
 	{
-		std::vector<RotationContribution> contributions;
+		std::vector<CameraContribution> contributions;
 
 		for (auto& behavior : m_Behaviors)
 		{
 			if (behavior->IsActive())
 			{
-				RotationContribution contribution = behavior->GetRotationContribution(*this, deltatime);
+				CameraContribution contribution = behavior->GetCameraContribution(*this, deltatime);
 				if (contribution.weight > 0.0f)
 				{
 					contributions.push_back(contribution);
@@ -46,11 +46,15 @@ namespace DXEngine {
 			}
 		}
 
-		DirectX::XMFLOAT3 finalRotationChange = BlendRotationContribution(contributions);
+		CameraContribution finalChange = BlendRotationContribution(contributions);
 
-		m_Rotation.x += finalRotationChange.x;  // Pitch
-		m_Rotation.y += finalRotationChange.y;  // Yaw
-		m_Rotation.z += finalRotationChange.z;  // Roll
+		m_Position.x += finalChange.positionChange.x; 
+		m_Position.y += finalChange.positionChange.y; 
+		m_Position.z += finalChange.positionChange.z; 
+
+		m_Rotation.x += finalChange.rotationChange.x;   // Pitch
+		m_Rotation.y += finalChange.rotationChange.y;   // Yaw
+		m_Rotation.z += finalChange.rotationChange.z;   // Roll
 
 		//clamp pith to prevent over-rotation(looking too far up/down)
 		m_Rotation.x = std::max(-m_PitchLimit, std::min(m_PitchLimit, m_Rotation.x));
@@ -87,6 +91,12 @@ namespace DXEngine {
 	{
 		DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(m_FieldOfView, m_AspectRatio, m_NearPlane, m_FarPlane);
 		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, projection);
+	}
+
+	void Camera::SetAspectRatio(float aspect)
+	{
+		m_AspectRatio = aspect;
+		UpdateProjectionMatrix();
 	}
 
 	void Camera::AddBehaviour(std::shared_ptr<CameraBehavior> behavior)
@@ -156,32 +166,45 @@ namespace DXEngine {
 		return result;
 	}
 
-	DirectX::XMFLOAT3 Camera::BlendRotationContribution(const std::vector<RotationContribution>& contributions)
+	CameraContribution Camera::BlendRotationContribution(const std::vector<CameraContribution>& contributions)
 	{
 		if (contributions.empty())
-			return DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+			return CameraContribution();
 
-		DirectX::XMFLOAT3 blendedRotation(0.0f, 0.0f, 0.0f);
+		CameraContribution blended;
 		float totalWeight = 0.0f;
 		
 		for (const auto& contribution : contributions)
 		{
-			blendedRotation.x += contribution.rotationChange.x * contribution.weight;
-			blendedRotation.y += contribution.rotationChange.y * contribution.weight;
-			blendedRotation.z += contribution.rotationChange.z * contribution.weight;
+			//position
+			blended.positionChange.x += contribution.positionChange.x * contribution.weight;
+			blended.positionChange.y += contribution.positionChange.y * contribution.weight;
+			blended.positionChange.z += contribution.positionChange.z * contribution.weight;
+
+			//rotation
+			blended.rotationChange.x += contribution.rotationChange.x * contribution.weight;
+			blended.rotationChange.y += contribution.rotationChange.y * contribution.weight;
+			blended.rotationChange.z += contribution.rotationChange.z * contribution.weight;
 			totalWeight += contribution.weight;
 		}
 
 		//Normalize by total weight to get Weighted average 
 		if (totalWeight > 0.0f)
 		{
-			blendedRotation.x /= totalWeight;
-			blendedRotation.y /= totalWeight;
-			blendedRotation.z /= totalWeight;
+			blended.positionChange.x /= totalWeight;
+			blended.positionChange.y /= totalWeight;
+			blended.positionChange.z /= totalWeight;
+
+			blended.rotationChange.x /= totalWeight;
+			blended.rotationChange.y /= totalWeight;
+			blended.rotationChange.z /= totalWeight;
+
+			//final blended result has full weight
+			blended.weight = 1.0f;
 
 		}
 
-		return blendedRotation;
+		return blended;
 	}
 
 }

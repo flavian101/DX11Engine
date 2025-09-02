@@ -21,6 +21,8 @@ namespace DXEngine {
 		static std::optional<int> ProcessMessages();
 		void SetEventCallback(const EventCallbackFn& callback);
 		void QuitWindow();
+		void CaptureCursor();
+		void ReleaseCursor();
 
 		HWND GetHwnd() const;
 		int GetWidth() const { return m_Width; }
@@ -40,6 +42,7 @@ namespace DXEngine {
 		int m_Width;
 		int m_Height;
 		EventCallbackFn m_EventCallback;
+		bool m_IsCursorCaptured;
 
 	};
 

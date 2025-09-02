@@ -95,6 +95,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\camera\MovementBehavior.h" />
     <ClInclude Include="src\camera\FreeLookBehavior.h" />
     <ClInclude Include="src\camera\CameraBehavior.h" />
     <ClInclude Include="src\camera\CameraController.h" />
@@ -153,6 +154,7 @@
     <ClInclude Include="src\utils\Mesh\VertexAttribute.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\camera\MovementBehavior.cpp" />
     <ClCompile Include="src\camera\FreeLookBehavior.cpp" />
     <ClCompile Include="src\camera\CameraController.cpp" />
     <ClCompile Include="src\utils\Mesh\InputManager.cpp" />

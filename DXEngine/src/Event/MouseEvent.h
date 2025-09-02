@@ -13,6 +13,8 @@ namespace DXEngine {
 
 		inline float GetX()const { return m_MouseX; }
 		inline float GetY()const { return m_MouseY; }
+		void SetIsCaptured(bool capture) { m_Captured = capture; };
+		bool GetIsCaptured() { return m_Captured; }
 
 		std::string ToString() const override
 		{
@@ -26,6 +28,7 @@ namespace DXEngine {
 
 	private:
 		float m_MouseX, m_MouseY;
+		bool m_Captured = false;
 	};
 
 	class MouseScrolledEvent : public Event

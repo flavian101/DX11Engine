@@ -86,6 +86,8 @@ namespace DXEngine {
 		// Route each type of event to the correct handler:
 		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OnWindowResize));
 		dispatcher.Dispatch<KeyPressedEvent>(BIND_EVENT_FN(OnKeyPressed));
+		dispatcher.Dispatch<MouseButtonPressedEvent>(BIND_EVENT_FN(OnMouseButtonPressedEvent));
+		dispatcher.Dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FN(OnMouseButtonReleasedEvent));
 
 		for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
 		{
@@ -116,11 +118,28 @@ namespace DXEngine {
 		case VK_ESCAPE:
 			m_Window->QuitWindow();
 			return true;
-			//case 'W':
-			//	//camera->MoveForward();
-			//	return true;
-			//	// … handle other keys …
 		}
-		return true;
+		return false;
+	}
+
+	bool Application::OnMouseButtonPressedEvent(MouseButtonPressedEvent& event)
+	{
+		switch (event.GetMouseButton())
+		{
+		case VK_MBUTTON:
+			m_Window->CaptureCursor();;
+			return true;
+		}
+		return false;
+	}
+	bool Application::OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& event)
+	{
+		switch (event.GetMouseButton())
+		{
+		case VK_MBUTTON:
+			m_Window->ReleaseCursor();;
+			return true;
+		}
+		return false;
 	}
 }

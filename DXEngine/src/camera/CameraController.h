@@ -4,6 +4,7 @@
 #include <Event/ApplicationEvent.h>
 #include <Event/MouseEvent.h>
 #include "FreeLookBehavior.h"
+#include "MovementBehavior.h"
 
 namespace DXEngine
 {
@@ -35,6 +36,8 @@ namespace DXEngine
 	private:
 		std::shared_ptr<Camera> m_Camera;
 		std::shared_ptr<FreeLookBehavior> m_FreeLookBehavior;
+		std::shared_ptr<MovementBehavior> m_MovementBehavior;
+
 
 	
 	};
