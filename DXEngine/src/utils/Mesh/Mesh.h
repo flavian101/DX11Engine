@@ -4,15 +4,13 @@
 #include <memory>
 #include <unordered_map>
 #include "IndexData.h"
-
+#include "../Buffer.h"
 
 
 namespace DXEngine {
 	class Material;
-	class VertexBuffer;
-	class IndexBuffer;
 	class InputLayout;
-
+    
     // GPU resource management for vertex/index buffers
     class MeshBuffers
     {
@@ -54,13 +52,39 @@ namespace DXEngine {
     private:
         struct VertexBufferData
         {
-            Microsoft::WRL::ComPtr<ID3D11Buffer> buffer;
+            std::unique_ptr<RawBuffer> buffer;
             uint32_t stride;
             uint32_t offset;
         };
+        struct IndexBufferData
+        {
+            std::unique_ptr<IndexBuffer<uint16_t>> buffer16;
+            std::unique_ptr<IndexBuffer<uint32_t>> buffer32;
+            IndexType indexType;
+
+            ID3D11Buffer* GetBuffer() const
+            {
+                return indexType == IndexType::UInt16 ?
+                    (buffer16 ? buffer16->GetBuffer() : nullptr) :
+                    (buffer32 ? buffer32->GetBuffer() : nullptr);
+            }
+
+            DXGI_FORMAT GetFormat() const
+            {
+                return indexType == IndexType::UInt16 ?
+                    DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+            }
+
+            bool IsValid() const
+            {
+                return indexType == IndexType::UInt16 ?
+                    (buffer16 && buffer16->IsValid()) :
+                    (buffer32 && buffer32->IsValid());
+            }
+        };
 
         std::unordered_map<uint32_t, VertexBufferData> m_VertexBuffers;
-        Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndexBuffer;
+        std::unique_ptr<IndexBufferData> m_IndexBuffer;
 
         size_t m_VertexCount = 0;
         size_t m_IndexCount = 0;
@@ -68,45 +92,7 @@ namespace DXEngine {
         PrimitiveTopology m_Topology = PrimitiveTopology::TriangleList;
     };
 
-    // Input layout cache for shader compatibility
-    class InputLayoutCache
-    {
-    public:
-        static InputLayoutCache& Instance();
-
-        // Get or create input layout for vertex layout + shader combination
-        Microsoft::WRL::ComPtr<ID3D11InputLayout> GetInputLayout(
-            const VertexLayout& vertexLayout,
-            const void* shaderByteCode,
-            size_t byteCodeLength);
-
-        void ClearCache();
-
-    private:
-        InputLayoutCache() = default;
-
-        struct LayoutKey
-        {
-            size_t vertexLayoutHash;
-            size_t shaderHash;
-
-            bool operator==(const LayoutKey& other) const
-            {
-                return vertexLayoutHash == other.vertexLayoutHash && shaderHash == other.shaderHash;
-            }
-        };
-
-        struct LayoutKeyHasher
-        {
-            size_t operator()(const LayoutKey& key) const
-            {
-                return key.vertexLayoutHash ^ (key.shaderHash << 1);
-            }
-        };
-
-        std::unordered_map<LayoutKey, Microsoft::WRL::ComPtr<ID3D11InputLayout>, LayoutKeyHasher> m_Cache;
-    };
-
+   
     // Main Mesh class - represents a renderable mesh
     class Mesh
     {
@@ -192,7 +178,7 @@ namespace DXEngine {
 
     private:
         std::vector<DirectX::XMFLOAT4X4> m_BoneMatrices;
-        mutable Microsoft::WRL::ComPtr<ID3D11Buffer> m_BoneBuffer;
+        mutable std::unique_ptr<ConstantBuffer<DirectX::XMFLOAT4X4>> m_BoneBuffer;
     };
 
     class InstancedMesh : public Mesh
@@ -216,7 +202,7 @@ namespace DXEngine {
         void OnResourceChanged() override;
 
     private:
-        mutable Microsoft::WRL::ComPtr<ID3D11Buffer> m_InstanceBuffer;
+        mutable std::unique_ptr<RawBuffer> m_InstanceBuffer;
         mutable bool m_InstanceDataDirty = true;
     };
 

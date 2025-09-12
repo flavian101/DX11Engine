@@ -2,7 +2,6 @@
 #include "Renderer.h"
 #include "models/Model.h"
 #include "utils/Mesh/Mesh.h"
-#include "utils/ConstantBuffer.h"
 #include "camera/Camera.h"
 #include "shaders/ShaderManager.h"
 #include <algorithm>
@@ -23,10 +22,12 @@ namespace DXEngine {
     std::shared_ptr<Material> Renderer::s_CurrentMaterial = nullptr;
     std::shared_ptr<ShaderProgram> Renderer::s_CurrentShader = nullptr;
     MaterialType Renderer::s_CurrentMaterialType = MaterialType::Unlit;
+    std::shared_ptr<TransfomBufferData> Renderer::s_TransformBufferData = nullptr;
 
     std::shared_ptr<Model> Renderer::s_UIQuadModel = nullptr;
     std::shared_ptr<Material> Renderer::s_DefaultUIMaterial = nullptr;
     DirectX::XMMATRIX Renderer::s_UIProjectionMatrix = DirectX::XMMatrixIdentity();
+    std::shared_ptr<UIConstantBuffer> Renderer::s_UIBufferData = nullptr;
     std::vector<Renderer::RenderState> Renderer::s_RenderStateStack;
 
     bool Renderer::s_WireframeEnabled = false;
@@ -938,15 +939,19 @@ namespace DXEngine {
 
             // Setup UI constant buffer (register b5)
             ConstantBuffer<UIConstantBuffer> uiBuffer;
-            uiBuffer.Initialize();
             DirectX::XMMATRIX identityView = DirectX::XMMatrixIdentity();
+            s_UIBufferData = std::make_unique<UIConstantBuffer>();
 
-            uiBuffer.data.projection = DirectX::XMMatrixTranspose(modelMatrix * identityView * s_UIProjectionMatrix);
-            uiBuffer.data.screenWidth = static_cast<float>(RenderCommand::GetViewportWidth());
-            uiBuffer.data.screenHeight = static_cast<float>(RenderCommand::GetViewportHeight());
-            uiBuffer.data.time = static_cast<float>(s_FrameCount) / 60.0f;
-            uiBuffer.data.padding = 0.0f;
-            uiBuffer.Update();
+            s_UIBufferData->projection = DirectX::XMMatrixTranspose(modelMatrix * identityView * s_UIProjectionMatrix);
+            s_UIBufferData->screenWidth = static_cast<float>(RenderCommand::GetViewportWidth());
+            s_UIBufferData->screenHeight = static_cast<float>(RenderCommand::GetViewportHeight());
+            s_UIBufferData->time = static_cast<float>(s_FrameCount) / 60.0f;
+            s_UIBufferData->padding = 0.0f;
+
+            uiBuffer.Initialize(s_UIBufferData.get());
+
+            
+            uiBuffer.Update(*s_UIBufferData.get());
 
             RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_UI, 1, uiBuffer.GetAddressOf());
 
@@ -1030,7 +1035,6 @@ namespace DXEngine {
     void Renderer::SetupTransformBuffer(const DXEngine::RenderSubmission& submission)
     {
         ConstantBuffer<TransfomBufferData> vsBuffer;
-        vsBuffer.Initialize();
 
         DirectX::XMMATRIX modelMatrix = DirectX::XMLoadFloat4x4(&submission.modelMatrix);
 
@@ -1044,9 +1048,12 @@ namespace DXEngine {
         auto view = camera->GetView();
         auto proj = camera->GetProjection();
 
-        vsBuffer.data.WVP = DirectX::XMMatrixTranspose(modelMatrix * view * proj);
-        vsBuffer.data.Model = DirectX::XMMatrixTranspose(modelMatrix);
-        vsBuffer.Update();
+        s_TransformBufferData = std::make_unique<TransfomBufferData>();
+        s_TransformBufferData->WVP = DirectX::XMMatrixTranspose(modelMatrix * view * proj);
+        s_TransformBufferData->Model = DirectX::XMMatrixTranspose(modelMatrix);
+        vsBuffer.Initialize(s_TransformBufferData.get());
+
+        vsBuffer.Update(*s_TransformBufferData.get());
 
         RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Transform, 1, vsBuffer.GetAddressOf());
     }
@@ -1056,27 +1063,21 @@ namespace DXEngine {
         if (!submission.instanceTransforms || submission.instanceCount == 0)
             return;
 
-        //create instance buffer with transform matrices
-        D3D11_BUFFER_DESC desc = {};
-        desc.Usage = D3D11_USAGE_DYNAMIC;
-        desc.ByteWidth = static_cast<UINT>(submission.instanceCount * sizeof(DirectX::XMFLOAT4X4));
-        desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        D3D11_SUBRESOURCE_DATA initData = {};
-        initData.pSysMem = submission.instanceTransforms->data();
+        auto instanceBuffer = std::make_unique<RawBuffer>();
+        BufferDesc bufferDesc;
+        bufferDesc.bufferType = BufferType::Vertex;
+        bufferDesc.usageType = UsageType::Dynamic; 
+        bufferDesc.byteWidth = static_cast<UINT>(submission.instanceCount * sizeof(DirectX::XMFLOAT4X4));
+        bufferDesc.initialData = submission.instanceTransforms->data();
 
-        Microsoft::WRL::ComPtr<ID3D11Buffer> instanceBuffer;
-        HRESULT hr = RenderCommand::GetDevice()->CreateBuffer(&desc, &initData, &instanceBuffer);
-        if (FAILED(hr))
+        if (!instanceBuffer->Initialize(bufferDesc))
         {
-            OutputDebugStringA("Failed to create instance buffer\n");
             return;
         }
-
         UINT stride = sizeof(DirectX::XMFLOAT4X4);
         UINT offset = 0;
 
-        RenderCommand::GetContext()->IASetVertexBuffers(1, 1, instanceBuffer.GetAddressOf(), &stride, &offset);
+        RenderCommand::GetContext()->IASetVertexBuffers(1, 1, instanceBuffer->GetAddressOf(), &stride, &offset);
     }
 
     void Renderer::SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission)
@@ -1086,9 +1087,9 @@ namespace DXEngine {
 
         // Create bone matrix constant buffer
         ConstantBuffer<std::vector<DirectX::XMFLOAT4X4>> boneBuffer;
-        boneBuffer.Initialize();
-        boneBuffer.data = *submission.boneMatrices;
-        boneBuffer.Update();
+        std::vector<DirectX::XMFLOAT4X4> bones = *submission.boneMatrices;
+        boneBuffer.Initialize(&bones);
+        boneBuffer.Update(bones);
 
         RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Bones, 1, boneBuffer.GetAddressOf());
     }

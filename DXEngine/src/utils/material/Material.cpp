@@ -247,7 +247,7 @@ namespace DXEngine {
 	{
 		if (!m_ConstantBufferInitialized)
 		{
-			m_ConstantBuffer.Initialize();
+			m_ConstantBuffer.Initialize(&m_Properties);
 			m_ConstantBufferInitialized = true;
 		}
 	}
@@ -259,8 +259,7 @@ namespace DXEngine {
 			InitializeConstantBuffer();
 		}
 
-		m_ConstantBuffer.data = m_Properties;
-		m_ConstantBuffer.Update();
+		m_ConstantBuffer.Update(m_Properties);
 	}
 
 	std::string Material::GetDebugInfo() const

@@ -11,12 +11,15 @@ namespace DXEngine {
 	DirectionalLight::DirectionalLight()
 		:Light()
 	{
-		psBuffer.Initialize();
-		psBuffer.data.d_Direction = m_lightDir;
-		psBuffer.data.d_Color = m_LightColor;
-		psBuffer.data.d_Ambient = DirectX::XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
-		psBuffer.data.d_Diffuse = DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-		psBuffer.data.d_Enabled = 1;
+		directionalData = std::make_shared<DirectionalLightData>();
+
+		directionalData->d_Direction = m_lightDir;
+		directionalData->d_Color = m_LightColor;
+		directionalData->d_Ambient = DirectX::XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+		directionalData->d_Diffuse = DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+		directionalData->d_Enabled = 1;
+
+		psBuffer.Initialize(directionalData.get());
 	}
 
 	DirectionalLight::~DirectionalLight()
@@ -26,19 +29,21 @@ namespace DXEngine {
 
 	void DirectionalLight::Bind()
 	{
-		psBuffer.Update();
+		psBuffer.Update(*directionalData.get());
 		RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Direction_Light, 1, psBuffer.GetAddressOf());
 	}
 
 	PointLight::PointLight()
 		:Light()
 	{
-		psBuffer.Initialize();
-		psBuffer.data.p_Color = m_LightColor;
-		psBuffer.data.p_Position = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);
-		psBuffer.data.p_Attenuation = DirectX::XMFLOAT3(0.4f, 0.02f, 0.0f);
-		psBuffer.data.P_Range = 50.0f;
-		psBuffer.data.p_Enabled = 1;
+		pointData = std::make_shared<PointLightData>();
+		pointData->p_Color = m_LightColor;
+		pointData->p_Position = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);
+		pointData->p_Attenuation = DirectX::XMFLOAT3(0.4f, 0.02f, 0.0f);
+		pointData->P_Range = 50.0f;
+		pointData->p_Enabled = 1;
+
+		psBuffer.Initialize(pointData.get());
 
 	}
 
@@ -48,28 +53,29 @@ namespace DXEngine {
 
 	void PointLight::Bind()
 	{
-		psBuffer.Update();
+		psBuffer.Update(*pointData.get());
 		RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Point_Light, 1, psBuffer.GetAddressOf());
 
 	}
 
 	void PointLight::SetPosition(const DirectX::XMFLOAT3& pos)
 	{
-		psBuffer.data.p_Position = pos;
+		pointData->p_Position = pos;
 
 	}
 
 	SpotLight::SpotLight()
 		:Light()
 	{
-		psBuffer.Initialize();
-		psBuffer.data.s_Color = m_LightColor;
-		psBuffer.data.s_Direction = m_lightDir;
-		psBuffer.data.s_Position = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);
-		psBuffer.data.s_Attenuation = DirectX::XMFLOAT3(0.4f, 0.02f, 0.0f);
-		psBuffer.data.s_Range = 50.0f;
-		psBuffer.data.s_Cone = 20.0f;
-		psBuffer.data.s_Enabled = 1;
+		spotData->s_Color = m_LightColor;
+		spotData->s_Direction = m_lightDir;
+		spotData->s_Position = DirectX::XMFLOAT3(0.0f, 10.0f, 0.0f);
+		spotData->s_Attenuation = DirectX::XMFLOAT3(0.4f, 0.02f, 0.0f);
+		spotData->s_Range = 50.0f;
+		spotData->s_Cone = 20.0f;
+		spotData->s_Enabled = 1;
+
+		psBuffer.Initialize(spotData.get());
 	}
 
 	SpotLight::~SpotLight()
@@ -78,7 +84,7 @@ namespace DXEngine {
 
 	void SpotLight::Bind()
 	{
-		psBuffer.Update();
+		psBuffer.Update(*spotData.get());
 		//TO-DO
 
 		//psBuffer.data.light.spotPos.x = XMVectorGetX(camPos);
@@ -93,7 +99,7 @@ namespace DXEngine {
 	}
 	void SpotLight::SetPosition(const DirectX::XMFLOAT3& pos)
 	{
-		psBuffer.data.s_Position = pos;
+		spotData->s_Position = pos;
 
 	}
 }

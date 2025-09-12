@@ -4,6 +4,8 @@
 #include <vector>
 #include <map>
 #include <utils/material/Material.h>
+#include "utils/Buffer.h"
+
 
 
 namespace DXEngine {
@@ -221,10 +223,14 @@ namespace DXEngine {
         static std::shared_ptr<Material> s_CurrentMaterial;
         static std::shared_ptr<ShaderProgram> s_CurrentShader;
         static MaterialType s_CurrentMaterialType;
+        static std::shared_ptr<TransfomBufferData> s_TransformBufferData;
+
 
         static std::shared_ptr<Model> s_UIQuadModel;
         static std::shared_ptr<Material> s_DefaultUIMaterial;
         static DirectX::XMMATRIX s_UIProjectionMatrix;
+        static std::shared_ptr<UIConstantBuffer> s_UIBufferData;
+
 
         struct RenderState
         {

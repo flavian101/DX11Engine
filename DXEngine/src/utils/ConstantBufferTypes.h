@@ -1,5 +1,6 @@
 #pragma once
 #include <DirectXMath.h>
+#include <memory>
 
 namespace DXEngine {
 
@@ -7,16 +8,9 @@ namespace DXEngine {
     {
         DirectX::XMMATRIX WVP;
         DirectX::XMMATRIX Model;
-
     };
-    struct MaterialBufferData
-    {
-        DirectX::XMFLOAT4 difColor;
-        BOOL hasTexture;
-        BOOL hasNormalMap;
-        float pad[2];
 
-    };
+
     struct PointLightData
     {
         PointLightData()
@@ -30,6 +24,7 @@ namespace DXEngine {
         DirectX::XMFLOAT3 p_Attenuation;
         int p_Enabled;
     };
+
     struct SpotLightData
     {
         SpotLightData()
@@ -67,6 +62,7 @@ namespace DXEngine {
         float time;
         float padding;
     };
+
 
     enum BindSlot : uint32_t
     {

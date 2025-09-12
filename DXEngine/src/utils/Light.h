@@ -1,5 +1,5 @@
 #pragma once
-#include "ConstantBuffer.h"
+#include "Buffer.h"
 #include "renderer/RendererCommand.h"
 
 namespace DXEngine {
@@ -28,6 +28,7 @@ namespace DXEngine {
 		void Bind() override;
 	private:
 		ConstantBuffer<DirectionalLightData> psBuffer;
+		std::shared_ptr<DirectionalLightData> directionalData;
 
 	};
 
@@ -40,6 +41,7 @@ namespace DXEngine {
 		void SetPosition(const DirectX::XMFLOAT3& pos);
 	private:
 		ConstantBuffer<PointLightData> psBuffer;
+		std::shared_ptr<PointLightData> pointData;
 
 	};
 
@@ -54,6 +56,7 @@ namespace DXEngine {
 
 	private:
 		ConstantBuffer<SpotLightData> psBuffer;
+		std::shared_ptr<SpotLightData> spotData;
 
 	};
 }

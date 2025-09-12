@@ -87,16 +87,13 @@
     <ClInclude Include="src\shaders\ShaderProgram.h">
       <Filter>shaders</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\ConstantBuffer.h">
+    <ClInclude Include="src\utils\Buffer.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\ConstantBufferTypes.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\CubeMapTexture.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\IndexBuffer.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Light.h">
@@ -189,9 +186,6 @@
     <ClCompile Include="src\utils\CubeMapTexture.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\IndexBuffer.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
     <ClCompile Include="src\utils\Light.cpp">
       <Filter>utils</Filter>
     </ClCompile>
@@ -235,5 +229,6 @@
     <ClCompile Include="src\camera\FreeLookBehavior.cpp" />
     <ClCompile Include="src\camera\MovementBehavior.cpp" />
     <ClCompile Include="src\utils\Mesh\IndexData.cpp" />
+    <ClCompile Include="src\utils\Buffer.cpp" />
   </ItemGroup>
 </Project>

@@ -1,7 +1,7 @@
 #pragma once
 #include "MaterialTypes.h"
 #include "MaterialProperties.h"
-#include "utils/ConstantBuffer.h"
+#include "utils/Buffer.h"
 #include "utils/Sampler.h"
 #include <string>
 #include <memory>
@@ -68,6 +68,7 @@ namespace DXEngine {
 		MaterialProperties m_Properties;
 		MaterialResources m_Resources;
 		ConstantBuffer<MaterialProperties> m_ConstantBuffer;
+		
 		Sampler m_Sampler;
 		bool m_ConstantBufferInitialized = false;
 		bool m_PropertiesDirty = true;
