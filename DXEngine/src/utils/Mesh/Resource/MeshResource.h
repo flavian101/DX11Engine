@@ -1,11 +1,11 @@
 #pragma once
 #define NOMINMAX
-#include "VertexAttribute.h"
+#include "utils/Mesh/Utils/VertexAttribute.h"
 #include <DirectXMath.h>
 #include <vector>
 #include <memory>
 #include <string>
-#include "IndexData.h"
+#include "utils/Mesh/Utils/IndexData.h"
 
 namespace DXEngine
 {
@@ -17,7 +17,7 @@ namespace DXEngine
 		LineList,
 		LineStrip,
 		PointList,
-		TriangleListAdj,   
+		TriangleListAdj,
 		TriangleStripAdj,
 		LineListAdj,
 		LineStripAdj
@@ -166,50 +166,6 @@ namespace DXEngine
 
 	};
 
-	// Specialized mesh resource for specific use cases
-	class SkinnedMeshResource : public MeshResource
-	{
-	public:
-		struct BoneInfo
-		{
-			std::string name;
-			DirectX::XMFLOAT4X4 offsetMatrix;
-			int32_t parentIndex = -1;
-		};
 
-		SkinnedMeshResource(const std::string& name = "SkinnedMesh") : MeshResource(name) {}
 
-		// Bone management
-		void AddBone(const BoneInfo& bone);
-		const std::vector<BoneInfo>& GetBones() const { return m_Bones; }
-		BoneInfo& GetBone(size_t index) { return m_Bones[index]; }
-		const BoneInfo& GetBone(size_t index) const { return m_Bones[index]; }
-		size_t GetBoneCount() const { return m_Bones.size(); }
-
-		int32_t FindBoneIndex(const std::string& name) const;
-
-	private:
-		std::vector<BoneInfo> m_Bones;
-	};
-
-	// Instanced mesh resource for rendering many similar objects
-	class InstancedMeshResource : public MeshResource
-	{
-	public:
-		InstancedMeshResource(const std::string& name = "InstancedMesh") : MeshResource(name) {}
-
-		// Instance data management
-		void SetInstanceLayout(const VertexLayout& layout);
-		const VertexLayout& GetInstanceLayout() const { return m_InstanceLayout; }
-
-		void SetInstanceData(std::unique_ptr<VertexData> instanceData);
-		const VertexData* GetInstanceData() const { return m_InstanceData.get(); }
-		VertexData* GetInstanceData() { return m_InstanceData.get(); }
-
-		size_t GetInstanceCount() const;
-
-	private:
-		VertexLayout m_InstanceLayout;
-		std::unique_ptr<VertexData> m_InstanceData;
-	};
 }

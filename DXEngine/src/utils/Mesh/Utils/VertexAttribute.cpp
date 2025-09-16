@@ -3,7 +3,7 @@
 #include <cassert>
 #include <sstream>
 #include <algorithm>
-#include "MeshResource.h"
+#include "utils/Mesh/Resource/MeshResource.h"
 
 namespace DXEngine
 {

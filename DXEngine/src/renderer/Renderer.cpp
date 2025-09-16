@@ -1,6 +1,8 @@
 #include "dxpch.h"
 #include "Renderer.h"
 #include "models/Model.h"
+#include "models/InstanceModel.h"
+#include "models/SkinnedModel.h"
 #include "utils/Mesh/Mesh.h"
 #include "camera/Camera.h"
 #include "shaders/ShaderManager.h"
@@ -9,6 +11,7 @@
 #include <utils/UI/UIButton.h>
 #include <utils/UI/UIPanel.h>
 #include <utils/UI/UIText.h>
+#include <DirectXCollision.h>
 
 
 namespace DXEngine {
@@ -642,6 +645,12 @@ namespace DXEngine {
 
         model->EnsureDefaultMaterials();
 
+        // Add frustum culling check (same as ProcessModelSubmission)
+        if (s_FrustumCullingEnabled && !IsModelVisible(model.get(), RenderCommand::GetCamera()))
+        {
+            return;
+        }
+
         //submit all meshes as instances
         for (size_t meshIndex = 0; meshIndex < model->GetMeshCount(); ++meshIndex)
         {
@@ -672,6 +681,12 @@ namespace DXEngine {
 
         model->EnsureDefaultMaterials();
 
+        // Add frustum culling check (same as ProcessModelSubmission)
+        if (s_FrustumCullingEnabled && !IsModelVisible(model.get(), RenderCommand::GetCamera()))
+        {
+            return;
+        }
+
         //submit all meshes as skinned
         for (size_t meshIndex = 0; meshIndex < model->GetMeshCount(); ++meshIndex)
         {
@@ -701,16 +716,23 @@ namespace DXEngine {
         if (!model || !camera)
             return true;
 
-        //simple culling based on distance
+        // simple culling based on distance
         BoundingSphere worldSphere = model->GetWorldBoundingSphere();
-        DirectX::XMVECTOR camPos = camera->GetPos();
-        DirectX::XMVECTOR sphereCenter = DirectX::XMLoadFloat3(&worldSphere.center);
-        DirectX::XMVECTOR distance = DirectX::XMVector3Length(DirectX::XMVectorSubtract(sphereCenter, camPos));
 
-        float distanceValue = DirectX::XMVectorGetX(distance);
-        float maxViewDistance = 500.0f;
+        // Convert DXEngine::BoundingSphere to DirectX::BoundingSphere
+        DirectX::BoundingSphere dxWorldSphere(
+            DirectX::XMFLOAT3(worldSphere.center.x, worldSphere.center.y, worldSphere.center.z),
+            worldSphere.radius
+        );
 
-        return distanceValue <= (maxViewDistance + worldSphere.radius);
+        DirectX::XMMATRIX view = camera->GetView();
+        DirectX::XMMATRIX proj = camera->GetProjection();
+        DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj); 
+
+        DirectX::BoundingFrustum frustum(viewProj);
+
+        // Check if the bounding sphere is inside or intersecting the frustum
+        return frustum.Contains(dxWorldSphere) != DirectX::DISJOINT;
     }
 
     size_t Renderer::SelectLODLevel(const Model* model, const std::shared_ptr<Camera>& camera)

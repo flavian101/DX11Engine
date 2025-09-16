@@ -95,13 +95,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\utils\Mesh\IndexData.h" />
+    <ClInclude Include="src\models\InstanceModel.h" />
+    <ClInclude Include="src\models\SkinnedModel.h" />
+    <ClInclude Include="src\utils\Mesh\InstanceMesh.h" />
+    <ClInclude Include="src\utils\Mesh\SkinnedMesh.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
+    <ClInclude Include="src\utils\Mesh\Resource\InstanceMeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\Resource\SkinnedMeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\IndexData.h" />
     <ClInclude Include="src\camera\MovementBehavior.h" />
     <ClInclude Include="src\camera\FreeLookBehavior.h" />
     <ClInclude Include="src\camera\CameraBehavior.h" />
     <ClInclude Include="src\camera\CameraController.h" />
-    <ClInclude Include="src\utils\Mesh\InputManager.h" />
-    <ClInclude Include="src\utils\Mesh\MeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\InputManager.h" />
+    <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Ball.h" />
     <ClInclude Include="src\camera\Camera.h" />
@@ -151,16 +158,23 @@
     <ClInclude Include="src\utils\UI\UIText.h" />
     <ClInclude Include="src\utils\UI\UILayer.h" />
     <ClInclude Include="src\utils\UI\UIManager.h" />
-    <ClInclude Include="src\utils\Mesh\VertexAttribute.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\models\InstanceModel.cpp" />
+    <ClCompile Include="src\models\SkinnedModel.cpp" />
+    <ClCompile Include="src\utils\Mesh\InstanceMesh.cpp" />
+    <ClCompile Include="src\utils\Mesh\SkinnedMesh.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
+    <ClCompile Include="src\utils\Mesh\Resource\InstanceMeshResource.cpp" />
+    <ClCompile Include="src\utils\Mesh\Resource\SkinnedMeshResource.cpp" />
     <ClCompile Include="src\utils\Buffer.cpp" />
-    <ClCompile Include="src\utils\Mesh\IndexData.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp" />
     <ClCompile Include="src\camera\MovementBehavior.cpp" />
     <ClCompile Include="src\camera\FreeLookBehavior.cpp" />
     <ClCompile Include="src\camera\CameraController.cpp" />
-    <ClCompile Include="src\utils\Mesh\InputManager.cpp" />
-    <ClCompile Include="src\utils\Mesh\MeshResource.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
+    <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Ball.cpp" />
     <ClCompile Include="src\camera\Camera.cpp" />
@@ -199,7 +213,7 @@
     <ClCompile Include="src\utils\UI\UIText.cpp" />
     <ClCompile Include="src\utils\UI\UILayer.cpp" />
     <ClCompile Include="src\utils\UI\UIManager.cpp" />
-    <ClCompile Include="src\utils\Mesh\VertexAttribute.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <sstream>
 #include <cassert>
-#include "IndexData.h"
+#include "utils/Mesh/Utils/IndexData.h"
 
 namespace DXEngine
 {
@@ -769,42 +769,5 @@ namespace DXEngine
 
         return resource;
     }
-
-    // SkinnedMeshResource Implementation
-    void SkinnedMeshResource::AddBone(const BoneInfo& bone)
-    {
-        m_Bones.push_back(bone);
-    }
-
-    int32_t SkinnedMeshResource::FindBoneIndex(const std::string& name) const
-    {
-        for (size_t i = 0; i < m_Bones.size(); ++i)
-        {
-            if (m_Bones[i].name == name)
-                return static_cast<int32_t>(i);
-        }
-        return -1;
-    }
-
-    // InstancedMeshResource Implementation
-    void InstancedMeshResource::SetInstanceLayout(const VertexLayout& layout)
-    {
-        m_InstanceLayout = layout;
-        if (!layout.IsFinalized())
-        {
-            m_InstanceLayout.Finalize();
-        }
-    }
-
-    void InstancedMeshResource::SetInstanceData(std::unique_ptr<VertexData> instanceData)
-    {
-        m_InstanceData = std::move(instanceData);
-    }
-
-    size_t InstancedMeshResource::GetInstanceCount() const
-    {
-        return m_InstanceData ? m_InstanceData->GetVertexCount() : 0;
-    }
-
 
 }

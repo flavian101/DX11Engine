@@ -2,7 +2,7 @@
 #include "dxpch.h"
 #include "Ray.h"
 #include "utils/mesh/Mesh.h"
-#include "utils/mesh/MeshResource.h"
+#include "utils/mesh/Resource/MeshResource.h"
 #include "camera/Camera.h"
 
 namespace DXEngine {

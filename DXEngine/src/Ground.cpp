@@ -3,8 +3,8 @@
 #include "utils/material/Material.h"
 #include <utils/mesh/Mesh.h>
 #include "utils/Texture.h"
-#include <utils/Mesh/VertexAttribute.h>
-#include <utils/Mesh/MeshResource.h>
+#include <utils/Mesh/Utils/VertexAttribute.h>
+#include <utils/Mesh/Resource/MeshResource.h>
 
 namespace DXEngine {
 

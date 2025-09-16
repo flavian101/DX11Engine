@@ -1,98 +1,17 @@
 #pragma once
-#include "MeshResource.h"
+#include "Resource/MeshResource.h"
 #include "renderer/RendererCommand.h"
 #include <memory>
 #include <unordered_map>
-#include "IndexData.h"
-#include "../Buffer.h"
+#include "utils/Mesh/Utils/IndexData.h"
+#include "utils/Mesh/Utils/MeshBuffers.h"
+#include "utils/Buffer.h"
 
 
 namespace DXEngine {
 	class Material;
 	class InputLayout;
-    
-    // GPU resource management for vertex/index buffers
-    class MeshBuffers
-    {
-    public:
-        MeshBuffers() = default;
-        ~MeshBuffers();
-
-        // Non-copyable but movable
-        MeshBuffers(const MeshBuffers&) = delete;
-        MeshBuffers& operator=(const MeshBuffers&) = delete;
-        MeshBuffers(MeshBuffers&&) = default;
-        MeshBuffers& operator=(MeshBuffers&&) = default;
-
-        // Buffer creation from mesh resource
-        bool CreateFromResource(const MeshResource& resource);
-        bool CreateFromVertexData(const VertexData& vertexData, const IndexData* indexData = nullptr);
-
-        // Multiple vertex buffer support for complex meshes
-        bool AddVertexBuffer(const VertexData& vertexData, uint32_t slot);
-
-        // GPU resource access
-        void Bind(uint32_t startSlot = 0) const;
-        void BindVertexBuffers(uint32_t startSlot = 0) const;
-        void BindIndexBuffer() const;
-
-        // Resource management
-        void Release();
-        bool IsValid() const;
-
-        // Properties
-        size_t GetVertexCount() const { return m_VertexCount; }
-        size_t GetIndexCount() const { return m_IndexCount; }
-        IndexType GetIndexType() const { return m_IndexType; }
-        PrimitiveTopology GetTopology() const { return m_Topology; }
-
-        // Memory usage
-        size_t GetGPUMemoryUsage() const;
-
-    private:
-        struct VertexBufferData
-        {
-            std::unique_ptr<RawBuffer> buffer;
-            uint32_t stride;
-            uint32_t offset;
-        };
-        struct IndexBufferData
-        {
-            std::unique_ptr<IndexBuffer<uint16_t>> buffer16;
-            std::unique_ptr<IndexBuffer<uint32_t>> buffer32;
-            IndexType indexType;
-
-            ID3D11Buffer* GetBuffer() const
-            {
-                return indexType == IndexType::UInt16 ?
-                    (buffer16 ? buffer16->GetBuffer() : nullptr) :
-                    (buffer32 ? buffer32->GetBuffer() : nullptr);
-            }
-
-            DXGI_FORMAT GetFormat() const
-            {
-                return indexType == IndexType::UInt16 ?
-                    DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-            }
-
-            bool IsValid() const
-            {
-                return indexType == IndexType::UInt16 ?
-                    (buffer16 && buffer16->IsValid()) :
-                    (buffer32 && buffer32->IsValid());
-            }
-        };
-
-        std::unordered_map<uint32_t, VertexBufferData> m_VertexBuffers;
-        std::unique_ptr<IndexBufferData> m_IndexBuffer;
-
-        size_t m_VertexCount = 0;
-        size_t m_IndexCount = 0;
-        IndexType m_IndexType = IndexType::UInt16;
-        PrimitiveTopology m_Topology = PrimitiveTopology::TriangleList;
-    };
-
-   
+      
     // Main Mesh class - represents a renderable mesh
     class Mesh
     {
@@ -158,54 +77,7 @@ namespace DXEngine {
         mutable bool m_GPUResourcesDirty = true;
     };
 
-    // Specialized mesh types
-    class SkinnedMesh : public Mesh
-    {
-    public:
-        explicit SkinnedMesh(std::shared_ptr<SkinnedMeshResource> resource);
-
-        const std::shared_ptr<SkinnedMeshResource>& GetSkinnedResource() const
-        {
-            return std::static_pointer_cast<SkinnedMeshResource>(GetResource());
-        }
-
-        // Bone matrices for animation
-        void SetBoneMatrices(const std::vector<DirectX::XMFLOAT4X4>& matrices);
-        const std::vector<DirectX::XMFLOAT4X4>& GetBoneMatrices() const { return m_BoneMatrices; }
-
-        // Bind bone data for rendering
-        void BindBoneData() const;
-
-    private:
-        std::vector<DirectX::XMFLOAT4X4> m_BoneMatrices;
-        mutable std::unique_ptr<ConstantBuffer<DirectX::XMFLOAT4X4>> m_BoneBuffer;
-    };
-
-    class InstancedMesh : public Mesh
-    {
-    public:
-        explicit InstancedMesh(std::shared_ptr<InstancedMeshResource> resource);
-
-        const std::shared_ptr<InstancedMeshResource>& GetInstancedResource() const
-        {
-            return std::static_pointer_cast<InstancedMeshResource>(GetResource());
-        }
-
-        // Instance rendering
-        void DrawInstanced(size_t submeshIndex = 0) const;
-        void DrawAllInstanced() const;
-
-        // Update instance data on GPU
-        bool UpdateInstanceData() const;
-
-    protected:
-        void OnResourceChanged() override;
-
-    private:
-        mutable std::unique_ptr<RawBuffer> m_InstanceBuffer;
-        mutable bool m_InstanceDataDirty = true;
-    };
-
+   
     // Mesh loading / creation utilities
         namespace MeshUtils
         {

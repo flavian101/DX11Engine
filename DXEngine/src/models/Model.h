@@ -3,7 +3,7 @@
 #include "utils/Transform.h"
 #include <memory>
 #include <DirectXMath.h>
-#include <utils/Mesh/MeshResource.h>
+#include <utils/Mesh/Resource/MeshResource.h>
 
 namespace DXEngine {
 
@@ -130,45 +130,6 @@ namespace DXEngine {
 		bool m_CastsShadows = true;
 		bool m_ReceivesShadows = true;
 		bool m_IsSelected = false;
-	};
-
-	class InstanceModel :public Model
-	{
-	public:
-		InstanceModel();
-		explicit InstanceModel(std::shared_ptr<Mesh> mesh);
-
-		void SetInstanceTransform(const std::vector<DirectX::XMFLOAT4X4>& transforms);
-		void AddInstance(const DirectX::XMFLOAT4X4& transform);
-
-		void ClearInstances();
-
-		size_t GetInstanceCount()const { return m_InstanceTransforms.size(); }
-		const std::vector<DirectX::XMFLOAT4X4>& GetInstanceTransforms() const { return m_InstanceTransforms; }
-
-		BoundingBox GetWorldBoundingBox()const override;
-		BoundingSphere GetWorldBoundingSphere()const override;
-
-	private:
-		std::vector<DirectX::XMFLOAT4X4> m_InstanceTransforms;
-
-	};
-
-	class SkinnedModel : public Model
-	{
-	public:
-		SkinnedModel();
-		explicit SkinnedModel(std::shared_ptr<Mesh> mesh);
-
-		void SetBoneMatrices(const std::vector< DirectX::XMFLOAT4X4>& boneMatrices);
-
-		const std::vector< DirectX::XMFLOAT4X4>& GetBoneMatrices() const { return m_BoneMatrices; }
-
-		void Update(float deltaTime) override;
-
-	private:
-		std::vector< DirectX::XMFLOAT4X4> m_BoneMatrices;
-
 	};
 
 	namespace ModelUtils
