@@ -12,6 +12,23 @@ workspace "DX11Engine"
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 --include directories relative to root folder (solution directory)
+Includedir = {}
+Includedir["AssimpPublic"] = "DXEngine/vendor/assimp/include"
+Includedir["AssimpGen"]    = "DXEngine/vendor/assimp/build/include"
+
+
+-- Define Assimp paths
+AssimpLibPath = "DXEngine/vendor/assimp/build/lib"
+AssimpBinPath = "DXEngine/vendor/assimp/build/bin"
+
+-- Add post-build command helper function
+function CopyDLL(dllName)
+    if os.host() == "windows" then
+        postbuildcommands {
+            '{COPY} "../%{AssimpBinPath}/%{cfg.buildcfg}/%{dllName}" "%{cfg.targetdir}/"'
+        }
+    end
+end
 
 project "DXEngine"
 	location "DXEngine"
@@ -35,10 +52,13 @@ project "DXEngine"
 	includedirs{
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/stb",
+		"%{Includedir.AssimpPublic}",
+        "%{Includedir.AssimpGen}",
 	}
 	defines{
 		"_CRT_SECURE_NO_WARNINGS",
-		"_DEBUG"
+		"_DEBUG",
+		"ASSIMP_BUILD_STATIC",
 	}
 	links{
 	}
@@ -47,26 +67,22 @@ project "DXEngine"
 		systemversion "latest"
 		buildoptions { "/utf-8" }
 
-		defines
-		{
-		}
-
-			filter "configurations:Debug"
-				defines "DX_DEBUG"
-				runtime "debug"
-				symbols "on"
-
-			filter "configurations:Release"
-				defines "DX_RELEASE"
-				runtime "release"
-				optimize "on"
-
-			filter "configurations:Dist"
-				defines "DX_DIST"
-				runtime "release"
-				optimize "On"
+		filter "configurations:Debug"
+			defines "DX_DEBUG"
+			runtime "Debug"
+			symbols "on"
+			libdirs { "%{AssimpLibPath}/Debug" }
+			links   { "assimp-vc143-mtd" }
+			CopyDLL("assimp-vc143-mtd.dll")
 
 
+		filter "configurations:Release"
+			defines "DX_RELEASE"
+			runtime "Release"
+			optimize "on"
+			libdirs { "%{AssimpLibPath}/Release" }
+			links   { "assimp-vc143-mt" }
+			CopyDLL("assimp-vc143-mt.dll")
 
 project "Sandbox"
 location "Sandbox"
@@ -81,11 +97,13 @@ location "Sandbox"
 
 	files{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
 	}
 	includedirs{
 		"DXEngine/src",
-		"DXEngine/vendor/"
+		"DXEngine/vendor/",
+		"%{Includedir.AssimpPublic}",
+        "%{Includedir.AssimpGen}",
 	}
 
 	links{
@@ -96,20 +114,21 @@ location "Sandbox"
 		systemversion "latest"
 		buildoptions { "/utf-8" }
 
-		defines{
-		}
-
 	filter "configurations:Debug"
 			defines "DX_DEBUG"
-			runtime "debug"
+			runtime "Debug"
 			symbols "on"
+			libdirs { "%{AssimpLibPath}/Debug" }
+			links   { "assimp-vc143-mtd" }
+			CopyDLL("assimp-vc143-mtd.dll")
+
 	filter "configurations:Release"
 			defines "DX_RELEASE"
-			runtime "release"
+			runtime "Release"
 			optimize "on"
-	filter "configurations:Dist"
-			defines "DX_DIST"
-			runtime "release"
-			optimize "on"
+			libdirs { "%{AssimpLibPath}/Release" }
+			links   { "assimp-vc143-mt" }
+			CopyDLL("assimp-vc143-mt.dll")
+
 
 

@@ -39,6 +39,8 @@ private:
 	std::shared_ptr<DXEngine::SkySphere> m_Sky;
 	std::shared_ptr<DXEngine::Ball> m_Moon;
 	std::shared_ptr<DXEngine::LightSphere> m_Light;
+	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
+	std::shared_ptr<DXEngine::Model> m_Ship;
 
 	//Window wnd;
 	std::unique_ptr<DXEngine::PickingManager> m_PickingManager;

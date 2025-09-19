@@ -714,25 +714,42 @@ namespace DXEngine {
     bool Renderer::IsModelVisible(const Model* model, const std::shared_ptr<Camera>& camera)
     {
         if (!model || !camera)
-            return true;
+            return true; // If no model or camera, assume visible to prevent accidental culling
 
-        // simple culling based on distance
+        // Get the model's world bounding sphere
         BoundingSphere worldSphere = model->GetWorldBoundingSphere();
 
-        // Convert DXEngine::BoundingSphere to DirectX::BoundingSphere
+        // Create DirectX bounding sphere
         DirectX::BoundingSphere dxWorldSphere(
             DirectX::XMFLOAT3(worldSphere.center.x, worldSphere.center.y, worldSphere.center.z),
             worldSphere.radius
         );
 
+        // Get view and projection matrices
         DirectX::XMMATRIX view = camera->GetView();
         DirectX::XMMATRIX proj = camera->GetProjection();
-        DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj); 
+        DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj);
 
-        DirectX::BoundingFrustum frustum(viewProj);
+        // Create view frustum
+        DirectX::BoundingFrustum frustum(proj); // Create in projection space
+        DirectX::BoundingFrustum viewSpaceFrustum;
+        frustum.Transform(viewSpaceFrustum, view); // Transform to view space
 
-        // Check if the bounding sphere is inside or intersecting the frustum
-        return frustum.Contains(dxWorldSphere) != DirectX::DISJOINT;
+        // Add a small bias to the sphere radius to prevent edge cases
+        dxWorldSphere.Radius *= 1.1f; // 10% larger radius for safety
+
+        // Check containment with more detailed result
+        DirectX::ContainmentType containment = viewSpaceFrustum.Contains(dxWorldSphere);
+        
+        // Log culling decisions in debug mode
+        #ifdef _DEBUG
+        if (containment == DirectX::DISJOINT) {
+            OutputDebugStringA(("Model culled: " + std::to_string(reinterpret_cast<uintptr_t>(model)) + "\n").c_str());
+        }
+        #endif
+
+        // Consider both CONTAINS and INTERSECTS as visible
+        return containment != DirectX::DISJOINT;
     }
 
     size_t Renderer::SelectLODLevel(const Model* model, const std::shared_ptr<Camera>& camera)

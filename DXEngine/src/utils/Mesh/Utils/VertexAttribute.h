@@ -82,8 +82,8 @@ namespace DXEngine
 	public:
 		VertexLayout() = default;
 
-		VertexLayout& Add(const VertexAttribute& attribute);
-		VertexLayout& Add(VertexAttributeType type, DataFormat format, uint32_t slot = 0, bool perInstance = false);
+		VertexLayout& AddAttribute(const VertexAttribute& attribute);
+		VertexLayout& AddAttribute(VertexAttributeType type, DataFormat format, uint32_t slot = 0, bool perInstance = false);
 
 		VertexLayout& Position(DataFormat format = DataFormat::Float3, uint32_t slot = 0);
 		VertexLayout& Normal(DataFormat format = DataFormat::Float3, uint32_t slot = 0);
@@ -173,6 +173,14 @@ namespace DXEngine
 		const DirectX::XMFLOAT4& value, uint32_t slot);
 
 	template<>
+	void VertexData::SetAttribute<uint32_t[4]>(size_t vertexIndex, VertexAttributeType type,
+		const uint32_t(&value)[4], uint32_t slot);
+
+	template<>
+	void VertexData::SetAttribute<DirectX::XMUINT4>(size_t vertexIndex, VertexAttributeType type,
+		const DirectX::XMUINT4& value, uint32_t slot);
+
+	template<>
 	DirectX::XMFLOAT3 VertexData::GetAttribute<DirectX::XMFLOAT3>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const;
 
 	template<>
@@ -181,6 +189,8 @@ namespace DXEngine
 	template<>
 	DirectX::XMFLOAT4 VertexData::GetAttribute<DirectX::XMFLOAT4>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const;
 
+	template<>
+	DirectX::XMUINT4 VertexData::GetAttribute<DirectX::XMUINT4>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const;
 
 }
 

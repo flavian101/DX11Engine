@@ -77,51 +77,51 @@ namespace DXEngine
     }
 
     //vertexLayout
-    VertexLayout& VertexLayout::Add(const VertexAttribute& attribute)
+    VertexLayout& VertexLayout::AddAttribute(const VertexAttribute& attribute)
     {
         assert(!m_Finalized && "cannot add attributes to finalize layout");
         m_Attributes.push_back(attribute);
         return *this;
     }
 
-    VertexLayout& VertexLayout::Add(VertexAttributeType type, DataFormat format, uint32_t slot, bool perInstance)
+    VertexLayout& VertexLayout::AddAttribute(VertexAttributeType type, DataFormat format, uint32_t slot, bool perInstance)
     {
-        return Add(VertexAttribute(type, format, "", 0, slot, perInstance));
+        return AddAttribute(VertexAttribute(type, format, "", 0, slot, perInstance));
     }
 
     VertexLayout& VertexLayout::Position(DataFormat format, uint32_t slot)
     {
-        return Add(VertexAttributeType::Position, format, slot);
+        return AddAttribute(VertexAttributeType::Position, format, slot);
     }
 
     VertexLayout& VertexLayout::Normal(DataFormat format, uint32_t slot)
     {
-        return Add(VertexAttributeType::Normal, format, slot);
+        return AddAttribute(VertexAttributeType::Normal, format, slot);
     }
 
     VertexLayout& VertexLayout::Tangent(DataFormat format, uint32_t slot)
     {
-        return Add(VertexAttributeType::Tangent, format, slot);
+        return AddAttribute(VertexAttributeType::Tangent, format, slot);
     }
 
     VertexLayout& VertexLayout::TexCoord(uint32_t index, DataFormat format, uint32_t slot)
     {
         VertexAttributeType type = static_cast<VertexAttributeType>(static_cast<int>(VertexAttributeType::TexCoord0) + index);
         VertexAttribute attr(type, format, "TEXCOORD", index, slot);
-        return Add(attr);
+        return AddAttribute(attr);
     }
 
     VertexLayout& VertexLayout::Color(uint32_t index, DataFormat format, uint32_t slot)
     {
         VertexAttributeType type = static_cast<VertexAttributeType>(static_cast<int>(VertexAttributeType::Color0) + index);
         VertexAttribute attr(type, format, "COLOR", index, slot);
-        return Add(attr);
+        return AddAttribute(attr);
     }
 
     VertexLayout& VertexLayout::BlendData(DataFormat indicesFormat, DataFormat weightsFormat, uint32_t slot)
     {
-        Add(VertexAttributeType::BlendIndices, indicesFormat, slot);
-        Add(VertexAttributeType::BlendWeights, weightsFormat, slot);
+        AddAttribute(VertexAttributeType::BlendIndices, indicesFormat, slot);
+        AddAttribute(VertexAttributeType::BlendWeights, weightsFormat, slot);
         return *this;
     }
 
@@ -275,7 +275,7 @@ namespace DXEngine
         VertexLayout layout;
         layout.Position()
               .Color(0)
-              .Add(VertexAttributeType::TexCoord0, DataFormat::Float2) // Size
+              .AddAttribute(VertexAttributeType::TexCoord0, DataFormat::Float2) // Size
               .Finalize();
         return layout;
     }
@@ -339,6 +339,14 @@ namespace DXEngine
 
         return true;
     }
+
+    /// <summary>
+    /// Sets the value of a <> attribute for a specific vertex in the vertex data layout.
+    /// </summary>
+    /// <param name="vertexIndex">The index of the vertex whose attribute will be set.</param>
+    /// <param name="type">The type of the vertex attribute to set.</param>
+    /// <param name="value">The float value to assign to the attribute.</param>
+    /// <param name="slot">The slot index in the vertex layout where the attribute is located.</param>
     template<>
     void VertexData::SetAttribute<float>(size_t vertexIndex, VertexAttributeType type,
         const float& value, uint32_t slot)
@@ -389,22 +397,7 @@ namespace DXEngine
         memcpy(attrStart, &value, sizeof(uint32_t));
     }
 
-    template<>
-    uint32_t VertexData::GetAttribute<uint32_t>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
-    {
-        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
-        assert(attr && "Attribute not found in layout");
-        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
-
-        const auto& slotData = m_Data.at(slot);
-        uint32_t stride = m_Layout.GetStride(slot);
-        const uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
-        const uint8_t* attrStart = vertexStart + attr->Offset;
-
-        uint32_t result;
-        memcpy(&result, attrStart, sizeof(uint32_t));
-        return result;
-    }
+   
 
     template<>
     void VertexData::SetAttribute<DirectX::XMFLOAT3>(size_t vertexIndex, VertexAttributeType type,
@@ -455,6 +448,78 @@ namespace DXEngine
     }
 
     template<>
+    void VertexData::SetAttribute<uint32_t[4]>(size_t vertexIndex, VertexAttributeType type,
+        const uint32_t(&value)[4], uint32_t slot)
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        auto& slotData = m_Data[slot];
+        uint32_t stride = m_Layout.GetStride(slot);
+        uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        uint8_t* attrStart = vertexStart + attr->Offset;
+
+        memcpy(attrStart, value, sizeof(uint32_t) * 4);
+    }
+
+    template<>
+    void VertexData::SetAttribute<DirectX::XMUINT4>(size_t vertexIndex, VertexAttributeType type,
+        const DirectX::XMUINT4& value, uint32_t slot)
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        auto& slotData = m_Data[slot];
+        uint32_t stride = m_Layout.GetStride(slot);
+        uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        uint8_t* attrStart = vertexStart + attr->Offset;
+
+        memcpy(attrStart, &value, sizeof(DirectX::XMUINT4));
+    }
+
+    /// <summary>
+    /// Retrieves a <> attribute value from a specific vertex and slot.
+    /// </summary>
+    /// <param name="vertexIndex">The index of the vertex from which to retrieve the attribute.</param>
+    /// <param name="type">The type of the vertex attribute to retrieve.</param>
+    /// <param name="slot">The slot index where the attribute is stored.</param>
+    /// <returns>The value of the specified attribute as a uint32_t.</returns>
+
+    template<>
+    uint32_t VertexData::GetAttribute<uint32_t>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        const auto& slotData = m_Data.at(slot);
+        uint32_t stride = m_Layout.GetStride(slot);
+        const uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        const uint8_t* attrStart = vertexStart + attr->Offset;
+
+        uint32_t result;
+        memcpy(&result, attrStart, sizeof(uint32_t));
+        return result;
+    }
+    template<>
+    DirectX::XMFLOAT4 VertexData::GetAttribute<DirectX::XMFLOAT4>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        const auto& slotData = m_Data.at(slot);
+        uint32_t stride = m_Layout.GetStride(slot);
+        const uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        const uint8_t* attrStart = vertexStart + attr->Offset;
+
+        DirectX::XMFLOAT4 result;
+        memcpy(&result, attrStart, sizeof(DirectX::XMFLOAT4));
+        return result;
+    }
+    template<>
     DirectX::XMFLOAT3 VertexData::GetAttribute<DirectX::XMFLOAT3>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
     {
         const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
@@ -489,7 +554,7 @@ namespace DXEngine
     }
 
     template<>
-    DirectX::XMFLOAT4 VertexData::GetAttribute<DirectX::XMFLOAT4>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
+    DirectX::XMUINT4 VertexData::GetAttribute<DirectX::XMUINT4>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const
     {
         const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
         assert(attr && "Attribute not found in layout");
@@ -500,8 +565,8 @@ namespace DXEngine
         const uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
         const uint8_t* attrStart = vertexStart + attr->Offset;
 
-        DirectX::XMFLOAT4 result;
-        memcpy(&result, attrStart, sizeof(DirectX::XMFLOAT4));
+        DirectX::XMUINT4 result;
+        memcpy(&result, attrStart, sizeof(DirectX::XMUINT4));
         return result;
     }
 

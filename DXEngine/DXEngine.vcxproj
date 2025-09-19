@@ -22,13 +22,13 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -57,8 +57,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;ASSIMP_BUILD_STATIC;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -70,14 +70,21 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalDependencies>assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\assimp\build\lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
+    <PostBuildEvent>
+      <Command>IF EXIST "..\DXEngine\vendor\assimp\build\bin\Debug\"\ (xcopy /Q /E /Y /I "..\DXEngine\vendor\assimp\build\bin\Debug\" "..\bin\Debug-windows-x86_64\DXEngine\" &gt; nul) ELSE (xcopy /Q /Y /I "..\DXEngine\vendor\assimp\build\bin\Debug\" "..\bin\Debug-windows-x86_64\DXEngine\" &gt; nul)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;ASSIMP_BUILD_STATIC;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -93,25 +100,17 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Lib>
+      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\assimp\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
+    <PostBuildEvent>
+      <Command>IF EXIST "..\DXEngine\vendor\assimp\build\bin\Release\"\ (xcopy /Q /E /Y /I "..\DXEngine\vendor\assimp\build\bin\Release\" "..\bin\Release-windows-x86_64\DXEngine\" &gt; nul) ELSE (xcopy /Q /Y /I "..\DXEngine\vendor\assimp\build\bin\Release\" "..\bin\Release-windows-x86_64\DXEngine\" &gt; nul)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\models\InstanceModel.h" />
-    <ClInclude Include="src\models\SkinnedModel.h" />
-    <ClInclude Include="src\utils\Mesh\InstanceMesh.h" />
-    <ClInclude Include="src\utils\Mesh\SkinnedMesh.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\InstanceMeshResource.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\SkinnedMeshResource.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\IndexData.h" />
-    <ClInclude Include="src\camera\MovementBehavior.h" />
-    <ClInclude Include="src\camera\FreeLookBehavior.h" />
-    <ClInclude Include="src\camera\CameraBehavior.h" />
-    <ClInclude Include="src\camera\CameraController.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\InputManager.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Ball.h" />
-    <ClInclude Include="src\camera\Camera.h" />
     <ClInclude Include="src\Core\Input.h" />
     <ClInclude Include="src\Core\Keycodes.h" />
     <ClInclude Include="src\Core\Layer.h" />
@@ -122,15 +121,21 @@
     <ClInclude Include="src\Event\KeyEvent.h" />
     <ClInclude Include="src\Event\MouseEvent.h" />
     <ClInclude Include="src\FrameTime.h" />
+    <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
     <ClInclude Include="src\SkySphere.h" />
-    <ClInclude Include="src\Ground.h" />
-    <ClInclude Include="src\utils\material\MaterialProperties.h" />
-    <ClInclude Include="src\utils\material\MaterialTypes.h" />
     <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\camera\Camera.h" />
+    <ClInclude Include="src\camera\CameraBehavior.h" />
+    <ClInclude Include="src\camera\CameraController.h" />
+    <ClInclude Include="src\camera\FreeLookBehavior.h" />
+    <ClInclude Include="src\camera\MovementBehavior.h" />
     <ClInclude Include="src\dxpch.h" />
+    <ClInclude Include="src\models\InstanceModel.h" />
     <ClInclude Include="src\models\Model.h" />
+    <ClInclude Include="src\models\ModelLoader.h" />
+    <ClInclude Include="src\models\SkinnedModel.h" />
     <ClInclude Include="src\picking\InterfacePickable.h" />
     <ClInclude Include="src\picking\PickingManager.h" />
     <ClInclude Include="src\picking\Ray.h" />
@@ -143,77 +148,88 @@
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
     <ClInclude Include="src\utils\CubeMapTexture.h" />
     <ClInclude Include="src\utils\Light.h" />
-    <ClInclude Include="src\utils\material\Material.h" />
+    <ClInclude Include="src\utils\Mesh\InstanceMesh.h" />
     <ClInclude Include="src\utils\Mesh\Mesh.h" />
+    <ClInclude Include="src\utils\Mesh\Resource\InstanceMeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\Resource\SkinnedMeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\SkinnedMesh.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\IndexData.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\InputManager.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
     <ClInclude Include="src\utils\PixelShader.h" />
     <ClInclude Include="src\utils\Sampler.h" />
     <ClInclude Include="src\utils\Texture.h" />
     <ClInclude Include="src\utils\Topology.h" />
     <ClInclude Include="src\utils\Transform.h" />
-    <ClInclude Include="src\utils\VertexShader.h" />
-    <ClInclude Include="src\windows\WindowsInput.h" />
-    <ClInclude Include="src\utils\UI\UIElement.h" />
-    <ClInclude Include="src\utils\UI\UIPanel.h" />
     <ClInclude Include="src\utils\UI\UIButton.h" />
-    <ClInclude Include="src\utils\UI\UIText.h" />
+    <ClInclude Include="src\utils\UI\UIElement.h" />
     <ClInclude Include="src\utils\UI\UILayer.h" />
     <ClInclude Include="src\utils\UI\UIManager.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
+    <ClInclude Include="src\utils\UI\UIPanel.h" />
+    <ClInclude Include="src\utils\UI\UIText.h" />
+    <ClInclude Include="src\utils\VertexShader.h" />
+    <ClInclude Include="src\utils\material\Material.h" />
+    <ClInclude Include="src\utils\material\MaterialProperties.h" />
+    <ClInclude Include="src\utils\material\MaterialTypes.h" />
+    <ClInclude Include="src\windows\WindowsInput.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\models\InstanceModel.cpp" />
-    <ClCompile Include="src\models\SkinnedModel.cpp" />
-    <ClCompile Include="src\utils\Mesh\InstanceMesh.cpp" />
-    <ClCompile Include="src\utils\Mesh\SkinnedMesh.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\InstanceMeshResource.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\SkinnedMeshResource.cpp" />
-    <ClCompile Include="src\utils\Buffer.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp" />
-    <ClCompile Include="src\camera\MovementBehavior.cpp" />
-    <ClCompile Include="src\camera\FreeLookBehavior.cpp" />
-    <ClCompile Include="src\camera\CameraController.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Ball.cpp" />
-    <ClCompile Include="src\camera\Camera.cpp" />
     <ClCompile Include="src\Core\Input.cpp" />
     <ClCompile Include="src\Core\Layer.cpp" />
     <ClCompile Include="src\Core\LayerStack.cpp" />
     <ClCompile Include="src\FrameTime.cpp" />
+    <ClCompile Include="src\Ground.cpp" />
     <ClCompile Include="src\LightSphere.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
-    <ClCompile Include="src\Ground.cpp" />
     <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\camera\Camera.cpp" />
+    <ClCompile Include="src\camera\CameraController.cpp" />
+    <ClCompile Include="src\camera\FreeLookBehavior.cpp" />
+    <ClCompile Include="src\camera\MovementBehavior.cpp" />
     <ClCompile Include="src\dxpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\models\InstanceModel.cpp" />
     <ClCompile Include="src\models\Model.cpp" />
+    <ClCompile Include="src\models\ModelLoader.cpp" />
+    <ClCompile Include="src\models\SkinnedModel.cpp" />
     <ClCompile Include="src\picking\PickingManager.cpp" />
     <ClCompile Include="src\picking\Ray.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\RendererCommand.cpp" />
     <ClCompile Include="src\shaders\ShaderManager.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
+    <ClCompile Include="src\utils\Buffer.cpp" />
     <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
-    <ClCompile Include="src\utils\material\Material.cpp" />
+    <ClCompile Include="src\utils\Mesh\InstanceMesh.cpp" />
     <ClCompile Include="src\utils\Mesh\Mesh.cpp" />
+    <ClCompile Include="src\utils\Mesh\Resource\InstanceMeshResource.cpp" />
+    <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp" />
+    <ClCompile Include="src\utils\Mesh\Resource\SkinnedMeshResource.cpp" />
+    <ClCompile Include="src\utils\Mesh\SkinnedMesh.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
+    <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
     <ClCompile Include="src\utils\PixelShader.cpp" />
     <ClCompile Include="src\utils\Sampler.cpp" />
     <ClCompile Include="src\utils\Texture.cpp" />
     <ClCompile Include="src\utils\Topology.cpp" />
     <ClCompile Include="src\utils\Transform.cpp" />
-    <ClCompile Include="src\utils\VertexShader.cpp" />
-    <ClCompile Include="src\windows\WindowsInput.cpp" />
-    <ClCompile Include="src\utils\UI\UIElement.cpp" />
-    <ClCompile Include="src\utils\UI\UIPanel.cpp" />
     <ClCompile Include="src\utils\UI\UIButton.cpp" />
-    <ClCompile Include="src\utils\UI\UIText.cpp" />
+    <ClCompile Include="src\utils\UI\UIElement.cpp" />
     <ClCompile Include="src\utils\UI\UILayer.cpp" />
     <ClCompile Include="src\utils\UI\UIManager.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
+    <ClCompile Include="src\utils\UI\UIPanel.cpp" />
+    <ClCompile Include="src\utils\UI\UIText.cpp" />
+    <ClCompile Include="src\utils\VertexShader.cpp" />
+    <ClCompile Include="src\utils\material\Material.cpp" />
+    <ClCompile Include="src\windows\WindowsInput.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

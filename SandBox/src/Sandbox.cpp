@@ -22,6 +22,9 @@ void Sandbox::OnAttach()
 	m_Moon = std::make_shared<DXEngine::Ball>();
 	m_Sky = std::make_shared<DXEngine::SkySphere>();
 	m_Light = std::make_shared<DXEngine::LightSphere>();
+	m_Loader = std::make_shared<DXEngine::ModelLoader>();
+
+	m_Ship = m_Loader->LoadModel("assets/models/ship/Intergalactic_Spaceship-(Wavefront).obj");
 
 	InitializePicking();
 }
@@ -76,6 +79,10 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		m_Light->SetScale({ 1.0f, 1.0f, 1.0f });
 		m_Light->BindLight();
 		DXEngine::Renderer::Submit(m_Light);
+	}
+	if (m_Ship)
+	{
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ship));
 	}
 
 

@@ -4,6 +4,7 @@
 #include "picking/PickingManager.h"
 #include "picking/InterfacePickable.h"
 #include "picking/Ray.h"
+#include "models/ModelLoader.h"
 #include "utils/mesh\Mesh.h"
 #include "camera/Camera.h"
 #include "camera/CameraController.h"

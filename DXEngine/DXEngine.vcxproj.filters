@@ -7,6 +7,9 @@
     <Filter Include="Event">
       <UniqueIdentifier>{E70B220D-5320-4ABE-1CA2-ED1D887546EF}</UniqueIdentifier>
     </Filter>
+    <Filter Include="camera">
+      <UniqueIdentifier>{EE85E6F5-DA27-11CC-C3E2-2420AF23981C}</UniqueIdentifier>
+    </Filter>
     <Filter Include="models">
       <UniqueIdentifier>{2983320E-1525-5DE4-FEDF-7038EA20E434}</UniqueIdentifier>
     </Filter>
@@ -22,6 +25,21 @@
     <Filter Include="utils">
       <UniqueIdentifier>{169C8510-82B0-ADC1-4B32-5121B705AAF2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="utils\Mesh">
+      <UniqueIdentifier>{920F3747-7EC7-7894-E7CE-51F0D3A51385}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils\Mesh\Resource">
+      <UniqueIdentifier>{E995A3C4-55F7-80D2-DE64-C7844AC5B791}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils\Mesh\Utils">
+      <UniqueIdentifier>{72F6A298-5EEF-C1EA-8721-A76F7379A1F6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils\UI">
+      <UniqueIdentifier>{83FFFC53-6FCC-575F-98E5-450784118DED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils\material">
+      <UniqueIdentifier>{945F297B-802D-1D81-69C1-8DA7552EF9E5}</UniqueIdentifier>
+    </Filter>
     <Filter Include="windows">
       <UniqueIdentifier>{70CAFEC8-DCA9-7D64-E5C1-083B5120E4C5}</UniqueIdentifier>
     </Filter>
@@ -29,7 +47,6 @@
   <ItemGroup>
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Ball.h" />
-    <ClInclude Include="src\camera\Camera.h" />
     <ClInclude Include="src\Core\Input.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -56,13 +73,37 @@
       <Filter>Event</Filter>
     </ClInclude>
     <ClInclude Include="src\FrameTime.h" />
+    <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
     <ClInclude Include="src\SkySphere.h" />
-    <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\camera\Camera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="src\camera\CameraBehavior.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="src\camera\CameraController.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="src\camera\FreeLookBehavior.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="src\camera\MovementBehavior.h">
+      <Filter>camera</Filter>
+    </ClInclude>
     <ClInclude Include="src\dxpch.h" />
+    <ClInclude Include="src\models\InstanceModel.h">
+      <Filter>models</Filter>
+    </ClInclude>
     <ClInclude Include="src\models\Model.h">
+      <Filter>models</Filter>
+    </ClInclude>
+    <ClInclude Include="src\models\ModelLoader.h">
+      <Filter>models</Filter>
+    </ClInclude>
+    <ClInclude Include="src\models\SkinnedModel.h">
       <Filter>models</Filter>
     </ClInclude>
     <ClInclude Include="src\picking\InterfacePickable.h">
@@ -99,11 +140,35 @@
     <ClInclude Include="src\utils\Light.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\material\Material.h">
-      <Filter>utils</Filter>
+    <ClInclude Include="src\utils\Mesh\InstanceMesh.h">
+      <Filter>utils\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Mesh\Mesh.h">
-      <Filter>utils</Filter>
+      <Filter>utils\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Resource\InstanceMeshResource.h">
+      <Filter>utils\Mesh\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h">
+      <Filter>utils\Mesh\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Resource\SkinnedMeshResource.h">
+      <Filter>utils\Mesh\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\SkinnedMesh.h">
+      <Filter>utils\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Utils\IndexData.h">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Utils\InputManager.h">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h">
+      <Filter>utils\Mesh\Utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\PixelShader.h">
       <Filter>utils</Filter>
@@ -120,40 +185,43 @@
     <ClInclude Include="src\utils\Transform.h">
       <Filter>utils</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\UI\UIButton.h">
+      <Filter>utils\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\UI\UIElement.h">
+      <Filter>utils\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\UI\UILayer.h">
+      <Filter>utils\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\UI\UIManager.h">
+      <Filter>utils\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\UI\UIPanel.h">
+      <Filter>utils\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\UI\UIText.h">
+      <Filter>utils\UI</Filter>
+    </ClInclude>
     <ClInclude Include="src\utils\VertexShader.h">
       <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\material\Material.h">
+      <Filter>utils\material</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\material\MaterialProperties.h">
+      <Filter>utils\material</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\material\MaterialTypes.h">
+      <Filter>utils\material</Filter>
     </ClInclude>
     <ClInclude Include="src\windows\WindowsInput.h">
       <Filter>windows</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\material\MaterialTypes.h" />
-    <ClInclude Include="src\utils\material\MaterialProperties.h" />
-    <ClInclude Include="src\utils\UI\UIElement.h" />
-    <ClInclude Include="src\utils\UI\UIPanel.h" />
-    <ClInclude Include="src\utils\UI\UIButton.h" />
-    <ClInclude Include="src\utils\UI\UIText.h" />
-    <ClInclude Include="src\utils\UI\UILayer.h" />
-    <ClInclude Include="src\utils\UI\UIManager.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\InputManager.h" />
-    <ClInclude Include="src\camera\CameraController.h" />
-    <ClInclude Include="src\camera\CameraBehavior.h" />
-    <ClInclude Include="src\camera\FreeLookBehavior.h" />
-    <ClInclude Include="src\camera\MovementBehavior.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\IndexData.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\SkinnedMeshResource.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\InstanceMeshResource.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
-    <ClInclude Include="src\utils\Mesh\InstanceMesh.h" />
-    <ClInclude Include="src\utils\Mesh\SkinnedMesh.h" />
-    <ClInclude Include="src\models\SkinnedModel.h" />
-    <ClInclude Include="src\models\InstanceModel.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Ball.cpp" />
-    <ClCompile Include="src\camera\Camera.cpp" />
     <ClCompile Include="src\Core\Input.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -164,12 +232,33 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="src\FrameTime.cpp" />
+    <ClCompile Include="src\Ground.cpp" />
     <ClCompile Include="src\LightSphere.cpp" />
     <ClCompile Include="src\SkySphere.cpp" />
-    <ClCompile Include="src\Ground.cpp" />
     <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\camera\Camera.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="src\camera\CameraController.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="src\camera\FreeLookBehavior.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="src\camera\MovementBehavior.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
     <ClCompile Include="src\dxpch.cpp" />
+    <ClCompile Include="src\models\InstanceModel.cpp">
+      <Filter>models</Filter>
+    </ClCompile>
     <ClCompile Include="src\models\Model.cpp">
+      <Filter>models</Filter>
+    </ClCompile>
+    <ClCompile Include="src\models\ModelLoader.cpp">
+      <Filter>models</Filter>
+    </ClCompile>
+    <ClCompile Include="src\models\SkinnedModel.cpp">
       <Filter>models</Filter>
     </ClCompile>
     <ClCompile Include="src\picking\PickingManager.cpp">
@@ -190,17 +279,44 @@
     <ClCompile Include="src\shaders\ShaderProgram.cpp">
       <Filter>shaders</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils\Buffer.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
     <ClCompile Include="src\utils\CubeMapTexture.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Light.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\material\Material.cpp">
-      <Filter>utils</Filter>
+    <ClCompile Include="src\utils\Mesh\InstanceMesh.cpp">
+      <Filter>utils\Mesh</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Mesh\Mesh.cpp">
-      <Filter>utils</Filter>
+      <Filter>utils\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Resource\InstanceMeshResource.cpp">
+      <Filter>utils\Mesh\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp">
+      <Filter>utils\Mesh\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Resource\SkinnedMeshResource.cpp">
+      <Filter>utils\Mesh\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\SkinnedMesh.cpp">
+      <Filter>utils\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp">
+      <Filter>utils\Mesh\Utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\PixelShader.cpp">
       <Filter>utils</Filter>
@@ -217,32 +333,32 @@
     <ClCompile Include="src\utils\Transform.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils\UI\UIButton.cpp">
+      <Filter>utils\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\UI\UIElement.cpp">
+      <Filter>utils\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\UI\UILayer.cpp">
+      <Filter>utils\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\UI\UIManager.cpp">
+      <Filter>utils\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\UI\UIPanel.cpp">
+      <Filter>utils\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\UI\UIText.cpp">
+      <Filter>utils\UI</Filter>
+    </ClCompile>
     <ClCompile Include="src\utils\VertexShader.cpp">
       <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\material\Material.cpp">
+      <Filter>utils\material</Filter>
     </ClCompile>
     <ClCompile Include="src\windows\WindowsInput.cpp">
       <Filter>windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\UI\UIElement.cpp" />
-    <ClCompile Include="src\utils\UI\UIPanel.cpp" />
-    <ClCompile Include="src\utils\UI\UIButton.cpp" />
-    <ClCompile Include="src\utils\UI\UIText.cpp" />
-    <ClCompile Include="src\utils\UI\UILayer.cpp" />
-    <ClCompile Include="src\utils\UI\UIManager.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
-    <ClCompile Include="src\camera\CameraController.cpp" />
-    <ClCompile Include="src\camera\FreeLookBehavior.cpp" />
-    <ClCompile Include="src\camera\MovementBehavior.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp" />
-    <ClCompile Include="src\utils\Buffer.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\SkinnedMeshResource.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\InstanceMeshResource.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
-    <ClCompile Include="src\utils\Mesh\InstanceMesh.cpp" />
-    <ClCompile Include="src\utils\Mesh\SkinnedMesh.cpp" />
-    <ClCompile Include="src\models\SkinnedModel.cpp" />
-    <ClCompile Include="src\models\InstanceModel.cpp" />
   </ItemGroup>
 </Project>
