@@ -45,13 +45,14 @@ namespace DXEngine {
 
     struct ModelLoadOptions
     {
-        bool generateNormals = true;
+        bool makeLeftHanded = true;
+        bool generateNormals = false;
         bool generateTangents = true;
         bool flipUVs = false;
         bool optimizeMeshes = true;
         bool validateDataStructure = true;
         bool triangulate = true;
-        bool loadAnimations = true;
+        bool loadAnimations = false;
         bool loadMaterials = true;
         bool loadTextures = true;
         float globalScale = 1.0f;

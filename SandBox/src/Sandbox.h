@@ -41,6 +41,7 @@ private:
 	std::shared_ptr<DXEngine::LightSphere> m_Light;
 	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
 	std::shared_ptr<DXEngine::Model> m_Ship;
+	std::shared_ptr<DXEngine::Model> m_LionHead;
 
 	//Window wnd;
 	std::unique_ptr<DXEngine::PickingManager> m_PickingManager;

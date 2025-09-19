@@ -68,6 +68,8 @@ namespace DXEngine
         // Set up Assimp post-processing flags
         unsigned int flags = aiProcess_ValidateDataStructure;
 
+        if (options.makeLeftHanded)
+            flags |= aiProcess_ConvertToLeftHanded;
         if (options.triangulate)
             flags |= aiProcess_Triangulate;
         if (options.generateNormals)
@@ -185,7 +187,7 @@ namespace DXEngine
     void ModelLoader::ProcessNode(std::shared_ptr<Model> model, const aiNode* node, const aiScene* scene, const std::string& directory, const ModelLoadOptions& options)
     {
         //process all meshes in this node 
-        for (unsigned int i = 0; i < scene->mNumMeshes; i++)
+        for (unsigned int i = 0; i < node->mNumMeshes; i++)
         {
             const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
             std::shared_ptr<MeshResource> meshResource;
@@ -355,80 +357,124 @@ namespace DXEngine
 
     std::shared_ptr<Material> ModelLoader::ProcessMaterial(const aiMaterial* material, const std::string& directory, const ModelLoadOptions& options)
     {
+        // Initialize material type - we'll determine the final type based on available textures
         MaterialType materialType = MaterialType::Lit;
+        bool hasTextures = false;
+        bool hasNormalMap = false;
+        bool hasSpecularMap = false;
+        bool hasEmissiveMap = false;
+        bool isTransparent = false;
+        bool isEmissive = false;
 
-        //check for Trasparency
+        // Check for transparency first
         float opacity = 1.0f;
         if (material->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS && opacity < 1.0f)
         {
-            materialType = MaterialType::Transparent;
+            isTransparent = true;
         }
 
-        //check for emmisive Properties
+        // Check for emissive properties
         aiColor3D emissive(0.0f, 0.0f, 0.0f);
         if (material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive) == AI_SUCCESS)
         {
             if (emissive.r > 0.0f || emissive.g > 0.0f || emissive.b > 0.0f)
             {
-                materialType = MaterialType::Emissive;
+                isEmissive = true;
             }
         }
 
-        //create material
+        // Get material name
         aiString materialName;
         material->Get(AI_MATKEY_NAME, materialName);
+        std::string matName = materialName.C_Str();
+        if (matName.empty())
+        {
+            matName = "Material_" + std::to_string(m_LastStats.materialsLoaded);
+        }
 
-        auto mat = std::make_shared<Material>(materialName.C_Str(), materialType);
+        // Create material with initial type (we'll update this later)
+        auto mat = std::make_shared<Material>(matName, materialType);
 
-        // Set basic properties
+        // Set basic color properties
         aiColor3D diffuse(1.0f, 1.0f, 1.0f);
         aiColor3D specular(1.0f, 1.0f, 1.0f);
+        aiColor3D ambient(0.2f, 0.2f, 0.2f);
         float shininess = 32.0f;
+        float metallic = 0.0f;
+        float roughness = 0.5f;
 
+        // Get diffuse color
         if (material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS)
         {
             mat->SetDiffuseColor({ diffuse.r, diffuse.g, diffuse.b, opacity });
         }
 
+        // Get specular color
         if (material->Get(AI_MATKEY_COLOR_SPECULAR, specular) == AI_SUCCESS)
         {
             mat->SetSpecularColor({ specular.r, specular.g, specular.b, 1.0f });
         }
 
+        // Get shininess
         if (material->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
         {
+            // Clamp shininess to reasonable range
+            shininess = std::max(1.0f, std::min(shininess, 128.0f));
             mat->SetShininess(shininess);
         }
 
-        if (emissive.r > 0.0f || emissive.g > 0.0f || emissive.b > 0.0f)
+        // Set emissive color if present
+        if (isEmissive)
         {
             mat->SetEmissiveColor({ emissive.r, emissive.g, emissive.b, 1.0f });
         }
 
-        //load Textures
+        // Set alpha/transparency
+        if (isTransparent)
+        {
+            mat->SetAlpha(opacity);
+            mat->SetFlag(MaterialFlags::IsTransparent, true);
+        }
+
+        // Load textures if enabled
         if (options.loadTextures)
         {
-            //diffuse Texture
+            // Diffuse/Albedo texture
             std::string diffusePath = GetTextureFilename(material, aiTextureType_DIFFUSE, directory);
             if (!diffusePath.empty())
             {
                 auto diffuseTexture = LoadTexture(diffusePath, aiTextureType_DIFFUSE);
-                if (diffuseTexture)
+                if (diffuseTexture && diffuseTexture->IsValid())
                 {
                     mat->SetDiffuseTexture(diffuseTexture);
-                    materialType = MaterialType::LitTextured;
+                    hasTextures = true;
+                    OutputDebugStringA(("Loaded diffuse texture: " + diffusePath + "\n").c_str());
+                }
+                else
+                {
+                    OutputDebugStringA(("Failed to load diffuse texture: " + diffusePath + "\n").c_str());
                 }
             }
 
             // Normal map
             std::string normalPath = GetTextureFilename(material, aiTextureType_NORMALS, directory);
+            if (normalPath.empty())
+            {
+                // Try alternative normal map types
+                normalPath = GetTextureFilename(material, aiTextureType_HEIGHT, directory);
+            }
             if (!normalPath.empty())
             {
                 auto normalTexture = LoadTexture(normalPath, aiTextureType_NORMALS);
-                if (normalTexture)
+                if (normalTexture && normalTexture->IsValid())
                 {
                     mat->SetNormalTexture(normalTexture);
-                    materialType = MaterialType::LitNormalMapped;
+                    hasNormalMap = true;
+                    OutputDebugStringA(("Loaded normal texture: " + normalPath + "\n").c_str());
+                }
+                else
+                {
+                    OutputDebugStringA(("Failed to load normal texture: " + normalPath + "\n").c_str());
                 }
             }
 
@@ -437,9 +483,15 @@ namespace DXEngine
             if (!specularPath.empty())
             {
                 auto specularTexture = LoadTexture(specularPath, aiTextureType_SPECULAR);
-                if (specularTexture)
+                if (specularTexture && specularTexture->IsValid())
                 {
                     mat->SetSpecularTexture(specularTexture);
+                    hasSpecularMap = true;
+                    OutputDebugStringA(("Loaded specular texture: " + specularPath + "\n").c_str());
+                }
+                else
+                {
+                    OutputDebugStringA(("Failed to load specular texture: " + specularPath + "\n").c_str());
                 }
             }
 
@@ -448,17 +500,100 @@ namespace DXEngine
             if (!emissivePath.empty())
             {
                 auto emissiveTexture = LoadTexture(emissivePath, aiTextureType_EMISSIVE);
-                if (emissiveTexture)
+                if (emissiveTexture && emissiveTexture->IsValid())
                 {
                     mat->SetEmissiveTexture(emissiveTexture);
+                    hasEmissiveMap = true;
+                    OutputDebugStringA(("Loaded emissive texture: " + emissivePath + "\n").c_str());
                 }
+                else
+                {
+                    OutputDebugStringA(("Failed to load emissive texture: " + emissivePath + "\n").c_str());
+                }
+            }
+
+            // Try to load other common texture types
+            // Roughness/Metallic maps (for PBR workflows)
+            std::string roughnessPath = GetTextureFilename(material, aiTextureType_DIFFUSE_ROUGHNESS, directory);
+            std::string metallicPath = GetTextureFilename(material, aiTextureType_METALNESS, directory);
+
+            // Ambient Occlusion
+            std::string aoPath = GetTextureFilename(material, aiTextureType_AMBIENT_OCCLUSION, directory);
+
+            // Note: These would require additional texture slots and material properties
+            // For now, we'll just log if they're found
+            if (!roughnessPath.empty())
+            {
+                OutputDebugStringA(("Found roughness map: " + roughnessPath + " (not loaded - requires PBR material support)\n").c_str());
+            }
+            if (!metallicPath.empty())
+            {
+                OutputDebugStringA(("Found metallic map: " + metallicPath + " (not loaded - requires PBR material support)\n").c_str());
+            }
+            if (!aoPath.empty())
+            {
+                OutputDebugStringA(("Found AO map: " + aoPath + " (not loaded - requires additional texture slot)\n").c_str());
             }
         }
 
-        // Update material type if textures were loaded
-        mat->SetType(materialType);
-        m_LastStats.materialsLoaded++;
+        // Determine final material type based on loaded textures and properties
+        if (isTransparent)
+        {
+            materialType = MaterialType::Transparent;
+        }
+        else if (hasEmissiveMap || isEmissive)
+        {
+            materialType = MaterialType::Emissive;
+        }
+        else if (hasNormalMap && hasTextures)
+        {
+            materialType = MaterialType::LitNormalMapped;
+        }
+        else if (hasTextures)
+        {
+            materialType = MaterialType::LitTextured;
+        }
+        else
+        {
+            materialType = MaterialType::Lit;
+        }
 
+        // Set the final material type
+        mat->SetType(materialType);
+
+        // Set additional material flags based on properties
+        mat->SetFlag(MaterialFlags::castsShadows, !isTransparent && !isEmissive);
+        mat->SetFlag(MaterialFlags::ReceivesShadows, !isEmissive);
+
+        // Check for two-sided materials
+        int twoSided = 0;
+        if (material->Get(AI_MATKEY_TWOSIDED, twoSided) == AI_SUCCESS && twoSided != 0)
+        {
+            mat->SetFlag(MaterialFlags::IsTwoSided, true);
+        }
+
+        // Get texture tiling and offset if available
+        aiUVTransform uvTransform;
+        if (material->Get(AI_MATKEY_UVTRANSFORM(aiTextureType_DIFFUSE, 0), uvTransform) == AI_SUCCESS)
+        {
+            mat->SetTextureScale({ uvTransform.mScaling.x, uvTransform.mScaling.y });
+            mat->SetTextureOffset({ uvTransform.mTranslation.x, uvTransform.mTranslation.y });
+
+            OutputDebugStringA(("Material UV transform - Scale: (" +
+                std::to_string(uvTransform.mScaling.x) + ", " +
+                std::to_string(uvTransform.mScaling.y) + "), Offset: (" +
+                std::to_string(uvTransform.mTranslation.x) + ", " +
+                std::to_string(uvTransform.mTranslation.y) + ")\n").c_str());
+        }
+
+        // Log material creation summary
+        OutputDebugStringA(("Created material: " + matName +
+            " (Type: " + std::to_string(static_cast<int>(materialType)) +
+            ", Textures: " + (hasTextures ? "Yes" : "No") +
+            ", Normal: " + (hasNormalMap ? "Yes" : "No") +
+            ", Transparent: " + (isTransparent ? "Yes" : "No") + ")\n").c_str());
+
+        m_LastStats.materialsLoaded++;
         return mat;
     }
 
@@ -571,7 +706,22 @@ namespace DXEngine
             aiString path;
             if (material->GetTexture(type, 0, &path) == AI_SUCCESS)
             {
-                return std::string(path.C_Str());
+                std::string texturePath = std::string(path.C_Str());
+
+                // Handle embedded textures
+                if (!texturePath.empty() && texturePath[0] == '*')
+                    return texturePath;
+
+                // Normalize slashes
+                std::replace(texturePath.begin(), texturePath.end(), '\\', '/');
+
+                // Strip leading ./ or ../
+                while (texturePath.rfind("./", 0) == 0)
+                    texturePath = texturePath.substr(2);
+                while (texturePath.rfind("../", 0) == 0)
+                    texturePath = texturePath.substr(3);
+
+                return texturePath;
             }
         }
         return "";
@@ -776,23 +926,38 @@ namespace DXEngine
 
     void ModelLoader::PostProcessModel(std::shared_ptr<Model> model, const ModelLoadOptions& options)
     {
+        if (options.optimizeMeshes)
+        {
+            OptimizeModel(model);
+        }
+
+        if (options.validateDataStructure)
+        {
+            ValidateModel(model);
+        }
+
+        // Ensure default materials for all meshes
+        model->EnsureDefaultMaterials();
+
+        // Calculate memory usage
+        m_LastStats.memoryUsed = model->GetMemoryUsage();
     }
 
     void ModelLoader::OptimizeModel(std::shared_ptr<Model> model)
     {
 
-        for (size_t i = 0; i < model->GetMeshCount(); i++)
-        {
-            auto mesh = model->GetMesh(i);
-            if (mesh && mesh->IsValid())
-            {
-                auto meshResource = mesh->GetResource();
-                if (meshResource)
-                {
-                    meshResource->OptimizeForRendering();
-                }
-            }
-        }
+       //for (size_t i = 0; i < model->GetMeshCount(); i++)
+       //{
+       //    auto mesh = model->GetMesh(i);
+       //    if (mesh && mesh->IsValid())
+       //    {
+       //        auto meshResource = mesh->GetResource();
+       //        if (meshResource)
+       //        {
+       //            meshResource->OptimizeForRendering();
+       //        }
+       //    }
+       //}
     }
 
     void ModelLoader::ValidateModel(std::shared_ptr<Model> model)

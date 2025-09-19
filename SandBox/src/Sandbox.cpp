@@ -25,6 +25,7 @@ void Sandbox::OnAttach()
 	m_Loader = std::make_shared<DXEngine::ModelLoader>();
 
 	m_Ship = m_Loader->LoadModel("assets/models/ship/Intergalactic_Spaceship-(Wavefront).obj");
+	m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
 
 	InitializePicking();
 }
@@ -82,7 +83,16 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	}
 	if (m_Ship)
 	{
+		m_Ship->SetScale({ 4.0f, 4.0f, 4.0f });
 		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ship));
+	}
+	if (m_LionHead)
+	{
+		m_LionHead->SetScale({ 30.0f, 30.0f, 30.0f });
+		m_LionHead->SetTranslation({ 0.0f, 10.0f, -20.0f });
+		m_LionHead->SetRotation({ 45.0f,0.0f,0.0f });
+
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_LionHead));
 	}
 
 
