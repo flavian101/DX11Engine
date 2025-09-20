@@ -88,10 +88,13 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	}
 	if (m_LionHead)
 	{
-		m_LionHead->SetScale({ 30.0f, 30.0f, 30.0f });
-		m_LionHead->SetTranslation({ 0.0f, 10.0f, -20.0f });
-		m_LionHead->SetRotation({ 45.0f,0.0f,0.0f });
+		m_LionHead->SetScale({ 50.0f, 50.0f, 50.0f });
+		m_LionHead->SetTranslation({ 0.0f, 5.0f, -40.0f });
+		// Update rotation angle
+		m_CurrentRotation += dt * m_Speed;
 
+
+		m_LionHead->SetRotation({20.0f,m_CurrentRotation,0.0f,0.0f});
 		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_LionHead));
 	}
 

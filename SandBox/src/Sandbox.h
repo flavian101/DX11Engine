@@ -42,6 +42,8 @@ private:
 	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
 	std::shared_ptr<DXEngine::Model> m_Ship;
 	std::shared_ptr<DXEngine::Model> m_LionHead;
+	float m_Speed = 10.0f;
+	float m_CurrentRotation = 0.0f;
 
 	//Window wnd;
 	std::unique_ptr<DXEngine::PickingManager> m_PickingManager;

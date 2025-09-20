@@ -728,25 +728,32 @@ namespace DXEngine {
         // Get view and projection matrices
         DirectX::XMMATRIX view = camera->GetView();
         DirectX::XMMATRIX proj = camera->GetProjection();
-        DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj);
 
-        // Create view frustum
-        DirectX::BoundingFrustum frustum(proj); // Create in projection space
-        DirectX::BoundingFrustum viewSpaceFrustum;
-        frustum.Transform(viewSpaceFrustum, view); // Transform to view space
+        // Create frustum in projection space first
+        DirectX::BoundingFrustum frustum(proj);
+
+        // Transform frustum to world space using inverse view matrix
+        DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, view);
+        DirectX::BoundingFrustum worldSpaceFrustum;
+        frustum.Transform(worldSpaceFrustum, invView);
 
         // Add a small bias to the sphere radius to prevent edge cases
-        dxWorldSphere.Radius *= 1.1f; // 10% larger radius for safety
+        dxWorldSphere.Radius *= 1.05f; // 5% larger radius for safety (reduced from 10%)
 
-        // Check containment with more detailed result
-        DirectX::ContainmentType containment = viewSpaceFrustum.Contains(dxWorldSphere);
-        
+        // Check containment
+        DirectX::ContainmentType containment = worldSpaceFrustum.Contains(dxWorldSphere);
+
         // Log culling decisions in debug mode
-        #ifdef _DEBUG
+#ifdef _DEBUG
         if (containment == DirectX::DISJOINT) {
-            OutputDebugStringA(("Model culled: " + std::to_string(reinterpret_cast<uintptr_t>(model)) + "\n").c_str());
+            std::string debugMsg = "Model culled - Center: (" +
+                std::to_string(worldSphere.center.x) + ", " +
+                std::to_string(worldSphere.center.y) + ", " +
+                std::to_string(worldSphere.center.z) + ") Radius: " +
+                std::to_string(worldSphere.radius) + "\n";
+            OutputDebugStringA(debugMsg.c_str());
         }
-        #endif
+#endif
 
         // Consider both CONTAINS and INTERSECTS as visible
         return containment != DirectX::DISJOINT;

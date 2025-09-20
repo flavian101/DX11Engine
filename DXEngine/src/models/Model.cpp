@@ -240,7 +240,7 @@ namespace DXEngine {
 	{
 		BoundingBox localBox = GetLocalBoundingBox();
 
-		if (m_Transform)
+		if (!m_Transform)
 			return localBox;
 
 		DirectX::XMMATRIX wordlMatrix = GetModelMatrix();
@@ -276,8 +276,8 @@ namespace DXEngine {
 	{
 		BoundingSphere localSphere = GetLocalBoundingSphere();
 
-		//if (!m_Transform) TO-DO solve for return Type
-		//	return ;
+		if (!m_Transform)
+			return localSphere;
 
 		DirectX::XMMATRIX worldMatrix = GetModelMatrix();
 		DirectX::XMVECTOR centerVec = DirectX::XMLoadFloat3(&localSphere.center);
