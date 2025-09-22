@@ -218,6 +218,7 @@
     <ClInclude Include="src\windows\WindowsInput.h">
       <Filter>windows</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\PerfomanceProfiller.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />

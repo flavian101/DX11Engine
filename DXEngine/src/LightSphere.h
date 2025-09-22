@@ -11,14 +11,6 @@ namespace DXEngine {
     public:
         LightSphere();
 
-        // Light management
-        void BindLight();
-        std::shared_ptr<PointLight> GetLight() const;
-
-        // Light properties
-        void SetLightColor(const DirectX::XMFLOAT4& color);
-        void SetLightIntensity(float intensity);
-
         // Override update to sync light position
         void Update(float deltaTime = 0.0f) override;
 
@@ -26,7 +18,6 @@ namespace DXEngine {
         void Initialize();
 
     private:
-        std::shared_ptr<DirectionalLight> m_Light;
     };
 
 }

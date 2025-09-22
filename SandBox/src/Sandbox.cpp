@@ -15,6 +15,7 @@ void Sandbox::OnAttach()
 	m_ShaderManager->Initialize();
 
 	DXEngine::Renderer::InitShaderManager(m_ShaderManager);
+	DXEngine::Renderer::InitLightManager();
 
 	m_CameraController = std::make_shared<DXEngine::CameraController>();
 
@@ -78,7 +79,6 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	{
 		m_Light->SetTranslation({ 0.0f, 10.0f, 10.0f });
 		m_Light->SetScale({ 1.0f, 1.0f, 1.0f });
-		m_Light->BindLight();
 		DXEngine::Renderer::Submit(m_Light);
 	}
 	if (m_Ship)

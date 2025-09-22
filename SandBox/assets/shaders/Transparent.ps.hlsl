@@ -1,187 +1,60 @@
-// Transparent Pixel Shader - For alpha blended materials
+#include "common.hlsli"
 
-cbuffer MaterialBufferData : register(b1)
+float4 main(StandardVertexOutput input) : SV_Target
 {
-    float4 diffuseColor;
-    float4 specularColor;
-    float4 emissiveColor;
-    float shininess;
-    float metallic;
-    float roughness;
-    float alpha;
-    float2 textureScale;
-    float2 textureOffset;
-    uint flags;
-    float padding;
-};
-
-cbuffer DirectionalLightData : register(b2)
-{
-    float4 d_Color;
-    float4 d_Ambient;
-    float4 d_Diffuse;
-    float3 d_Direction;
-    int d_Enabled;
-};
-
-cbuffer PointLightData : register(b3)
-{
-    float3 p_Position;
-    float p_Range;
-    float4 p_Color;
-    float3 p_Attenuation;
-    int p_Enabled;
-};
-
-cbuffer SpotLightData : register(b4)
-{
-    float4 s_Color;
-    float3 s_Position;
-    float s_Range;
-    float3 s_Direction;
-    float s_Cone;
-    float3 s_Attenuation;
-    int s_Enabled;
-};
-
-struct PS_input
-{
-    float4 Pos : SV_POSITION;
-    float4 worldPos : POSITION;
-    float2 texCoords : TEXCOORD;
-    float3 normal : NORMAL;
-};
-
-Texture2D diffuseTexture : register(t0);
-SamplerState textureSampler : register(s0);
-
-float3 CalculateDirectionalLight(float3 normal, float3 viewDir, float4 baseColor)
-{
-    float3 lightDir = normalize(-d_Direction);
-    float nDotL = saturate(dot(normal, lightDir));
+    // Normalize inputs
+    float3 N = normalize(input.normal);
+    float3 V = normalize(input.viewDir);
     
-    // Ambient contribution
-    float3 ambient = baseColor.rgb * d_Ambient.rgb;
+    // Sample textures
+    float4 diffuseSample = SampleDiffuseTexture(input.texCoord);
+    float3 normalSample = SampleNormalMap(input.texCoord);
+    float3 emissiveSample = SampleEmissiveMap(input.texCoord);
     
-    // Diffuse contribution
-    float3 diffuse = baseColor.rgb * d_Color.rgb * nDotL;
+    // Calculate world normal
+    float3 worldNormal = CalculateWorldNormal(N, input.tangent, normalSample);
     
-    // Specular contribution (reduced for transparent materials)
-    float3 halfDir = normalize(lightDir + viewDir);
-    float nDotH = saturate(dot(normal, halfDir));
-    float specular = pow(nDotH, shininess) * 0.5f; // Reduced specular for transparency
-    float3 specularContrib = specularColor.rgb * d_Color.rgb * specular * nDotL;
+    // Material properties (reduced for transparency)
+    float3 albedo = diffuseColor.rgb * diffuseSample.rgb;
+    float metallicValue = metallic * 0.5; // Reduce metallic for transparency
+    float roughnessValue = max(roughness, MIN_ROUGHNESS);
     
-    return ambient + diffuse + specularContrib;
-}
-
-float3 CalculatePointLight(PS_input input, float3 normal, float3 viewDir, float4 baseColor)
-{
-    float3 lightToPixelVec = p_Position - input.worldPos.xyz;
-    float distance = length(lightToPixelVec);
+    // Calculate F0
+    float3 F0 = float3(0.04, 0.04, 0.04);
+    F0 = lerp(F0, albedo, metallicValue);
     
-    if (distance > p_Range)
-        return float3(0.0f, 0.0f, 0.0f);
-        
-    lightToPixelVec /= distance;
+    // Initialize color with reduced ambient and emissive
+    float3 color = ambientColor * ambientIntensity * albedo * 0.5;
+    color += emissiveColor.rgb * emissiveSample;
     
-    float nDotL = saturate(dot(normal, lightToPixelVec));
-    
-    if (nDotL <= 0.0f)
-        return float3(0.0f, 0.0f, 0.0f);
-    
-    float attenuation = 1.0f / (p_Attenuation[0] +
-                               (p_Attenuation[1] * distance) +
-                               (p_Attenuation[2] * distance * distance));
-    
-    // Diffuse
-    float3 diffuse = baseColor.rgb * p_Color.rgb * nDotL * attenuation;
-    
-    // Reduced specular for transparent materials
-    float3 halfDir = normalize(lightToPixelVec + viewDir);
-    float nDotH = saturate(dot(normal, halfDir));
-    float specular = pow(nDotH, shininess) * 0.5f;
-    float3 specularContrib = specularColor.rgb * p_Color.rgb * specular * nDotL * attenuation;
-    
-    return diffuse + specularContrib;
-}
-
-float3 CalculateSpotLight(PS_input input, float3 normal, float3 viewDir, float4 baseColor)
-{
-    float3 lightToPixelVec = s_Position - input.worldPos.xyz;
-    float distance = length(lightToPixelVec);
-    
-    if (distance > s_Range)
-        return float3(0.0f, 0.0f, 0.0f);
-        
-    lightToPixelVec /= distance;
-    
-    float nDotL = saturate(dot(normal, lightToPixelVec));
-    
-    if (nDotL <= 0.0f)
-        return float3(0.0f, 0.0f, 0.0f);
-    
-    float attenuation = 1.0f / (s_Attenuation[0] +
-                               (s_Attenuation[1] * distance) +
-                               (s_Attenuation[2] * distance * distance));
-    
-    float spotEffect = pow(max(dot(-lightToPixelVec, normalize(s_Direction)), 0.0f), s_Cone);
-    
-    float3 diffuse = baseColor.rgb * s_Color.rgb * nDotL * attenuation * spotEffect;
-    
-    // Reduced specular
-    float3 halfDir = normalize(lightToPixelVec + viewDir);
-    float nDotH = saturate(dot(normal, halfDir));
-    float specular = pow(nDotH, shininess) * 0.5f;
-    float3 specularContrib = specularColor.rgb * s_Color.rgb * specular * nDotL * attenuation * spotEffect;
-    
-    return diffuse + specularContrib;
-}
-
-float4 main(PS_input input) : SV_Target
-{
-    // Normalize the input normal
-    float3 normal = normalize(input.normal);
-    
-    // Calculate view direction
-    float3 viewDir = normalize(-input.worldPos.xyz);
-    
-    // Sample the base texture with scaling and offset
-    float4 baseColor = diffuseColor;
-    if (flags & 1) // HasDiffuseTexture flag
+    // Calculate lighting contributions (reduced intensity for transparency)
+    for (uint i = 0; i < directionalLightCount; ++i)
     {
-        float2 scaledUV = input.texCoords * textureScale + textureOffset;
-        float4 textureColor = diffuseTexture.Sample(textureSampler, scaledUV);
-        baseColor = textureColor * diffuseColor;
-        
-        // Use texture alpha for transparency
-        baseColor.a *= textureColor.a;
+        float3 lightContrib = CalculateDirectionalLight(directionalLights[i], worldNormal, V,
+                                                      albedo, metallicValue, roughnessValue, F0, input.worldPos);
+        color += lightContrib * 0.8; // Reduce lighting intensity
     }
     
-    // Initialize final color with emissive
-    float3 finalColor = emissiveColor.rgb;
-    
-    // Add contributions from each active light type
-    if (d_Enabled)
+    for (uint i = 0; i < pointLightCount; ++i)
     {
-        finalColor += CalculateDirectionalLight(normal, viewDir, baseColor);
+        float3 lightContrib = CalculatePointLight(pointLights[i], input.worldPos.xyz, worldNormal, V,
+                                                albedo, metallicValue, roughnessValue, F0);
+        color += lightContrib * 0.8;
     }
     
-    if (p_Enabled)
+    for (uint i = 0; i < spotLightCount; ++i)
     {
-        finalColor += CalculatePointLight(input, normal, viewDir, baseColor);
+        float3 lightContrib = CalculateSpotLight(spotLights[i], input.worldPos.xyz, worldNormal, V,
+                                               albedo, metallicValue, roughnessValue, F0);
+        color += lightContrib * 0.8;
     }
     
-    if (s_Enabled)
-    {
-        finalColor += CalculateSpotLight(input, normal, viewDir, baseColor);
-    }
+    // Light tone mapping for transparent materials
+    color = ToneMapExposure(color, exposure * 0.8);
+    color = ApplyGamma(color, gamma);
     
-    // Apply final alpha (combination of material alpha and texture alpha)
-    float finalAlpha = baseColor.a * alpha;
+    // Calculate final alpha
+    float finalAlpha = diffuseSample.a * alpha;
     
-    // Ensure alpha is within valid range
-    finalAlpha = saturate(finalAlpha);
-    
-    return float4(finalColor, finalAlpha);
+    return float4(color, finalAlpha);
 }

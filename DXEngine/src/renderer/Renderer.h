@@ -22,6 +22,7 @@ namespace DXEngine {
     class UIText;
     class UIPanel;
     struct UIColor;
+    class LightManager;
 
     struct RenderSubmission
     {
@@ -95,6 +96,11 @@ namespace DXEngine {
         // Core initialization
         static void Init(HWND hwnd, int width, int height);
         static void InitShaderManager(std::shared_ptr<ShaderManager> shaderManager);
+        static void InitLightManager();
+        static std::shared_ptr<LightManager> GetLightManager() { return s_LightManager; }
+        static void SetTime(float time) { s_Time = time; }
+        static float GetTime() { return s_Time; }
+
         static void Shutdown();
 
         // Scene management
@@ -145,6 +151,11 @@ namespace DXEngine {
             uint32_t meshesRendered = 0;
             uint32_t submeshesRendered = 0;
             uint32_t instancesRendered = 0;
+
+            //light 
+            uint32_t lightsProcessed = 0;
+            uint32_t lightsCulled = 0;
+            uint32_t shadowMapsRendered = 0;
 
             //UI stats
             uint32_t uiElementsRendered = 0;
@@ -212,6 +223,10 @@ namespace DXEngine {
         static UIColor GetButtonColorForState(std::shared_ptr<UIButton> button);
         static UIColor GetPanelColor(std::shared_ptr<UIPanel> button);
 
+        //light culling
+        static void UpdateLightCulling(const std::shared_ptr<Camera>& camera);
+
+
     private:
 
         static RenderStatistics s_Stats;
@@ -231,6 +246,8 @@ namespace DXEngine {
         static DirectX::XMMATRIX s_UIProjectionMatrix;
         static std::shared_ptr<UIConstantBuffer> s_UIBufferData;
 
+        static std::shared_ptr<LightManager> s_LightManager;
+
 
         struct RenderState
         {
@@ -247,6 +264,7 @@ namespace DXEngine {
         static size_t s_InstanceBatchSize;
         
         static uint32_t s_FrameCount;
-      
+
+        static float s_Time;
 	};
 }

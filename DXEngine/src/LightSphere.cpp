@@ -15,9 +15,8 @@ namespace DXEngine {
 
         auto emissiveMaterial = MaterialFactory::CreateEmissiveMaterial("LightSphere");
 
-        m_Light = std::make_shared<DirectionalLight>();
-        emissiveMaterial->SetEmissiveColor(m_Light->GetLightColor());
-        emissiveMaterial->SetDiffuseColor(m_Light->GetLightColor());
+       //emissiveMaterial->SetEmissiveColor(m_LightGetLightColor());
+       //emissiveMaterial->SetDiffuseColor(m_Light->GetLightColor());
 
         GetMesh()->SetMaterial(emissiveMaterial);
     }
@@ -32,58 +31,9 @@ namespace DXEngine {
         SetMesh(lightMesh);
     }
 
-    void LightSphere::BindLight()
-    {
-        if (m_Light)
-        {
-            // Update light position based on model position
-            DirectX::XMFLOAT3 lightPos;
-            DirectX::XMStoreFloat3(&lightPos, GetTranslation());
-           // m_Light->SetPosition(lightPos);
-            m_Light->Bind();
-        }
-    }
-
     void LightSphere::Update(float deltaTime)
     {
         Model::Update(deltaTime);
-
-        // Update light position automatically
-        if (m_Light)
-        {
-            DirectX::XMFLOAT3 lightPos;
-            DirectX::XMStoreFloat3(&lightPos, GetTranslation());
-            //m_Light->SetPosition(lightPos);
-        }
     }
 
-    std::shared_ptr<PointLight> LightSphere::GetLight() const
-    {
-        //return m_Light;
-        return std::make_shared<PointLight>();
-    }
-
-    void LightSphere::SetLightColor(const DirectX::XMFLOAT4& color)
-    {
-        if (m_Light)
-        {
-           // m_Light->SetLightColor(color);
-
-            // Update material to match light color
-            auto material = GetMaterial();
-            if (material)
-            {
-                material->SetEmissiveColor(color);
-                material->SetDiffuseColor(color);
-            }
-        }
-    }
-
-    void LightSphere::SetLightIntensity(float intensity)
-    {
-        if (m_Light)
-        {
-            //m_Light->SetIntensity(intensity);
-        }
-    }
 }

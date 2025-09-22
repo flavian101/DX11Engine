@@ -125,6 +125,7 @@
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
     <ClInclude Include="src\SkySphere.h" />
+    <ClInclude Include="src\utils\PerfomanceProfiller.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\camera\Camera.h" />
     <ClInclude Include="src\camera\CameraBehavior.h" />

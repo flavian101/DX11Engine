@@ -49,8 +49,8 @@ namespace DXEngine {
 
                 // Textured lit shader
                 ShaderConfig(
-                    "assets/shaders/LitTextured.vs.cso",
-                    "assets/shaders/LitTextured.ps.cso",
+                    "assets/shaders/Lit.vs.cso",
+                    "assets/shaders/Lit.ps.cso",
                     "LitTextured",
                     MaterialType::LitTextured
                 ),

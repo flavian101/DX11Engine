@@ -1,45 +1,19 @@
-Texture2D uiTexture : register(t0);
-SamplerState uiSampler : register(s0);
+#include "common.hlsli"
 
-cbuffer MaterialBuffer : register(b1)
-{
-    float4 diffuseColor;
-    float4 specularColor;
-    float4 emissiveColor;
-    float shininess;
-    float metallic;
-    float roughness;
-    float alpha;
-    float2 textureScale;
-    float2 textureOffset;
-    uint flags;
-    float3 materialPadding;
-};
-
-struct PSInput
-{
-    float4 position : SV_POSITION;
-    float2 texCoord : TEXCOORD;
-};
-
-float4 main(PSInput input) : SV_TARGET
+float4 main(UIVertexOutput input) : SV_Target
 {
     float4 finalColor = diffuseColor;
     
-    // Check if we have a diffuse texture (flag bit 0)
-    if (flags & 1)
+    // Sample diffuse texture if available
+    if (flags & HAS_DIFFUSE_TEXTURE)
     {
-        float4 texColor = uiTexture.Sample(uiSampler, input.texCoord);
-        
-        // For UI, we typically want to modulate the texture with the color
-        finalColor = finalColor * texColor;
+        float4 texColor = diffuseTexture.Sample(standardSampler, input.texCoord);
+        finalColor *= texColor;
     }
     
     // Apply material alpha
     finalColor.a *= alpha;
     
-    // Ensure we don't exceed valid color ranges
-    finalColor = saturate(finalColor);
-    
-    return finalColor;
+    // UI elements don't need complex lighting, just return the color
+    return saturate(finalColor);
 }

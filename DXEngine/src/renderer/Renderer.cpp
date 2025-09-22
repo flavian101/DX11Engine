@@ -12,6 +12,7 @@
 #include <utils/UI/UIPanel.h>
 #include <utils/UI/UIText.h>
 #include <DirectXCollision.h>
+#include "utils/Light.h"
 
 
 namespace DXEngine {
@@ -33,12 +34,16 @@ namespace DXEngine {
     std::shared_ptr<UIConstantBuffer> Renderer::s_UIBufferData = nullptr;
     std::vector<Renderer::RenderState> Renderer::s_RenderStateStack;
 
+    std::shared_ptr<LightManager> Renderer::s_LightManager = nullptr;
+
+
     bool Renderer::s_WireframeEnabled = false;
     bool Renderer::s_DebugInfoEnabled = false;
     bool Renderer::s_InstanceEnabled = true;
     bool Renderer::s_FrustumCullingEnabled = true;
     size_t Renderer::s_InstanceBatchSize = 100;
     uint32_t Renderer::s_FrameCount = 0;
+    float Renderer::s_Time = 0.0f;
 
     RenderSubmission RenderSubmission::CreateFromModel(const Model* model, size_t meshIndex, size_t submeshIndex)
     {
@@ -157,6 +162,25 @@ namespace DXEngine {
         }
     }
 
+    void Renderer::InitLightManager()
+    {
+        s_LightManager = std::make_shared<LightManager>();
+
+        //create default lighting setup
+
+        auto sunLight = s_LightManager->CreateDirectionalLight();
+        if (sunLight)
+        {
+            sunLight->SetDirection({ 0.3f,-0.8,0.2 });
+            sunLight->SetColor({ 1.0f, 0.95f, 0.8f });
+            sunLight->SetIntensity(3.0f);
+            sunLight->SetCastShadows(true);
+        }
+        // Set default ambient
+        s_LightManager->SetAmbientLight({ 0.2f, 0.25f, 0.3f }, 0.1f);
+
+    }
+
     void Renderer::Shutdown()
     {
         OutputDebugStringA("Shutting down Renderer...\n");
@@ -165,6 +189,7 @@ namespace DXEngine {
         s_SortedQueues.clear();
         s_RenderBatches.clear();
         s_ShaderManager.reset();
+        s_LightManager.reset(); 
         s_CurrentMaterial.reset();
         s_CurrentShader.reset();
         s_UIQuadModel.reset();
@@ -185,6 +210,8 @@ namespace DXEngine {
         }
 
         RenderCommand::SetCamera(camera);
+
+        UpdateLightCulling(camera);
 
         // Clear previous frame data
         s_RenderSubmissions.clear();
@@ -435,8 +462,16 @@ namespace DXEngine {
     void Renderer::ProcessRenderQueue()
     {
         if (s_RenderSubmissions.empty())
+        { 
+            OutputDebugStringA("Process RenderQueue() failed");
             return;
+         }
 
+        // Bind light data before rendering
+        if (s_LightManager)
+        {
+            s_LightManager->BindLightData();
+        }
 
         //sort submission and create batches
         SortSubmissions();
@@ -1097,6 +1132,8 @@ namespace DXEngine {
         s_TransformBufferData = std::make_unique<TransfomBufferData>();
         s_TransformBufferData->WVP = DirectX::XMMatrixTranspose(modelMatrix * view * proj);
         s_TransformBufferData->Model = DirectX::XMMatrixTranspose(modelMatrix);
+        s_TransformBufferData->cameraPosition = camera->GetPosition();
+        s_TransformBufferData->time = s_Time;
         vsBuffer.Initialize(s_TransformBufferData.get());
 
         vsBuffer.Update(*s_TransformBufferData.get());
@@ -1383,6 +1420,29 @@ namespace DXEngine {
             return UIColor(0.5f, 0.5f, 0.5f, 1.0f);
 
         return panel->GetBackgroundColor();
+    }
+
+    void Renderer::UpdateLightCulling(const std::shared_ptr<Camera>& camera)
+    {
+        if (!s_LightManager || !camera)
+        {
+            OutputDebugStringA("UpdateLightingCulling Failed");
+            return;
+        }
+
+        //create a frustum for culling 
+        DirectX::BoundingFrustum frustum(camera->GetProjection());
+        DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, camera->GetView());
+        DirectX::BoundingFrustum worldSpaceFrustum;
+        frustum.Transform(worldSpaceFrustum, invView);
+        // Perform light culling
+        s_LightManager->CullLights(worldSpaceFrustum);
+        s_LightManager->UpdateLightData();
+
+        // Update stats
+        s_Stats.lightsProcessed = s_LightManager->GetVisibleLightCount();
+
+        
     }
 
     void Renderer::ResetStats()

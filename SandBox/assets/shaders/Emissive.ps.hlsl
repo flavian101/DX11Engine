@@ -1,107 +1,51 @@
-cbuffer MaterialBufferData : register(b1)
-{
-    float4 diffuseColor;
-    float4 specularColor;
-    float4 emissiveColor;
-    float shininess;
-    float metallic;
-    float roughness;
-    float alpha;
-    float2 textureScale;
-    float2 textureOffset;
-    uint flags;
-    float padding;
-};
+#include "common.hlsli"
 
-struct PS_input
+float4 main(StandardVertexOutput input) : SV_Target
 {
-    float4 Pos : SV_POSITION;
-    float4 worldPos : POSITION;
-    float2 texCoords : TEXCOORD;
-    float3 normal : NORMAL;
-};
-
-Texture2D diffuseTexture : register(t0);
-SamplerState textureSampler : register(s0);
-
-float4 main(PS_input input) : SV_Target
-{
-    // Normalize the input normal
-    float3 normal = normalize(input.normal);
+    // Sample base texture
+    float4 diffuseSample = SampleDiffuseTexture(input.texCoord);
+    float3 emissiveSample = SampleEmissiveMap(input.texCoord);
     
-    // Calculate view direction (camera at origin assumption)
-    float3 viewDir = normalize(-input.worldPos.xyz);
+    // Base color
+    float3 baseColor = diffuseColor.rgb * diffuseSample.rgb;
     
-    // Sample base texture with scaling and offset
-    float2 scaledUV = input.texCoords * textureScale + textureOffset;
+    // Enhanced emissive effects
+    float3 finalEmissive = emissiveColor.rgb * emissiveSample;
     
-    float4 baseColor = diffuseColor;
-    if (flags & 1) // HasDiffuseTexture flag
+    // Time-based animation using world position for deterministic effects
+    float timeValue = input.worldPos.x + input.worldPos.y + input.worldPos.z + input.time;
+    
+    // Pulsing effect controlled by shininess
+    if (flags & 0x100) // Custom flag for pulse enable
     {
-        float4 texColor = diffuseTexture.Sample(textureSampler, scaledUV);
-        baseColor *= texColor;
+        float pulse = sin(timeValue * shininess * 0.1) * 0.5 + 0.5;
+        finalEmissive *= (0.5 + pulse * 0.5);
     }
     
-    // Use existing emissiveColor as the main emissive contribution
-    float3 finalEmissive = emissiveColor.rgb;
-    
-    // Create time value from world position for animation (deterministic)
-    float timeValue = input.worldPos.x + input.worldPos.y + input.worldPos.z;
-    
-    // Pulsing effect using shininess as frequency control
-    if (flags & 2) // Use bit 2 for pulse enable
+    // Distance-based effects
+    if (flags & 0x200) // Custom flag for distance effects
     {
-        float pulse = sin(timeValue * shininess * 0.1f) * 0.5f + 0.5f;
-        finalEmissive *= (0.5f + pulse * 0.5f);
+        float distance = length(input.worldPos.xyz - CameraPosition);
+        float falloff = 1.0 / (1.0 + distance * 0.01);
+        finalEmissive *= falloff;
     }
     
-    // Rim lighting using specularColor and roughness
-    float rimDot = 1.0f - saturate(dot(viewDir, normal));
-    float rimPower = lerp(1.0f, 8.0f, roughness); // Use roughness to control rim falloff
+    // Rim lighting effect
+    float3 V = normalize(input.viewDir);
+    float3 N = normalize(input.normal);
+    float rimDot = 1.0 - saturate(dot(V, N));
+    float rimPower = lerp(1.0, 8.0, roughness);
     float rimEffect = pow(rimDot, rimPower);
-    
-    // Use specularColor for rim color and metallic as intensity
     float3 rimContribution = specularColor.rgb * rimEffect * metallic;
     
-    // Distance-based effects using padding as distance scale
-    if (flags & 4) // Use bit 4 for distance effects
-    {
-        float distance = length(input.worldPos.xyz);
-        float falloff = 1.0f / (1.0f + distance * padding * 0.01f);
-        finalEmissive *= falloff;
-        rimContribution *= falloff;
-    }
+    // Combine effects
+    float3 finalColor = baseColor * finalEmissive + rimContribution;
     
-    // Texture-based animation using textureOffset as speed control
-    if (flags & 8) // Use bit 8 for scrolling effects
-    {
-        float2 animatedUV = scaledUV + textureOffset * timeValue * 0.01f;
-        
-        if (flags & 1) // If we have a diffuse texture, sample it for animation
-        {
-            float animationMask = diffuseTexture.Sample(textureSampler, animatedUV).r;
-            finalEmissive *= (0.7f + animationMask * 0.6f);
-        }
-    }
+    // Intensity boost using metallic value
+    finalColor *= (1.0 + metallic);
     
-    // Use metallic value for intensity boosting
-    finalEmissive *= (1.0f + metallic);
+    // Simple tone mapping for emissive materials
+    finalColor = ToneMapReinhard(finalColor);
     
-    // Noise effect using world position and roughness
-    if (flags & 16) // Use bit 16 for noise
-    {
-        float2 noiseUV = input.worldPos.xz * roughness * 0.1f + timeValue * 0.01f;
-        
-        // Simple procedural noise using sin/cos
-        float noise = sin(noiseUV.x * 6.28f) * cos(noiseUV.y * 6.28f);
-        noise = (noise + 1.0f) * 0.5f; // Normalize to 0-1
-        
-        finalEmissive *= (0.8f + noise * 0.4f);
-    }
-    
-    // Combine base color with emissive and rim effects
-    float3 finalColor = baseColor.rgb * finalEmissive + rimContribution;
-    
-    // Use alpha value for final transparency
-    return float4(finalColor, baseColor.a * alpha);
+    return float4(finalColor, diffuseSample.a * alpha);
 }

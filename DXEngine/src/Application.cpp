@@ -64,6 +64,8 @@ namespace DXEngine {
 		FrameTime deltatime;
 		deltatime.Mark();
 
+		Renderer::SetTime(deltatime);
+
 		if (!m_Minimized)
 		{
 			for (Layer* layer : m_LayerStack)

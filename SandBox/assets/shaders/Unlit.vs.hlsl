@@ -1,18 +1,15 @@
-cbuffer cb_vsConstantBuffer : register(b0)
+#include "common.hlsli"
+
+struct UnlitVertexOutput
 {
-    float4x4 WVP;
-    float4x4 Model;
-}
-struct VS_out
-{
-    float4 pos : SV_Position;
-    float2 texCoords : TEXCOORD;
+    float4 position : SV_POSITION;
+    float2 texCoord : TEXCOORD;
 };
-VS_out main(float3 Pos : POSITION, float2 inTexCoord : TEXCOORD, float3 normal : NORMAL, float4 tangents : TANGENT)
+
+UnlitVertexOutput main(StandardVertexInput input)
 {
-    VS_out output;
-    
-    output.pos = mul(float4(Pos, 1.0f), WVP);
-    output.texCoords = inTexCoord;
+    UnlitVertexOutput output;
+    output.position = mul(float4(input.position, 1.0), WVP);
+    output.texCoord = input.texCoord;
     return output;
 }
