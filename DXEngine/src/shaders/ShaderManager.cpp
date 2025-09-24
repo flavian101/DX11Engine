@@ -18,6 +18,9 @@ namespace DXEngine {
 	{
 		CreateDefaultShaderConfigs();
 		LoadDefaultShaders();
+
+        // Initialize the integrated shader manager
+        IntegratedShaderManager::Instance().Initialize();
 	}
 
 	void ShaderManager::Shutdown()
@@ -45,22 +48,6 @@ namespace DXEngine {
                     "assets/shaders/Lit.ps.cso",
                     "Lit",
                     MaterialType::Lit
-                ),
-
-                // Textured lit shader
-                ShaderConfig(
-                    "assets/shaders/Lit.vs.cso",
-                    "assets/shaders/Lit.ps.cso",
-                    "LitTextured",
-                    MaterialType::LitTextured
-                ),
-
-                // Normal mapped shader
-                ShaderConfig(
-                    "assets/shaders/NormalMapped.vs.cso",
-                    "assets/shaders/NormalMapped.ps.cso",
-                    "NormalMapped",
-                    MaterialType::LitNormalMapped
                 ),
 
                 // Skybox shader
@@ -105,13 +92,10 @@ namespace DXEngine {
         // Map material types to shaders
         m_MaterialTypeToShader[MaterialType::Unlit] = "Unlit";
         m_MaterialTypeToShader[MaterialType::Lit] = "Lit";
-        m_MaterialTypeToShader[MaterialType::LitTextured] = "LitTextured";
-        m_MaterialTypeToShader[MaterialType::LitNormalMapped] = "NormalMapped";
         m_MaterialTypeToShader[MaterialType::Skybox] = "Skybox";
         m_MaterialTypeToShader[MaterialType::Transparent] = "Transparent";
         m_MaterialTypeToShader[MaterialType::Emissive] = "Emissive";
         m_MaterialTypeToShader[MaterialType::UI] = "UI";
-        m_MaterialTypeToShader[MaterialType::PBR] = "Lit"; // Fallback for now
     }
 
     void ShaderManager::LoadDefaultShaders()
@@ -320,6 +304,24 @@ namespace DXEngine {
         {
             ReloadAllShaders();
         }
+    }
+
+    std::shared_ptr<ShaderProgram> ShaderManager::GetShaderForMesh(const VertexLayout& layout, const Material* material, MaterialType materialType)
+    {
+
+        if (m_DynamicVariantsEnabled) {
+            // Try to get a dynamic variant first
+            auto variant = IntegratedShaderManager::Instance().GetShaderVariant(layout, material, materialType);
+            if (variant) {
+                return variant;
+            }
+
+            // Fallback to standard shader if variant fails
+            OutputDebugStringA("Warning: Failed to create shader variant, falling back to standard shader\n");
+        }
+
+        // Use existing shader selection logic as fallback
+        return GetShader(materialType);
     }
 
     std::wstring ShaderManager::StringToWString(const std::string& str)

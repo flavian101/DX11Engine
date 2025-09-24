@@ -545,13 +545,9 @@ namespace DXEngine
         {
             materialType = MaterialType::Emissive;
         }
-        else if (hasNormalMap && hasTextures)
+        else if (hasNormalMap || hasTextures)
         {
-            materialType = MaterialType::LitNormalMapped;
-        }
-        else if (hasTextures)
-        {
-            materialType = MaterialType::LitTextured;
+            materialType = MaterialType::Lit;
         }
         else
         {

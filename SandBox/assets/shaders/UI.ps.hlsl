@@ -5,11 +5,16 @@ float4 main(UIVertexOutput input) : SV_Target
     float4 finalColor = diffuseColor;
     
     // Sample diffuse texture if available
-    if (flags & HAS_DIFFUSE_TEXTURE)
+    if (flags & HAS_DIFFUSE_TEXTURE_FLAG)
     {
         float4 texColor = diffuseTexture.Sample(standardSampler, input.texCoord);
         finalColor *= texColor;
     }
+    
+    // UI elements can have vertex colors too
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    finalColor *= input.color;
+#endif
     
     // Apply material alpha
     finalColor.a *= alpha;

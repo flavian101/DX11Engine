@@ -9,10 +9,19 @@ float4 main(StandardVertexOutput input) : SV_Target
     // Base color
     float3 baseColor = diffuseColor.rgb * diffuseSample.rgb;
     
-    // Enhanced emissive effects
-    float3 finalEmissive = emissiveColor.rgb * emissiveSample;
+     // Modulate with vertex colors for variety
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    baseColor *= input.color.rgb;
+    // Use vertex color intensity for emissive boost
+    float emissiveBoost = 1.0 + input.color.a;
+#else
+    float emissiveBoost = 1.0;
+#endif
     
-    // Time-based animation using world position for deterministic effects
+   // Enhanced emissive effects
+    float3 finalEmissive = emissiveColor.rgb * emissiveSample * emissiveBoost;
+    
+    // Time-based animation using world position
     float timeValue = input.worldPos.x + input.worldPos.y + input.worldPos.z + input.time;
     
     // Pulsing effect controlled by shininess
@@ -22,18 +31,20 @@ float4 main(StandardVertexOutput input) : SV_Target
         finalEmissive *= (0.5 + pulse * 0.5);
     }
     
-    // Distance-based effects
-    if (flags & 0x200) // Custom flag for distance effects
-    {
-        float distance = length(input.worldPos.xyz - CameraPosition);
-        float falloff = 1.0 / (1.0 + distance * 0.01);
-        finalEmissive *= falloff;
-    }
+    // Rim lighting effect (works with or without tangents)
+    float3 viewDir = normalize(input.viewDir);
+    float3 normal = normalize(input.normal);
     
-    // Rim lighting effect
-    float3 V = normalize(input.viewDir);
-    float3 N = normalize(input.normal);
-    float rimDot = 1.0 - saturate(dot(V, N));
+#if HAS_TANGENT_ATTRIBUTE
+    // Enhanced rim with tangent space if available
+    float3 normalSample = SampleNormalMap(input.texCoord);
+    float3 worldNormal = CalculateWorldNormal(normal, input.tangent, normalSample);
+    float rimDot = 1.0 - saturate(dot(viewDir, worldNormal));
+#else
+    // Simple rim with vertex normal
+    float rimDot = 1.0 - saturate(dot(viewDir, normal));
+#endif
+    
     float rimPower = lerp(1.0, 8.0, roughness);
     float rimEffect = pow(rimDot, rimPower);
     float3 rimContribution = specularColor.rgb * rimEffect * metallic;
@@ -47,5 +58,10 @@ float4 main(StandardVertexOutput input) : SV_Target
     // Simple tone mapping for emissive materials
     finalColor = ToneMapReinhard(finalColor);
     
-    return float4(finalColor, diffuseSample.a * alpha);
+    float finalAlpha = diffuseSample.a * alpha;
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    finalAlpha *= input.color.a;
+#endif
+    
+    return float4(finalColor, finalAlpha);
 }

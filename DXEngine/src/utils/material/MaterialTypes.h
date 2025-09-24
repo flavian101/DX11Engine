@@ -8,12 +8,9 @@ namespace DXEngine
 	{
 		Unlit,
 		Lit,
-		LitTextured,
-		LitNormalMapped,
 		Skybox,
 		Transparent,
 		Emissive,
-		PBR,
 		UI,
 	};
 

@@ -21,6 +21,7 @@ namespace DXEngine {
     Renderer::RenderStatistics Renderer::s_Stats;
     std::shared_ptr<ShaderManager> Renderer::s_ShaderManager = nullptr;
     std::vector<RenderSubmission> Renderer::s_RenderSubmissions;
+    const DXEngine::RenderSubmission* Renderer::s_CurrentRenderSubmission = nullptr;
     std::map<RenderQueue, std::vector<RenderSubmission*>> Renderer::s_SortedQueues;
     std::vector<RenderBatch> Renderer::s_RenderBatches;
     std::shared_ptr<Material> Renderer::s_CurrentMaterial = nullptr;
@@ -816,27 +817,29 @@ namespace DXEngine {
     ///Rendering methods
     void Renderer::RenderSubmission(const DXEngine::RenderSubmission& submission)
     {
-        if (!submission.IsValid())
-        {
+        if (!submission.IsValid()) {
             OutputDebugStringA("Warning: Attempting to render invalid submission\n");
             return;
         }
-        if (submission.isUIElement)
-        {
+
+        // Track current submission for shader variant selection
+        s_CurrentRenderSubmission = &submission;
+
+        if (submission.isUIElement) {
             RenderUIElement(submission);
         }
-        else if (submission.instanceTransforms && submission.instanceCount > 0)
-        {
+        else if (submission.instanceTransforms && submission.instanceCount > 0) {
             RenderInstanceMesh(submission);
         }
-        else if (submission.boneMatrices)
-        {
+        else if (submission.boneMatrices) {
             RenderSkinnedMesh(submission);
         }
-        else
-        {
+        else {
             RenderMesh(submission);
         }
+
+        // Clear current submission
+        s_CurrentRenderSubmission = nullptr;
     }
     void Renderer::RenderMesh(const DXEngine::RenderSubmission& submission)
     {
@@ -1093,23 +1096,27 @@ namespace DXEngine {
         if (!s_ShaderManager || !material)
             return;
 
-        MaterialType materialType = material->GetType();
-        if (materialType != s_CurrentMaterialType)
-        {
-            auto shader = s_ShaderManager->GetShader(materialType);
-            if (shader && shader != s_CurrentShader)
-            {
-                shader->Bind();
-                s_CurrentShader = shader;
-                s_CurrentMaterialType = materialType;
-                s_Stats.shadersChanged++;
-            }
-            else if(!shader)
-            {
-                OutputDebugStringA(("Warning: no shader Avalilable for material type"+ 
-                    std::to_string(static_cast<int>(materialType)) + "\n").c_str());
+        // Get appropriate shader variant based on current mesh and material
+        std::shared_ptr<ShaderProgram> shader = nullptr;
 
+        // Try to get the current mesh being rendered
+        if (s_CurrentRenderSubmission && s_CurrentRenderSubmission->mesh) {
+            const auto* vertexData = s_CurrentRenderSubmission->mesh->GetResource()->GetVertexData();
+            if (vertexData) {
+                const VertexLayout& layout = vertexData->GetLayout();
+                shader = s_ShaderManager->GetShaderForMesh(layout, material.get(), material->GetType());
             }
+        }
+
+        // Fallback to regular shader selection
+        if (!shader) {
+            shader = s_ShaderManager->GetShader(material->GetType());
+        }
+
+        if (shader && shader != s_CurrentShader) {
+            shader->Bind();
+            s_CurrentShader = shader;
+            s_Stats.shadersChanged++;
         }
     }
 

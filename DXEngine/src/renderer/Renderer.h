@@ -232,6 +232,7 @@ namespace DXEngine {
         static RenderStatistics s_Stats;
         static std::shared_ptr<ShaderManager> s_ShaderManager;
         static std::vector<DXEngine::RenderSubmission> s_RenderSubmissions;
+        static const DXEngine::RenderSubmission* s_CurrentRenderSubmission;
         static std::map<RenderQueue, std::vector<DXEngine::RenderSubmission*>> s_SortedQueues;
         static std::vector<DXEngine::RenderBatch> s_RenderBatches;
 

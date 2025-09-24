@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <utils/material/MaterialTypes.h>
+#include "ShaderVariant.h"
 
 namespace DXEngine {
 	struct ShaderConfig
@@ -46,10 +47,20 @@ namespace DXEngine {
 		void EnableHotReload(bool enable) { m_HotReloadEnabled = enable; };
 		void CheckForShaderChanges();
 
+
+		std::shared_ptr<ShaderProgram> GetShaderForMesh(
+			const VertexLayout& layout,
+			const Material* material,
+			MaterialType materialType);
+
 	private:
 		void LoadDefaultShaders();
 		void CreateDefaultShaderConfigs();
 		std::wstring StringToWString(const std::string& str);
+		//variant
+		void EnableDynamicVariants(bool enable) { m_DynamicVariantsEnabled = enable; }
+		bool IsDynamicVariantsEnabled() const { return m_DynamicVariantsEnabled; }
+
 
 	private:
 		std::unordered_map<std::string, std::shared_ptr<ShaderProgram>> m_Shaders;
@@ -60,6 +71,9 @@ namespace DXEngine {
 		//hotreaload
 		bool m_HotReloadEnabled = false;
 		std::unordered_map<std::string, uint64_t> m_ShaderFileTimestamps;
+
+		//variant
+		bool m_DynamicVariantsEnabled = true;	
 	};
 
 	class ShaderManagerSingleton

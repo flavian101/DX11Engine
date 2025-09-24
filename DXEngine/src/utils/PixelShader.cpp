@@ -7,18 +7,32 @@ namespace DXEngine {
 	{
 		//hr = D3DCompileFromFile(
 		//	filename, nullptr, nullptr, "main", "ps_5_0", 0, 0, &pShaderBlob, NULL);
-		D3DReadFileToBlob(filename, &pShaderBlob);
-		RenderCommand:: GetDevice()->CreatePixelShader(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), NULL, &pPixelShader);
+		D3DReadFileToBlob(filename, &m_ShaderByteCode);
+		RenderCommand:: GetDevice()->CreatePixelShader(m_ShaderByteCode->GetBufferPointer(), m_ShaderByteCode->GetBufferSize(), NULL, &m_pPixelShader);
+	}
+
+	PixelShader::PixelShader(ID3DBlob* shaderBlob)
+	{
+		HRESULT hr = RenderCommand::GetDevice()->CreatePixelShader(
+			shaderBlob->GetBufferPointer(),
+			shaderBlob->GetBufferSize(),
+			nullptr,
+			&m_pPixelShader
+		);
+
+		if (FAILED(hr)) {
+			throw std::runtime_error("Failed to create pixel shader from blob");
+		}
 	}
 
 	PixelShader::~PixelShader()
 	{
-		pShaderBlob.Reset();
-		pPixelShader.Reset();
+		m_ShaderByteCode.Reset();
+		m_pPixelShader.Reset();
 	}
 
 	void PixelShader::Bind()
 	{
-		RenderCommand::GetContext()->PSSetShader(pPixelShader.Get(), nullptr, 0);
+		RenderCommand::GetContext()->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
 	}
 }

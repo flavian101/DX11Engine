@@ -8,6 +8,8 @@ namespace DXEngine {
 	{
 	public:
 		VertexShader( LPCWSTR filename);
+		VertexShader(ID3DBlob* shaderBlob);
+
 		~VertexShader();
 		void Bind();
 
@@ -18,8 +20,8 @@ namespace DXEngine {
 
 	private:
 		HRESULT hr;
-		Microsoft::WRL::ComPtr<ID3D11VertexShader> pVertexShader;
-		Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader> m_pVertexShader;
+		Microsoft::WRL::ComPtr<ID3DBlob> m_ShaderByteCode;
 
 	};
 }

@@ -7,8 +7,8 @@ namespace DXEngine {
 	{
 		//hr = D3DCompileFromFile(
 	//filename, nullptr, nullptr, "main", "vs_5_0", 0, 0, &shaderBlob, NULL);
-		D3DReadFileToBlob(filename, &shaderBlob);
-		if (shaderBlob == NULL)
+		D3DReadFileToBlob(filename, &m_ShaderByteCode);
+		if (m_ShaderByteCode == NULL)
 		{
 			//MessageBoxA(RenderCommand:: getHwnd(), "empty vshader blob", "ERROE", MB_OK | MB_ICONEXCLAMATION);
 		}
@@ -17,23 +17,39 @@ namespace DXEngine {
 		{
 			//PrintError(hr);
 		}
-		RenderCommand:: GetDevice()->CreateVertexShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, &pVertexShader);
+		RenderCommand:: GetDevice()->CreateVertexShader(m_ShaderByteCode->GetBufferPointer(), m_ShaderByteCode->GetBufferSize(), NULL, &m_pVertexShader);
+	}
+
+	VertexShader::VertexShader(ID3DBlob* shaderBlob)
+	{
+		m_ShaderByteCode = shaderBlob;
+
+		HRESULT hr = RenderCommand::GetDevice()->CreateVertexShader(
+			shaderBlob->GetBufferPointer(),
+			shaderBlob->GetBufferSize(),
+			nullptr,
+			&m_pVertexShader
+		);
+
+		if (FAILED(hr)) {
+			throw std::runtime_error("Failed to create vertex shader from blob");
+		}
 	}
 
 	VertexShader::~VertexShader()
 	{
-		shaderBlob.Reset();
-		pVertexShader.Reset();
+		m_ShaderByteCode.Reset();
+		m_pVertexShader.Reset();
 	}
 
 	void VertexShader::Bind()
 	{
-		RenderCommand::GetContext()->VSSetShader(pVertexShader.Get(), nullptr, 0);
+		RenderCommand::GetContext()->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
 	}
 
 	ID3DBlob* VertexShader::GetByteCode()
 	{
-		return shaderBlob.Get();
+		return m_ShaderByteCode.Get();
 	}
 
 	//void VertexShader::PrintError(HRESULT vhr)

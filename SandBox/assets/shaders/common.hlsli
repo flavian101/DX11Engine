@@ -1,6 +1,30 @@
 #ifndef COMMON_HLSLI
 #define COMMON_HLSLI
 
+#ifndef HAS_TANGENT_ATTRIBUTE
+#define HAS_TANGENT_ATTRIBUTE 0
+#endif
+
+#ifndef HAS_VERTEX_COLOR_ATTRIBUTE
+#define HAS_VERTEX_COLOR_ATTRIBUTE 0
+#endif
+
+#ifndef HAS_SECOND_UV_ATTRIBUTE
+#define HAS_SECOND_UV_ATTRIBUTE 0
+#endif
+
+#ifndef HAS_SKINNING_ATTRIBUTES
+#define HAS_SKINNING_ATTRIBUTES 0
+#endif
+
+#ifndef CUSTOM_VERTEX_INPUT
+#define CUSTOM_VERTEX_INPUT 0
+#endif
+
+#ifndef ENABLE_SHADOWS
+#define ENABLE_SHADOWS 0
+#endif
+
 //Common constants
 static const float PI = 3.14159265359;
 static const float TWO_PI = 6.28318530718;
@@ -8,14 +32,12 @@ static const float MIN_ROUGHNESS = 0.04;
 static const float EPSILON = 0.0001;
 
 // === MATERIAL FLAGS ===
-#define HAS_DIFFUSE_TEXTURE     0x01
-#define HAS_NORMAL_MAP         0x02
-#define HAS_SPECULAR_MAP       0x04
-#define HAS_EMISSIVE_MAP       0x08
-#define IS_TRANSPARENT         0x10
-#define IS_TWO_SIDED          0x20
-#define CASTS_SHADOWS         0x40
-#define RECEIVES_SHADOWS      0x80
+#define HAS_DIFFUSE_TEXTURE_FLAG   0x01
+#define HAS_NORMAL_MAP_FLAG        0x02
+#define HAS_SPECULAR_MAP_FLAG      0x04
+#define HAS_EMISSIVE_MAP_FLAG      0x08
+#define CASTS_SHADOWS_FLAG         0x40
+#define RECEIVES_SHADOWS_FLAG      0x80
 
 cbuffer TransformBuffer : register(b0)
 {
@@ -119,8 +141,17 @@ struct StandardVertexOutput
     float4 position : SV_POSITION;
     float4 worldPos : POSITION;
     float3 normal : NORMAL;
+    
+#if HAS_TANGENT_ATTRIBUTE
     float4 tangent : TANGENT;
+#endif
+
     float2 texCoord : TEXCOORD;
+    
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    float4 color : COLOR;
+#endif
+
     float3 viewDir : VIEWDIR;
     float time : TIME;
 };
@@ -136,6 +167,9 @@ struct UIVertexInput
 {
     float3 position : POSITION;
     float2 texCoord : TEXCOORD;
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    float4 color : COLOR;
+#endif
     float3 normal : NORMAL;
 };
 
@@ -143,6 +177,10 @@ struct UIVertexOutput
 {
     float4 position : SV_POSITION;
     float2 texCoord : TEXCOORD;
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    float4 color : COLOR;
+#endif
+
 };
 
 // === TEXTURE BINDINGS ===
@@ -166,7 +204,7 @@ float3 GetScaledTexCoord(float2 uv)
 }
 float4 SampleDiffuseTexture(float2 uv)
 {
-    if(flags & HAS_DIFFUSE_TEXTURE)
+    if(flags & HAS_DIFFUSE_TEXTURE_FLAG)
     {
         float2 scaledUV = uv * textureScale + textureOffset;
         return diffuseTexture.Sample(standardSampler, scaledUV);
@@ -174,9 +212,29 @@ float4 SampleDiffuseTexture(float2 uv)
     return float4(1.0, 1.0, 1.0, 1.0);
 }
 
+float4 SampleDiffuseTextureMultiUV(StandardVertexOutput input)
+{
+    if (!(flags & HAS_DIFFUSE_TEXTURE_FLAG))
+    {
+        return float4(1.0, 1.0, 1.0, 1.0);
+    }
+    
+    float2 uv = input.texCoord * textureScale + textureOffset;
+    
+#if HAS_SECOND_UV_ATTRIBUTE
+    // You could blend between UV sets or use different channels
+    float2 uv2 = input.texCoord1 * textureScale + textureOffset;
+    float4 sample1 = diffuseTexture.Sample(standardSampler, uv);
+    float4 sample2 = diffuseTexture.Sample(standardSampler, uv2);
+    return lerp(sample1, sample2, 0.5); // Blend both UV sets
+#else
+    return diffuseTexture.Sample(standardSampler, uv);
+#endif
+}
+
 float3 SampleNormalMap(float2 uv)
 {
-    if(flags& HAS_NORMAL_MAP)
+    if (flags & HAS_NORMAL_MAP_FLAG)
     {
         float2 scaledUV = uv * textureScale + textureOffset;
         float3 normal = normalTexture.Sample(standardSampler, scaledUV);
@@ -187,7 +245,7 @@ float3 SampleNormalMap(float2 uv)
 
 float3 SampleSpecularMap(float2 uv)
 {
-    if(flags & HAS_SPECULAR_MAP)
+    if (flags & HAS_SPECULAR_MAP_FLAG)
     {
         float2 scaledUV = uv * textureScale + textureOffset;
         return specularTexture.Sample(standardSampler, scaledUV);
@@ -197,7 +255,7 @@ float3 SampleSpecularMap(float2 uv)
 
 float3 SampleEmissiveMap(float2 uv)
 {
-    if (flags & HAS_EMISSIVE_MAP)
+    if (flags & HAS_EMISSIVE_MAP_FLAG)
     {
         float2 scaledUV = uv * textureScale + textureOffset;
         return emissiveTexture.Sample(standardSampler, scaledUV).rgb;
@@ -205,11 +263,12 @@ float3 SampleEmissiveMap(float2 uv)
     return float3(0.0, 0.0, 0.0);
 }
 
+
 //Normal Mappings
 
 float3 CalculateWorldNormal(float3 vertexNormal, float4 tangent, float3 normalMapSample)
 {
-    if(!(flags & HAS_NORMAL_MAP))
+    if (!(flags & HAS_NORMAL_MAP_FLAG))
     {
         return normalize(vertexNormal);
     }
@@ -221,6 +280,28 @@ float3 CalculateWorldNormal(float3 vertexNormal, float4 tangent, float3 normalMa
     float3x3 TBN = float3x3(T, B, N);
     
     return normalize(mul(normalMapSample, TBN));
+}
+
+float3 CalculateWorldNormalFallback(float3 vertexNormal, float3 normalMapSample)
+{
+    if (!(flags & HAS_NORMAL_MAP_FLAG))
+    {
+        return normalize(vertexNormal);
+    }
+    
+    // Simple perturbation without proper tangent space
+    float3 N = normalize(vertexNormal);
+    return normalize(N + normalMapSample * 0.1);
+}
+
+// Safe normal calculation that works with or without tangents
+float3 GetWorldNormal(StandardVertexOutput input, float3 normalSample)
+{
+#if HAS_TANGENT_ATTRIBUTE
+    return CalculateWorldNormal(input.normal, input.tangent, normalSample);
+#else
+    return CalculateWorldNormalFallback(input.normal, normalSample);
+#endif
 }
 
 ///pbr BRDF funtions
@@ -273,37 +354,20 @@ float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 float SampleShadowMap(float4 shadowPos, int shadowMapIndex)
 {
 #ifdef ENABLE_SHADOWS
-    if (shadowMapIndex < 0) return 1.0;
+    if (shadowMapIndex < 0)
+        return 1.0;
     
-    // Perspective divide
     shadowPos.xyz /= shadowPos.w;
     
-    // Check if outside shadow frustum
     if (any(abs(shadowPos.xy) > 1.0) || shadowPos.z < 0.0 || shadowPos.z > 1.0)
         return 1.0;
     
-    // Convert to texture coordinates
     float2 shadowTexCoord = float2(shadowPos.x * 0.5 + 0.5, shadowPos.y * -0.5 + 0.5);
     
-    // PCF sampling for softer shadows
-    float shadow = 0.0;
-    float2 texelSize = 1.0 / 2048.0; // Shadow map resolution
-    
-    [unroll]
-    for (int x = -1; x <= 1; ++x)
-    {
-        [unroll]
-        for (int y = -1; y <= 1; ++y)
-        {
-            float2 offset = float2(x, y) * texelSize;
-            shadow += shadowMaps.SampleCmpLevelZero(shadowSampler, 
-                     float3(shadowTexCoord + offset, shadowMapIndex), shadowPos.z).r;
-        }
-    }
-    
-    return shadow / 9.0;
+    return shadowMaps.SampleCmpLevelZero(shadowSampler,
+           float3(shadowTexCoord, shadowMapIndex), shadowPos.z).r;
 #else
-    return 1.0; // No shadows, return fully lit
+    return 1.0;
 #endif
 }
 
@@ -324,7 +388,7 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     
     //shadow calculation
     float shadow = 1.0;
-    if (light.shadowMapIndex >= 0 && (flags & RECEIVES_SHADOWS))
+    if (light.shadowMapIndex >= 0 && (flags & RECEIVES_SHADOWS_FLAG))
     {
         float4 shadowPos = mul(worldPos, light.shadowMatrices[0]);
         shadow = SampleShadowMap(shadowPos, (int) light.shadowMapIndex);
@@ -466,12 +530,35 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     output.position = mul(float4(input.position, 1.0), WVP);
     output.worldPos = mul(float4(input.position, 1.0), Model);
     output.normal = mul(input.normal, (float3x3) Model);
-    output.tangent = float4(mul(input.tangent.xyz, (float3x3) Model), input.tangent.w);
+    
+#if HAS_TANGENT_ATTRIBUTE
+    output.tangent = float4(mul(input.tangent.xyz, (float3x3)Model), input.tangent.w);
+#endif
+
     output.texCoord = input.texCoord;
+    
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    output.color = input.color;
+#endif
+    
     output.viewDir = CameraPosition - output.worldPos.xyz;
     output.time = Time;
     
     return output;
-    
 }
+
+// Debug visualization functions
+#ifdef SHADER_DEBUG
+float4 DebugVertexAttributes(StandardVertexOutput input)
+{
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    return input.color; // Show vertex colors
+#elif HAS_TANGENT_ATTRIBUTE
+    return float4(input.tangent.xyz * 0.5 + 0.5, 1.0); // Show tangents
+#else
+    return float4(input.normal * 0.5 + 0.5, 1.0); // Show normals
+#endif
+}
+#endif
+
 #endif

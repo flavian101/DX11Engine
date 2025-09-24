@@ -9,7 +9,7 @@ namespace DXEngine {
     {
         Initialize();
 
-        auto moonMaterial = DXEngine::MaterialFactory::CreateTexturedMaterial("MoonMaterial");
+        auto moonMaterial = DXEngine::MaterialFactory::CreateLitMaterial("MoonMaterial");
         auto moonTexture = std::make_shared<Texture>("assets/textures/8k_moon.jpg");
         moonMaterial->SetDiffuseTexture(moonTexture);
         moonMaterial->SetSpecularColor({ 0.2f, 0.2f, 0.2f, 1.0f });

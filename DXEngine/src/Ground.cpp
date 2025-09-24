@@ -68,7 +68,7 @@ namespace DXEngine {
         // Create mesh
         auto mesh = std::make_shared<Mesh>(meshResource);
 
-        auto grassMaterial = MaterialFactory::CreateTexturedNormalMaterial("Ground Material");
+        auto grassMaterial = MaterialFactory::CreateLitMaterial("Ground Material");
         auto grassDiffuse = std::make_shared<Texture>("assets/textures/grass.jpg");
         auto grassNormal = std::make_shared<Texture>("assets/textures/grassNormal.jpg");
         grassMaterial->SetDiffuseTexture(grassDiffuse);

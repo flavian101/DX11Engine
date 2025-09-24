@@ -10,7 +10,7 @@ float4 main(UnlitPixelInput input) : SV_Target
 {
     float4 baseColor = diffuseColor;
     
-    if (flags & HAS_DIFFUSE_TEXTURE)
+    if (flags & HAS_DIFFUSE_TEXTURE_FLAG)
     {
         float2 scaledUV = input.texCoord * textureScale + textureOffset;
         float4 texColor = diffuseTexture.Sample(standardSampler, scaledUV);

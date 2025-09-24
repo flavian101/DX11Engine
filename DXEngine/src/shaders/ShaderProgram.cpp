@@ -9,18 +9,24 @@ namespace DXEngine {
 		m_PixelShader = std::make_shared<PixelShader>(pixelShader);
 	}
 
+	ShaderProgram::ShaderProgram(std::shared_ptr<VertexShader> vs, std::shared_ptr<PixelShader> ps)
+		: m_VertexShader(vs), m_PixelShader(ps)
+	{
+	}
+
 	ShaderProgram::~ShaderProgram()
 	{
 
 	}
 	void ShaderProgram::Bind()
 	{
-		m_VertexShader->Bind();
-		m_PixelShader->Bind();
+		if (m_VertexShader) m_VertexShader->Bind();
+		if (m_PixelShader) m_PixelShader->Bind();
+
 	}
 
 	ID3DBlob* ShaderProgram::GetByteCode()
 	{
-		return m_VertexShader->GetByteCode();
+		return m_VertexShader ? m_VertexShader->GetByteCode() : nullptr;
 	}
 }

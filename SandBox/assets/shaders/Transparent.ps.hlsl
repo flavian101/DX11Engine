@@ -11,11 +11,20 @@ float4 main(StandardVertexOutput input) : SV_Target
     float3 normalSample = SampleNormalMap(input.texCoord);
     float3 emissiveSample = SampleEmissiveMap(input.texCoord);
     
-    // Calculate world normal
-    float3 worldNormal = CalculateWorldNormal(N, input.tangent, normalSample);
+   // Handle normal mapping for transparency
+    float3 worldNormal;
+#if HAS_TANGENT_ATTRIBUTE
+    worldNormal = CalculateWorldNormal(N, input.tangent, normalSample);
+#else
+    worldNormal = N;
+#endif
     
-    // Material properties (reduced for transparency)
+    // Base color with vertex color modulation
     float3 albedo = diffuseColor.rgb * diffuseSample.rgb;
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    albedo *= input.color.rgb;
+#endif
+    
     float metallicValue = metallic * 0.5; // Reduce metallic for transparency
     float roughnessValue = max(roughness, MIN_ROUGHNESS);
     
@@ -53,8 +62,11 @@ float4 main(StandardVertexOutput input) : SV_Target
     color = ToneMapExposure(color, exposure * 0.8);
     color = ApplyGamma(color, gamma);
     
-    // Calculate final alpha
+    // Handle transparency alpha
     float finalAlpha = diffuseSample.a * alpha;
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    finalAlpha *= input.color.a;
+#endif
     
     return float4(color, finalAlpha);
 }

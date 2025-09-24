@@ -219,6 +219,7 @@
       <Filter>windows</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\PerfomanceProfiller.h" />
+    <ClInclude Include="src\shaders\ShaderVariant.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -361,5 +362,6 @@
     <ClCompile Include="src\windows\WindowsInput.cpp">
       <Filter>windows</Filter>
     </ClCompile>
+    <ClCompile Include="src\shaders\ShaderVariant.cpp" />
   </ItemGroup>
 </Project>
