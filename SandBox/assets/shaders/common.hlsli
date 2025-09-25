@@ -239,25 +239,12 @@ struct UIVertexOutput
 };
 
 // === TEXTURE BINDINGS ===
-#if HAS_DIFFUSE_TEXTURE
 Texture2D diffuseTexture : register(t0);
-#endif
-
-#if HAS_NORMAL_MAP
 Texture2D normalTexture : register(t1);
-#endif
-
-#if HAS_SPECULAR_MAP
 Texture2D specularTexture : register(t2);
-#endif
-
-#if HAS_EMISSIVE_MAP
 Texture2D emissiveTexture : register(t3);
-#endif
-
-#if HAS_ENVIRONMENT_MAP
 TextureCube environmentTexture : register(t4);
-#endif
+
 
 #if ENABLE_SHADOWS
 Texture2DArray shadowMaps : register(t5);
@@ -281,7 +268,6 @@ float4 SampleDiffuseTexture(float2 uv)
 #else
     return float4(1.0, 1.0, 1.0, 1.0);
 #endif
-
 }
 
 float3 SampleNormalMap(float2 uv)
@@ -347,11 +333,11 @@ float3 CalculateWorldNormalFallback(float3 vertexNormal, float3 normalMapSample)
 float3 GetWorldNormal(StandardVertexOutput input, float3 normalSample)
 {
 #if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE
-    float3 normalSample = SampleNormalMap(input.texCoord);
+    normalSample = SampleNormalMap(input.texCoord);
     return CalculateWorldNormal(input.normal, input.tangent, normalSample);
 #elif HAS_NORMAL_MAP
     // Fallback: simple normal perturbation without tangent space
-    float3 normalSample = SampleNormalMap(input.texCoord);
+    normalSample = SampleNormalMap(input.texCoord);
     float3 N = normalize(input.normal);
     return normalize(N + normalSample * 0.1);
 #else
@@ -412,15 +398,19 @@ float SampleShadowMap(float4 shadowPos, int shadowMapIndex)
     if (shadowMapIndex < 0)
         return 1.0;
     
-    shadowPos.xyz /= shadowPos.w;
+    // Perform perspective divide
+    float3 projCoords = shadowPos.xyz / shadowPos.w;
     
-    if (any(abs(shadowPos.xy) > 1.0) || shadowPos.z < 0.0 || shadowPos.z > 1.0)
+    // Check if the position is outside the shadow map bounds
+    if (any(abs(projCoords.xy) > 1.0) || projCoords.z < 0.0 || projCoords.z > 1.0)
         return 1.0;
     
-    float2 shadowTexCoord = float2(shadowPos.x * 0.5 + 0.5, shadowPos.y * -0.5 + 0.5);
+    // Convert from NDC to texture coordinates
+    float2 shadowTexCoord = float2(projCoords.x * 0.5 + 0.5, projCoords.y * -0.5 + 0.5);
     
+    // Sample the shadow map
     return shadowMaps.SampleCmpLevelZero(shadowSampler,
-           float3(shadowTexCoord, shadowMapIndex), shadowPos.z).r;
+           float3(shadowTexCoord, shadowMapIndex), projCoords.z).r;
 #else
     return 1.0;
 #endif
@@ -445,6 +435,7 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
 #if ENABLE_SHADOWS
     if (light.shadowMapIndex >= 0 && (flags & RECEIVES_SHADOWS_FLAG))
     {
+        // Transform world position to shadow space
         float4 shadowPos = mul(worldPos, light.shadowMatrices[0]);
         shadow = SampleShadowMap(shadowPos, (int)light.shadowMapIndex);
     }
@@ -603,11 +594,6 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     output.viewDir = CameraPosition - output.worldPos.xyz;
     output.time = Time;
     
-#if ENABLE_SHADOWS
-    // Calculate shadow position if shadows are enabled
-    output.shadowPos = output.worldPos; // Simplified - you'd use proper shadow matrix
-#endif
-
 #if HAS_SKINNING_ATTRIBUTES
     // Apply skinning transformations
     float4 skinnedPos = float4(0, 0, 0, 0);

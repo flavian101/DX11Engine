@@ -138,6 +138,11 @@ namespace DXEngine {
     {
         RenderCommand::Init(hwnd, width, height);
 
+        // Initialize ShaderManager
+        s_ShaderManager = std::make_shared<ShaderManager>();
+        s_ShaderManager->Initialize();
+        s_ShaderManager->EnableDynamicVariants(true);
+
         CreateUIQuad();
         CreateDefaultUIMaterial();
         UpdateUIProjectionMatrix(width, height);
@@ -150,18 +155,6 @@ namespace DXEngine {
         OutputDebugStringA("Renderer initialized successfully\n");
     }
 
-    void Renderer::InitShaderManager(std::shared_ptr<ShaderManager> shaderManager)
-    {
-        s_ShaderManager = shaderManager;
-        if (!s_ShaderManager)
-        {
-            OutputDebugStringA("Warning: Renderer initialized without ShaderManager!\n");
-        }
-        else
-        {
-            OutputDebugStringA("Renderer: ShaderManager initialized\n");
-        }
-    }
 
     void Renderer::InitLightManager()
     {
@@ -231,7 +224,7 @@ namespace DXEngine {
 #ifdef _DEBUG
         if (s_ShaderManager)
         {
-            s_ShaderManager->CheckForShaderChanges;
+            s_ShaderManager->Update();
         }
 #endif
     }

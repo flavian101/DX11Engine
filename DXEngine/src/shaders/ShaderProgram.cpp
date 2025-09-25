@@ -14,6 +14,16 @@ namespace DXEngine {
 	{
 	}
 
+	ShaderProgram::ShaderProgram(Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, Microsoft::WRL::ComPtr<ID3DBlob> psBlob)
+	{
+		if (vsBlob) {
+			m_VertexShader = std::make_shared<VertexShader>(vsBlob.Get());
+		}
+		if (psBlob) {
+			m_PixelShader = std::make_shared<PixelShader>(psBlob.Get());
+		}
+	}
+
 	ShaderProgram::~ShaderProgram()
 	{
 

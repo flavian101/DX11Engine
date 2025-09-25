@@ -12,6 +12,8 @@ namespace DXEngine {
 	public:
 		ShaderProgram( LPCWSTR vertexShader, LPCWSTR pixelShader);
 		ShaderProgram(std::shared_ptr<VertexShader> vs, std::shared_ptr<PixelShader> ps);
+		ShaderProgram(Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, Microsoft::WRL::ComPtr<ID3DBlob> psBlob);
+
 
 		~ShaderProgram();
 

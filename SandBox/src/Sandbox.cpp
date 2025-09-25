@@ -11,10 +11,6 @@ Sandbox::~Sandbox()
 
 void Sandbox::OnAttach()
 {
-	m_ShaderManager = std::make_shared<DXEngine::ShaderManager>();
-	m_ShaderManager->Initialize();
-
-	DXEngine::Renderer::InitShaderManager(m_ShaderManager);
 	DXEngine::Renderer::InitLightManager();
 
 	m_CameraController = std::make_shared<DXEngine::CameraController>();

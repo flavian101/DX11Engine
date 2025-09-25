@@ -104,23 +104,42 @@ namespace DXEngine
 
 		m_Stats.cacheMisses++;
 
-		// Create new variant
-//		auto variant = CreateShaderVariant(key,);
-//		if (variant) {
-//			m_VariantCache[key] = variant;
-//			m_VariantUsage[key] = m_CurrentFrame;
-//			m_Stats.totalVariants++;
-//
-//#ifdef _DEBUG
-//			LogInfo("Created shader variant: " + key.ToString());
-//#endif
-//		}
-//		else {
-//			m_Stats.compilationFailures++;
-//			LogError("Failed to create shader variant: " + key.ToString());
-//		}
-		LogError("Failed to Find shader variant: " + key.ToString());
-		return nullptr;
+		// Create new variant - find matching layout from common layouts
+		VertexLayout layoutToUse;
+
+		// Try to find a matching layout or use basic as fallback
+		if (!m_CommonLayouts.empty()) {
+			layoutToUse = m_CommonLayouts[0]; // Use basic layout as fallback
+
+			// Try to find better match based on features
+			for (const auto& layout : m_CommonLayouts) {
+				ShaderFeatureFlags layoutFeatures = AnalyzeVertexLayout(layout);
+				if ((layoutFeatures & key.features) == layoutFeatures) {
+					layoutToUse = layout;
+					break;
+				}
+			}
+		}
+		else {
+			layoutToUse = VertexLayout::CreateBasic(); // Emergency fallback
+		}
+
+		auto variant = CreateShaderVariant(key, layoutToUse);
+		if (variant) {
+			m_VariantCache[key] = variant;
+			m_VariantUsage[key] = m_CurrentFrame;
+			m_Stats.totalVariants++;
+
+#ifdef _DEBUG
+			LogInfo("Created shader variant: " + key.ToString());
+#endif
+		}
+		else {
+			m_Stats.compilationFailures++;
+			LogError("Failed to create shader variant: " + key.ToString());
+		}
+
+		return variant;
 	}
 	void ShaderVariantManager::PrecompileCommonVariants()
 	{
@@ -191,11 +210,7 @@ namespace DXEngine
 
 		try {
 			// Create shader objects
-			auto vertexShader = std::make_shared<VertexShader>(vsBlob.Get());
-			auto pixelShader = std::make_shared<PixelShader>(psBlob.Get());
-
-			// Create shader program
-			auto program = std::make_shared<ShaderProgram>(vertexShader, pixelShader);
+			auto program = std::make_shared<ShaderProgram>(vsBlob, psBlob);
 
 			// Track files for hot reload
 			if (m_Config.enableHotReload) {

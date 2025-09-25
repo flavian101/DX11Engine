@@ -1,8 +1,8 @@
 #pragma once
 #include "renderer/RendererCommand.h"
 #include <wrl.h>
-namespace DXEngine {
 
+namespace DXEngine {
 	class Sampler
 	{
 	public:

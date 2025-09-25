@@ -95,7 +95,6 @@ namespace DXEngine {
     public:
         // Core initialization
         static void Init(HWND hwnd, int width, int height);
-        static void InitShaderManager(std::shared_ptr<ShaderManager> shaderManager);
         static void InitLightManager();
         static std::shared_ptr<LightManager> GetLightManager() { return s_LightManager; }
         static void SetTime(float time) { s_Time = time; }

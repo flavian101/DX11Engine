@@ -6,17 +6,17 @@
 namespace DXEngine {
 
 
-    inline ShaderManager::ShaderManager()
+    ShaderManager::ShaderManager()
         : m_VariantManager(&ShaderVariantManager::Instance()) {
         CreateDefaultMaterialTypeMappings();
         m_DefaultLayout = VertexLayout::CreateLit(); // Standard layout with tangents
     }
 
-    inline ShaderManager::~ShaderManager() {
+    ShaderManager::~ShaderManager() {
         Shutdown();
     }
 
-    inline void ShaderManager::Initialize() {
+    void ShaderManager::Initialize() {
         if (m_Initialized) {
             return;
         }
@@ -27,7 +27,7 @@ namespace DXEngine {
         OutputDebugStringA("ShaderManager: Initialized with variant system\n");
     }
 
-    inline void ShaderManager::Shutdown() {
+    void ShaderManager::Shutdown() {
         if (!m_Initialized) {
             return;
         }
@@ -40,13 +40,13 @@ namespace DXEngine {
         OutputDebugStringA("ShaderManager: Shutdown complete\n");
     }
 
-    inline void ShaderManager::Update() {
+    void ShaderManager::Update() {
         if (m_Initialized && m_VariantManager) {
             m_VariantManager->Update();
         }
     }
 
-    inline std::shared_ptr<ShaderProgram> ShaderManager::GetShader(MaterialType materialType) {
+    std::shared_ptr<ShaderProgram> ShaderManager::GetShader(MaterialType materialType) {
         if (!m_Initialized || !m_VariantManager) {
             return nullptr;
         }
@@ -69,7 +69,7 @@ namespace DXEngine {
         }
     }
 
-    inline std::shared_ptr<ShaderProgram> ShaderManager::GetShader(const std::string& name) {
+    std::shared_ptr<ShaderProgram> ShaderManager::GetShader(const std::string& name) {
         if (!m_Initialized || !m_VariantManager) {
             return nullptr;
         }
@@ -87,7 +87,7 @@ namespace DXEngine {
         return GetShader(materialType);
     }
 
-    inline std::shared_ptr<ShaderProgram> ShaderManager::GetShaderForMesh(
+    std::shared_ptr<ShaderProgram> ShaderManager::GetShaderForMesh(
         const VertexLayout& layout,
         const Material* material,
         MaterialType materialType) {
@@ -110,30 +110,30 @@ namespace DXEngine {
         return GetShader(materialType);
     }
 
-    inline void ShaderManager::EnableHotReload(bool enable) {
+    void ShaderManager::EnableHotReload(bool enable) {
         if (m_VariantManager) {
             m_VariantManager->EnableHotReload(enable);
         }
     }
 
-    inline void ShaderManager::ClearShaderCache() {
+    void ShaderManager::ClearShaderCache() {
         if (m_VariantManager) {
             m_VariantManager->ClearCache();
         }
     }
 
-    inline void ShaderManager::PrecompileCommonShaders() {
+    void ShaderManager::PrecompileCommonShaders() {
         if (m_VariantManager) {
             m_VariantManager->PrecompileCommonVariants();
         }
     }
 
-    inline bool ShaderManager::IsShaderLoaded(const std::string& name) const {
+    bool ShaderManager::IsShaderLoaded(const std::string& name) const {
         // For compatibility, always return true since variants are created on-demand
         return true;
     }
 
-    inline std::string ShaderManager::GetShaderInfo() const {
+    std::string ShaderManager::GetShaderInfo() const {
         if (!m_VariantManager) {
             return "ShaderManager: Not initialized\n";
         }
@@ -151,23 +151,23 @@ namespace DXEngine {
         return info;
     }
 
-    inline std::string ShaderManager::GetDebugInfo() const {
+    std::string ShaderManager::GetDebugInfo() const {
         return GetShaderInfo();
     }
 
-    inline bool ShaderManager::ReloadShader(const std::string& name) {
+    bool ShaderManager::ReloadShader(const std::string& name) {
         // Legacy compatibility - clear cache to force reload
         ClearShaderCache();
         return true;
     }
 
-    inline void ShaderManager::ReloadAllShaders() {
+    void ShaderManager::ReloadAllShaders() {
         if (m_VariantManager) {
             m_VariantManager->ReloadAllShaders();
         }
     }
 
-    inline void ShaderManager::InitializeVariantSystem() {
+    void ShaderManager::InitializeVariantSystem() {
         // Initialize variant manager with appropriate config
         ShaderVariantConfig config;
         config.shaderBasePath = "assets/shaders/";
@@ -180,7 +180,7 @@ namespace DXEngine {
         }
     }
 
-    inline void ShaderManager::CreateDefaultMaterialTypeMappings() {
+    void ShaderManager::CreateDefaultMaterialTypeMappings() {
         m_MaterialTypeToShader[MaterialType::Unlit] = "Unlit";
         m_MaterialTypeToShader[MaterialType::Lit] = "Lit";
         m_MaterialTypeToShader[MaterialType::Skybox] = "Skybox";
@@ -189,7 +189,7 @@ namespace DXEngine {
         m_MaterialTypeToShader[MaterialType::UI] = "UI";
     }
 
-    inline std::shared_ptr<ShaderProgram> ShaderManager::GetFallbackShader() {
+    std::shared_ptr<ShaderProgram> ShaderManager::GetFallbackShader() {
         // Try to get a basic lit shader as fallback
         if (m_VariantManager) {
             return GetShader(MaterialType::Lit);
