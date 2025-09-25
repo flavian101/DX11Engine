@@ -9,7 +9,7 @@
 namespace DXEngine {
 
 	Material::Material(const std::string& name, MaterialType type)
-		: m_Name(name),m_Type(type),m_RenderQueue(RenderQueue::Opaque), m_Sampler()
+		: m_Name(name),m_Type(type),m_RenderQueue(RenderQueue::Opaque)
 	{
 		switch (type)
 		{
@@ -77,7 +77,6 @@ namespace DXEngine {
 			UpdateConstantBuffer();
 			m_PropertiesDirty = false;
 		}
-		m_Sampler.Bind();
 
 		if (m_ConstantBufferInitialized)
 		{

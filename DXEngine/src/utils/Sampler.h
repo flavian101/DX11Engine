@@ -3,6 +3,7 @@
 #include <wrl.h>
 
 namespace DXEngine {
+	class Material;
 	enum class SamplerType
 	{
 		Point,
@@ -45,8 +46,11 @@ namespace DXEngine {
 			return instance;
 		}
 
-		void Initilize();
+		void Initialize();
 		void Shutdown();
+
+		//Sampler for material
+		void BindSamplersForMaterial(const Material* material);
 
 		// Get predefined samplers
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> GetStandardSampler() const { return m_StandardSampler; }
@@ -54,9 +58,6 @@ namespace DXEngine {
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> GetShadowPCFSampler() const { return m_ShadowPCFSampler; }
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> GetPointSampler() const { return m_PointSampler; }
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> GetLinearSampler() const { return m_LinearSampler; }
-
-		// Create custom sampler
-		Microsoft::WRL::ComPtr<ID3D11SamplerState> CreateSampler(const SamplerDesc& desc);
 
 		// Create custom sampler
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> CreateSampler(const SamplerDesc& desc);
@@ -92,7 +93,7 @@ namespace DXEngine {
 		Sampler(SamplerType type, SamplerAddressMode addressMode = SamplerAddressMode::Clamp);
 		~Sampler();
 
-		bool Initialized(const SamplerDesc& desc);
+		bool Initialize(const SamplerDesc& desc);
 		void Bind(uint32_t slot = 0, bool pixelShader = true,bool vertexShader = false);
 		bool IsValid() const { return m_SamplerState != nullptr;}
 

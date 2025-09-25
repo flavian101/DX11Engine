@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "RendererCommand.h"
+#include "utils/Sampler.h"
 
 namespace DXEngine {
 
@@ -204,6 +205,9 @@ namespace DXEngine {
 		s_Context->OMSetBlendState(s_TransparencyBlendState.Get(), nullptr, 0xffffffff);
 
 		SetRasterizerMode(RasterizerMode::SolidBackCull);
+
+		SamplerManager::Instance().BindPixelShaderSamplers();
+		SamplerManager::Instance().BindVertexShaderSamplers();
 	}
 
 	void RenderCommand::Present()

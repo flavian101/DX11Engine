@@ -1,8 +1,9 @@
 #include "dxpch.h"
 #include "Sampler.h"
+#include "material/Material.h"
 
 namespace DXEngine {
-	void SamplerManager::Initilize()
+	void SamplerManager::Initialize()
 	{
 		CreateStandardSampler();
 		CreateShadowSamplers();
@@ -16,6 +17,44 @@ namespace DXEngine {
 		m_AnisotropicSampler.Reset();
 		m_ShadowSampler.Reset();
 		m_ShadowPCFSampler.Reset();
+	}
+	void SamplerManager::BindSamplersForMaterial(const Material* material)
+	{
+		// Always bind these core samplers in the correct slots to match common.hlsli
+		ID3D11SamplerState* pixelSamplers[8] = { nullptr }; // Initialize array
+		ID3D11SamplerState* vertexSamplers[8] = { nullptr };
+
+		// Slot 0: Standard sampler (always bound)
+		pixelSamplers[0] = m_StandardSampler.Get();
+		vertexSamplers[0] = m_StandardSampler.Get();
+
+		// Slot 1: Shadow comparison sampler (MUST be comparison type)
+		pixelSamplers[1] = m_ShadowSampler.Get();
+		vertexSamplers[1] = m_ShadowSampler.Get();
+
+		// Optional: Bind material-specific samplers to higher slots
+		if (material) {
+			switch (material->GetType()) {
+			case MaterialType::Transparent:
+				// Slot 2: High-quality linear for transparency
+				pixelSamplers[2] = m_LinearSampler.Get();
+				break;
+
+			case MaterialType::UI:
+				// Slot 2: Point sampling for crisp UI
+				pixelSamplers[2] = m_PointSampler.Get();
+				break;
+
+			default:
+				// Slot 2: Anisotropic for 3D materials
+				pixelSamplers[2] = m_AnisotropicSampler.Get();
+				break;
+			}
+		}
+
+		// Bind samplers (bind at least slots 0 and 1)
+		RenderCommand::GetContext()->PSSetSamplers(0, 3, pixelSamplers);
+		RenderCommand::GetContext()->VSSetSamplers(0, 3, vertexSamplers);
 	}
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> SamplerManager::CreateSampler(const SamplerDesc& desc)
 	{
@@ -201,12 +240,12 @@ namespace DXEngine {
 		desc.addressV = addressMode;
 		desc.addressW = addressMode;
 
-		Initialized(desc);
+		Initialize(desc);
 	}
 	Sampler::~Sampler()
 	{
 	}
-	bool Sampler::Initialized(const SamplerDesc& desc)
+	bool Sampler::Initialize(const SamplerDesc& desc)
 	{
 		m_Description = desc;
 		m_SamplerState = SamplerManager::Instance().CreateSampler(desc);

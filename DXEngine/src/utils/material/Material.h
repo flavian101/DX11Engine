@@ -69,7 +69,6 @@ namespace DXEngine {
 		MaterialResources m_Resources;
 		ConstantBuffer<MaterialProperties> m_ConstantBuffer;
 		
-		Sampler m_Sampler;
 		bool m_ConstantBufferInitialized = false;
 		bool m_PropertiesDirty = true;
 	};

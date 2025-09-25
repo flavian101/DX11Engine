@@ -13,6 +13,7 @@
 #include <utils/UI/UIText.h>
 #include <DirectXCollision.h>
 #include "utils/Light.h"
+#include "utils/Sampler.h"
 
 
 namespace DXEngine {
@@ -137,6 +138,8 @@ namespace DXEngine {
     void Renderer::Init(HWND hwnd, int width, int height)
     {
         RenderCommand::Init(hwnd, width, height);
+        //Sampler
+        SamplerManager::Instance().Initialize();
 
         // Initialize ShaderManager
         s_ShaderManager = std::make_shared<ShaderManager>();
@@ -189,6 +192,8 @@ namespace DXEngine {
         s_UIQuadModel.reset();
         s_DefaultUIMaterial.reset();
         s_RenderStateStack.clear();
+
+        SamplerManager::Instance().Shutdown();
 
         RenderCommand::Shutdown();
 
@@ -1072,15 +1077,19 @@ namespace DXEngine {
     {
         if (!material)
         {
-            OutputDebugStringA("warning: Attempting to bind null material");
+            OutputDebugStringA("Warning: Attempting to bind null material\n");
             return;
         }
+
         if (material != s_CurrentMaterial)
         {
             material->Bind();
+
+            // Bind appropriate samplers for this material
+            SamplerManager::Instance().BindSamplersForMaterial(material.get());
+
             s_CurrentMaterial = material;
             s_Stats.materialsChanged++;
-
         }
     }
 
@@ -1386,7 +1395,6 @@ namespace DXEngine {
             s_DefaultUIMaterial->SetFlag(MaterialFlags::IsTwoSided, true);
             s_DefaultUIMaterial->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             s_DefaultUIMaterial->SetAlpha(1.0f);
-
 
             OutputDebugStringA("Default UI Material created successfully\n");
         }
