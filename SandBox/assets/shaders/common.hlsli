@@ -1,6 +1,27 @@
 #ifndef COMMON_HLSLI
 #define COMMON_HLSLI
 
+#ifndef HAS_DIFFUSE_TEXTURE
+#define HAS_DIFFUSE_TEXTURE 0
+#endif
+
+#ifndef HAS_NORMAL_MAP
+#define HAS_NORMAL_MAP 0
+#endif
+
+#ifndef HAS_SPECULAR_MAP
+#define HAS_SPECULAR_MAP 0
+#endif
+
+#ifndef HAS_EMISSIVE_MAP
+#define HAS_EMISSIVE_MAP 0
+#endif
+
+#ifndef HAS_ENVIRONMENT_MAP
+#define HAS_ENVIRONMENT_MAP 0
+#endif
+
+// Vertex attribute features (set by vertex layout analysis)
 #ifndef HAS_TANGENT_ATTRIBUTE
 #define HAS_TANGENT_ATTRIBUTE 0
 #endif
@@ -17,13 +38,32 @@
 #define HAS_SKINNING_ATTRIBUTES 0
 #endif
 
+// Rendering features (set by material type and flags)
+#ifndef ENABLE_SHADOWS
+#define ENABLE_SHADOWS 0
+#endif
+
+#ifndef ENABLE_FOG
+#define ENABLE_FOG 0
+#endif
+
+#ifndef ENABLE_INSTANCING
+#define ENABLE_INSTANCING 0
+#endif
+
+#ifndef ENABLE_ALPHA_TEST
+#define ENABLE_ALPHA_TEST 0
+#endif
+
+#ifndef ENABLE_EMISSIVE
+#define ENABLE_EMISSIVE 0
+#endif
+
+// Custom vertex input override
 #ifndef CUSTOM_VERTEX_INPUT
 #define CUSTOM_VERTEX_INPUT 0
 #endif
 
-#ifndef ENABLE_SHADOWS
-#define ENABLE_SHADOWS 0
-#endif
 
 //Common constants
 static const float PI = 3.14159265359;
@@ -132,10 +172,25 @@ struct StandardVertexInput
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD;
+    float2 texCoord : TEXCOORD0;
+    
+#if HAS_TANGENT_ATTRIBUTE
     float4 tangent : TANGENT;
-};
+#endif
 
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    float4 color : COLOR0;
+#endif
+
+#if HAS_SECOND_UV_ATTRIBUTE
+    float2 texCoord1 : TEXCOORD1;
+#endif
+
+#if HAS_SKINNING_ATTRIBUTES
+    uint4 blendIndices : BLENDINDICES;
+    float4 blendWeights : BLENDWEIGHT;
+#endif
+};
 struct StandardVertexOutput
 {
     float4 position : SV_POSITION;
@@ -184,18 +239,34 @@ struct UIVertexOutput
 };
 
 // === TEXTURE BINDINGS ===
+#if HAS_DIFFUSE_TEXTURE
 Texture2D diffuseTexture : register(t0);
+#endif
+
+#if HAS_NORMAL_MAP
 Texture2D normalTexture : register(t1);
+#endif
+
+#if HAS_SPECULAR_MAP
 Texture2D specularTexture : register(t2);
+#endif
+
+#if HAS_EMISSIVE_MAP
 Texture2D emissiveTexture : register(t3);
+#endif
+
+#if HAS_ENVIRONMENT_MAP
 TextureCube environmentTexture : register(t4);
+#endif
+
+#if ENABLE_SHADOWS
 Texture2DArray shadowMaps : register(t5);
+SamplerComparisonState shadowSampler : register(s1);
+#endif
+
 
 SamplerState standardSampler : register(s0);
 
-#ifdef ENABLE_SHADOWS
-SamplerComparisonState shadowSampler : register(s1);
-#endif
 
 // Utility Functions 
 float3 GetScaledTexCoord(float2 uv)
@@ -204,82 +275,60 @@ float3 GetScaledTexCoord(float2 uv)
 }
 float4 SampleDiffuseTexture(float2 uv)
 {
-    if(flags & HAS_DIFFUSE_TEXTURE_FLAG)
-    {
-        float2 scaledUV = uv * textureScale + textureOffset;
-        return diffuseTexture.Sample(standardSampler, scaledUV);
-    }
-    return float4(1.0, 1.0, 1.0, 1.0);
-}
-
-float4 SampleDiffuseTextureMultiUV(StandardVertexOutput input)
-{
-    if (!(flags & HAS_DIFFUSE_TEXTURE_FLAG))
-    {
-        return float4(1.0, 1.0, 1.0, 1.0);
-    }
-    
-    float2 uv = input.texCoord * textureScale + textureOffset;
-    
-#if HAS_SECOND_UV_ATTRIBUTE
-    // You could blend between UV sets or use different channels
-    float2 uv2 = input.texCoord1 * textureScale + textureOffset;
-    float4 sample1 = diffuseTexture.Sample(standardSampler, uv);
-    float4 sample2 = diffuseTexture.Sample(standardSampler, uv2);
-    return lerp(sample1, sample2, 0.5); // Blend both UV sets
+#if HAS_DIFFUSE_TEXTURE
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return diffuseTexture.Sample(standardSampler, scaledUV);
 #else
-    return diffuseTexture.Sample(standardSampler, uv);
+    return float4(1.0, 1.0, 1.0, 1.0);
 #endif
+
 }
 
 float3 SampleNormalMap(float2 uv)
 {
-    if (flags & HAS_NORMAL_MAP_FLAG)
-    {
-        float2 scaledUV = uv * textureScale + textureOffset;
-        float3 normal = normalTexture.Sample(standardSampler, scaledUV);
-        return normalize(normal * 2.0 - 1.0);
-    }
-    return float3(0.0, 0.0, 0.0);
+#if HAS_NORMAL_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    float3 normal = normalTexture.Sample(standardSampler, scaledUV).rgb;
+    return normalize(normal * 2.0 - 1.0);
+#else
+    return float3(0.0, 0.0, 1.0); // Default normal
+#endif
 }
 
 float3 SampleSpecularMap(float2 uv)
 {
-    if (flags & HAS_SPECULAR_MAP_FLAG)
-    {
-        float2 scaledUV = uv * textureScale + textureOffset;
-        return specularTexture.Sample(standardSampler, scaledUV);
-    }
+#if HAS_SPECULAR_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return specularTexture.Sample(standardSampler, scaledUV).rgb;
+#else
     return float3(1.0, 1.0, 1.0);
+#endif
 }
 
 float3 SampleEmissiveMap(float2 uv)
 {
-    if (flags & HAS_EMISSIVE_MAP_FLAG)
-    {
-        float2 scaledUV = uv * textureScale + textureOffset;
-        return emissiveTexture.Sample(standardSampler, scaledUV).rgb;
-    }
+#if HAS_EMISSIVE_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return emissiveTexture.Sample(standardSampler, scaledUV).rgb;
+#else
     return float3(0.0, 0.0, 0.0);
+#endif
 }
-
 
 //Normal Mappings
 
 float3 CalculateWorldNormal(float3 vertexNormal, float4 tangent, float3 normalMapSample)
 {
-    if (!(flags & HAS_NORMAL_MAP_FLAG))
-    {
-        return normalize(vertexNormal);
-    }
-    
+#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE
     float3 N = normalize(vertexNormal);
     float3 T = normalize(tangent.xyz);
     float3 B = normalize(cross(N, T) * tangent.w);
     
     float3x3 TBN = float3x3(T, B, N);
-    
     return normalize(mul(normalMapSample, TBN));
+#else
+    return normalize(vertexNormal);
+#endif
 }
 
 float3 CalculateWorldNormalFallback(float3 vertexNormal, float3 normalMapSample)
@@ -297,10 +346,16 @@ float3 CalculateWorldNormalFallback(float3 vertexNormal, float3 normalMapSample)
 // Safe normal calculation that works with or without tangents
 float3 GetWorldNormal(StandardVertexOutput input, float3 normalSample)
 {
-#if HAS_TANGENT_ATTRIBUTE
+#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE
+    float3 normalSample = SampleNormalMap(input.texCoord);
     return CalculateWorldNormal(input.normal, input.tangent, normalSample);
+#elif HAS_NORMAL_MAP
+    // Fallback: simple normal perturbation without tangent space
+    float3 normalSample = SampleNormalMap(input.texCoord);
+    float3 N = normalize(input.normal);
+    return normalize(N + normalSample * 0.1);
 #else
-    return CalculateWorldNormalFallback(input.normal, normalSample);
+    return normalize(input.normal);
 #endif
 }
 
@@ -353,7 +408,7 @@ float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 //Shadow Sampling 
 float SampleShadowMap(float4 shadowPos, int shadowMapIndex)
 {
-#ifdef ENABLE_SHADOWS
+#if ENABLE_SHADOWS
     if (shadowMapIndex < 0)
         return 1.0;
     
@@ -386,13 +441,14 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
     
-    //shadow calculation
     float shadow = 1.0;
+#if ENABLE_SHADOWS
     if (light.shadowMapIndex >= 0 && (flags & RECEIVES_SHADOWS_FLAG))
     {
         float4 shadowPos = mul(worldPos, light.shadowMatrices[0]);
-        shadow = SampleShadowMap(shadowPos, (int) light.shadowMapIndex);
+        shadow = SampleShadowMap(shadowPos, (int)light.shadowMapIndex);
     }
+#endif
     
     //BRDF calculation
     float3 radiance = light.color * light.intensity;
@@ -529,36 +585,67 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     
     output.position = mul(float4(input.position, 1.0), WVP);
     output.worldPos = mul(float4(input.position, 1.0), Model);
-    output.normal = mul(input.normal, (float3x3) Model);
+    output.normal = mul(input.normal, (float3x3)Model);
+    output.texCoord = input.texCoord;
     
 #if HAS_TANGENT_ATTRIBUTE
     output.tangent = float4(mul(input.tangent.xyz, (float3x3)Model), input.tangent.w);
 #endif
 
-    output.texCoord = input.texCoord;
-    
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     output.color = input.color;
 #endif
-    
+
+#if HAS_SECOND_UV_ATTRIBUTE
+    output.texCoord1 = input.texCoord1;
+#endif
+
     output.viewDir = CameraPosition - output.worldPos.xyz;
     output.time = Time;
+    
+#if ENABLE_SHADOWS
+    // Calculate shadow position if shadows are enabled
+    output.shadowPos = output.worldPos; // Simplified - you'd use proper shadow matrix
+#endif
+
+#if HAS_SKINNING_ATTRIBUTES
+    // Apply skinning transformations
+    float4 skinnedPos = float4(0, 0, 0, 0);
+    float3 skinnedNormal = float3(0, 0, 0);
+    
+    [unroll]
+    for (int i = 0; i < 4; ++i)
+    {
+        float weight = input.blendWeights[i];
+        if (weight > 0.0)
+        {
+            uint boneIndex = input.blendIndices[i];
+            // Apply bone transformation (you'd have bone matrices in a constant buffer)
+            // skinnedPos += weight * mul(float4(input.position, 1.0), BoneMatrices[boneIndex]);
+            // skinnedNormal += weight * mul(input.normal, (float3x3)BoneMatrices[boneIndex]);
+        }
+    }
+    
+    // Use skinned position/normal instead of input ones
+    // output.position = mul(skinnedPos, WVP);
+    // output.normal = normalize(skinnedNormal);
+#endif
     
     return output;
 }
 
-// Debug visualization functions
-#ifdef SHADER_DEBUG
-float4 DebugVertexAttributes(StandardVertexOutput input)
-{
-#if HAS_VERTEX_COLOR_ATTRIBUTE
-    return input.color; // Show vertex colors
-#elif HAS_TANGENT_ATTRIBUTE
-    return float4(input.tangent.xyz * 0.5 + 0.5, 1.0); // Show tangents
-#else
-    return float4(input.normal * 0.5 + 0.5, 1.0); // Show normals
-#endif
-}
-#endif
+//// Debug visualization functions
+//#ifdef SHADER_DEBUG
+//float4 DebugVertexAttributes(StandardVertexOutput input)
+//{
+//#if HAS_VERTEX_COLOR_ATTRIBUTE
+//    return input.color; // Show vertex colors
+//#elif HAS_TANGENT_ATTRIBUTE
+//    return float4(input.tangent.xyz * 0.5 + 0.5, 1.0); // Show tangents
+//#else
+//    return float4(input.normal * 0.5 + 0.5, 1.0); // Show normals
+//#endif
+//}
+//#endif
 
 #endif

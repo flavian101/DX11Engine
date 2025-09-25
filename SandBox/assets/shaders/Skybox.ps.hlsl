@@ -8,9 +8,11 @@ struct SkyboxPixelInput
 
 float4 main(SkyboxPixelInput input) : SV_Target
 {
+    float4 skyColor = (0.2, 0.2, 0.2, 1.0);
+#if HAS_ENVIRONMENT_MAP
     // Sample the cubemap using the 3D texture coordinates
     float4 skyColor = environmentTexture.Sample(standardSampler, input.texCoord);
-    
+#endif
     // Modulate with material color (useful for tinting)
     skyColor *= diffuseColor;
     

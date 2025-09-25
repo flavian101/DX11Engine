@@ -4,21 +4,9 @@
 #include <string>
 #include <memory>
 #include <utils/material/MaterialTypes.h>
-#include "ShaderVariant.h"
+#include "ShaderVariantManager.h"
 
 namespace DXEngine {
-	struct ShaderConfig
-	{
-		std::string vertexShaderPath;
-		std::string pixelShaderPath;
-		std::string name;
-		MaterialType materialType;
-
-		ShaderConfig() = default;
-		ShaderConfig(const std::string& vsPath, const std::string& psPath,const std::string& shaderName, MaterialType type = MaterialType::Lit)
-			:vertexShaderPath(vsPath), pixelShaderPath(psPath), name(shaderName), materialType(type)
-		{}
-	};
 
 	class ShaderManager
 	{
@@ -28,52 +16,64 @@ namespace DXEngine {
 
 		void Initialize();
 		void Shutdown();
+		void Update();
 
 		//shader managment
 		std::shared_ptr<ShaderProgram> GetShader(MaterialType materialType);
 		std::shared_ptr<ShaderProgram> GetShader(const std::string& name);
 
-		bool LoadShader(const ShaderConfig& config);
-		bool ReloadShader(const std::string& name);
-		void ReloadAllShaders();
-
-		//shader registration for diffrent material types
-		void RegisterShaderForMaterialType(MaterialType type, const std::string& shaderName);
-
-
-		bool IsShaderLoaded(const std::string& name) const;
-		std::string GetShaderInfo()const;
-
-		void EnableHotReload(bool enable) { m_HotReloadEnabled = enable; };
-		void CheckForShaderChanges();
-
-
+		// Enhanced interface for mesh-specific variants
 		std::shared_ptr<ShaderProgram> GetShaderForMesh(
 			const VertexLayout& layout,
 			const Material* material,
-			MaterialType materialType);
+			MaterialType materialType
+		);
 
-	private:
-		void LoadDefaultShaders();
-		void CreateDefaultShaderConfigs();
-		std::wstring StringToWString(const std::string& str);
-		//variant
+
+		// Configuration
+		void EnableHotReload(bool enable);
 		void EnableDynamicVariants(bool enable) { m_DynamicVariantsEnabled = enable; }
 		bool IsDynamicVariantsEnabled() const { return m_DynamicVariantsEnabled; }
 
+		// Cache management
+		void ClearShaderCache();
+		void PrecompileCommonShaders();
+
+		// Debug and info
+		bool IsShaderLoaded(const std::string& name) const;
+		std::string GetShaderInfo() const;
+		std::string GetDebugInfo() const;
+
+		// Legacy compatibility methods (deprecated but functional)
+		[[deprecated("Use GetShaderForMesh with VertexLayout instead")]]
+		bool LoadShader(const std::string& name) { return true; } // No-op for compatibility
+
+		[[deprecated("Use ClearShaderCache instead")]]
+		bool ReloadShader(const std::string& name);
+
+		[[deprecated("Use ClearShaderCache instead")]]
+		void ReloadAllShaders();
+
 
 	private:
-		std::unordered_map<std::string, std::shared_ptr<ShaderProgram>> m_Shaders;
+		void InitializeVariantSystem();
+		void CreateDefaultMaterialTypeMappings();
+		std::shared_ptr<ShaderProgram> GetFallbackShader();
+
+
+	private:
+		bool m_Initialized = false;
+		bool m_DynamicVariantsEnabled = true;
+		std::string m_DefaultShaderName = "Lit";
+
+		// Material type to shader name mapping (for backward compatibility)
 		std::unordered_map<MaterialType, std::string> m_MaterialTypeToShader;
-		std::unordered_map<std::string, ShaderConfig> m_ShaderConfigs;
-		std::string m_DefaultShaderName;
 
-		//hotreaload
-		bool m_HotReloadEnabled = false;
-		std::unordered_map<std::string, uint64_t> m_ShaderFileTimestamps;
+		// Default vertex layout for compatibility mode
+		VertexLayout m_DefaultLayout;
 
-		//variant
-		bool m_DynamicVariantsEnabled = true;	
+		// Reference to the variant manager
+		ShaderVariantManager* m_VariantManager;
 	};
 
 	class ShaderManagerSingleton

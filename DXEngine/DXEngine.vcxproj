@@ -109,7 +109,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\shaders\ShaderVariant.h" />
+    <ClInclude Include="src\shaders\ShaderVariantManager.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Ball.h" />
     <ClInclude Include="src\Core\Input.h" />
@@ -178,7 +178,7 @@
     <ClInclude Include="src\windows\WindowsInput.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\shaders\ShaderVariant.cpp" />
+    <ClCompile Include="src\shaders\ShaderVariantManager.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Ball.cpp" />
     <ClCompile Include="src\Core\Input.cpp" />

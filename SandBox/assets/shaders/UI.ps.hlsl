@@ -5,11 +5,10 @@ float4 main(UIVertexOutput input) : SV_Target
     float4 finalColor = diffuseColor;
     
     // Sample diffuse texture if available
-    if (flags & HAS_DIFFUSE_TEXTURE_FLAG)
-    {
+#if HAS_DIFFUSE_TEXTURE
         float4 texColor = diffuseTexture.Sample(standardSampler, input.texCoord);
         finalColor *= texColor;
-    }
+#endif
     
     // UI elements can have vertex colors too
 #if HAS_VERTEX_COLOR_ATTRIBUTE

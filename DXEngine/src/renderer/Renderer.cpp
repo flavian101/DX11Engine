@@ -231,7 +231,7 @@ namespace DXEngine {
 #ifdef _DEBUG
         if (s_ShaderManager)
         {
-            s_ShaderManager->CheckForShaderChanges();
+            s_ShaderManager->CheckForShaderChanges;
         }
 #endif
     }
