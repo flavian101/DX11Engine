@@ -23,7 +23,7 @@ namespace DXEngine {
 
         auto skyTexture = std::make_shared<CubeMapTexture>(skyFilenames);
         skyMaterial->SetEnvironmentTexture(skyTexture);
-        skyMaterial->SetEmissiveColor({ 0.01f, 0.01f, 0.05f, 0.4f });
+       // skyMaterial->SetEmissiveColor({ 0.01f, 0.01f, 0.05f, 0.4f });
 
          // Create large sphere for skybox
         float radius = 50.0f; // Large radius for sky dome

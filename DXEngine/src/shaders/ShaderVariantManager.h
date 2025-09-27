@@ -25,23 +25,25 @@ namespace DXEngine
         HasEnvironmentMap = 4,
 
         // Vertex attribute features
-        HasTangent = 8,
-        HasVertexColor = 9,
-        HasBlendWeights = 10,
-        HasBlendIndices = 11,
-        HasSecondUV = 12,
+        HasTexcoords =8,
+        HasNormals = 9,
+        HasTangent = 10,
+        HasVertexColor = 11,
+        HasBlendWeights = 12,
+        HasBlendIndices = 13,
+        HasSecondUV = 14,
 
         // Rendering features
-        EnableShadows = 16,
-        EnableFog = 17,
-        EnableInstancing = 18,
-        EnableAlphaTest = 19,
-        EnableEmissive = 20,
+        EnableShadows = 15,
+        EnableFog = 16,
+        EnableInstancing = 17,
+        EnableAlphaTest = 18,
+        EnableEmissive = 19,
 
         // Advanced features
-        EnableParallaxMapping = 24,
-        EnableSubsurfaceScattering = 25,
-        EnableDetailMapping = 26,
+        EnableParallaxMapping = 20,
+        EnableSubsurfaceScattering = 21,
+        EnableDetailMapping = 22,
 
         MaxFeatures = 32
     };

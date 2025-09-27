@@ -22,6 +22,14 @@
 #endif
 
 // Vertex attribute features (set by vertex layout analysis)
+#ifndef HAS_NORMAL_ATTRIBUTE
+#define HAS_NORMAL_ATTRIBUTE 1 
+#endif
+
+#ifndef HAS_TEXCOORDS_ATTRIBUTE
+#define HAS_TEXCOORDS_ATTRIBUTE 1 
+#endif
+
 #ifndef HAS_TANGENT_ATTRIBUTE
 #define HAS_TANGENT_ATTRIBUTE 0
 #endif
@@ -64,7 +72,6 @@
 #define CUSTOM_VERTEX_INPUT 0
 #endif
 
-
 //Common constants
 static const float PI = 3.14159265359;
 static const float TWO_PI = 6.28318530718;
@@ -87,7 +94,7 @@ cbuffer TransformBuffer : register(b0)
     float Time;
 };
 
-cbuffer MaterialBufferData : register(b1)
+cbuffer MaterialBufferData : register(b2)
 {
     float4 diffuseColor;
     float4 specularColor;
@@ -102,8 +109,8 @@ cbuffer MaterialBufferData : register(b1)
     float3 padding;
 };
 
-// Enhanced Scene Lighting buffer (register b7)
-cbuffer SceneLightData : register(b7)
+// Enhanced Scene Lighting buffer
+cbuffer SceneLightData : register(b3)
 {
     // Light counts
     uint directionalLightCount;
@@ -157,7 +164,7 @@ cbuffer SceneLightData : register(b7)
     } spotLights[32];
 };
 
-cbuffer UIBuffer : register(b5)
+cbuffer UIBuffer : register(b4)
 {
     float4x4 uiProjection;
     float screenWidth;
@@ -171,8 +178,13 @@ cbuffer UIBuffer : register(b5)
 struct StandardVertexInput
 {
     float3 position : POSITION;
+#if HAS_NORMAL_ATTRIBUTE
     float3 normal : NORMAL;
+#endif
+    
+#if HAS_TEXCOORDS_ATTRIBUTE
     float2 texCoord : TEXCOORD0;
+#endif
     
 #if HAS_TANGENT_ATTRIBUTE
     float4 tangent : TANGENT;
@@ -191,18 +203,20 @@ struct StandardVertexInput
     float4 blendWeights : BLENDWEIGHT;
 #endif
 };
+
 struct StandardVertexOutput
 {
     float4 position : SV_POSITION;
     float4 worldPos : POSITION;
+#if HAS_NORMAL_ATTRIBUTE
     float3 normal : NORMAL;
-    
+#endif
 #if HAS_TANGENT_ATTRIBUTE
     float4 tangent : TANGENT;
 #endif
-
+#if HAS_TEXCOORDS_ATTRIBUTE
     float2 texCoord : TEXCOORD;
-    
+#endif
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     float4 color : COLOR;
 #endif
@@ -210,32 +224,42 @@ struct StandardVertexOutput
     float3 viewDir : VIEWDIR;
     float time : TIME;
 };
+
 //(Unlit, basic Lit,...)
 struct BasicVertexInput
 {
     float3 position : POSITION;
+#if HAS_NORMAL_ATTRIBUTE
     float3 normal : NORMAL;
+#endif
+#if HAS_TEXCOORDS_ATTRIBUTE
     float2 texCoord : TEXCOORD;
+#endif
 };
 
 struct UIVertexInput
 {
     float3 position : POSITION;
+#if HAS_TEXCOORDS_ATTRIBUTE
     float2 texCoord : TEXCOORD;
+#endif
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     float4 color : COLOR;
 #endif
+#if HAS_NORMAL_ATTRIBUTE
     float3 normal : NORMAL;
+#endif
 };
 
 struct UIVertexOutput
 {
     float4 position : SV_POSITION;
+#if HAS_TEXCOORDS_ATTRIBUTE
     float2 texCoord : TEXCOORD;
+#endif
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     float4 color : COLOR;
 #endif
-
 };
 
 // === TEXTURE BINDINGS ===
@@ -245,21 +269,19 @@ Texture2D specularTexture : register(t2);
 Texture2D emissiveTexture : register(t3);
 TextureCube environmentTexture : register(t4);
 
+SamplerState standardSampler : register(s0);
 
 #if ENABLE_SHADOWS
 Texture2DArray shadowMaps : register(t5);
 SamplerComparisonState shadowSampler : register(s1);
 #endif
 
-
-SamplerState standardSampler : register(s0);
-
-
 // Utility Functions 
 float3 GetScaledTexCoord(float2 uv)
 {
     return float3(uv * textureScale * textureOffset, 0.0);
 }
+
 float4 SampleDiffuseTexture(float2 uv)
 {
 #if HAS_DIFFUSE_TEXTURE
@@ -332,22 +354,30 @@ float3 CalculateWorldNormalFallback(float3 vertexNormal, float3 normalMapSample)
 // Safe normal calculation that works with or without tangents
 float3 GetWorldNormal(StandardVertexOutput input, float3 normalSample)
 {
-#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE
+#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE && HAS_TEXCOORDS_ATTRIBUTE
     normalSample = SampleNormalMap(input.texCoord);
     return CalculateWorldNormal(input.normal, input.tangent, normalSample);
-#elif HAS_NORMAL_MAP
+#elif HAS_NORMAL_MAP && HAS_TEXCOORDS_ATTRIBUTE
     // Fallback: simple normal perturbation without tangent space
     normalSample = SampleNormalMap(input.texCoord);
+#if HAS_NORMAL_ATTRIBUTE
     float3 N = normalize(input.normal);
     return normalize(N + normalSample * 0.1);
 #else
+    return float3(0.0, 0.0, 1.0); // Default up normal
+#endif
+#else
+#if HAS_NORMAL_ATTRIBUTE
     return normalize(input.normal);
+#else
+    return float3(0.0, 0.0, 1.0); // Default up normal
+#endif
 #endif
 }
 
-///pbr BRDF funtions
+///pbr BRDF functions
 
-float DistributionGGX(float3 N, float H, float roughness)
+float DistributionGGX(float3 N, float3 H, float roughness)
 {
     float a = roughness * roughness;
     float a2 = a * a;
@@ -360,6 +390,7 @@ float DistributionGGX(float3 N, float H, float roughness)
     
     return num / max(denom, EPSILON);
 }
+
 float GeometrySchlickGXX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
@@ -370,7 +401,7 @@ float GeometrySchlickGXX(float NdotV, float roughness)
     return num / max(denom, EPSILON);
 }
 
-float GeometrySmith(float N, float V, float3 L, float roughness)
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
@@ -419,9 +450,9 @@ float SampleShadowMap(float4 shadowPos, int shadowMapIndex)
 //lighting calculation
 
 float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, float3 albedo, float metallicValue, float roughnessValue,
-                                float F0, float4 worldPos)
+                                float3 F0, float4 worldPos)
 {
-    if(light.intensity<= 0.0)
+    if (light.intensity <= 0.0)
         return float3(0, 0, 0);
     
     float3 L = normalize(-light.direction);
@@ -456,13 +487,13 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + EPSILON;
     float3 specular = numerator / denominator;
     
-    return (kD * albedo / PI + specular) * radiance * NdotL * shadow;  
+    return (kD * albedo / PI + specular) * radiance * NdotL * shadow;
 }
 
 float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float3 V,
                            float3 albedo, float metallicValue, float roughnessValue, float3 F0)
 {
-    if (light.intensity >= 0.0)
+    if (light.intensity <= 0.0)
         return float3(0, 0, 0);
     
     float3 L = light.position - worldPos;
@@ -498,7 +529,7 @@ float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float
     float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + EPSILON;
     float3 specular = numerator / denominator;
     
-    return (kD * albedo / PI + specular) * radiance * NdotL;  
+    return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
 float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 V,
@@ -542,7 +573,7 @@ float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 
     // BRDF calculation
     float NDF = DistributionGGX(N, H, roughnessValue);
     float G = GeometrySmith(N, V, L, roughnessValue);
-    float F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
     
     float3 kS = F;
     float3 kD = float3(1.0, 1.0, 1.0) - kS;
@@ -561,13 +592,17 @@ float3 ToneMapReinhard(float3 color)
 {
     return color / (color + float3(1.0, 1.0, 1.0));
 }
+
 float3 ToneMapExposure(float3 color, float exposure)
 {
-    return float3(1.0, 1.0, 1.0) - exp(-color * exposure);
+    // Simple exposure adjustment
+    float3 mapped = 1.0f - exp(-color * exposure);
+    return saturate(mapped);
 }
-float ApplyGamma(float3 color, float gamma)
+
+float3 ApplyGamma(float3 color, float gamma)
 {
-    return pow(abs(color), float3(1.0 / gamma, 1.0 / gamma, 1.0 / gamma));
+    return pow(saturate(color), 1.0f / gamma);
 }
 
 StandardVertexOutput StandardVertexShader(StandardVertexInput input)
@@ -576,8 +611,14 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     
     output.position = mul(float4(input.position, 1.0), WVP);
     output.worldPos = mul(float4(input.position, 1.0), Model);
-    output.normal = mul(input.normal, (float3x3)Model);
+
+#if HAS_NORMAL_ATTRIBUTE
+    output.normal = mul(input.normal, (float3x3) Model);
+#endif
+    
+#if HAS_TEXCOORDS_ATTRIBUTE
     output.texCoord = input.texCoord;
+#endif
     
 #if HAS_TANGENT_ATTRIBUTE
     output.tangent = float4(mul(input.tangent.xyz, (float3x3)Model), input.tangent.w);
@@ -619,19 +660,5 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     
     return output;
 }
-
-//// Debug visualization functions
-//#ifdef SHADER_DEBUG
-//float4 DebugVertexAttributes(StandardVertexOutput input)
-//{
-//#if HAS_VERTEX_COLOR_ATTRIBUTE
-//    return input.color; // Show vertex colors
-//#elif HAS_TANGENT_ATTRIBUTE
-//    return float4(input.tangent.xyz * 0.5 + 0.5, 1.0); // Show tangents
-//#else
-//    return float4(input.normal * 0.5 + 0.5, 1.0); // Show normals
-//#endif
-//}
-//#endif
 
 #endif

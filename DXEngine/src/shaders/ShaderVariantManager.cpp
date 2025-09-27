@@ -407,7 +407,10 @@ namespace DXEngine
 	ShaderFeatureFlags ShaderVariantManager::AnalyzeVertexLayout(const VertexLayout& layout)
 	{
 		ShaderFeatureFlags features;
-
+		if (layout.HasAttribute(VertexAttributeType::TexCoord0))
+			features.set(static_cast<size_t>(ShaderFeature::HasTexcoords));
+		if (layout.HasAttribute(VertexAttributeType::Normal))
+			features.set(static_cast<size_t>(ShaderFeature::HasNormals));
 		if (layout.HasAttribute(VertexAttributeType::Tangent))
 			features.set(static_cast<size_t>(ShaderFeature::HasTangent));
 		if (layout.HasAttribute(VertexAttributeType::Color0))
@@ -501,6 +504,10 @@ namespace DXEngine
 			defines << "#define HAS_ENVIRONMENT_MAP 1\n";
 
 		// Vertex attribute features
+		if (features.test(static_cast<size_t>(ShaderFeature::HasTexcoords)))
+			defines << "#define HAS_TEXCOORDS_ATTRIBUTE 1\n";
+		if (features.test(static_cast<size_t>(ShaderFeature::HasNormals)))
+			defines << "#define HAS_NORMAL_ATTRIBUTE 1\n";
 		if (features.test(static_cast<size_t>(ShaderFeature::HasTangent)))
 			defines << "#define HAS_TANGENT_ATTRIBUTE 1\n";
 		if (features.test(static_cast<size_t>(ShaderFeature::HasVertexColor)))
@@ -653,6 +660,8 @@ namespace DXEngine
 			if (HasFeature(flags, ShaderFeature::HasEmissiveMap)) featureNames.push_back("EmissiveMap");
 			if (HasFeature(flags, ShaderFeature::HasEnvironmentMap)) featureNames.push_back("EnvMap");
 
+			if (HasFeature(flags, ShaderFeature::HasTexcoords)) featureNames.push_back("TexCoords");
+			if (HasFeature(flags, ShaderFeature::HasNormals)) featureNames.push_back("Normals");
 			if (HasFeature(flags, ShaderFeature::HasTangent)) featureNames.push_back("Tangent");
 			if (HasFeature(flags, ShaderFeature::HasVertexColor)) featureNames.push_back("VertexColor");
 			if (HasFeature(flags, ShaderFeature::HasBlendWeights)) featureNames.push_back("Skinning");

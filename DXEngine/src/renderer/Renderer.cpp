@@ -1083,10 +1083,10 @@ namespace DXEngine {
 
         if (material != s_CurrentMaterial)
         {
-            material->Bind();
-
             // Bind appropriate samplers for this material
             SamplerManager::Instance().BindSamplersForMaterial(material.get());
+            material->Bind();
+
 
             s_CurrentMaterial = material;
             s_Stats.materialsChanged++;

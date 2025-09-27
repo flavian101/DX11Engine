@@ -79,7 +79,7 @@ namespace DXEngine {
         m_SceneData.ambientColor = { 0.4f,0.4f,0.4f };
         m_SceneData.ambientIntensity = 0.3f;
         m_SceneData.iblIntensity = 1.0f;
-        m_SceneData.exposure = 1.0f;
+        m_SceneData.exposure = 0.8f;
         m_SceneData.gamma = 2.2f;
 
         // Reserve space for lights

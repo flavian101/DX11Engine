@@ -99,7 +99,7 @@ namespace DXEngine {
 		PointLightGPU& GetGPUData() { return m_GPUData; }
 
 	private:
-		DirectX::XMFLOAT3 m_Position = { 0.0f, 0.0f, 0.0f };
+		DirectX::XMFLOAT3 m_Position = { 0.0f, 10.0f, 0.0f };
 		float m_Radius = 10.0f;
 		DirectX::XMFLOAT3 m_Attenuation = { 1.0f, 0.09f, 0.032f }; // Modern attenuation values
 		PointLightGPU m_GPUData;

@@ -61,16 +61,14 @@ namespace DXEngine {
 
 	void Application::Render()
 	{
-		FrameTime deltatime;
-		deltatime.Mark();
+		m_Deltatime.Mark();
 
-		Renderer::SetTime(deltatime);
-
+		Renderer::SetTime(m_Deltatime.Duration());
 		if (!m_Minimized)
 		{
 			for (Layer* layer : m_LayerStack)
 			{
-				layer->OnUpdate(deltatime);
+				layer->OnUpdate(m_Deltatime);
 			}
 		}
 		//m_ImGuiLayer->Begin();

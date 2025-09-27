@@ -43,6 +43,7 @@ namespace DXEngine {
 
 
 	private:
+		FrameTime m_Deltatime;
 		std::unique_ptr<Window> m_Window;
 		UILayer* m_UILayer;
 		bool m_Minimized = false;

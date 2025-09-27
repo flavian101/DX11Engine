@@ -3,24 +3,46 @@
 float4 main(StandardVertexOutput input) : SV_Target
 {
     // Normalize inputs that are always present
+#if HAS_NORMAL_ATTRIBUTE
     float3 N = normalize(input.normal);
+#else
+    float3 N = float3(0.0, 0.0, 1.0); // Default up normal
+#endif
+
     float3 V = normalize(input.viewDir);
     
     // ========================================================================
     // TEXTURE SAMPLING - Conditional based on available textures
     // ========================================================================
     
-    float4 diffuseSample = SampleDiffuseTexture(input.texCoord);
-    float3 normalSample = SampleNormalMap(input.texCoord);
-    float3 specularSample = SampleSpecularMap(input.texCoord);
-    float3 emissiveSample = SampleEmissiveMap(input.texCoord);
+    float4 diffuseSample = float4(1.0, 1.0, 1.0, 1.0);
+    float3 normalSample = float3(0.0, 0.0, 1.0);
+    float3 specularSample = float3(1.0, 1.0, 1.0);
+    float3 emissiveSample = float3(0.0, 0.0, 0.0);
+    
+#if HAS_TEXCOORDS_ATTRIBUTE
+    // Only sample textures if we have texture coordinates
+    diffuseSample = SampleDiffuseTexture(input.texCoord);
+    normalSample = SampleNormalMap(input.texCoord);
+    specularSample = SampleSpecularMap(input.texCoord);
+    emissiveSample = SampleEmissiveMap(input.texCoord);
+#endif
     
     // ========================================================================
     // NORMAL MAPPING - Conditional based on available data
     // ========================================================================
     
-    float3 worldNormal = GetWorldNormal(input, normalSample);
-    
+    float3 worldNormal;
+#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE && HAS_TEXCOORDS_ATTRIBUTE
+    // Full tangent space normal mapping
+    worldNormal = CalculateWorldNormal(N, input.tangent, normalSample);
+#elif HAS_NORMAL_MAP && HAS_TEXCOORDS_ATTRIBUTE && HAS_NORMAL_ATTRIBUTE
+    // Fallback: simple normal perturbation without tangent space
+    worldNormal = normalize(N + normalSample * 0.1);
+#else
+    // Use vertex normal or default
+    worldNormal = N;
+#endif    
     // ========================================================================
     // MATERIAL PROPERTIES - Enhanced with texture data
     // ========================================================================
@@ -37,7 +59,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     float metallicValue = metallic;
     float roughnessValue = roughness;
     
-#if HAS_SPECULAR_MAP
+#if HAS_SPECULAR_MAP && HAS_TEXCOORDS_ATTRIBUTE
     // Use specular map channels for PBR values if available
     metallicValue *= specularSample.b; // Blue channel = metallic
     roughnessValue *= specularSample.g; // Green channel = roughness
@@ -60,7 +82,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     float3 color = ambientColor * ambientIntensity * albedo;
     
     // Add emissive contribution if available
-#if HAS_EMISSIVE_MAP || ENABLE_EMISSIVE
+#if (HAS_EMISSIVE_MAP && HAS_TEXCOORDS_ATTRIBUTE) || ENABLE_EMISSIVE
     color += emissiveColor.rgb * emissiveSample;
 #endif
     
