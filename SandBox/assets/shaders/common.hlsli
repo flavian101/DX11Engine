@@ -215,12 +215,14 @@ struct StandardVertexOutput
     float4 tangent : TANGENT;
 #endif
 #if HAS_TEXCOORDS_ATTRIBUTE
-    float2 texCoord : TEXCOORD;
+    float2 texCoord : TEXCOORD0;
+#endif
+#if HAS_SECOND_UV_ATTRIBUTE
+    float2 texCoord1 : TEXCOORD1;  // ADD THIS
 #endif
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     float4 color : COLOR;
 #endif
-
     float3 viewDir : VIEWDIR;
     float time : TIME;
 };
@@ -292,17 +294,26 @@ float4 SampleDiffuseTexture(float2 uv)
 #endif
 }
 
+// Add validation in SampleNormalMap
 float3 SampleNormalMap(float2 uv)
 {
 #if HAS_NORMAL_MAP
     float2 scaledUV = uv * textureScale + textureOffset;
-    float3 normal = normalTexture.Sample(standardSampler, scaledUV).rgb;
-    return normalize(normal * 2.0 - 1.0);
+    float4 normalSample = normalTexture.Sample(standardSampler, scaledUV);
+    
+    // DEBUG: Check if texture is actually bound and valid
+    if (all(normalSample.rgb == float3(0, 0, 0)) || all(normalSample.rgb == float3(1, 1, 1)))
+    {
+        // Texture might not be bound or is invalid
+        return float3(0.0, 0.0, 1.0);
+    }
+    
+    float3 normal = normalSample.rgb * 2.0 - 1.0;
+    return length(normal) > EPSILON ? normalize(normal) : float3(0.0, 0.0, 1.0);
 #else
-    return float3(0.0, 0.0, 1.0); // Default normal
+    return float3(0.0, 0.0, 1.0);
 #endif
 }
-
 float3 SampleSpecularMap(float2 uv)
 {
 #if HAS_SPECULAR_MAP
@@ -328,51 +339,69 @@ float3 SampleEmissiveMap(float2 uv)
 float3 CalculateWorldNormal(float3 vertexNormal, float4 tangent, float3 normalMapSample)
 {
 #if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE
+    // Validate inputs
+    if (length(vertexNormal) < EPSILON || length(tangent.xyz) < EPSILON)
+        return float3(0.0, 0.0, 1.0);
+    
     float3 N = normalize(vertexNormal);
     float3 T = normalize(tangent.xyz);
-    float3 B = normalize(cross(N, T) * tangent.w);
+    
+    // Re-orthogonalize tangent (Gram-Schmidt process)
+    T = normalize(T - dot(T, N) * N);
+    
+    float3 B = cross(N, T) * tangent.w;
+    
+    // Validate TBN matrix determinant
+    float det = dot(cross(T, B), N);
+    if (abs(det) < EPSILON)
+        return N; // Fall back to vertex normal
     
     float3x3 TBN = float3x3(T, B, N);
-    return normalize(mul(normalMapSample, TBN));
-#else
-    return normalize(vertexNormal);
-#endif
-}
-
-float3 CalculateWorldNormalFallback(float3 vertexNormal, float3 normalMapSample)
-{
-    if (!(flags & HAS_NORMAL_MAP_FLAG))
-    {
-        return normalize(vertexNormal);
-    }
+    float3 result = mul(normalMapSample, TBN);
     
-    // Simple perturbation without proper tangent space
-    float3 N = normalize(vertexNormal);
-    return normalize(N + normalMapSample * 0.1);
+    return length(result) > EPSILON ? normalize(result) : N;
+#else
+    return length(vertexNormal) > EPSILON ? normalize(vertexNormal) : float3(0.0, 0.0, 1.0);
+#endif
 }
 
-// Safe normal calculation that works with or without tangents
-float3 GetWorldNormal(StandardVertexOutput input, float3 normalSample)
+float3 GetFinalWorldNormal(StandardVertexOutput input)
 {
-#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE && HAS_TEXCOORDS_ATTRIBUTE
-    normalSample = SampleNormalMap(input.texCoord);
-    return CalculateWorldNormal(input.normal, input.tangent, normalSample);
-#elif HAS_NORMAL_MAP && HAS_TEXCOORDS_ATTRIBUTE
-    // Fallback: simple normal perturbation without tangent space
-    normalSample = SampleNormalMap(input.texCoord);
+    float3 baseNormal = float3(0.0, 0.0, 1.0); // Default
+    
 #if HAS_NORMAL_ATTRIBUTE
-    float3 N = normalize(input.normal);
-    return normalize(N + normalSample * 0.1);
+    baseNormal = length(input.normal) > EPSILON ? normalize(input.normal) : baseNormal;
+#endif
+
+#if HAS_NORMAL_MAP && HAS_TEXCOORDS_ATTRIBUTE
+    float3 normalSample = SampleNormalMap(input.texCoord);
+    
+#if HAS_TANGENT_ATTRIBUTE
+        // Full tangent space normal mapping
+        return CalculateWorldNormal(baseNormal, input.tangent, normalSample);
 #else
-    return float3(0.0, 0.0, 1.0); // Default up normal
+        // Fallback: Use detail normal mapping technique
+        return ApplyDetailNormal(baseNormal, normalSample, input.worldPos.xyz);
 #endif
 #else
-#if HAS_NORMAL_ATTRIBUTE
-    return normalize(input.normal);
-#else
-    return float3(0.0, 0.0, 1.0); // Default up normal
+    return baseNormal;
 #endif
-#endif
+}
+
+float3 ApplyDetailNormal(float3 vertexNormal, float3 normalMapSample, float3 worldPos)
+{
+    // Use world position to generate fake tangent space
+    float3 dp1 = ddx(worldPos);
+    float3 dp2 = ddy(worldPos);
+    float3 N = normalize(vertexNormal);
+    
+    // Generate tangent vectors from position derivatives
+    float3 T = normalize(dp1 - dot(dp1, N) * N);
+    float3 B = normalize(cross(N, T));
+    
+    // Apply normal map
+    float3x3 TBN = float3x3(T, B, N);
+    return normalize(mul(normalMapSample, TBN));
 }
 
 ///pbr BRDF functions
@@ -413,7 +442,12 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 
 float3 FresnelSchlick(float cosTheta, float3 F0)
 {
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+    float oneMinusCosTheta = saturate(1.0 - cosTheta);
+    float oneMinusCosThetaPow5 = oneMinusCosTheta * oneMinusCosTheta;
+    oneMinusCosThetaPow5 *= oneMinusCosThetaPow5;
+    oneMinusCosThetaPow5 *= oneMinusCosTheta;
+    
+    return F0 + (1.0 - F0) * oneMinusCosThetaPow5;
 }
 
 float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
@@ -501,6 +535,9 @@ float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float
     
     L /= distance;
     float3 H = normalize(V + L);
+    
+    if (distance > light.radius)
+        return float3(0, 0, 0);
     
     float NdotL = max(dot(N, L), 0.0);
     if (NdotL <= 0.0)
@@ -618,6 +655,9 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     
 #if HAS_TEXCOORDS_ATTRIBUTE
     output.texCoord = input.texCoord;
+#endif
+#if HAS_SECOND_UV_ATTRIBUTE
+    output.texCoord1 = input.texCoord1; 
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE

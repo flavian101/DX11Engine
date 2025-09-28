@@ -171,10 +171,11 @@ namespace DXEngine {
             sunLight->SetDirection({ 0.3f,-0.8,0.2 });
             sunLight->SetColor({ 1.0f, 0.95f, 0.8f });
             sunLight->SetIntensity(3.0f);
-            sunLight->SetCastShadows(true);
+            sunLight->SetCastShadows(false);
         }
         // Set default ambient
         s_LightManager->SetAmbientLight({ 0.2f, 0.25f, 0.3f }, 0.1f);
+        s_LightManager->SetExposure(0.4f);
 
     }
 

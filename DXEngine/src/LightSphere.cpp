@@ -15,8 +15,8 @@ namespace DXEngine {
 
         auto emissiveMaterial = MaterialFactory::CreateEmissiveMaterial("LightSphere");
 
-       //emissiveMaterial->SetEmissiveColor(m_LightGetLightColor());
-       //emissiveMaterial->SetDiffuseColor(m_Light->GetLightColor());
+       emissiveMaterial->SetEmissiveColor({1.0f,0.5f,1.0f,1.0f});
+       emissiveMaterial->SetDiffuseColor({1.0f,1.0f,1.0f,1.0f});
 
         GetMesh()->SetMaterial(emissiveMaterial);
     }

@@ -34,7 +34,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     float3 worldNormal;
 #if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE && HAS_TEXCOORDS_ATTRIBUTE
     // Full tangent space normal mapping
-    worldNormal = CalculateWorldNormal(N, input.tangent, normalSample);
+    worldNormal = GetFinalWorldNormal(input);
 #elif HAS_NORMAL_MAP && HAS_TEXCOORDS_ATTRIBUTE && HAS_NORMAL_ATTRIBUTE
     // Fallback: simple normal perturbation without tangent space
     worldNormal = normalize(N + normalSample * 0.1);
@@ -58,7 +58,6 @@ float4 main(StandardVertexOutput input) : SV_Target
     float roughnessValue = max(roughness, MIN_ROUGHNESS);
     
 #if HAS_SPECULAR_MAP && HAS_TEXCOORDS_ATTRIBUTE
-    float3 specularSample = SampleSpecularMap(input.texCoord);
     metallicValue *= specularSample.b;
     roughnessValue *= specularSample.g;
 #endif

@@ -13,7 +13,7 @@ namespace DXEngine
 	{
 		DirectX::XMFLOAT4 diffuseColor = { 1.0f,1.0f,1.0f,1.0f };
 		DirectX::XMFLOAT4 specularColor = { 1.0f,1.0f,1.0f,1.0f };
-		DirectX::XMFLOAT4 emissiveColor = { 0.0f,0.0f,0.0f,0.0f };
+		DirectX::XMFLOAT4 emissiveColor = { 0.0f,0.0f,0.0f,1.0f };
 
 		float shininess = 32.0f;
 		float meatallic = 0.0f;

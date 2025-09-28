@@ -94,7 +94,6 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_LionHead));
 	}
 
-
 	auto button = std::make_shared<DXEngine::UIButton>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));
 	button->SetNormalColor(DXEngine::UIColor::UIColor(0.3f, 0.3f, 0.8f, 0.5f));
 	// Submit to renderer
