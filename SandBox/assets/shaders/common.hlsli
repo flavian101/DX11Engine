@@ -21,13 +21,50 @@
 #define HAS_ENVIRONMENT_MAP 0
 #endif
 
+#ifndef HAS_ROUGHNESS_MAP
+#define HAS_ROUGHNESS_MAP 0
+#endif
+
+#ifndef HAS_METALLIC_MAP
+#define HAS_METALLIC_MAP 0
+#endif
+
+#ifndef HAS_AO_MAP
+#define HAS_AO_MAP 0
+#endif
+
+#ifndef HAS_HEIGHT_MAP
+#define HAS_HEIGHT_MAP 0
+#endif
+
+#ifndef HAS_OPACITY_MAP
+#define HAS_OPACITY_MAP 0
+#endif
+
+#ifndef HAS_DETAIL_DIFFUSE_MAP
+#define HAS_DETAIL_DIFFUSE_MAP 0
+#endif
+
+#ifndef HAS_DETAIL_NORMAL_MAP
+#define HAS_DETAIL_NORMAL_MAP 0
+#endif
+
+#ifndef HAS_DETAIL_TEXTURES
+#define HAS_DETAIL_TEXTURES 0
+#endif
+
+// ========== ADD THIS NEW RENDERING FEATURE ==========
+#ifndef ENABLE_PARALLAX_MAPPING
+#define ENABLE_PARALLAX_MAPPING 0
+#endif
+
 // Vertex attribute features (set by vertex layout analysis)
 #ifndef HAS_NORMAL_ATTRIBUTE
-#define HAS_NORMAL_ATTRIBUTE 1 
+#define HAS_NORMAL_ATTRIBUTE 0 
 #endif
 
 #ifndef HAS_TEXCOORDS_ATTRIBUTE
-#define HAS_TEXCOORDS_ATTRIBUTE 1 
+#define HAS_TEXCOORDS_ATTRIBUTE 0 
 #endif
 
 #ifndef HAS_TANGENT_ATTRIBUTE
@@ -96,15 +133,30 @@ cbuffer TransformBuffer : register(b0)
 
 cbuffer MaterialBufferData : register(b2)
 {
+    // ========== BASE MATERIAL PROPERTIES ==========
     float4 diffuseColor;
     float4 specularColor;
     float4 emissiveColor;
+    
+    // ========== PBR PROPERTIES ==========
     float shininess;
     float metallic;
     float roughness;
     float alpha;
+    
+    // ========== NEW: ENHANCED MATERIAL PROPERTIES ==========
+    float normalScale;       //Normal map intensity
+    float heightScale;       //Parallax/height scale
+    float occlusionStrength; //AO intensity
+    float emissiveIntensity; //Emissive multiplier
+    
+    // ========== TEXTURE TILING AND OFFSET ==========
     float2 textureScale;
     float2 textureOffset;
+    float2 detailScale;      //Detail texture scale
+    float2 detailOffset;     //Detail texture offset
+    
+    // ========== FLAGS ==========
     uint flags;
     float3 padding;
 };
@@ -265,18 +317,36 @@ struct UIVertexOutput
 };
 
 // === TEXTURE BINDINGS ===
-Texture2D diffuseTexture : register(t0);
-Texture2D normalTexture : register(t1);
-Texture2D specularTexture : register(t2);
-Texture2D emissiveTexture : register(t3);
-TextureCube environmentTexture : register(t4);
+// ========== CORE TEXTURE BINDINGS ==========
+Texture2D diffuseTexture : register(t0); // TextureSlot::Diffuse
+Texture2D normalTexture : register(t1); // TextureSlot::Normal
+Texture2D specularTexture : register(t2); // TextureSlot::Specular
+Texture2D emissiveTexture : register(t3); // TextureSlot::Emissive
 
-SamplerState standardSampler : register(s0);
+// ========== PBR TEXTURE BINDINGS ==========
+Texture2D roughnessTexture : register(t4); // TextureSlot::Roughness
+Texture2D metallicTexture : register(t5); // TextureSlot::Metallic
+Texture2D aoTexture : register(t6); // TextureSlot::AmbientOcclusion
+Texture2D heightTexture : register(t7); // TextureSlot::Height
 
+// ========== ADDITIONAL TEXTURES ==========
+Texture2D opacityTexture : register(t8); // TextureSlot::Opacity
+Texture2D detailDiffuseTexture : register(t9); // TextureSlot::DetailDiffuse
+Texture2D detailNormalTexture : register(t10); // TextureSlot::DetailNormal
+
+// ========== ENVIRONMENT MAPPING ==========
+TextureCube environmentTexture : register(t11); // TextureSlot::Environment
+TextureCube irradianceTexture : register(t12); // TextureSlot::Irradiance
+Texture2D brdfLUTTexture : register(t13); // TextureSlot::BRDF_LUT
+
+// ========== SHADOWS ==========
 #if ENABLE_SHADOWS
-Texture2DArray shadowMaps : register(t5);
+Texture2DArray shadowMaps       : register(t14); // TextureSlot::Shadow
 SamplerComparisonState shadowSampler : register(s1);
 #endif
+
+// ========== SAMPLERS ==========
+SamplerState standardSampler : register(s0);
 
 // Utility Functions 
 float3 GetScaledTexCoord(float2 uv)
@@ -301,19 +371,27 @@ float3 SampleNormalMap(float2 uv)
     float2 scaledUV = uv * textureScale + textureOffset;
     float4 normalSample = normalTexture.Sample(standardSampler, scaledUV);
     
-    // DEBUG: Check if texture is actually bound and valid
-    if (all(normalSample.rgb == float3(0, 0, 0)) || all(normalSample.rgb == float3(1, 1, 1)))
+    // Convert from [0,1] to [-1,1] range
+    float3 normal = normalSample.rgb * 2.0 - 1.0;
+    
+    // Apply normal intensity/scale
+    normal.xy *= normalScale;
+    
+    // Renormalize after scaling
+    normal = normalize(normal);
+    
+    // Safety check: if normal is degenerate, return flat normal
+    if (any(isnan(normal)) || any(isinf(normal)) || length(normal) < EPSILON)
     {
-        // Texture might not be bound or is invalid
         return float3(0.0, 0.0, 1.0);
     }
     
-    float3 normal = normalSample.rgb * 2.0 - 1.0;
-    return length(normal) > EPSILON ? normalize(normal) : float3(0.0, 0.0, 1.0);
+    return normal;
 #else
     return float3(0.0, 0.0, 1.0);
 #endif
 }
+
 float3 SampleSpecularMap(float2 uv)
 {
 #if HAS_SPECULAR_MAP
@@ -334,77 +412,201 @@ float3 SampleEmissiveMap(float2 uv)
 #endif
 }
 
+float SampleRoughnessMap(float2 uv)
+{
+#if HAS_ROUGHNESS_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return roughnessTexture.Sample(standardSampler, scaledUV).r;
+#else
+    return roughness;
+#endif
+}
+
+float SampleMetallicMap(float2 uv)
+{
+#if HAS_METALLIC_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return metallicTexture.Sample(standardSampler, scaledUV).r;
+#else
+    return metallic;
+#endif
+}
+
+float SampleAOMap(float2 uv)
+{
+#if HAS_AO_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return aoTexture.Sample(standardSampler, scaledUV).r;
+#else
+    return 1.0; // No occlusion by default
+#endif
+}
+
+float SampleHeightMap(float2 uv)
+{
+#if HAS_HEIGHT_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return heightTexture.Sample(standardSampler, scaledUV).r;
+#else
+    return 0.0; // Flat surface by default
+#endif
+}
+
+float SampleOpacityMap(float2 uv)
+{
+#if HAS_OPACITY_MAP
+    float2 scaledUV = uv * textureScale + textureOffset;
+    return opacityTexture.Sample(standardSampler, scaledUV).r;
+#else
+    return 1.0; // Fully opaque by default
+#endif
+}
+
+// ========== NEW: DETAIL TEXTURE SAMPLING ==========
+
+float4 SampleDetailDiffuse(float2 uv)
+{
+#if HAS_DETAIL_DIFFUSE_MAP
+    float2 scaledUV = uv * detailScale + detailOffset;
+    return detailDiffuseTexture.Sample(standardSampler, scaledUV);
+#else
+    return float4(1.0, 1.0, 1.0, 1.0);
+#endif
+}
+
+float3 SampleDetailNormal(float2 uv)
+{
+#if HAS_DETAIL_NORMAL_MAP
+    float2 scaledUV = uv * detailScale + detailOffset;
+    float3 normal = detailNormalTexture.Sample(standardSampler, scaledUV).rgb;
+    return normalize(normal * 2.0 - 1.0);
+#else
+    return float3(0.0, 0.0, 1.0); // Flat normal
+#endif
+}
+
 //Normal Mappings
-
-float3 CalculateWorldNormal(float3 vertexNormal, float4 tangent, float3 normalMapSample)
+float3 BlendNormals(float3 normal1, float3 normal2)
 {
-#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE
-    // Validate inputs
-    if (length(vertexNormal) < EPSILON || length(tangent.xyz) < EPSILON)
-        return float3(0.0, 0.0, 1.0);
-    
-    float3 N = normalize(vertexNormal);
-    float3 T = normalize(tangent.xyz);
-    
-    // Re-orthogonalize tangent (Gram-Schmidt process)
-    T = normalize(T - dot(T, N) * N);
-    
-    float3 B = cross(N, T) * tangent.w;
-    
-    // Validate TBN matrix determinant
-    float det = dot(cross(T, B), N);
-    if (abs(det) < EPSILON)
-        return N; // Fall back to vertex normal
-    
-    float3x3 TBN = float3x3(T, B, N);
-    float3 result = mul(normalMapSample, TBN);
-    
-    return length(result) > EPSILON ? normalize(result) : N;
-#else
-    return length(vertexNormal) > EPSILON ? normalize(vertexNormal) : float3(0.0, 0.0, 1.0);
-#endif
+    // Reoriented Normal Mapping (RNM) blending
+    float3 t = normal1 * float3(2, 2, 2) + float3(-1, -1, 0);
+    float3 u = normal2 * float3(-2, -2, 2) + float3(1, 1, -1);
+    float3 r = t * dot(t, u) - u * t.z;
+    return normalize(r);
 }
 
-float3 GetFinalWorldNormal(StandardVertexOutput input)
+float3 CalculateWorldNormal(float3 vertexNormal, float4 tangent, float2 texCoord)
 {
-    float3 baseNormal = float3(0.0, 0.0, 1.0); // Default
-    
 #if HAS_NORMAL_ATTRIBUTE
-    baseNormal = length(input.normal) > EPSILON ? normalize(input.normal) : baseNormal;
-#endif
-
-#if HAS_NORMAL_MAP && HAS_TEXCOORDS_ATTRIBUTE
-    float3 normalSample = SampleNormalMap(input.texCoord);
-    
-#if HAS_TANGENT_ATTRIBUTE
-        // Full tangent space normal mapping
-        return CalculateWorldNormal(baseNormal, input.tangent, normalSample);
-#else
-        // Fallback: Use detail normal mapping technique
-        return ApplyDetailNormal(baseNormal, normalSample, input.worldPos.xyz);
-#endif
-#else
-    return baseNormal;
-#endif
-}
-
-float3 ApplyDetailNormal(float3 vertexNormal, float3 normalMapSample, float3 worldPos)
-{
-    // Use world position to generate fake tangent space
-    float3 dp1 = ddx(worldPos);
-    float3 dp2 = ddy(worldPos);
     float3 N = normalize(vertexNormal);
+#else
+    float3 N = float3(0.0, 0.0, 1.0);
+#endif
     
-    // Generate tangent vectors from position derivatives
-    float3 T = normalize(dp1 - dot(dp1, N) * N);
-    float3 B = normalize(cross(N, T));
+#if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE
+    // Sample base normal map (in tangent space)
+    float3 tangentNormal = SampleNormalMap(texCoord);
     
-    // Apply normal map
-    float3x3 TBN = float3x3(T, B, N);
-    return normalize(mul(normalMapSample, TBN));
+    // Blend with detail normal if available
+#if HAS_DETAIL_NORMAL_MAP && HAS_DETAIL_TEXTURES
+    float3 detailNormal = SampleDetailNormal(texCoord);
+    tangentNormal = BlendNormals(tangentNormal, detailNormal);
+#endif
+    
+    // Build TBN matrix - ensure all vectors are normalized
+    float3 T = normalize(tangent.xyz);
+    float3 N_normalized = normalize(N);
+    
+    // Gram-Schmidt process to ensure T is perpendicular to N
+    T = normalize(T - dot(T, N_normalized) * N_normalized);
+    
+    // Calculate bitangent with correct handedness
+    float3 B = cross(N_normalized, T) * tangent.w;
+    B = normalize(B);
+    
+    // Construct TBN matrix (tangent space to world space)
+    float3x3 TBN = float3x3(T, B, N_normalized);
+    
+    // Transform normal from tangent space to world space
+    float3 worldNormal = mul(tangentNormal, TBN);
+    
+    // Final normalization
+    return normalize(worldNormal);
+#else
+    return N;
+#endif
 }
 
-///pbr BRDF functions
+// ========== NEW: PARALLAX OCCLUSION MAPPING ==========
+
+float2 ParallaxOcclusionMapping(float2 texCoords, float3 viewDir,
+                               float3 normal, float4 tangent)
+{
+#if ENABLE_PARALLAX_MAPPING && HAS_HEIGHT_MAP && HAS_TANGENT_ATTRIBUTE
+    // Build TBN matrix (same as normal mapping)
+    float3 N = normalize(normal);
+    float3 T = normalize(tangent.xyz);
+    T = normalize(T - dot(T, N) * N);
+    float3 B = normalize(cross(N, T) * tangent.w);
+    
+    float3x3 TBN = float3x3(T, B, N);
+    
+    // Transform view direction to tangent space
+    // Use transpose to go from world to tangent space
+    float3x3 TBN_inv = transpose(TBN);
+    float3 viewDirTS = normalize(mul(TBN_inv, viewDir));
+    
+    // Early exit if viewing from behind surface
+    if (viewDirTS.z <= 0.0)
+        return texCoords;
+    
+    // Number of depth layers (adaptive based on view angle)
+    const float minLayers = 8.0;
+    const float maxLayers = 32.0;
+    float numLayers = lerp(maxLayers, minLayers, abs(viewDirTS.z));
+    
+    // Calculate layer depth
+    float layerDepth = 1.0 / numLayers;
+    float currentLayerDepth = 0.0;
+    
+    // Calculate parallax offset direction and amount
+    float2 P = viewDirTS.xy * heightScale;
+    float2 deltaTexCoords = P / numLayers;
+    
+    // Initial values
+    float2 currentTexCoords = texCoords;
+    float currentDepthMapValue = SampleHeightMap(currentTexCoords);
+    
+    // Steep parallax mapping - ray marching through height field
+    [loop]
+    while(currentLayerDepth < currentDepthMapValue && currentLayerDepth < 1.0)
+    {
+        currentTexCoords -= deltaTexCoords;
+        currentDepthMapValue = SampleHeightMap(currentTexCoords);
+        currentLayerDepth += layerDepth;
+    }
+    
+    // Parallax occlusion mapping - interpolation for smooth result
+    float2 prevTexCoords = currentTexCoords + deltaTexCoords;
+    
+    float afterDepth = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = SampleHeightMap(prevTexCoords) - (currentLayerDepth - layerDepth);
+    
+    // Weighted interpolation
+    float weight = afterDepth / (afterDepth - beforeDepth + EPSILON);
+    float2 finalTexCoords = lerp(currentTexCoords, prevTexCoords, weight);
+    
+    // Clamp to prevent sampling outside valid range
+    finalTexCoords = clamp(finalTexCoords, 0.0, 1.0);
+    
+    return finalTexCoords;
+#else
+    return texCoords;
+#endif
+}
+
+
+///PBR BRDF functions
 
 float DistributionGGX(float3 N, float3 H, float roughness)
 {

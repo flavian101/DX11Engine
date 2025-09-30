@@ -3,14 +3,18 @@
 struct SkyboxVertexInput
 {
     float3 position : POSITION;
+#if HAS_NORMAL_ATTRIBUTE
     float3 normal : NORMAL;
+#endif
+#if HAS_TEXCOORDS_ATTRIBUTE
     float2 texCoord : TEXCOORD;
+#endif
 };
 
 struct SkyboxVertexOutput
 {
     float4 position : SV_POSITION;
-    float3 texCoord : TEXCOORD;
+    float3 texCoord : TEXCOORD; // 3D texcoord for cubemap
 };
 
 SkyboxVertexOutput main(SkyboxVertexInput input)

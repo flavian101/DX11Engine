@@ -12,7 +12,7 @@ namespace DXEngine
 	{
 		m_Camera->SetProjectionParams(45.0f, (float)16.0f / (float)9.0f, 0.5f, 1000.0f);
 		m_FreeLookBehavior = std::make_shared<FreeLookBehavior>(0.002f);
-		m_MovementBehavior = std::make_shared<MovementBehavior>(5000.0f);
+		m_MovementBehavior = std::make_shared<MovementBehavior>(50000.0f);
 
 		m_Camera->AddBehaviour(m_FreeLookBehavior);
 		m_Camera->AddBehaviour(m_MovementBehavior);

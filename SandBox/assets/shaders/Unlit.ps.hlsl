@@ -3,11 +3,13 @@
 float4 main(StandardVertexOutput input) : SV_Target
 {
     float4 baseColor = diffuseColor;
+    float opacityValue = 1.0;
     
     // Sample diffuse texture if available
 #if HAS_DIFFUSE_TEXTURE && HAS_TEXCOORDS_ATTRIBUTE
     float4 texColor = SampleDiffuseTexture(input.texCoord);
     baseColor *= texColor;
+    opacityValue = SampleOpacityMap(input.texCoord);
 #endif
     
     // Modulate with vertex colors if available
@@ -27,8 +29,7 @@ float4 main(StandardVertexOutput input) : SV_Target
 #endif
     
     // Apply material alpha
-    baseColor.a *= alpha;
-    
+    baseColor.a *= alpha * opacityValue;
 #if ENABLE_ALPHA_TEST
     clip(baseColor.a - 0.5);
 #endif

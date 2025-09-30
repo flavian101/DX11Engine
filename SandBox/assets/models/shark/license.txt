@@ -1,0 +1,11 @@
+Model Information:
+* title:	Mechanical Shark
+* source:	https://sketchfab.com/3d-models/mechanical-shark-3b6f8f0a800544e291cd4172c7250147
+* author:	Loïc Norgeot (https://sketchfab.com/norgeotloic)
+
+Model License:
+* license type:	CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
+* requirements:	Author must be credited. No commercial use.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Mechanical Shark" (https://sketchfab.com/3d-models/mechanical-shark-3b6f8f0a800544e291cd4172c7250147) by Loïc Norgeot (https://sketchfab.com/norgeotloic) licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)

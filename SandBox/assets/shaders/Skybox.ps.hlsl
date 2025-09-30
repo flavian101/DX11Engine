@@ -9,15 +9,16 @@ struct SkyboxPixelInput
 float4 main(SkyboxPixelInput input) : SV_Target
 {
     float4 skyColor = float4(0.2, 0.2, 0.2, 1.0);
+    
 #if HAS_ENVIRONMENT_MAP
-    // Sample the cubemap using the 3D texture coordinates
     skyColor = environmentTexture.Sample(standardSampler, input.texCoord);
 #endif
+    
     // Modulate with material color (useful for tinting)
     skyColor *= diffuseColor;
     
     // Add emissive contribution (useful for glowing skies)
-    skyColor.rgb += emissiveColor.rgb;
+    skyColor.rgb += emissiveColor.rgb * emissiveIntensity;
     
     // Apply exposure and gamma for HDR skyboxes
     skyColor.rgb = ToneMapExposure(skyColor.rgb, exposure * iblIntensity);

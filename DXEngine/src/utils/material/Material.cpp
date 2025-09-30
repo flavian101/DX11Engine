@@ -37,7 +37,7 @@ namespace DXEngine {
 
 		case MaterialType::Skybox:
 			m_Properties.diffuseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-			SetFlag(MaterialFlags::castsShadows, false);
+			SetFlag(MaterialFlags::CastsShadows, false);
 			SetFlag(MaterialFlags::ReceivesShadows, false);
 			SetFlag(MaterialFlags::IsTwoSided, true);
 			break;
@@ -60,7 +60,7 @@ namespace DXEngine {
 			break;
 		}
 
-		UpdateFlags();
+		UpdateTextureFlags();
 	}
 
 	Material::~Material()
@@ -68,10 +68,8 @@ namespace DXEngine {
 	}
 	void Material::Bind()
 	{
-		if (!IsValid())
-		{
-			return;
-		}
+		if (!IsValid()) return;
+
 		if (m_PropertiesDirty)
 		{
 			UpdateConstantBuffer();
@@ -83,30 +81,32 @@ namespace DXEngine {
 			RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Material, 1, m_ConstantBuffer.GetAddressOf());
 		}
 
-		if (HasFlag(MaterialFlags::HasDiffuseTexture) && m_Resources.diffuseTexture)
-		{
+		// Bind all available textures
+		if (m_Resources.diffuseTexture)
 			m_Resources.diffuseTexture->Bind(static_cast<UINT>(TextureSlot::Diffuse));
-		}
-
-		if (HasFlag(MaterialFlags::HasNormalMap) && m_Resources.normalTexture)
-		{
+		if (m_Resources.normalTexture)
 			m_Resources.normalTexture->Bind(static_cast<UINT>(TextureSlot::Normal));
-		}
-
-		if (HasFlag(MaterialFlags::HasSpecularMap) && m_Resources.specularTexture)
-		{
+		if (m_Resources.specularTexture)
 			m_Resources.specularTexture->Bind(static_cast<UINT>(TextureSlot::Specular));
-		}
-
-		if (HasFlag(MaterialFlags::HasEmissiveMap) && m_Resources.emissiveTexture)
-		{
+		if (m_Resources.emissiveTexture)
 			m_Resources.emissiveTexture->Bind(static_cast<UINT>(TextureSlot::Emissive));
-		}
-
+		if (m_Resources.roughnessTexture)
+			m_Resources.roughnessTexture->Bind(static_cast<UINT>(TextureSlot::Roughness));
+		if (m_Resources.metallicTexture)
+			m_Resources.metallicTexture->Bind(static_cast<UINT>(TextureSlot::Metallic));
+		if (m_Resources.aoTexture)
+			m_Resources.aoTexture->Bind(static_cast<UINT>(TextureSlot::AmbientOcclusion));
+		if (m_Resources.heightTexture)
+			m_Resources.heightTexture->Bind(static_cast<UINT>(TextureSlot::Height),true,true);
+		if (m_Resources.opacityTexture)
+			m_Resources.opacityTexture->Bind(static_cast<UINT>(TextureSlot::Opacity));
+		if (m_Resources.detailDiffuseTexture)
+			m_Resources.detailDiffuseTexture->Bind(static_cast<UINT>(TextureSlot::DetailDiffuse));
+		if (m_Resources.detailNormalTexture)
+			m_Resources.detailNormalTexture->Bind(static_cast<UINT>(TextureSlot::DetailNormal));
 		if (m_Resources.environmentTexture)
-		{
 			m_Resources.environmentTexture->Bind(static_cast<UINT>(TextureSlot::Environment));
-		}
+
 	}
 	bool Material::IsValid() const
 	{
@@ -171,6 +171,47 @@ namespace DXEngine {
 		SetFlag(MaterialFlags::IsTransparent, alpha < 1.0f);
 	}
 
+	void Material::SetMetallic(float metallic)
+	{
+		m_Properties.metallic = std::clamp(metallic, 0.0f, 1.0f);
+		m_PropertiesDirty = true;
+
+		if (metallic > 0.1f && m_Type == MaterialType::Lit)
+		{
+			m_Type = MaterialType::PBR;
+		}
+	}
+
+	void Material::SetRoughness(float roughness)
+	{
+		m_Properties.roughness = std::clamp(roughness, 0.04f, 1.0f);
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetNormalScale(float scale)
+	{
+		m_Properties.normalScale = std::max(0.0f, scale);
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetHeightScale(float scale)
+	{
+		m_Properties.heightScale = std::clamp(scale, 0.0f, 0.2f);
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetOcculsionStrength(float strength)
+	{
+		m_Properties.occlusionStrength = std::clamp(strength, 0.0f, 1.0f);
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetEmissiveIntensity(float intensity)
+	{
+		m_Properties.emissiveIntensity = std::max(0.0f, intensity);
+		m_PropertiesDirty = true;
+	}
+
 	void Material::SetTextureScale(const DirectX::XMFLOAT2& scale)
 	{
 		m_Properties.textureScale = scale;
@@ -187,34 +228,111 @@ namespace DXEngine {
 	{
 		m_Resources.diffuseTexture = texture;
 		SetFlag(MaterialFlags::HasDiffuseTexture, texture != nullptr);
-		UpdateFlags();
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
 	}
 
 	void Material::SetNormalTexture(std::shared_ptr<Texture> texture)
 	{
 		m_Resources.normalTexture = texture;
 		SetFlag(MaterialFlags::HasNormalMap, texture != nullptr);
-		UpdateFlags();
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
 	}
 
 	void Material::SetSpecularTexture(std::shared_ptr<Texture> texture)
 	{
 		m_Resources.specularTexture = texture;
 		SetFlag(MaterialFlags::HasSpecularMap, texture != nullptr);
-		UpdateFlags();
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
 	}
 
 	void Material::SetEmissiveTexture(std::shared_ptr<Texture> texture)
 	{
 		m_Resources.emissiveTexture = texture;
 		SetFlag(MaterialFlags::HasEmissiveMap, texture != nullptr);
-		UpdateFlags();
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+
+	}
+
+	void Material::SetRoughnessTexture(std::shared_ptr<Texture> texture)
+	{
+		m_Resources.roughnessTexture = texture;
+		SetFlag(MaterialFlags::HasRoughnessMap, texture != nullptr);
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetMetallicTexture(std::shared_ptr<Texture> texture)
+	{
+		m_Resources.metallicTexture = texture;
+		SetFlag(MaterialFlags::HasMetallicMap, texture != nullptr);
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetAOTexture(std::shared_ptr<Texture> texture)
+	{
+		m_Resources.aoTexture = texture;
+		SetFlag(MaterialFlags::HasAOMap, texture != nullptr);
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetHeightTexture(std::shared_ptr<Texture> texture)
+	{
+		m_Resources.heightTexture = texture;
+		SetFlag(MaterialFlags::HasHeightMap, texture != nullptr);
+		if (texture)
+		{
+			SetFlag(MaterialFlags::UseParallaxMapping, true);
+		}
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetOpacityTexture(std::shared_ptr<Texture> texture)
+	{
+		m_Resources.opacityTexture = texture;
+		SetFlag(MaterialFlags::HasOpacityMap, texture != nullptr);
+		if (texture)
+		{
+			SetFlag(MaterialFlags::IsTransparent, true);
+			if (m_RenderQueue == RenderQueue::Opaque)
+			{
+				m_RenderQueue = RenderQueue::Transparent;
+			}
+		}
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetDetailDiffuseTexture(std::shared_ptr<Texture> texture)
+	{
+		m_Resources.detailDiffuseTexture = texture;
+		SetFlag(MaterialFlags::HasDetailMap, texture != nullptr);
+		SetFlag(MaterialFlags::UseDetailTextures, texture != nullptr);
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+	}
+
+	void Material::SetDetailNormalTexture(std::shared_ptr<Texture> texture)
+	{
+		m_Resources.detailNormalTexture = texture;
+		SetFlag(MaterialFlags::UseDetailTextures, texture != nullptr);
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
 	}
 
 	void Material::SetEnvironmentTexture(std::shared_ptr<CubeMapTexture> texture)
 	{
 		m_Resources.environmentTexture = texture;
-		UpdateFlags();
+		SetFlag(MaterialFlags::HasEnvironmentMap, texture != nullptr);
+		UpdateTextureFlags();
+		m_PropertiesDirty = true;
+
 	}
 
 	void Material::SetFlag(MaterialFlags flag, bool enabled)
@@ -237,7 +355,7 @@ namespace DXEngine {
 		return (m_Properties.flags & flag) != 0;
 	}
 
-	void Material::UpdateFlags()
+	void Material::UpdateTextureFlags()
 	{
 		m_PropertiesDirty = true;
 	}
@@ -282,6 +400,11 @@ namespace DXEngine {
 		return std::make_shared<Material>(name, MaterialType::Lit);
 	}
 
+	std::shared_ptr<Material> MaterialFactory::CreatePBRMaterial(const std::string& name)
+	{
+		return std::make_shared<Material>(name, MaterialType::PBR);
+	}
+
 	std::shared_ptr<Material> MaterialFactory::CreateEmissiveMaterial(const std::string& name)
 	{
 		return std::make_shared<Material>(name, MaterialType::Emissive);
@@ -310,5 +433,89 @@ namespace DXEngine {
 	{
 		// TODO: Implement material loading from file (JSON, XML, etc.)
 		return CreateLitMaterial("DefaultFromConfig");
+	}
+	void Material::SetDetailTextureScale(const DirectX::XMFLOAT2& scale)
+	{
+		m_Properties.detailScale = scale;
+		m_PropertiesDirty = true;
+	}
+	void Material::SetDetailTextureOffset(const DirectX::XMFLOAT2& offset)
+	{
+		m_Properties.detailOffset = offset;
+		m_PropertiesDirty = true;
+	}
+	size_t Material::GetTextureCount() const
+	{
+		return m_Resources.GetTextureCount();
+	}
+	std::vector<std::shared_ptr<Texture>> Material::GetAllTextures() const
+	{
+		std::vector<std::shared_ptr<Texture>> textures;
+
+		if (m_Resources.diffuseTexture) textures.push_back(m_Resources.diffuseTexture);
+		if (m_Resources.normalTexture) textures.push_back(m_Resources.normalTexture);
+		if (m_Resources.specularTexture) textures.push_back(m_Resources.specularTexture);
+		if (m_Resources.emissiveTexture) textures.push_back(m_Resources.emissiveTexture);
+		if (m_Resources.roughnessTexture) textures.push_back(m_Resources.roughnessTexture);
+		if (m_Resources.metallicTexture) textures.push_back(m_Resources.metallicTexture);
+		if (m_Resources.aoTexture) textures.push_back(m_Resources.aoTexture);
+		if (m_Resources.heightTexture) textures.push_back(m_Resources.heightTexture);
+		if (m_Resources.opacityTexture) textures.push_back(m_Resources.opacityTexture);
+		if (m_Resources.detailDiffuseTexture) textures.push_back(m_Resources.detailDiffuseTexture);
+		if (m_Resources.detailNormalTexture) textures.push_back(m_Resources.detailNormalTexture);
+
+		return textures;
+	}
+	bool Material::IsTextureSlotUsed(TextureSlot slot) const
+	{
+		switch (slot)
+		{
+		case TextureSlot::Diffuse: return m_Resources.diffuseTexture != nullptr;
+		case TextureSlot::Normal: return m_Resources.normalTexture != nullptr;
+		case TextureSlot::Specular: return m_Resources.specularTexture != nullptr;
+		case TextureSlot::Emissive: return m_Resources.emissiveTexture != nullptr;
+		case TextureSlot::Roughness: return m_Resources.roughnessTexture != nullptr;
+		case TextureSlot::Metallic: return m_Resources.metallicTexture != nullptr;
+		case TextureSlot::AmbientOcclusion: return m_Resources.aoTexture != nullptr;
+		case TextureSlot::Height: return m_Resources.heightTexture != nullptr;
+		case TextureSlot::Opacity: return m_Resources.opacityTexture != nullptr;
+		case TextureSlot::DetailDiffuse: return m_Resources.detailDiffuseTexture != nullptr;
+		case TextureSlot::DetailNormal: return m_Resources.detailNormalTexture != nullptr;
+		case TextureSlot::Environment: return m_Resources.environmentTexture != nullptr;
+		default:
+			return false;
+		}
+	}
+	bool Material::ValidateTextures() const
+	{
+		auto textures = GetAllTextures();
+		for (const auto& texture : textures)
+		{
+			if (texture && !texture->IsValid())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	std::string Material::GetTextureInfo() const
+	{
+		std::ostringstream info;
+		info << "Material '" << m_Name << "' Texture Info:\n";
+		info << "  Total Textures: " << GetTextureCount() << "\n";
+
+		if (m_Resources.diffuseTexture) info << "  - Diffuse: Present\n";
+		if (m_Resources.normalTexture) info << "  - Normal: Present\n";
+		if (m_Resources.specularTexture) info << "  - Specular: Present\n";
+		if (m_Resources.roughnessTexture) info << "  - Roughness: Present\n";
+		if (m_Resources.metallicTexture) info << "  - Metallic: Present\n";
+		if (m_Resources.emissiveTexture) info << "  - Emissive: Present\n";
+		if (m_Resources.aoTexture) info << "  - AO: Present\n";
+		if (m_Resources.heightTexture) info << "  - Height: Present\n";
+		if (m_Resources.opacityTexture) info << "  - Opacity: Present\n";
+		if (m_Resources.detailDiffuseTexture) info << "  - Detail Diffuse: Present\n";
+		if (m_Resources.detailNormalTexture) info << "  - Detail Normal: Present\n";
+
+		return info.str();
 	}
 }

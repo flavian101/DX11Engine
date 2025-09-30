@@ -21,8 +21,13 @@ void Sandbox::OnAttach()
 	m_Light = std::make_shared<DXEngine::LightSphere>();
 	m_Loader = std::make_shared<DXEngine::ModelLoader>();
 
-	m_Ship = m_Loader->LoadModel("assets/models/ship/Intergalactic_Spaceship-(Wavefront).obj");
+	m_Ship = m_Loader->LoadModel("assets/models/UFO/Rigged_Modular UFO 2.8.glb.gltf");
+	m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
 	m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
+	m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
+	m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
+	m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
+	m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
 
 	InitializePicking();
 }
@@ -62,36 +67,69 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		DXEngine::Renderer::Submit(m_Ground);
 	}
 
-	// Moon/Ball
-	if (m_Moon)
+	if (m_Tunnel)
 	{
-		//ball->SetScale({ 10.0f, 10.0f, 10.0f });
-		m_Moon->SetTranslation({ 20.0f, 5.0f, 0.0f });
-		DXEngine::Renderer::Submit(m_Moon);
+		m_Tunnel->SetTranslation({ 0.0f, 3.0f, 0.0f });
+		m_Tunnel->SetScale({ 0.4f, 0.4f, 0.4f });
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Tunnel));
 	}
-	
-	// Light sphere
-	if (m_Light)
-	{
-		m_Light->SetTranslation({ 0.0f, 10.0f, 10.0f });
-		m_Light->SetScale({ 1.0f, 1.0f, 1.0f });
-		DXEngine::Renderer::Submit(m_Light);
-	}
+
 	if (m_Ship)
 	{
-		m_Ship->SetScale({ 4.0f, 4.0f, 4.0f });
+		m_Ship->SetScale({ 3.0f, 3.0f, 3.0f });
+		m_Ship->SetTranslation({ 0.0f, 4.0f, 15.0f });
 		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ship));
 	}
+
+	if (m_Table)
+	{
+		m_Table->SetScale({ 0.04f, 0.04f, 0.04f });
+		m_Table->SetTranslation({ 0.0f, 30.0f, -5.0f });
+		m_Table->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
+
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Table));
+	}
+
+	if (m_Shark)
+	{
+		m_Shark->SetTranslation({ 10.0f, 30.0f, -40.0f });
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Shark));
+	}
+
 	if (m_LionHead)
 	{
-		m_LionHead->SetScale({ 50.0f, 50.0f, 50.0f });
-		m_LionHead->SetTranslation({ 0.0f, 5.0f, -40.0f });
-		// Update rotation angle
-		m_CurrentRotation += dt * m_Speed;
-
-
-		m_LionHead->SetRotation({20.0f,m_CurrentRotation,0.0f,0.0f});
+		m_LionHead->SetScale({ 30.0f, 30.0f, 30.0f });
+		m_LionHead->SetTranslation({ 0.0f, 5.0f, -20.0f });
+		m_CurrentRotation += m_Speed * dt;
+		m_LionHead->SetRotation({ 20.0f, m_CurrentRotation, 0.0f, 0.0f });
 		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_LionHead));
+	}
+
+	if (m_Moon)
+	{
+		m_Moon->SetTranslation({ 100.0f, 40.0f, 10.0f });
+		m_Moon->SetScale({ 20.f, 20.0f, 20.0f });
+		DXEngine::Renderer::Submit(m_Moon);
+	}
+
+	if (m_Light)
+	{
+		m_Light->SetTranslation({ 10.0f, 15.0f, 0.0f });
+		m_Light->SetScale({ 2.0f, 2.0f, 2.0f });
+		DXEngine::Renderer::Submit(m_Light);
+	}
+
+	if (m_Ring)
+	{
+		m_Ring->SetTranslation({ 0.0f, 8.0f, 0.0f });
+		m_Ring->SetScale({ 2.0f, 2.0f, 2.0f });
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ring));
+	}
+	if (m_Wall)
+	{
+		m_Wall->SetTranslation({ 0.0f, 10.0f, 10.0f });
+		m_Wall->SetScale({ 5.0f, 5.0f, 5.0f });
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Wall));
 	}
 
 	auto button = std::make_shared<DXEngine::UIButton>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));

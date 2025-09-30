@@ -82,7 +82,7 @@ namespace DXEngine
 		ShaderVariantKey key;
 		key.materialType = materialType;
 		key.vertexLayoutHash = GenerateVertexLayoutHash(layout);
-
+		key.actualLayout = layout;//store layout for processing
 		// Analyze features
 		ShaderFeatureFlags layoutFeatures = AnalyzeVertexLayout(layout);
 		ShaderFeatureFlags materialFeatures = AnalyzeMaterial(material);
@@ -104,29 +104,9 @@ namespace DXEngine
 
 		m_Stats.cacheMisses++;
 
-		// Create new variant - find matching layout from common layouts
-		VertexLayout layoutToUse;
-
-		// Try to find a matching layout or use basic as fallback
-		if (!m_CommonLayouts.empty()) {
-			layoutToUse = m_CommonLayouts[0]; // Use basic layout as fallback
-
-			// Try to find better match based on features
-			for (const auto& layout : m_CommonLayouts) {
-				ShaderFeatureFlags layoutFeatures = AnalyzeVertexLayout(layout);
-				if ((layoutFeatures & key.features) == layoutFeatures) {
-					layoutToUse = layout;
-					break;
-				}
-			}
-		}
-		else {
-			layoutToUse = VertexLayout::CreateBasic(); // Emergency fallback
-		}
-
-		auto variant = CreateShaderVariant(key, layoutToUse);
-		if (variant) {
-			m_VariantCache[key] = variant;
+		auto variantLayout = CreateShaderVariant(key);
+		if (variantLayout) {
+			m_VariantCache[key] = variantLayout;
 			m_VariantUsage[key] = m_CurrentFrame;
 			m_Stats.totalVariants++;
 
@@ -139,23 +119,26 @@ namespace DXEngine
 			LogError("Failed to create shader variant: " + key.ToString());
 		}
 
-		return variant;
+		return variantLayout;
 	}
+
 	void ShaderVariantManager::PrecompileCommonVariants()
 	{
 		LogInfo("Precompiling common shader variants...");
 
 		std::vector<MaterialType> commonMaterialTypes = {
 			MaterialType::Lit,
+			MaterialType::PBR,
 			MaterialType::Unlit,
 			MaterialType::Transparent,
 			MaterialType::UI
 		};
 		size_t variantsCompiled = 0;
 
-		for (const auto& layout : m_CommonLayouts) {
+		for (auto& layout : m_CommonLayouts) {
+			layout.Finalize(); // Ensure finalized
+
 			for (MaterialType materialType : commonMaterialTypes) {
-				// Skip incompatible combinations
 				if (materialType == MaterialType::UI &&
 					layout.GetDebugString().find("UI") == std::string::npos) {
 					continue;
@@ -164,13 +147,15 @@ namespace DXEngine
 				ShaderVariantKey key;
 				key.materialType = materialType;
 				key.vertexLayoutHash = GenerateVertexLayoutHash(layout);
+				key.actualLayout = layout; // ADD THIS
 				key.features = CombineFeatures(
 					AnalyzeVertexLayout(layout),
-					ShaderFeatureFlags{}, // No material-specific features for precompilation
+					ShaderFeatureFlags{},
 					materialType
 				);
 
-				if (CreateShaderVariant(key,layout)) {
+				// Now pass the layout from the key
+				if (CreateShaderVariant(key)) {
 					variantsCompiled++;
 				}
 			}
@@ -179,7 +164,7 @@ namespace DXEngine
 		LogInfo("Precompiled " + std::to_string(variantsCompiled) + " shader variants");
 	}
 
-	std::shared_ptr<ShaderProgram> ShaderVariantManager::CreateShaderVariant(const ShaderVariantKey& key, const VertexLayout& layout)
+	std::shared_ptr<ShaderProgram> ShaderVariantManager::CreateShaderVariant(const ShaderVariantKey& key)
 	{
 		// Get shader file paths
 		auto [vsPath, psPath] = GetShaderPaths(key.materialType);
@@ -198,7 +183,7 @@ namespace DXEngine
 		}
 
 		// Generate defines string
-		std::string defines = GenerateDefinesString(key.features,layout);
+		std::string defines = GenerateDefinesString(key.features,key.actualLayout);
 
 		// Compile shaders
 		auto vsBlob = CompileShader(vsPath, defines, "vs_5_0", "main");
@@ -427,22 +412,64 @@ namespace DXEngine
 	ShaderFeatureFlags ShaderVariantManager::AnalyzeMaterial(const Material* material)
 	{
 		ShaderFeatureFlags features;
-
 		if (!material) return features;
 
-		// Texture features
+		// Core texture features
 		if (material->HasFlag(MaterialFlags::HasDiffuseTexture))
 			features.set(static_cast<size_t>(ShaderFeature::HasDiffuseTexture));
+
 		if (material->HasFlag(MaterialFlags::HasNormalMap))
 			features.set(static_cast<size_t>(ShaderFeature::HasNormalMap));
+
 		if (material->HasFlag(MaterialFlags::HasSpecularMap))
 			features.set(static_cast<size_t>(ShaderFeature::HasSpecularMap));
+
 		if (material->HasFlag(MaterialFlags::HasEmissiveMap))
 			features.set(static_cast<size_t>(ShaderFeature::HasEmissiveMap));
 
-		// Rendering features
+		if (material->HasFlag(MaterialFlags::HasEnvironmentMap))
+			features.set(static_cast<size_t>(ShaderFeature::HasEnvironmentMap));
+
+		// ========== PBR TEXTURE FEATURES ==========
+		if (material->HasFlag(MaterialFlags::HasRoughnessMap))
+			features.set(static_cast<size_t>(ShaderFeature::HasRoughnessMap));
+
+		if (material->HasFlag(MaterialFlags::HasMetallicMap))
+			features.set(static_cast<size_t>(ShaderFeature::HasMetallicMap));
+
+		if (material->HasFlag(MaterialFlags::HasAOMap))
+			features.set(static_cast<size_t>(ShaderFeature::HasAOMap));
+
+		// ========== ADVANCED TEXTURE FEATURES ==========
+		if (material->HasFlag(MaterialFlags::HasHeightMap)) {
+			features.set(static_cast<size_t>(ShaderFeature::HasHeightMap));
+
+			// Enable parallax mapping if height map is present
+			if (material->HasFlag(MaterialFlags::UseParallaxMapping)) {
+				features.set(static_cast<size_t>(ShaderFeature::EnableParallaxMapping));
+			}
+		}
+
+		if (material->HasFlag(MaterialFlags::HasOpacityMap))
+			features.set(static_cast<size_t>(ShaderFeature::HasOpacityMap));
+
+		// ========== DETAIL TEXTURES ==========
+		if (material->HasFlag(MaterialFlags::HasDetailMap))
+			features.set(static_cast<size_t>(ShaderFeature::HasDetailDiffuseMap));
+
+		if (material->HasFlag(MaterialFlags::UseDetailTextures)) {
+			features.set(static_cast<size_t>(ShaderFeature::UseDetailTextures));
+			// If detail textures are used, check for detail normal
+			if (material->IsTextureSlotUsed(TextureSlot::DetailNormal))
+				features.set(static_cast<size_t>(ShaderFeature::HasDetailNormalMap));
+		}
+
+		// ========== RENDERING FEATURES ==========
 		if (material->HasFlag(MaterialFlags::ReceivesShadows))
 			features.set(static_cast<size_t>(ShaderFeature::EnableShadows));
+
+		if (material->HasFlag(MaterialFlags::IsTransparent))
+			features.set(static_cast<size_t>(ShaderFeature::EnableAlphaTest));
 
 		return features;
 	}
@@ -473,6 +500,8 @@ namespace DXEngine
 		switch (materialType) {
 		case MaterialType::Lit:
 			return { basePath + "Lit.vs.hlsl", basePath + "Lit.ps.hlsl" };
+		case MaterialType::PBR:
+			return { basePath + "PBR.vs.hlsl", basePath + "PBR.ps.hlsl" };
 		case MaterialType::Unlit:
 			return { basePath + "Unlit.vs.hlsl", basePath + "Unlit.ps.hlsl" };
 		case MaterialType::Transparent:
@@ -487,11 +516,13 @@ namespace DXEngine
 			return { basePath + "Lit.vs.hlsl", basePath + "Lit.ps.hlsl" };
 		}
 	}
-	std::string ShaderVariantManager::GenerateDefinesString(const ShaderFeatureFlags& features, const VertexLayout& layout)
+	std::string ShaderVariantManager::GenerateDefinesString(
+		const ShaderFeatureFlags& features,
+		const VertexLayout& layout)
 	{
 		std::ostringstream defines;
 
-		// Texture features
+		// ========== CORE TEXTURE FEATURES ==========
 		if (features.test(static_cast<size_t>(ShaderFeature::HasDiffuseTexture)))
 			defines << "#define HAS_DIFFUSE_TEXTURE 1\n";
 		if (features.test(static_cast<size_t>(ShaderFeature::HasNormalMap)))
@@ -503,7 +534,29 @@ namespace DXEngine
 		if (features.test(static_cast<size_t>(ShaderFeature::HasEnvironmentMap)))
 			defines << "#define HAS_ENVIRONMENT_MAP 1\n";
 
-		// Vertex attribute features
+		// ========== PBR TEXTURE FEATURES ==========
+		if (features.test(static_cast<size_t>(ShaderFeature::HasRoughnessMap)))
+			defines << "#define HAS_ROUGHNESS_MAP 1\n";
+		if (features.test(static_cast<size_t>(ShaderFeature::HasMetallicMap)))
+			defines << "#define HAS_METALLIC_MAP 1\n";
+		if (features.test(static_cast<size_t>(ShaderFeature::HasAOMap)))
+			defines << "#define HAS_AO_MAP 1\n";
+
+		// ========== ADVANCED TEXTURE FEATURES ==========
+		if (features.test(static_cast<size_t>(ShaderFeature::HasHeightMap)))
+			defines << "#define HAS_HEIGHT_MAP 1\n";
+		if (features.test(static_cast<size_t>(ShaderFeature::HasOpacityMap)))
+			defines << "#define HAS_OPACITY_MAP 1\n";
+
+		// ========== DETAIL TEXTURES ==========
+		if (features.test(static_cast<size_t>(ShaderFeature::HasDetailDiffuseMap)))
+			defines << "#define HAS_DETAIL_DIFFUSE_MAP 1\n";
+		if (features.test(static_cast<size_t>(ShaderFeature::HasDetailNormalMap)))
+			defines << "#define HAS_DETAIL_NORMAL_MAP 1\n";
+		if (features.test(static_cast<size_t>(ShaderFeature::UseDetailTextures)))
+			defines << "#define HAS_DETAIL_TEXTURES 1\n";
+
+		// ========== VERTEX ATTRIBUTE FEATURES ==========
 		if (features.test(static_cast<size_t>(ShaderFeature::HasTexcoords)))
 			defines << "#define HAS_TEXCOORDS_ATTRIBUTE 1\n";
 		if (features.test(static_cast<size_t>(ShaderFeature::HasNormals)))
@@ -517,7 +570,7 @@ namespace DXEngine
 		if (features.test(static_cast<size_t>(ShaderFeature::HasBlendWeights)))
 			defines << "#define HAS_SKINNING_ATTRIBUTES 1\n";
 
-		// Rendering features
+		// ========== RENDERING FEATURES ==========
 		if (features.test(static_cast<size_t>(ShaderFeature::EnableShadows)))
 			defines << "#define ENABLE_SHADOWS 1\n";
 		if (features.test(static_cast<size_t>(ShaderFeature::EnableFog)))
@@ -528,6 +581,10 @@ namespace DXEngine
 			defines << "#define ENABLE_ALPHA_TEST 1\n";
 		if (features.test(static_cast<size_t>(ShaderFeature::EnableEmissive)))
 			defines << "#define ENABLE_EMISSIVE 1\n";
+
+		// ========== ADVANCED RENDERING FEATURES ==========
+		if (features.test(static_cast<size_t>(ShaderFeature::EnableParallaxMapping)))
+			defines << "#define ENABLE_PARALLAX_MAPPING 1\n";
 
 		return defines.str();
 	}
@@ -602,6 +659,7 @@ namespace DXEngine
 	{
 		switch (type) {
 		case MaterialType::Lit: return "Lit";
+		case MaterialType::PBR: return "PBR";
 		case MaterialType::Unlit: return "Unlit";
 		case MaterialType::Transparent: return "Transparent";
 		case MaterialType::Emissive: return "Emissive";
@@ -631,6 +689,69 @@ namespace DXEngine
 	{
 		OutputDebugStringA(("[ShaderVariantManager INFO] " + message + "\n").c_str());
 
+	}
+
+	std::shared_ptr<ShaderProgram> ShaderVariantManager::GetFallbackShader(MaterialType materialType)
+	{
+		// Check if we already have a fallback for this material type
+		auto it = m_FallbackShaders.find(materialType);
+		if (it != m_FallbackShaders.end() && it->second) {
+			return it->second;
+		}
+
+		// Create minimal vertex layout for fallback
+		VertexLayout fallbackLayout;
+		fallbackLayout.Position(); // Only position is guaranteed
+
+		// Add attributes based on material type
+		switch (materialType) {
+		case MaterialType::UI:
+			fallbackLayout.TexCoord(0);
+			fallbackLayout.Color(0);
+			break;
+
+		case MaterialType::Skybox:
+			fallbackLayout.Normal(); // Used for cubemap sampling
+			break;
+
+		case MaterialType::Unlit:
+			// Just position is fine for unlit
+			break;
+
+		default:
+			// For lit materials, add normal at minimum
+			fallbackLayout.Normal();
+			break;
+		}
+
+		fallbackLayout.Finalize();
+
+		// Create variant key for fallback
+		ShaderVariantKey key;
+		key.materialType = materialType;
+		key.vertexLayoutHash = GenerateVertexLayoutHash(fallbackLayout);
+		key.actualLayout = fallbackLayout;
+		key.features = AnalyzeVertexLayout(fallbackLayout); // Minimal features
+
+		LogWarning("Creating fallback shader for material type: " + MaterialTypeToString(materialType));
+
+		// Try to create the fallback shader
+		auto fallbackShader = CreateShaderVariant(key);
+
+		if (fallbackShader) {
+			m_FallbackShaders[materialType] = fallbackShader;
+			return fallbackShader;
+		}
+
+		// Ultimate fallback: try unlit if we're not already trying it
+		if (materialType != MaterialType::Unlit) {
+			LogError("Failed to create fallback shader, trying Unlit as last resort");
+			return GetFallbackShader(MaterialType::Unlit);
+		}
+
+		// Complete failure
+		LogError("CRITICAL: All fallback shader creation failed!");
+		return nullptr;
 	}
 
 	namespace ShaderVariantUtils {

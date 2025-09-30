@@ -40,7 +40,13 @@ private:
 	std::shared_ptr<DXEngine::LightSphere> m_Light;
 	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
 	std::shared_ptr<DXEngine::Model> m_Ship;
+	std::shared_ptr<DXEngine::Model> m_Table;
 	std::shared_ptr<DXEngine::Model> m_LionHead;
+	std::shared_ptr<DXEngine::Model> m_Tunnel;
+	std::shared_ptr<DXEngine::Model> m_Shark;
+	std::shared_ptr<DXEngine::Model> m_Ring;
+	std::shared_ptr<DXEngine::Model> m_Wall;
+
 	float m_Speed = 10.0f;
 	float m_CurrentRotation = 0.0f;
 

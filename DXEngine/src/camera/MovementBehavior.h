@@ -9,7 +9,7 @@ namespace DXEngine
 	class MovementBehavior : public CameraBehavior
 	{
 	public:
-		MovementBehavior(float moveSpeed = 5.0f);
+		MovementBehavior(float moveSpeed = 20.0f);
 		~MovementBehavior() = default;
 
 		virtual CameraContribution GetCameraContribution(Camera& camera, FrameTime deltatime) override;

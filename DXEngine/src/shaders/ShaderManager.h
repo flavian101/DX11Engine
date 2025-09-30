@@ -18,16 +18,15 @@ namespace DXEngine {
 		void Shutdown();
 		void Update();
 
-		//shader managment
-		std::shared_ptr<ShaderProgram> GetShader(MaterialType materialType);
-		std::shared_ptr<ShaderProgram> GetShader(const std::string& name);
-
 		// Enhanced interface for mesh-specific variants
 		std::shared_ptr<ShaderProgram> GetShaderForMesh(
 			const VertexLayout& layout,
 			const Material* material,
 			MaterialType materialType
 		);
+		//fallback shader
+		std::shared_ptr<ShaderProgram> GetFallbackShader(MaterialType materialType);
+
 
 
 		// Configuration
@@ -58,7 +57,6 @@ namespace DXEngine {
 	private:
 		void InitializeVariantSystem();
 		void CreateDefaultMaterialTypeMappings();
-		std::shared_ptr<ShaderProgram> GetFallbackShader();
 
 
 	private:

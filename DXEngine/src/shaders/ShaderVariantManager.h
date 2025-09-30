@@ -17,15 +17,20 @@ namespace DXEngine
 	class Material;
 
     enum class ShaderFeature : uint32_t {
-        // Texture features
+        // Core texture features
         HasDiffuseTexture = 0,
         HasNormalMap = 1,
         HasSpecularMap = 2,
         HasEmissiveMap = 3,
         HasEnvironmentMap = 4,
 
+        // PBR texture features
+        HasRoughnessMap = 5,
+        HasMetallicMap = 6,
+        HasAOMap = 7,
+
         // Vertex attribute features
-        HasTexcoords =8,
+        HasTexcoords = 8,
         HasNormals = 9,
         HasTangent = 10,
         HasVertexColor = 11,
@@ -42,8 +47,11 @@ namespace DXEngine
 
         // Advanced features
         EnableParallaxMapping = 20,
-        EnableSubsurfaceScattering = 21,
-        EnableDetailMapping = 22,
+        HasHeightMap = 21,
+        HasOpacityMap = 22,
+        HasDetailDiffuseMap = 23,
+        HasDetailNormalMap = 24,
+        UseDetailTextures = 25,
 
         MaxFeatures = 32
     };
@@ -54,6 +62,7 @@ namespace DXEngine
         MaterialType materialType;
         ShaderFeatureFlags features;
         std::string vertexLayoutHash;
+        VertexLayout actualLayout;
 
         bool operator==(const ShaderVariantKey& other) const {
             return materialType == other.materialType &&
@@ -143,6 +152,7 @@ namespace DXEngine
 
         // Direct variant access by key
         std::shared_ptr<ShaderProgram> GetShaderVariant(const ShaderVariantKey& key);
+        std::shared_ptr<ShaderProgram> GetFallbackShader(MaterialType materialType = MaterialType::Unlit);
 
         // Precompilation
         void PrecompileCommonVariants();
@@ -186,7 +196,7 @@ namespace DXEngine
         ShaderVariantManager& operator=(const ShaderVariantManager&) = delete;
 
         // Core compilation pipeline
-        std::shared_ptr<ShaderProgram> CreateShaderVariant(const ShaderVariantKey& key, const VertexLayout& layout);
+        std::shared_ptr<ShaderProgram> CreateShaderVariant(const ShaderVariantKey& key);
         Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
             const std::string& filePath,
             const std::string& defines,
@@ -218,6 +228,8 @@ namespace DXEngine
 
         // Main variant cache
         std::unordered_map<ShaderVariantKey, std::shared_ptr<ShaderProgram>, ShaderVariantKeyHash> m_VariantCache;
+        //fallback cache
+        std::unordered_map<MaterialType, std::shared_ptr<ShaderProgram>> m_FallbackShaders;
 
         // Usage tracking for cache pruning
         std::unordered_map<ShaderVariantKey, size_t, ShaderVariantKeyHash> m_VariantUsage;

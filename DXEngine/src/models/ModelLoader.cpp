@@ -357,32 +357,6 @@ namespace DXEngine
 
     std::shared_ptr<Material> ModelLoader::ProcessMaterial(const aiMaterial* material, const std::string& directory, const ModelLoadOptions& options)
     {
-        // Initialize material type - we'll determine the final type based on available textures
-        MaterialType materialType = MaterialType::Lit;
-        bool hasTextures = false;
-        bool hasNormalMap = false;
-        bool hasSpecularMap = false;
-        bool hasEmissiveMap = false;
-        bool isTransparent = false;
-        bool isEmissive = false;
-
-        // Check for transparency first
-        float opacity = 1.0f;
-        if (material->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS && opacity < 1.0f)
-        {
-            isTransparent = true;
-        }
-
-        // Check for emissive properties
-        aiColor3D emissive(0.0f, 0.0f, 0.0f);
-        if (material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive) == AI_SUCCESS)
-        {
-            if (emissive.r > 0.0f || emissive.g > 0.0f || emissive.b > 0.0f)
-            {
-                isEmissive = true;
-            }
-        }
-
         // Get material name
         aiString materialName;
         material->Get(AI_MATKEY_NAME, materialName);
@@ -392,205 +366,353 @@ namespace DXEngine
             matName = "Material_" + std::to_string(m_LastStats.materialsLoaded);
         }
 
-        // Create material with initial type (we'll update this later)
+        // Determine material type based on available textures
+        MaterialType materialType = DetermineMaterialType(material);
         auto mat = std::make_shared<Material>(matName, materialType);
 
-        // Set basic color properties
+        // Load basic material properties
+        LoadBasicMaterialProperties(mat, material);
+
+        if (options.loadTextures)
+        {
+            // Load all texture types systematically
+            LoadAllTextures(mat, material, directory, options);
+
+            // Try to find additional textures by naming convention
+            LoadTexturesByNamingConvention(mat, material, directory);
+        }
+
+        // Configure material based on loaded textures
+        ConfigureMaterialFromTextures(mat);
+
+        m_LastStats.materialsLoaded++;
+        return mat;
+    }
+
+    MaterialType ModelLoader::DetermineMaterialType(const aiMaterial* material)
+    {
+        //check for transparency
+        float opacity = 1.0f;
+        if (material->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS && opacity < 1.0f)
+        {
+            return MaterialType::Transparent;
+        }
+
+        // Check for emissive properties
+        aiColor3D emissive(0.0f, 0.0f, 0.0f);
+        if (material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive) == AI_SUCCESS)
+        {
+            if (emissive.r > 0.1f || emissive.g > 0.1f || emissive.b > 0.1f)
+            {
+                return MaterialType::Emissive;
+            }
+        }
+
+        // Check for PBR workflow (presence of metallic/roughness)
+        if (material->GetTextureCount(aiTextureType_METALNESS) > 0 ||
+            material->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS) > 0)
+        {
+            return MaterialType::PBR;
+        }
+
+        // Default to lit material
+        return MaterialType::Lit;
+    }
+
+    void ModelLoader::LoadBasicMaterialProperties(std::shared_ptr<Material> mat, const aiMaterial* material)
+    {
+        //get Basic Colors
         aiColor3D diffuse(1.0f, 1.0f, 1.0f);
         aiColor3D specular(1.0f, 1.0f, 1.0f);
-        aiColor3D ambient(0.2f, 0.2f, 0.2f);
+        aiColor3D emissive(0.0f, 0.0f, 0.0f);
+        float opacity = 1.0f;
         float shininess = 32.0f;
         float metallic = 0.0f;
         float roughness = 0.5f;
 
-        // Get diffuse color
-        if (material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS)
-        {
-            mat->SetDiffuseColor({ diffuse.r, diffuse.g, diffuse.b, opacity });
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+        material->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+        material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive);
+        material->Get(AI_MATKEY_OPACITY, opacity);
+        material->Get(AI_MATKEY_SHININESS, shininess);
+        material->Get(AI_MATKEY_METALLIC_FACTOR, metallic);
+        material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
+
+        // Set material properties
+        mat->SetDiffuseColor({ diffuse.r, diffuse.g, diffuse.b, opacity });
+        mat->SetSpecularColor({ specular.r, specular.g, specular.b, 1.0f });
+        mat->SetEmissiveColor({ emissive.r, emissive.g, emissive.b, 1.0f });
+        mat->SetShininess(std::clamp(shininess, 1.0f, 128.0f));
+        mat->SetAlpha(opacity);
+        mat->SetMetallic(metallic);
+        mat->SetRoughness(roughness);
+    }
+
+    void ModelLoader::LoadAllTextures(std::shared_ptr<Material> mat, const aiMaterial* material, const std::string& directory, const ModelLoadOptions& options)
+    {
+        // Core textures
+        LoadTextureOfType(mat, material, directory, aiTextureType_DIFFUSE,
+            [mat](auto tex) { mat->SetDiffuseTexture(tex); });
+        LoadTextureOfType(mat, material, directory, aiTextureType_NORMALS,
+            [mat](auto tex) { mat->SetNormalTexture(tex); });
+        LoadTextureOfType(mat, material, directory, aiTextureType_SPECULAR,
+            [mat](auto tex) { mat->SetSpecularTexture(tex); });
+        LoadTextureOfType(mat, material, directory, aiTextureType_EMISSIVE,
+            [mat](auto tex) { mat->SetEmissiveTexture(tex); });
+
+        // PBR textures - NEW
+        LoadTextureOfType(mat, material, directory, aiTextureType_METALNESS,
+            [mat](auto tex) { mat->SetMetallicTexture(tex); });
+        LoadTextureOfType(mat, material, directory, aiTextureType_DIFFUSE_ROUGHNESS,
+            [mat](auto tex) { mat->SetRoughnessTexture(tex); });
+        LoadTextureOfType(mat, material, directory, aiTextureType_AMBIENT_OCCLUSION,
+            [mat](auto tex) { mat->SetAOTexture(tex); });
+        LoadTextureOfType(mat, material, directory, aiTextureType_HEIGHT,
+            [mat](auto tex) { mat->SetHeightTexture(tex); });
+        LoadTextureOfType(mat, material, directory, aiTextureType_OPACITY,
+            [mat](auto tex) { mat->SetOpacityTexture(tex); });
+
+        if (mat->HasHeightTexture() && !IsItHeightMap(mat->GetHeightTexture())) {
+            // Likely a misassigned normal map; reassign if no normal is set
+            if (!mat->HasNormalTexture()) {
+                mat->SetNormalTexture(mat->GetHeightTexture());
+#ifdef _DEBUG
+                OutputDebugStringA("Reassigned height texture to normal map based on filename check.\n");
+#endif
+            }
+            mat->SetHeightTexture(nullptr);
         }
+    }
 
-        // Get specular color
-        if (material->Get(AI_MATKEY_COLOR_SPECULAR, specular) == AI_SUCCESS)
+    void ModelLoader::LoadTextureOfType(std::shared_ptr<Material> mat, const aiMaterial* material, const std::string& directory, aiTextureType type, std::function<void(std::shared_ptr<Texture>)> setter)
+    {
+        std::string texturePath = GetTextureFilename(material, type, directory);
+
+        if (!texturePath.empty())
         {
-            mat->SetSpecularColor({ specular.r, specular.g, specular.b, 1.0f });
-        }
-
-        // Get shininess
-        if (material->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
-        {
-            // Clamp shininess to reasonable range
-            shininess = std::max(1.0f, std::min(shininess, 128.0f));
-            mat->SetShininess(shininess);
-        }
-
-        // Set emissive color if present
-        if (isEmissive)
-        {
-            mat->SetEmissiveColor({ emissive.r, emissive.g, emissive.b, 1.0f });
-        }
-
-        // Set alpha/transparency
-        if (isTransparent)
-        {
-            mat->SetAlpha(opacity);
-            mat->SetFlag(MaterialFlags::IsTransparent, true);
-        }
-
-        // Load textures if enabled
-        if (options.loadTextures)
-        {
-            // Diffuse/Albedo texture
-            std::string diffusePath = GetTextureFilename(material, aiTextureType_DIFFUSE, directory);
-            if (!diffusePath.empty())
+            auto texture = LoadTexture(texturePath, type);
+            if (texture && texture->IsValid())
             {
-                auto diffuseTexture = LoadTexture(diffusePath, aiTextureType_DIFFUSE);
-                if (diffuseTexture && diffuseTexture->IsValid())
-                {
-                    mat->SetDiffuseTexture(diffuseTexture);
-                    hasTextures = true;
-                    OutputDebugStringA(("Loaded diffuse texture: " + diffusePath + "\n").c_str());
-                }
-                else
-                {
-                    OutputDebugStringA(("Failed to load diffuse texture: " + diffusePath + "\n").c_str());
-                }
+                setter(texture);
+#ifdef _DEBUG
+                OutputDebugStringA(("Loaded " + GetTextureTypeName(type) +
+                    " texture: " + texturePath + "\n").c_str());
+#endif
             }
-
-            // Normal map
-            std::string normalPath = GetTextureFilename(material, aiTextureType_NORMALS, directory);
-            if (normalPath.empty())
+            else
             {
-                // Try alternative normal map types
-                normalPath = GetTextureFilename(material, aiTextureType_HEIGHT, directory);
-            }
-            if (!normalPath.empty())
-            {
-                auto normalTexture = LoadTexture(normalPath, aiTextureType_NORMALS);
-                if (normalTexture && normalTexture->IsValid())
-                {
-                    mat->SetNormalTexture(normalTexture);
-                    hasNormalMap = true;
-                    OutputDebugStringA(("Loaded normal texture: " + normalPath + "\n").c_str());
-                }
-                else
-                {
-                    OutputDebugStringA(("Failed to load normal texture: " + normalPath + "\n").c_str());
-                }
-            }
-
-            // Specular map
-            std::string specularPath = GetTextureFilename(material, aiTextureType_SPECULAR, directory);
-            if (!specularPath.empty())
-            {
-                auto specularTexture = LoadTexture(specularPath, aiTextureType_SPECULAR);
-                if (specularTexture && specularTexture->IsValid())
-                {
-                    mat->SetSpecularTexture(specularTexture);
-                    hasSpecularMap = true;
-                    OutputDebugStringA(("Loaded specular texture: " + specularPath + "\n").c_str());
-                }
-                else
-                {
-                    OutputDebugStringA(("Failed to load specular texture: " + specularPath + "\n").c_str());
-                }
-            }
-
-            // Emissive map
-            std::string emissivePath = GetTextureFilename(material, aiTextureType_EMISSIVE, directory);
-            if (!emissivePath.empty())
-            {
-                auto emissiveTexture = LoadTexture(emissivePath, aiTextureType_EMISSIVE);
-                if (emissiveTexture && emissiveTexture->IsValid())
-                {
-                    mat->SetEmissiveTexture(emissiveTexture);
-                    hasEmissiveMap = true;
-                    OutputDebugStringA(("Loaded emissive texture: " + emissivePath + "\n").c_str());
-                }
-                else
-                {
-                    OutputDebugStringA(("Failed to load emissive texture: " + emissivePath + "\n").c_str());
-                }
-            }
-
-            // Try to load other common texture types
-            // Roughness/Metallic maps (for PBR workflows)
-            std::string roughnessPath = GetTextureFilename(material, aiTextureType_DIFFUSE_ROUGHNESS, directory);
-            std::string metallicPath = GetTextureFilename(material, aiTextureType_METALNESS, directory);
-
-            // Ambient Occlusion
-            std::string aoPath = GetTextureFilename(material, aiTextureType_AMBIENT_OCCLUSION, directory);
-
-            // Note: These would require additional texture slots and material properties
-            // For now, we'll just log if they're found
-            if (!roughnessPath.empty())
-            {
-                OutputDebugStringA(("Found roughness map: " + roughnessPath + " (not loaded - requires PBR material support)\n").c_str());
-            }
-            if (!metallicPath.empty())
-            {
-                OutputDebugStringA(("Found metallic map: " + metallicPath + " (not loaded - requires PBR material support)\n").c_str());
-            }
-            if (!aoPath.empty())
-            {
-                OutputDebugStringA(("Found AO map: " + aoPath + " (not loaded - requires additional texture slot)\n").c_str());
+                OutputDebugStringA(("Failed to load " + GetTextureTypeName(type) +
+                    " texture: " + texturePath + "\n").c_str());
             }
         }
 
-        // Determine final material type based on loaded textures and properties
-        if (isTransparent)
-        {
-            materialType = MaterialType::Transparent;
-        }
-        else if (hasEmissiveMap || isEmissive)
-        {
-            materialType = MaterialType::Emissive;
-        }
-        else if (hasNormalMap || hasTextures)
-        {
-            materialType = MaterialType::Lit;
-        }
-        else
-        {
-            materialType = MaterialType::Lit;
-        }
 
-        // Set the final material type
-        mat->SetType(materialType);
+    }
 
-        // Set additional material flags based on properties
-        mat->SetFlag(MaterialFlags::castsShadows, !isTransparent && !isEmissive);
-        mat->SetFlag(MaterialFlags::ReceivesShadows, !isEmissive);
+    void ModelLoader::LoadTexturesByNamingConvention(std::shared_ptr<Material> mat, const aiMaterial* material, const std::string& directory)
+    {
+        std::string basePath = GetTextureFilename(material, aiTextureType_DIFFUSE, directory);
+        if (basePath.empty()) return;
 
-        // Check for two-sided materials
-        int twoSided = 0;
-        if (material->Get(AI_MATKEY_TWOSIDED, twoSided) == AI_SUCCESS && twoSided != 0)
+        std::filesystem::path texPath(basePath);
+        std::string baseName = texPath.stem().string();
+        std::string extension = texPath.extension().string();
+        std::string parentDir = texPath.parent_path().string();
+
+        // Remove common diffuse suffixes
+        std::vector<std::string> diffuseSuffixes = {
+            "_d", "_diff", "_diffuse", "_albedo", "_base", "_bc"
+        };
+
+        for (const auto& suffix : diffuseSuffixes)
         {
-            mat->SetFlag(MaterialFlags::IsTwoSided, true);
+            size_t pos = baseName.rfind(suffix);
+            if (pos != std::string::npos && pos == baseName.length() - suffix.length())
+            {
+                baseName = baseName.substr(0, pos);
+                break;
+            }
         }
 
-        // Get texture tiling and offset if available
-        aiUVTransform uvTransform;
-        if (material->Get(AI_MATKEY_UVTRANSFORM(aiTextureType_DIFFUSE, 0), uvTransform) == AI_SUCCESS)
-        {
-            mat->SetTextureScale({ uvTransform.mScaling.x, uvTransform.mScaling.y });
-            mat->SetTextureOffset({ uvTransform.mTranslation.x, uvTransform.mTranslation.y });
+        // Try to find other texture maps using common naming conventions
+        std::vector<std::pair<std::string, std::function<void(std::shared_ptr<Texture>)>>> conventions = {
+            // --- Diffuse / Albedo / BaseColor ---
+            {"_d",       [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
+            {"_diff",    [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
+            {"_diffuse", [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
+            {"_albedo",  [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
+            {"_basecolor",[mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
+            {"_col",     [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
+            
+            // --- Normal maps ---
+            {"_n",       [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
+            {"_norm",    [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
+            {"_normal",  [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
+            {"_nrm",     [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
 
-            OutputDebugStringA(("Material UV transform - Scale: (" +
-                std::to_string(uvTransform.mScaling.x) + ", " +
-                std::to_string(uvTransform.mScaling.y) + "), Offset: (" +
-                std::to_string(uvTransform.mTranslation.x) + ", " +
-                std::to_string(uvTransform.mTranslation.y) + ")\n").c_str());
+            // --- Roughness / Glossiness ---
+            {"_r",        [mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
+            {"_rough",    [mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
+            {"_roughness",[mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
+            {"_gloss",    [mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
+            {"_glossiness",[mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
+
+            // --- Metallic ---
+            {"_m",        [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
+            {"_met",      [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
+            {"_metal",    [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
+            {"_metallic", [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
+
+            // --- Ambient Occlusion ---
+            {"_ao",        [mat](auto tex) { if (!mat->HasAOTexture()) mat->SetAOTexture(tex); }},
+            {"_occlusion", [mat](auto tex) { if (!mat->HasAOTexture()) mat->SetAOTexture(tex); }},
+            {"_ambient",   [mat](auto tex) { if (!mat->HasAOTexture()) mat->SetAOTexture(tex); }},
+
+            // --- Height / Displacement ---
+            {"_h",        [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
+            {"_height",   [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
+            {"_disp",     [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
+            {"_displace", [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
+
+            // --- Emissive ---
+            {"_e",        [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
+            {"_emit",     [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
+            {"_emissive", [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
+            {"_glow",     [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
+
+            // --- Opacity / Transparency / Mask ---
+            {"_a",        [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
+            {"_alpha",    [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
+            {"_opacity",  [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
+            {"_trans",    [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
+            {"_mask",     [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
+        };
+
+        // Test each naming convention
+        for (const auto& [suffix, setter] : conventions)
+        {
+            std::string testPath = parentDir.empty() ?
+                (baseName + suffix + extension) :
+                (parentDir + "/" + baseName + suffix + extension);
+
+            std::string fullTestPath = ModelLoaderUtils::NormalizePath(directory + "/" + testPath);
+
+            if (ModelLoaderUtils::FileExists(fullTestPath))
+            {
+                auto texture = Texture::CreateFromFile(fullTestPath);
+                if (texture && texture->IsValid())
+                {
+                    setter(texture);
+                    OutputDebugStringA(("Found texture by convention: " + testPath + "\n").c_str());
+                    m_LastStats.texturesLoaded++;
+                }
+            }
+        }
+    }
+
+    bool ModelLoader::IsItHeightMap(std::shared_ptr<Texture> texture)
+    {
+        if (!texture)
+            return false;
+
+        // Get the filename (assuming Texture has GetPath() or similar)
+        const std::string& filename = texture->GetFilePath();
+
+        // Reuse your existing detection utility
+        TextureType type = TextureUtils::DetectTextureType(filename);
+
+        return (type == TextureType::Height);
+
+    }
+
+
+    std::shared_ptr<Texture> ModelLoader::CreateFallbackTexture(aiTextureType type)
+    {
+        switch (type)
+        {
+        case aiTextureType_DIFFUSE:
+            return CreateSolidColorTexture(255, 255, 255, 255); // White
+
+        case aiTextureType_NORMALS:
+            return CreateSolidColorTexture(128, 128, 255, 255); // Flat normal (0.5, 0.5, 1.0)
+
+        case aiTextureType_SPECULAR:
+            return CreateSolidColorTexture(255, 255, 255, 255); // Full specular
+
+        case aiTextureType_METALNESS:
+            return CreateSolidColorTexture(0, 0, 0, 255);       // Non-metallic
+
+        case aiTextureType_DIFFUSE_ROUGHNESS:
+            return CreateSolidColorTexture(128, 128, 128, 255); // Medium roughness
+
+        case aiTextureType_AMBIENT_OCCLUSION:
+            return CreateSolidColorTexture(255, 255, 255, 255); // No occlusion
+
+        case aiTextureType_HEIGHT:
+            return CreateSolidColorTexture(0, 0, 0, 255);       // Flat height
+
+        case aiTextureType_EMISSIVE:
+            return CreateSolidColorTexture(0, 0, 0, 255);       // No emission
+
+        case aiTextureType_OPACITY:
+            return CreateSolidColorTexture(255, 255, 255, 255); // Fully opaque
+
+        default:
+            return CreateSolidColorTexture(255, 0, 255, 255);   // Magenta for unknown
+        }
+    }
+
+    std::shared_ptr<Texture> ModelLoader::CreateSolidColorTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+    {
+        // Create a 1x1 texture with the specified color
+        uint8_t pixels[4] = { r, g, b, a };
+        return Texture::CreateFromPixels(pixels, 1, 1, 4);
+    }
+
+    void ModelLoader::ConfigureMaterialFromTextures(std::shared_ptr<Material> mat)
+    {
+        // Update material type based on loaded textures
+        if (mat->HasRoughnessTexture() || mat->HasMetallicTexture())
+        {
+            if (mat->GetType() == MaterialType::Lit)
+            {
+                mat->SetType(MaterialType::PBR);
+            }
         }
 
-        // Log material creation summary
-        OutputDebugStringA(("Created material: " + matName +
-            " (Type: " + std::to_string(static_cast<int>(materialType)) +
-            ", Textures: " + (hasTextures ? "Yes" : "No") +
-            ", Normal: " + (hasNormalMap ? "Yes" : "No") +
-            ", Transparent: " + (isTransparent ? "Yes" : "No") + ")\n").c_str());
+        // Configure parallax mapping if height texture exists
+        if (mat->HasHeightTexture())
+        {
+            mat->SetFlag(MaterialFlags::UseParallaxMapping, true);
+            mat->SetHeightScale(0.05f);
+        }
 
-        m_LastStats.materialsLoaded++;
-        return mat;
+        // Configure detail textures if available
+        if (mat->IsTextureSlotUsed(TextureSlot::DetailDiffuse) ||
+            mat->IsTextureSlotUsed(TextureSlot::DetailNormal))
+        {
+            mat->SetFlag(MaterialFlags::UseDetailTextures, true);
+            mat->SetDetailTextureScale({ 8.0f, 8.0f }); // Default 8x8 tiling
+        }
+    }
+
+    std::string ModelLoader::GetTextureTypeName(aiTextureType type)
+    {
+        switch (type)
+        {
+        case aiTextureType_DIFFUSE: return "Diffuse";
+        case aiTextureType_NORMALS: return "Normal";
+        case aiTextureType_SPECULAR: return "Specular";
+        case aiTextureType_EMISSIVE: return "Emissive";
+        case aiTextureType_METALNESS: return "Metallic";
+        case aiTextureType_DIFFUSE_ROUGHNESS: return "Roughness";
+        case aiTextureType_AMBIENT_OCCLUSION: return "AO";
+        case aiTextureType_HEIGHT: return "Height";
+        case aiTextureType_DISPLACEMENT: return "Displacement";
+        case aiTextureType_OPACITY: return "Opacity";
+        case aiTextureType_REFLECTION: return "Reflection";
+        default: return "Unknown";
+        }
     }
 
     std::shared_ptr<Texture> ModelLoader::LoadTexture(const std::string& path, aiTextureType type)

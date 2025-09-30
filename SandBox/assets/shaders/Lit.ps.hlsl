@@ -2,6 +2,13 @@
 
 float4 main(StandardVertexOutput input) : SV_Target
 {
+   float3 V = normalize(input.viewDir);
+
+#if ENABLE_PARALLAX_MAPPING && HAS_HEIGHT_MAP && HAS_TANGENT_ATTRIBUTE
+    input.texCoord = ParallaxOcclusionMapping(input.texCoord, V, 
+                                              input.normal, input.tangent);
+#endif
+    
     // Normalize inputs that are always present
 #if HAS_NORMAL_ATTRIBUTE
     float3 N = normalize(input.normal);
@@ -9,23 +16,29 @@ float4 main(StandardVertexOutput input) : SV_Target
     float3 N = float3(0.0, 0.0, 1.0); // Default up normal
 #endif
 
-    float3 V = normalize(input.viewDir);
     
     // ========================================================================
     // TEXTURE SAMPLING - Conditional based on available textures
     // ========================================================================
     
     float4 diffuseSample = float4(1.0, 1.0, 1.0, 1.0);
-    float3 normalSample = float3(0.0, 0.0, 1.0);
     float3 specularSample = float3(1.0, 1.0, 1.0);
     float3 emissiveSample = float3(0.0, 0.0, 0.0);
+    float roughnessValue = roughness;
+    float metallicValue = metallic;
+    float occlusionValue = 1.0;
+    float opacityValue = alpha;
     
 #if HAS_TEXCOORDS_ATTRIBUTE
     // Only sample textures if we have texture coordinates
     diffuseSample = SampleDiffuseTexture(input.texCoord);
-    normalSample = SampleNormalMap(input.texCoord);
     specularSample = SampleSpecularMap(input.texCoord);
     emissiveSample = SampleEmissiveMap(input.texCoord);
+    
+    roughnessValue = SampleRoughnessMap(input.texCoord);
+    metallicValue *= SampleMetallicMap(input.texCoord);
+    occlusionValue *= SampleAOMap(input.texCoord);
+    opacityValue *= SampleOpacityMap(input.texCoord);
 #endif
     
     // ========================================================================
@@ -34,15 +47,12 @@ float4 main(StandardVertexOutput input) : SV_Target
     
     float3 worldNormal;
 #if HAS_NORMAL_MAP && HAS_TANGENT_ATTRIBUTE && HAS_TEXCOORDS_ATTRIBUTE
-    // Full tangent space normal mapping
-    worldNormal = GetFinalWorldNormal(input);
-#elif HAS_NORMAL_MAP && HAS_TEXCOORDS_ATTRIBUTE && HAS_NORMAL_ATTRIBUTE
-    // Fallback: simple normal perturbation without tangent space
-    worldNormal = normalize(N + normalSample * 0.1);
-#else
-    // Use vertex normal or default
+    worldNormal = CalculateWorldNormal(N, input.tangent, input.texCoord);
+#elif HAS_NORMAL_ATTRIBUTE
     worldNormal = N;
-#endif    
+#else
+    worldNormal = float3(0.0, 0.0, 1.0);
+#endif   
     // ========================================================================
     // MATERIAL PROPERTIES - Enhanced with texture data
     // ========================================================================
@@ -50,15 +60,17 @@ float4 main(StandardVertexOutput input) : SV_Target
     // Base color with vertex color modulation if available
     float3 albedo = diffuseColor.rgb * diffuseSample.rgb;
     
+#if HAS_DETAIL_TEXTURES && HAS_TEXCOORDS_ATTRIBUTE
+    // Apply detail diffuse texture
+    float4 detailDiffuse = SampleDetailDiffuse(input.texCoord);
+    albedo = lerp(albedo, albedo * detailDiffuse.rgb, detailDiffuse.a * 0.5);
+#endif
+    
 #if HAS_VERTEX_COLOR_ATTRIBUTE
-    // Modulate with vertex colors if present
     albedo *= input.color.rgb;
 #endif
     
-    // Handle metallic/roughness from textures or constants
-    float metallicValue = metallic;
-    float roughnessValue = roughness;
-    
+ 
 #if HAS_SPECULAR_MAP && HAS_TEXCOORDS_ATTRIBUTE
     // Use specular map channels for PBR values if available
     metallicValue *= specularSample.b; // Blue channel = metallic
@@ -162,7 +174,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     // ALPHA CALCULATION
     // ========================================================================
     
-    float finalAlpha = diffuseSample.a * alpha;
+    float finalAlpha = diffuseSample.a * alpha * opacityValue;
     
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     // Modulate alpha with vertex color if available

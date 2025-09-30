@@ -46,54 +46,13 @@ namespace DXEngine {
         }
     }
 
-    std::shared_ptr<ShaderProgram> ShaderManager::GetShader(MaterialType materialType) {
-        if (!m_Initialized || !m_VariantManager) {
-            return nullptr;
-        }
-
-        if (m_DynamicVariantsEnabled) {
-            // Use variant system with default layout
-            return m_VariantManager->GetShaderVariant(m_DefaultLayout, nullptr, materialType);
-        }
-        else {
-            // Legacy compatibility - create variant key manually
-            ShaderVariantKey key;
-            key.materialType = materialType;
-            key.vertexLayoutHash = m_VariantManager->GenerateVertexLayoutHash(m_DefaultLayout);
-            key.features = m_VariantManager->CombineFeatures(
-                m_VariantManager->AnalyzeVertexLayout(m_DefaultLayout),
-                ShaderFeatureFlags{},
-                materialType
-            );
-            return m_VariantManager->GetShaderVariant(key);
-        }
-    }
-
-    std::shared_ptr<ShaderProgram> ShaderManager::GetShader(const std::string& name) {
-        if (!m_Initialized || !m_VariantManager) {
-            return nullptr;
-        }
-
-        // Map shader name to material type (backward compatibility)
-        MaterialType materialType = MaterialType::Lit; // Default
-
-        if (name == "Unlit") materialType = MaterialType::Unlit;
-        else if (name == "Lit") materialType = MaterialType::Lit;
-        else if (name == "Transparent") materialType = MaterialType::Transparent;
-        else if (name == "Emissive") materialType = MaterialType::Emissive;
-        else if (name == "Skybox") materialType = MaterialType::Skybox;
-        else if (name == "UI") materialType = MaterialType::UI;
-
-        return GetShader(materialType);
-    }
-
     std::shared_ptr<ShaderProgram> ShaderManager::GetShaderForMesh(
         const VertexLayout& layout,
         const Material* material,
         MaterialType materialType) {
 
         if (!m_Initialized || !m_VariantManager) {
-            return GetFallbackShader();
+            return GetFallbackShader(materialType);
         }
 
         if (m_DynamicVariantsEnabled) {
@@ -105,9 +64,8 @@ namespace DXEngine {
             // Fallback to standard shader if variant fails
             OutputDebugStringA("Warning: Failed to create shader variant, falling back to standard shader\n");
         }
+        return GetFallbackShader(materialType);
 
-        // Fallback to basic material type shader
-        return GetShader(materialType);
     }
 
     void ShaderManager::EnableHotReload(bool enable) {
@@ -189,10 +147,9 @@ namespace DXEngine {
         m_MaterialTypeToShader[MaterialType::UI] = "UI";
     }
 
-    std::shared_ptr<ShaderProgram> ShaderManager::GetFallbackShader() {
-        // Try to get a basic lit shader as fallback
+    std::shared_ptr<ShaderProgram> ShaderManager::GetFallbackShader(MaterialType materialType) {
         if (m_VariantManager) {
-            return GetShader(MaterialType::Lit);
+            return m_VariantManager->GetFallbackShader(materialType);
         }
         return nullptr;
     }

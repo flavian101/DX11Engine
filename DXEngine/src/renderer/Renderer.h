@@ -202,7 +202,7 @@ namespace DXEngine {
 
         //material and shader managment
         static void BindMaterial(std::shared_ptr<Material> material);
-        static void BindShaderForMaterial(std::shared_ptr<Material> material);
+        static void BindShaderForMaterial(std::shared_ptr<Material> material, std::shared_ptr<Mesh> mesh);
         static void SetupTransformBuffer(const DXEngine::RenderSubmission& submission);
         static void SetupInstanceBuffer(const DXEngine::RenderSubmission& submission);
         static void SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission);

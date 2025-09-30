@@ -165,17 +165,29 @@ namespace DXEngine {
 
         //create default lighting setup
 
-        auto sunLight = s_LightManager->CreateDirectionalLight();
-        if (sunLight)
-        {
-            sunLight->SetDirection({ 0.3f,-0.8,0.2 });
-            sunLight->SetColor({ 1.0f, 0.95f, 0.8f });
-            sunLight->SetIntensity(3.0f);
-            sunLight->SetCastShadows(false);
-        }
-        // Set default ambient
+       auto sunLight = s_LightManager->CreateDirectionalLight();
+       if (sunLight)
+       {
+           sunLight->SetDirection({ 0.3f,-0.8,0.2 });
+           sunLight->SetColor({ 1.0f, 0.95f, 0.8f });
+           sunLight->SetIntensity(2.0f);
+           sunLight->SetCastShadows(false);
+       }
+       // Set default ambient
         s_LightManager->SetAmbientLight({ 0.2f, 0.25f, 0.3f }, 0.1f);
         s_LightManager->SetExposure(0.4f);
+
+       // auto point = s_LightManager->CreatePointLight();
+       // if (point)
+       // {
+       //     point->SetColor({ 1.0f, 1.0f, 1.0f });
+       //     point->SetIntensity(200.0f);
+       //     point->SetRadius(100.f);
+       //     point->SetPosition({ 0.0f, 15.0f, 4.0f });
+       //     point->SetAttenuation({ 50.0f, 0.0f, 2.0f });
+       //     point->SetCastShadows(false);
+       // }
+
 
     }
 
@@ -780,14 +792,14 @@ namespace DXEngine {
 
         // Log culling decisions in debug mode
 #ifdef _DEBUG
-        if (containment == DirectX::DISJOINT) {
-            std::string debugMsg = "Model culled - Center: (" +
-                std::to_string(worldSphere.center.x) + ", " +
-                std::to_string(worldSphere.center.y) + ", " +
-                std::to_string(worldSphere.center.z) + ") Radius: " +
-                std::to_string(worldSphere.radius) + "\n";
-            OutputDebugStringA(debugMsg.c_str());
-        }
+      //  if (containment == DirectX::DISJOINT) {
+      //      std::string debugMsg = "Model culled - Center: (" +
+      //          std::to_string(worldSphere.center.x) + ", " +
+      //          std::to_string(worldSphere.center.y) + ", " +
+      //          std::to_string(worldSphere.center.z) + ") Radius: " +
+      //          std::to_string(worldSphere.radius) + "\n";
+      //      OutputDebugStringA(debugMsg.c_str());
+      //  }
 #endif
 
         // Consider both CONTAINS and INTERSECTS as visible
@@ -851,7 +863,7 @@ namespace DXEngine {
 
         //Bind Material and Shader
         BindMaterial(material);
-        BindShaderForMaterial(material);
+        BindShaderForMaterial(material, submission.mesh);
         //Transform buffers
         SetupTransformBuffer(submission);
 
@@ -895,7 +907,7 @@ namespace DXEngine {
 
         //Bind material and Shader
         BindMaterial(material);
-        BindShaderForMaterial(material);
+        BindShaderForMaterial(material,submission.mesh);
 
         //setup Transform and instance buffers
         SetupTransformBuffer(submission);
@@ -942,7 +954,7 @@ namespace DXEngine {
 
         // Bind material and shader
         BindMaterial(material);
-        BindShaderForMaterial(material);
+        BindShaderForMaterial(material, submission.mesh);
 
         // Setup transform and skinning buffers
         SetupTransformBuffer(submission);
@@ -1016,9 +1028,16 @@ namespace DXEngine {
                 materialToUse->SetDiffuseColor({ textColor.r, textColor.g, textColor.b, textColor.a });
             }
 
+            auto mesh = s_UIQuadModel->GetMesh();
+            if (!mesh || !mesh->IsValid()) {
+                OutputDebugStringA("Warning: UI quad mesh is invalid\n");
+                PopRenderState();
+                return;
+            }
+
             // Bind Material and shader
             BindMaterial(materialToUse);
-            BindShaderForMaterial(materialToUse);
+            BindShaderForMaterial(materialToUse,mesh);
 
             // Setup UI constant buffer (register b5)
             ConstantBuffer<UIConstantBuffer> uiBuffer;
@@ -1039,35 +1058,24 @@ namespace DXEngine {
             RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_UI, 1, uiBuffer.GetAddressOf());
 
             // Render the UI quad
-            auto mesh = s_UIQuadModel->GetMesh();
-            if (mesh && mesh->IsValid())
+            const void* shaderByteCode = nullptr;
+            size_t byteCodeLength = 0;
+            if (s_CurrentShader)
             {
-                // Get shader bytecode for input layout
-                const void* shaderByteCode = nullptr;
-                size_t byteCodeLength = 0;
-                if (s_CurrentShader)
+                auto blob = s_CurrentShader->GetByteCode();
+                if (blob)
                 {
-                    auto blob = s_CurrentShader->GetByteCode();
-                    if (blob)
-                    {
-                        shaderByteCode = blob->GetBufferPointer();
-                        byteCodeLength = blob->GetBufferSize();
-                    }
+                    shaderByteCode = blob->GetBufferPointer();
+                    byteCodeLength = blob->GetBufferSize();
                 }
-
-                mesh->EnsureGPUResources();
-                mesh->Bind(shaderByteCode, byteCodeLength);
-                mesh->Draw();
-            }
-            else
-            {
-                OutputDebugStringA("Warning: UI quad mesh is invalid\n");
             }
 
-            // Restore previous render state
+            mesh->EnsureGPUResources();
+            mesh->Bind(shaderByteCode, byteCodeLength);
+            mesh->Draw();
+
             PopRenderState();
 
-            // Update statistics
             s_Stats.drawCalls++;
             s_Stats.uiElementsRendered++;
     }
@@ -1094,7 +1102,7 @@ namespace DXEngine {
         }
     }
 
-    void Renderer::BindShaderForMaterial(std::shared_ptr<Material> material)
+    void Renderer::BindShaderForMaterial(std::shared_ptr<Material> material, std::shared_ptr<Mesh> mesh)
     {
         if (!s_ShaderManager || !material)
             return;
@@ -1102,18 +1110,18 @@ namespace DXEngine {
         // Get appropriate shader variant based on current mesh and material
         std::shared_ptr<ShaderProgram> shader = nullptr;
 
-        // Try to get the current mesh being rendered
-        if (s_CurrentRenderSubmission && s_CurrentRenderSubmission->mesh) {
-            const auto* vertexData = s_CurrentRenderSubmission->mesh->GetResource()->GetVertexData();
+        // Get vertex layout from the mesh being rendered
+        if (mesh && mesh->IsValid()) {
+            const auto* vertexData = mesh->GetResource()->GetVertexData();
             if (vertexData) {
                 const VertexLayout& layout = vertexData->GetLayout();
                 shader = s_ShaderManager->GetShaderForMesh(layout, material.get(), material->GetType());
             }
         }
 
-        // Fallback to regular shader selection
+        // Fallback if mesh is invalid or shader creation failed
         if (!shader) {
-            shader = s_ShaderManager->GetShader(material->GetType());
+            shader = s_ShaderManager->GetFallbackShader(material->GetType());
         }
 
         if (shader && shader != s_CurrentShader) {

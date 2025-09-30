@@ -69,11 +69,16 @@ namespace DXEngine {
         auto mesh = std::make_shared<Mesh>(meshResource);
 
         auto grassMaterial = MaterialFactory::CreateLitMaterial("Ground Material");
-        auto grassDiffuse = std::make_shared<Texture>("assets/textures/grass.jpg");
-        auto grassNormal = std::make_shared<Texture>("assets/textures/grassNormal.jpg");
+        auto grassDiffuse = std::make_shared<Texture>("assets/textures/grass/grass_with_mud_and_stones_39_46_diffuse.jpg");
+        auto grassNormal = std::make_shared<Texture>("assets/textures/grass/grass_with_mud_and_stones_39_46_normal.jpg");
+        auto grassRoughness = std::make_shared<Texture>("assets/textures/grass/grass_with_mud_and_stones_39_46_roughness.jpg");
+        auto grassAO = std::make_shared<Texture>("assets/textures/grass/grass_with_mud_and_stones_39_46_ao.jpg");
+       // auto grassRoughness = std::make_shared<Texture>("assets/textures/grass/");
         grassMaterial->SetDiffuseTexture(grassDiffuse);
         grassMaterial->SetNormalTexture(grassNormal);
-        grassMaterial->SetTextureScale({ 50.0f, 50.0f });
+        grassMaterial->SetRoughnessTexture(grassRoughness);
+        grassMaterial->SetAOTexture(grassAO);
+        grassMaterial->SetTextureScale({ 30.0f, 30.0f });
         mesh->SetMaterial(grassMaterial);
         SetMesh(std::move(mesh));
 	}

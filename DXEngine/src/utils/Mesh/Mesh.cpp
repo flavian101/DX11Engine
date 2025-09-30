@@ -106,6 +106,13 @@ namespace DXEngine {
                 {
                     RenderCommand::GetContext()->IASetInputLayout(inputLayout.Get());
                 }
+                else
+                {
+                    // CRITICAL: Input layout creation failed!
+                    OutputDebugStringA("ERROR: Failed to create input layout - vertex layout doesn't match shader!\n");
+                    OutputDebugStringA(("Vertex Layout: " + vertexData->GetLayout().GetDebugString() + "\n").c_str());
+                    return; // Don't proceed with rendering
+                }
             }
         }
 

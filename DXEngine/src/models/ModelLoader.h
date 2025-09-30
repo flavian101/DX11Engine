@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <DirectXMath.h>
 #include <mutex>
+#include <functional> 
 
 #include <assimp/scene.h>
 #include <assimp/mesh.h>
@@ -27,6 +28,7 @@ namespace DXEngine {
     class MeshResource;
     class SkinnedMeshResource;
     class Texture;
+    enum class MaterialType;
 
     struct LoadedAnimation
     {
@@ -46,7 +48,7 @@ namespace DXEngine {
     struct ModelLoadOptions
     {
         bool makeLeftHanded = true;
-        bool generateNormals = false;
+        bool generateNormals = true;
         bool generateTangents = true;
         bool flipUVs = false;
         bool optimizeMeshes = true;
@@ -128,8 +130,30 @@ namespace DXEngine {
         std::shared_ptr<MeshResource> ProcessMesh(const aiMesh* mesh, const aiScene* scene,
             const ModelLoadOptions& options);
 
+        // Enhanced material processing methods
         std::shared_ptr<Material> ProcessMaterial(const aiMaterial* material,
             const std::string& directory, const ModelLoadOptions& options);
+        MaterialType DetermineMaterialType(const aiMaterial* material);
+        void LoadBasicMaterialProperties(std::shared_ptr<Material> mat, const aiMaterial* material);
+        void LoadAllTextures(std::shared_ptr<Material> mat, const aiMaterial* material, const std::string& directory, const ModelLoadOptions& options);
+        void LoadTextureOfType(std::shared_ptr<Material> mat,
+            const aiMaterial* material,
+            const std::string& directory,
+            aiTextureType type,
+            std::function<void(std::shared_ptr<Texture>)> setter);
+        void LoadTexturesByNamingConvention(std::shared_ptr<Material> mat,
+            const aiMaterial* material,
+            const std::string& directory);
+        bool IsItHeightMap(std::shared_ptr<Texture> texture);
+
+        // Fallback texture creation
+        std::shared_ptr<Texture> CreateFallbackTexture(aiTextureType type);
+        std::shared_ptr<Texture> CreateSolidColorTexture(uint8_t r, uint8_t g,
+            uint8_t b, uint8_t a);
+
+        // Material configuration
+        void ConfigureMaterialFromTextures(std::shared_ptr<Material> mat);
+        std::string GetTextureTypeName(aiTextureType type);
 
         // Specialized processing
         std::shared_ptr<SkinnedMeshResource> ProcessSkinnedMesh(const aiMesh* mesh,
@@ -141,6 +165,8 @@ namespace DXEngine {
         // Texture loading
         std::shared_ptr<Texture> LoadTexture(const std::string& path, aiTextureType type);
         std::shared_ptr<Texture> LoadEmbeddedTexture(const aiScene* scene, const std::string& path);
+
+        
 
         // Utility methods
         std::string GetTextureFilename(const aiMaterial* material, aiTextureType type,

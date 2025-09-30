@@ -1,6 +1,7 @@
 #pragma once
 #include "renderer/RendererCommand.h"
 #include "wrl.h"
+#include "material/materialTypes.h"
 
 namespace DXEngine {
 	enum class TextureFormat
@@ -16,6 +17,25 @@ namespace DXEngine {
 		BC5_UNORM       // Normal maps
 	};
 
+	enum class TextureType
+	{
+		Unknown,
+		Diffuse,
+		Normal,
+		Specular,
+		Roughness,
+		Metallic,
+		AmbientOcclusion,
+		Height,
+		Emissive,
+		Opacity,
+		DetailMask,
+		Subsurface,
+		Anisotropy,
+		Clearcoat,
+		Environment
+	};
+
 	class Texture
 	{
 	public:
@@ -26,7 +46,7 @@ namespace DXEngine {
 		Texture(const unsigned char* data, size_t dataSize); // For compressed data
 
 
-		void Bind( UINT slot);
+		void Bind(UINT slot, bool vertexShader = false, bool pixelShader = true);
 
 		static std::shared_ptr<Texture> CreateFromFile(const std::string& filepath);
 		static std::shared_ptr<Texture> CreateFromMemory(const unsigned char* data, size_t dataSize);
@@ -64,6 +84,14 @@ namespace DXEngine {
 		int m_Height = 0;
 		TextureFormat m_Format = TextureFormat::RGBA8_UNORM;
 		std::string m_FilePath;
+	};
+
+	namespace TextureUtils
+	{
+		 TextureType DetectTextureType(const std::string& filename);
+		 std::string GetTextureTypeName(TextureType type);
+		 TextureSlot GetTextureSlot(TextureType type);
+		 bool IsValidTextureFormat(const std::string& extension);
 	};
 	
 	
