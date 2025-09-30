@@ -13,10 +13,10 @@ workspace "DX11Engine"
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 --include directories relative to root folder (solution directory)
-Includedir = {}
-Includedir["AssimpPublic"] = "DXEngine/vendor/assimp/include"
-Includedir["AssimpGen"]    = "DXEngine/vendor/assimp/build/include"
-Includedir["ImGui"] = "DXEngine/vendor/imgui"
+IncludeDir = {}
+IncludeDir["AssimpPublic"] = "DXEngine/vendor/assimp/include"
+IncludeDir["AssimpGen"]    = "DXEngine/vendor/assimp/build/include"
+IncludeDir["ImGui"] = "DXEngine/vendor/imgui"
 
 group "Dependencies"
 	include "DXEngine/vendor/imgui"
@@ -57,9 +57,9 @@ project "DXEngine"
 	includedirs{
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/stb",
-		"%{Includedir.AssimpPublic}",
-        "%{Includedir.AssimpGen}",
-		"%{Includedir.ImGui}",
+		"%{IncludeDir.AssimpPublic}",
+        "%{IncludeDir.AssimpGen}",
+		"%{IncludeDir.ImGui}",
 
 	}
 	defines{
@@ -67,7 +67,7 @@ project "DXEngine"
 		"ASSIMP_BUILD_STATIC",
 	}
 	links{
-		"Imgui"
+		"ImGui"
 	}
 
 	filter "system:windows"
@@ -109,8 +109,8 @@ location "Sandbox"
 	includedirs{
 		"DXEngine/src",
 		"DXEngine/vendor/",
-		"%{Includedir.AssimpPublic}",
-        "%{Includedir.AssimpGen}",
+		"%{IncludeDir.AssimpPublic}",
+        "%{IncludeDir.AssimpGen}",
 	}
 
 	links{
