@@ -1,3 +1,6 @@
 [submodule "DXEngine/vendor/assimp"]
 	path = DXEngine/vendor/assimp
 	url = https://github.com/flavian101/assimp.git
+[submodule "DXEngine/vendor/imgui"]
+	path = DXEngine/vendor/imgui
+	url = https://github.com/flavian101/imgui.git

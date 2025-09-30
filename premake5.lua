@@ -9,13 +9,18 @@ workspace "DX11Engine"
 	startproject "Sandbox"
 
 
+
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 --include directories relative to root folder (solution directory)
 Includedir = {}
 Includedir["AssimpPublic"] = "DXEngine/vendor/assimp/include"
 Includedir["AssimpGen"]    = "DXEngine/vendor/assimp/build/include"
+Includedir["ImGui"] = "DXEngine/vendor/imgui"
 
+group "Dependencies"
+	include "DXEngine/vendor/imgui"
+group ""
 
 -- Define Assimp paths
 AssimpLibPath = "DXEngine/vendor/assimp/build/lib"
@@ -54,13 +59,15 @@ project "DXEngine"
 		"%{prj.name}/vendor/stb",
 		"%{Includedir.AssimpPublic}",
         "%{Includedir.AssimpGen}",
+		"%{Includedir.ImGui}",
+
 	}
 	defines{
 		"_CRT_SECURE_NO_WARNINGS",
-		"_DEBUG",
 		"ASSIMP_BUILD_STATIC",
 	}
 	links{
+		"Imgui"
 	}
 
 	filter "system:windows"

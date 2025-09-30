@@ -128,6 +128,9 @@
     <ClInclude Include="src\shaders\ShaderProgram.h">
       <Filter>shaders</Filter>
     </ClInclude>
+    <ClInclude Include="src\shaders\ShaderVariantManager.h">
+      <Filter>shaders</Filter>
+    </ClInclude>
     <ClInclude Include="src\utils\Buffer.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -169,6 +172,9 @@
     </ClInclude>
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h">
       <Filter>utils\Mesh\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\PerfomanceProfiller.h">
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\PixelShader.h">
       <Filter>utils</Filter>
@@ -218,8 +224,6 @@
     <ClInclude Include="src\windows\WindowsInput.h">
       <Filter>windows</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\PerfomanceProfiller.h" />
-    <ClInclude Include="src\shaders\ShaderVariantManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -279,6 +283,9 @@
       <Filter>shaders</Filter>
     </ClCompile>
     <ClCompile Include="src\shaders\ShaderProgram.cpp">
+      <Filter>shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="src\shaders\ShaderVariantManager.cpp">
       <Filter>shaders</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Buffer.cpp">
@@ -362,6 +369,5 @@
     <ClCompile Include="src\windows\WindowsInput.cpp">
       <Filter>windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\shaders\ShaderVariantManager.cpp" />
   </ItemGroup>
 </Project>

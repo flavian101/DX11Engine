@@ -57,8 +57,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;ASSIMP_BUILD_STATIC;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -83,8 +83,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;ASSIMP_BUILD_STATIC;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -109,7 +109,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\shaders\ShaderVariantManager.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Ball.h" />
     <ClInclude Include="src\Core\Input.h" />
@@ -126,7 +125,6 @@
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
     <ClInclude Include="src\SkySphere.h" />
-    <ClInclude Include="src\utils\PerfomanceProfiller.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\camera\Camera.h" />
     <ClInclude Include="src\camera\CameraBehavior.h" />
@@ -146,6 +144,7 @@
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\shaders\ShaderManager.h" />
     <ClInclude Include="src\shaders\ShaderProgram.h" />
+    <ClInclude Include="src\shaders\ShaderVariantManager.h" />
     <ClInclude Include="src\utils\Buffer.h" />
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
     <ClInclude Include="src\utils\CubeMapTexture.h" />
@@ -160,6 +159,7 @@
     <ClInclude Include="src\utils\Mesh\Utils\InputManager.h" />
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
+    <ClInclude Include="src\utils\PerfomanceProfiller.h" />
     <ClInclude Include="src\utils\PixelShader.h" />
     <ClInclude Include="src\utils\Sampler.h" />
     <ClInclude Include="src\utils\Texture.h" />
@@ -178,7 +178,6 @@
     <ClInclude Include="src\windows\WindowsInput.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\shaders\ShaderVariantManager.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Ball.cpp" />
     <ClCompile Include="src\Core\Input.cpp" />
@@ -206,6 +205,7 @@
     <ClCompile Include="src\renderer\RendererCommand.cpp" />
     <ClCompile Include="src\shaders\ShaderManager.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
+    <ClCompile Include="src\shaders\ShaderVariantManager.cpp" />
     <ClCompile Include="src\utils\Buffer.cpp" />
     <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
@@ -233,6 +233,11 @@
     <ClCompile Include="src\utils\VertexShader.cpp" />
     <ClCompile Include="src\utils\material\Material.cpp" />
     <ClCompile Include="src\windows\WindowsInput.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
+      <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
