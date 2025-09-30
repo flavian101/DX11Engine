@@ -15,7 +15,7 @@ namespace DXEngine {
 		virtual void OnUIRender(){}
 		virtual void OnEvent(Event& event){}
 	protected:
-		std::string m_DebugName;
+		std::string mDX_DEBUGName;
 	};
 }
 

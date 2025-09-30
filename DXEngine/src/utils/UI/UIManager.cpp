@@ -58,7 +58,7 @@ namespace DXEngine
     {
         SubmitForRendering();
 
-        if (m_DebugMode)
+        if (mDX_DEBUGMode)
         {
             RenderDebugInfo();
         }
@@ -76,7 +76,7 @@ namespace DXEngine
             }
         }
 
-        if (m_DebugMode)
+        if (mDX_DEBUGMode)
         {
             RenderDebugInfo();
         }
@@ -101,7 +101,7 @@ namespace DXEngine
 
         //debug UI elements such as ui to show mouse pos click etc
 
-        if (m_DebugFrameCounter++ % 60 == 0) // Every second at 60fps
+        if (mDX_DEBUGFrameCounter++ % 60 == 0) // Every second at 60fps
         {
             std::string debugMsg = "UI Debug - Elements: " + std::to_string(m_RootElements.size()) +
                 ", Mouse: (" + std::to_string(m_LastMouseX) + ", " + std::to_string(m_LastMouseY) + ")\n";
