@@ -5,7 +5,7 @@ namespace DXEngine
 {
 	Layer::Layer(const std::string& name)
 		:
-		m_DebugName(name)
+		mDX_DEBUGName(name)
 	{
 	}
 	Layer::~Layer()

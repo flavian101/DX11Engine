@@ -258,7 +258,7 @@ namespace DXEngine {
         };
         static std::vector<RenderState> s_RenderStateStack;
         static bool s_WireframeEnabled;
-        static bool s_DebugInfoEnabled;
+        static bool sDX_DEBUGInfoEnabled;
         static bool s_InstanceEnabled;
         static bool s_FrustumCullingEnabled;
         static size_t s_InstanceBatchSize;

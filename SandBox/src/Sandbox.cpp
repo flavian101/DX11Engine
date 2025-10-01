@@ -59,65 +59,65 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	
 	}
 
-	// Ground
-	if (m_Ground)
-	{
-		m_Ground->SetScale({ 500.0f, 10.0f, 500.0f });
-		m_Ground->SetTranslation({ 0.0f,0.0f, 0.0f });
-		DXEngine::Renderer::Submit(m_Ground);
-	}
-
-	if (m_Tunnel)
-	{
-		m_Tunnel->SetTranslation({ 0.0f, 3.0f, 0.0f });
-		m_Tunnel->SetScale({ 0.4f, 0.4f, 0.4f });
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Tunnel));
-	}
-
-	if (m_Ship)
-	{
-		m_Ship->SetScale({ 3.0f, 3.0f, 3.0f });
-		m_Ship->SetTranslation({ 0.0f, 4.0f, 15.0f });
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ship));
-	}
-
-	if (m_Table)
-	{
-		m_Table->SetScale({ 0.04f, 0.04f, 0.04f });
-		m_Table->SetTranslation({ 0.0f, 30.0f, -5.0f });
-		m_Table->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
-
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Table));
-	}
-
-	if (m_Shark)
-	{
-		m_Shark->SetTranslation({ 10.0f, 30.0f, -40.0f });
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Shark));
-	}
-
-	if (m_LionHead)
-	{
-		m_LionHead->SetScale({ 30.0f, 30.0f, 30.0f });
-		m_LionHead->SetTranslation({ 0.0f, 5.0f, -20.0f });
-		m_CurrentRotation += m_Speed * dt;
-		m_LionHead->SetRotation({ 20.0f, m_CurrentRotation, 0.0f, 0.0f });
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_LionHead));
-	}
-
-	if (m_Moon)
-	{
-		m_Moon->SetTranslation({ 100.0f, 40.0f, 10.0f });
-		m_Moon->SetScale({ 20.f, 20.0f, 20.0f });
-		DXEngine::Renderer::Submit(m_Moon);
-	}
-
-	if (m_Light)
-	{
-		m_Light->SetTranslation({ 10.0f, 15.0f, 0.0f });
-		m_Light->SetScale({ 2.0f, 2.0f, 2.0f });
-		DXEngine::Renderer::Submit(m_Light);
-	}
+	//// Ground
+	//if (m_Ground)
+	//{
+	//	m_Ground->SetScale({ 500.0f, 10.0f, 500.0f });
+	//	m_Ground->SetTranslation({ 0.0f,0.0f, 0.0f });
+	//	DXEngine::Renderer::Submit(m_Ground);
+	//}
+	//
+	//if (m_Tunnel)
+	//{
+	//	m_Tunnel->SetTranslation({ 0.0f, 3.0f, 0.0f });
+	//	m_Tunnel->SetScale({ 0.4f, 0.4f, 0.4f });
+	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Tunnel));
+	//}
+	//
+	//if (m_Ship)
+	//{
+	//	m_Ship->SetScale({ 3.0f, 3.0f, 3.0f });
+	//	m_Ship->SetTranslation({ 0.0f, 4.0f, 15.0f });
+	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ship));
+	//}
+	//
+	//if (m_Table)
+	//{
+	//	m_Table->SetScale({ 0.04f, 0.04f, 0.04f });
+	//	m_Table->SetTranslation({ 0.0f, 30.0f, -5.0f });
+	//	m_Table->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
+	//
+	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Table));
+	//}
+	//
+	//if (m_Shark)
+	//{
+	//	m_Shark->SetTranslation({ 10.0f, 30.0f, -40.0f });
+	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Shark));
+	//}
+	//
+	//if (m_LionHead)
+	//{
+	//	m_LionHead->SetScale({ 30.0f, 30.0f, 30.0f });
+	//	m_LionHead->SetTranslation({ 0.0f, 5.0f, -20.0f });
+	//	m_CurrentRotation += m_Speed * dt;
+	//	m_LionHead->SetRotation({ 20.0f, m_CurrentRotation, 0.0f, 0.0f });
+	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_LionHead));
+	//}
+	//
+	//if (m_Moon)
+	//{
+	//	m_Moon->SetTranslation({ 100.0f, 40.0f, 10.0f });
+	//	m_Moon->SetScale({ 20.f, 20.0f, 20.0f });
+	//	DXEngine::Renderer::Submit(m_Moon);
+	//}
+	//
+	//if (m_Light)
+	//{
+	//	m_Light->SetTranslation({ 10.0f, 15.0f, 0.0f });
+	//	m_Light->SetScale({ 2.0f, 2.0f, 2.0f });
+	//	DXEngine::Renderer::Submit(m_Light);
+	//}
 
 	if (m_Ring)
 	{
@@ -125,12 +125,12 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		m_Ring->SetScale({ 2.0f, 2.0f, 2.0f });
 		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ring));
 	}
-	if (m_Wall)
-	{
-		m_Wall->SetTranslation({ 0.0f, 10.0f, 10.0f });
-		m_Wall->SetScale({ 5.0f, 5.0f, 5.0f });
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Wall));
-	}
+	//if (m_Wall)
+	//{
+	//	m_Wall->SetTranslation({ 0.0f, 10.0f, 10.0f });
+	//	m_Wall->SetScale({ 5.0f, 5.0f, 5.0f });
+	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Wall));
+	//}
 
 	auto button = std::make_shared<DXEngine::UIButton>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));
 	button->SetNormalColor(DXEngine::UIColor::UIColor(0.3f, 0.3f, 0.8f, 0.5f));
@@ -193,8 +193,8 @@ void Sandbox::DetectInput(double time)
 		static bool debugToggled = false;
 		if (!debugToggled)
 		{
-			DXEngine::Renderer::EnableDebugInfo(!m_DebugMode);
-			m_DebugMode = !m_DebugMode;
+			DXEngine::Renderer::EnableDebugInfo(!mDX_DEBUGMode);
+			mDX_DEBUGMode = !mDX_DEBUGMode;
 			debugToggled = true;
 		}
 	}

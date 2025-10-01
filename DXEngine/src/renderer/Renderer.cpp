@@ -40,7 +40,7 @@ namespace DXEngine {
 
 
     bool Renderer::s_WireframeEnabled = false;
-    bool Renderer::s_DebugInfoEnabled = false;
+    bool Renderer::sDX_DEBUGInfoEnabled = false;
     bool Renderer::s_InstanceEnabled = true;
     bool Renderer::s_FrustumCullingEnabled = true;
     size_t Renderer::s_InstanceBatchSize = 100;
@@ -239,7 +239,7 @@ namespace DXEngine {
         RenderCommand::Clear();
 
         // Check for shader hot reload in debug builds
-#ifdef _DEBUG
+#ifdef DX_DEBUG
         if (s_ShaderManager)
         {
             s_ShaderManager->Update();
@@ -252,7 +252,7 @@ namespace DXEngine {
         ProcessRenderQueue();
         RenderCommand::Present();
 
-        if (s_DebugInfoEnabled)
+        if (sDX_DEBUGInfoEnabled)
         {
             OutputDebugStringA(GetDebugInfo().c_str());
         }
@@ -791,7 +791,7 @@ namespace DXEngine {
         DirectX::ContainmentType containment = worldSpaceFrustum.Contains(dxWorldSphere);
 
         // Log culling decisions in debug mode
-#ifdef _DEBUG
+#ifdef DX_DEBUG
       //  if (containment == DirectX::DISJOINT) {
       //      std::string debugMsg = "Model culled - Center: (" +
       //          std::to_string(worldSphere.center.x) + ", " +
@@ -1475,7 +1475,7 @@ namespace DXEngine {
 
     void Renderer::EnableDebugInfo(bool enable)
     {
-        s_DebugInfoEnabled = enable;
+        sDX_DEBUGInfoEnabled = enable;
         OutputDebugStringA(enable ? "Debug info enabled\n" : "Debug info disabled\n");
     }
 

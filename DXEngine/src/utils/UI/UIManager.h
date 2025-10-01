@@ -48,8 +48,8 @@ namespace DXEngine
         void SetDefaultButtonStyle(const UIColor& normal, const UIColor& hover, const UIColor& pressed);
 
         // Debug
-        void SetDebugMode(bool enabled) { m_DebugMode = enabled; }
-        bool IsDebugMode() const { return m_DebugMode; }
+        void SetDebugMode(bool enabled) { mDX_DEBUGMode = enabled; }
+        bool IsDebugMode() const { return mDX_DEBUGMode; }
 
         UIElement* FindElementAt(float x, float y);
 
@@ -68,8 +68,8 @@ namespace DXEngine
         std::vector<std::shared_ptr<UIElement>> m_RootElements;
         int m_ScreenWidth = 1920;
         int m_ScreenHeight = 1080;
-        bool m_DebugMode = false;
-        uint32_t m_DebugFrameCounter = 0;
+        bool mDX_DEBUGMode = false;
+        uint32_t mDX_DEBUGFrameCounter = 0;
 
         // Style defaults
         UIColor m_DefaultButtonNormal = UIColor(0.3f, 0.3f, 0.3f, 1.0f);
