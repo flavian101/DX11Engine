@@ -62,6 +62,11 @@ namespace DXEngine
         if (!instanceData || instanceData->GetVertexCount() == 0)
             return false;
 
+        if (!m_InstanceBuffer)
+        {
+            m_InstanceBuffer = std::make_unique<RawBuffer>();
+        }
+
         // Create/update instance buffer
         const void* data = instanceData->GetVertexData();
         size_t dataSize = instanceData->GetDataSize();

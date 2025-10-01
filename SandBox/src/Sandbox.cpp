@@ -15,17 +15,17 @@ void Sandbox::OnAttach()
 
 	m_CameraController = std::make_shared<DXEngine::CameraController>();
 
-	m_Ground = std::make_shared<DXEngine::Ground>();
-	m_Moon = std::make_shared<DXEngine::Ball>();
+	//m_Ground = std::make_shared<DXEngine::Ground>();
+	//m_Moon = std::make_shared<DXEngine::Ball>();
 	m_Sky = std::make_shared<DXEngine::SkySphere>();
-	m_Light = std::make_shared<DXEngine::LightSphere>();
+	//m_Light = std::make_shared<DXEngine::LightSphere>();
 	m_Loader = std::make_shared<DXEngine::ModelLoader>();
 
-	m_Ship = m_Loader->LoadModel("assets/models/UFO/Rigged_Modular UFO 2.8.glb.gltf");
-	m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
-	m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
+	//m_Ship = m_Loader->LoadModel("assets/models/UFO/Rigged_Modular UFO 2.8.glb.gltf");
+	//m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
+	//m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
 	m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
-	m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
+	//m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
 	m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
 	m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
 

@@ -377,9 +377,6 @@ namespace DXEngine
         {
             // Load all texture types systematically
             LoadAllTextures(mat, material, directory, options);
-
-            // Try to find additional textures by naming convention
-            LoadTexturesByNamingConvention(mat, material, directory);
         }
 
         // Configure material based on loaded textures
@@ -507,107 +504,6 @@ namespace DXEngine
         }
 
 
-    }
-
-    void ModelLoader::LoadTexturesByNamingConvention(std::shared_ptr<Material> mat, const aiMaterial* material, const std::string& directory)
-    {
-        std::string basePath = GetTextureFilename(material, aiTextureType_DIFFUSE, directory);
-        if (basePath.empty()) return;
-
-        std::filesystem::path texPath(basePath);
-        std::string baseName = texPath.stem().string();
-        std::string extension = texPath.extension().string();
-        std::string parentDir = texPath.parent_path().string();
-
-        // Remove common diffuse suffixes
-        std::vector<std::string> diffuseSuffixes = {
-            "_d", "_diff", "_diffuse", "_albedo", "_base", "_bc"
-        };
-
-        for (const auto& suffix : diffuseSuffixes)
-        {
-            size_t pos = baseName.rfind(suffix);
-            if (pos != std::string::npos && pos == baseName.length() - suffix.length())
-            {
-                baseName = baseName.substr(0, pos);
-                break;
-            }
-        }
-
-        // Try to find other texture maps using common naming conventions
-        std::vector<std::pair<std::string, std::function<void(std::shared_ptr<Texture>)>>> conventions = {
-            // --- Diffuse / Albedo / BaseColor ---
-            {"_d",       [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
-            {"_diff",    [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
-            {"_diffuse", [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
-            {"_albedo",  [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
-            {"_basecolor",[mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
-            {"_col",     [mat](auto tex) { if (!mat->HasDiffuseTexture()) mat->SetDiffuseTexture(tex); }},
-            
-            // --- Normal maps ---
-            {"_n",       [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
-            {"_norm",    [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
-            {"_normal",  [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
-            {"_nrm",     [mat](auto tex) { if (!mat->HasNormalTexture()) mat->SetNormalTexture(tex); }},
-
-            // --- Roughness / Glossiness ---
-            {"_r",        [mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
-            {"_rough",    [mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
-            {"_roughness",[mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
-            {"_gloss",    [mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
-            {"_glossiness",[mat](auto tex) { if (!mat->HasRoughnessTexture()) mat->SetRoughnessTexture(tex); }},
-
-            // --- Metallic ---
-            {"_m",        [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
-            {"_met",      [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
-            {"_metal",    [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
-            {"_metallic", [mat](auto tex) { if (!mat->HasMetallicTexture()) mat->SetMetallicTexture(tex); }},
-
-            // --- Ambient Occlusion ---
-            {"_ao",        [mat](auto tex) { if (!mat->HasAOTexture()) mat->SetAOTexture(tex); }},
-            {"_occlusion", [mat](auto tex) { if (!mat->HasAOTexture()) mat->SetAOTexture(tex); }},
-            {"_ambient",   [mat](auto tex) { if (!mat->HasAOTexture()) mat->SetAOTexture(tex); }},
-
-            // --- Height / Displacement ---
-            {"_h",        [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
-            {"_height",   [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
-            {"_disp",     [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
-            {"_displace", [mat](auto tex) { if (!mat->HasHeightTexture()) mat->SetHeightTexture(tex); }},
-
-            // --- Emissive ---
-            {"_e",        [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
-            {"_emit",     [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
-            {"_emissive", [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
-            {"_glow",     [mat](auto tex) { if (!mat->HasEmissiveTexture()) mat->SetEmissiveTexture(tex); }},
-
-            // --- Opacity / Transparency / Mask ---
-            {"_a",        [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
-            {"_alpha",    [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
-            {"_opacity",  [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
-            {"_trans",    [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
-            {"_mask",     [mat](auto tex) { if (!mat->HasOpacityTexture()) mat->SetOpacityTexture(tex); }},
-        };
-
-        // Test each naming convention
-        for (const auto& [suffix, setter] : conventions)
-        {
-            std::string testPath = parentDir.empty() ?
-                (baseName + suffix + extension) :
-                (parentDir + "/" + baseName + suffix + extension);
-
-            std::string fullTestPath = ModelLoaderUtils::NormalizePath(directory + "/" + testPath);
-
-            if (ModelLoaderUtils::FileExists(fullTestPath))
-            {
-                auto texture = Texture::CreateFromFile(fullTestPath);
-                if (texture && texture->IsValid())
-                {
-                    setter(texture);
-                    OutputDebugStringA(("Found texture by convention: " + testPath + "\n").c_str());
-                    m_LastStats.texturesLoaded++;
-                }
-            }
-        }
     }
 
     bool ModelLoader::IsItHeightMap(std::shared_ptr<Texture> texture)

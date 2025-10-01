@@ -141,9 +141,6 @@ namespace DXEngine {
             const std::string& directory,
             aiTextureType type,
             std::function<void(std::shared_ptr<Texture>)> setter);
-        void LoadTexturesByNamingConvention(std::shared_ptr<Material> mat,
-            const aiMaterial* material,
-            const std::string& directory);
         bool IsItHeightMap(std::shared_ptr<Texture> texture);
 
         // Fallback texture creation
