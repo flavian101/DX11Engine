@@ -476,7 +476,7 @@ namespace DXEngine
             // Likely a misassigned normal map; reassign if no normal is set
             if (!mat->HasNormalTexture()) {
                 mat->SetNormalTexture(mat->GetHeightTexture());
-#ifdef _DEBUG
+#ifdef DX_DEBUG
                 OutputDebugStringA("Reassigned height texture to normal map based on filename check.\n");
 #endif
             }
@@ -494,7 +494,7 @@ namespace DXEngine
             if (texture && texture->IsValid())
             {
                 setter(texture);
-#ifdef _DEBUG
+#ifdef DX_DEBUG
                 OutputDebugStringA(("Loaded " + GetTextureTypeName(type) +
                     " texture: " + texturePath + "\n").c_str());
 #endif

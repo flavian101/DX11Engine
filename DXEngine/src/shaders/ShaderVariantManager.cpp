@@ -110,7 +110,7 @@ namespace DXEngine
 			m_VariantUsage[key] = m_CurrentFrame;
 			m_Stats.totalVariants++;
 
-#ifdef _DEBUG
+#ifdef DX_DEBUG
 			LogInfo("Created shader variant: " + key.ToString());
 #endif
 		}
