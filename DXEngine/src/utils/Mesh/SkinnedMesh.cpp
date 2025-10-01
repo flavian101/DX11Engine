@@ -15,37 +15,32 @@ namespace DXEngine
     {
         m_BoneMatrices = matrices;
 
-        // Create or update GPU buffer using ConstantBuffer
-        if (!matrices.empty())
-        {
-            if (!m_BoneBuffer)
-            {
-                m_BoneBuffer = std::make_unique<ConstantBuffer<DirectX::XMFLOAT4X4>>();
-            }
+        if (matrices.empty())
+            return;
 
-            // For multiple matrices, we need to use UpdateArray
-            // But ConstantBuffer is designed for single objects, so we need to create a buffer that can hold all matrices
-            // For now, we'll recreate the buffer each time - this could be optimized
-            if (matrices.size() == 1)
+        // For skeletal animation, we need a structured buffer or array constant buffer
+        if (!m_BoneBuffer)
+        {
+            // Create a buffer large enough for all bone matrices
+            BufferDesc desc;
+            desc.bufferType = BufferType::Constant;
+            desc.usageType = UsageType::Dynamic;
+            desc.byteWidth = static_cast<UINT>(sizeof(DirectX::XMFLOAT4X4) * matrices.size());
+            desc.initialData = matrices.data();
+
+            m_BoneBuffer = std::make_unique<RawBuffer>();
+            if (!m_BoneBuffer->Initialize(desc))
             {
-                if (!m_BoneBuffer->Initialize(&matrices[0], UsageType::Dynamic))
-                {
-                    OutputDebugStringA("Failed to create bone constant buffer\n");
-                    m_BoneBuffer.reset();
-                }
+                OutputDebugStringA("Failed to create bone buffer\n");
+                m_BoneBuffer.reset();
+                return;
             }
-            else
-            {
-                // For multiple bone matrices, we need a different approach
-                // Create a structured buffer or use a larger constant buffer
-                // For now, we'll use the first matrix only as an example
-                OutputDebugStringA("Warning: Multiple bone matrices not fully supported with current ConstantBuffer implementation\n");
-                if (!m_BoneBuffer->Initialize(&matrices[0], UsageType::Dynamic))
-                {
-                    OutputDebugStringA("Failed to create bone constant buffer\n");
-                    m_BoneBuffer.reset();
-                }
-            }
+        }
+        else
+        {
+            // Update existing buffer
+            m_BoneBuffer->Update(matrices.data(),
+                sizeof(DirectX::XMFLOAT4X4) * matrices.size());
         }
     }
 
@@ -53,8 +48,7 @@ namespace DXEngine
     {
         if (m_BoneBuffer && m_BoneBuffer->IsValid())
         {
-            ID3D11Buffer* buffer = m_BoneBuffer->GetBuffer();
-            RenderCommand::GetContext()->VSSetConstantBuffers(1, 1, &buffer);
+            RenderCommand::GetContext()->VSSetConstantBuffers(CB_Bones, 1, m_BoneBuffer->GetAddressOf());
         }
     }
 }

@@ -4,6 +4,7 @@
 namespace DXEngine
 {
     class SkinnedMeshResource;
+    class RawBuffer;
 
     class SkinnedMesh : public Mesh
     {
@@ -24,6 +25,6 @@ namespace DXEngine
 
     private:
         std::vector<DirectX::XMFLOAT4X4> m_BoneMatrices;
-        mutable std::unique_ptr<ConstantBuffer<DirectX::XMFLOAT4X4>> m_BoneBuffer;
+        std::unique_ptr<RawBuffer> m_BoneBuffer;
     };
 }

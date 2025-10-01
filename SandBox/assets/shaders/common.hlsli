@@ -131,6 +131,11 @@ cbuffer TransformBuffer : register(b0)
     float Time;
 };
 
+cbuffer cb_BoneMatrices : register(b1)
+{
+    float4x4 BoneMatrices[100];
+};
+
 cbuffer MaterialBufferData : register(b2)
 {
     // ========== BASE MATERIAL PROPERTIES ==========
@@ -848,39 +853,25 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
 {
     StandardVertexOutput output;
     
-    output.position = mul(float4(input.position, 1.0), WVP);
-    output.worldPos = mul(float4(input.position, 1.0), Model);
-
+    float4 localPos = float4(input.position, 1.0);
+    float3 localNormal = float3(0.0, 0.0, 1.0); // Default flat normal
+    float3 localTangent = float3(1.0, 0.0, 0.0); // Default tangent
+    
 #if HAS_NORMAL_ATTRIBUTE
-    output.normal = mul(input.normal, (float3x3) Model);
+    localNormal = input.normal;
 #endif
-    
-#if HAS_TEXCOORDS_ATTRIBUTE
-    output.texCoord = input.texCoord;
-#endif
-#if HAS_SECOND_UV_ATTRIBUTE
-    output.texCoord1 = input.texCoord1; 
-#endif
-    
+
 #if HAS_TANGENT_ATTRIBUTE
-    output.tangent = float4(mul(input.tangent.xyz, (float3x3)Model), input.tangent.w);
+    localTangent = input.tangent.xyz;
 #endif
 
-#if HAS_VERTEX_COLOR_ATTRIBUTE
-    output.color = input.color;
-#endif
-
-#if HAS_SECOND_UV_ATTRIBUTE
-    output.texCoord1 = input.texCoord1;
-#endif
-
-    output.viewDir = CameraPosition - output.worldPos.xyz;
-    output.time = Time;
-    
 #if HAS_SKINNING_ATTRIBUTES
-    // Apply skinning transformations
-    float4 skinnedPos = float4(0, 0, 0, 0);
-    float3 skinnedNormal = float3(0, 0, 0);
+    // Apply linear blend skinning (up to 4 bones)
+    float4 skinnedPos = float4(0.0, 0.0, 0.0, 0.0);
+    float3 skinnedNormal = float3(0.0, 0.0, 0.0);
+#if HAS_TANGENT_ATTRIBUTE
+    float3 skinnedTangent = float3(0.0, 0.0, 0.0);
+#endif
     
     [unroll]
     for (int i = 0; i < 4; ++i)
@@ -889,16 +880,63 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
         if (weight > 0.0)
         {
             uint boneIndex = input.blendIndices[i];
-            // Apply bone transformation (you'd have bone matrices in a constant buffer)
-            // skinnedPos += weight * mul(float4(input.position, 1.0), BoneMatrices[boneIndex]);
-            // skinnedNormal += weight * mul(input.normal, (float3x3)BoneMatrices[boneIndex]);
+            if (boneIndex < 100)  // Safety bound
+            {
+                float4x4 boneMatrix = BoneMatrices[boneIndex];
+                
+                skinnedPos += weight * mul(localPos, boneMatrix);
+                
+#if HAS_NORMAL_ATTRIBUTE
+                skinnedNormal += weight * mul(localNormal, (float3x3)boneMatrix);
+#endif
+                
+#if HAS_TANGENT_ATTRIBUTE
+                skinnedTangent += weight * mul(localTangent, (float3x3)boneMatrix);
+#endif
+            }
         }
     }
     
-    // Use skinned position/normal instead of input ones
-    // output.position = mul(skinnedPos, WVP);
-    // output.normal = normalize(skinnedNormal);
+    // Transform skinned local to world/projected space
+    output.worldPos = mul(skinnedPos, Model);
+    output.position = mul(skinnedPos, WVP);
+    
+#if HAS_NORMAL_ATTRIBUTE
+    output.normal = normalize(mul(skinnedNormal, (float3x3)Model));
 #endif
+    
+#if HAS_TANGENT_ATTRIBUTE
+    output.tangent = float4(normalize(mul(skinnedTangent, (float3x3)Model)), input.tangent.w);
+#endif
+
+#else  // Non-skinned path
+    output.worldPos = mul(localPos, Model);
+    output.position = mul(localPos, WVP);
+    
+#if HAS_NORMAL_ATTRIBUTE
+    output.normal = mul(localNormal, (float3x3)Model);
+#endif
+    
+#if HAS_TANGENT_ATTRIBUTE
+    output.tangent = float4(mul(localTangent, (float3x3)Model), input.tangent.w);
+#endif
+#endif  // End HAS_SKINNING_ATTRIBUTES
+
+    // Remaining attributes (UVs, colors, etc.) are not affected by skinning
+#if HAS_TEXCOORDS_ATTRIBUTE
+    output.texCoord = input.texCoord;
+#endif
+    
+#if HAS_SECOND_UV_ATTRIBUTE
+    output.texCoord1 = input.texCoord1;
+#endif
+    
+#if HAS_VERTEX_COLOR_ATTRIBUTE
+    output.color = input.color;
+#endif
+
+    output.viewDir = normalize(CameraPosition - output.worldPos.xyz);
+    output.time = Time;
     
     return output;
 }
