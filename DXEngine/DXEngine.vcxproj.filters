@@ -224,6 +224,9 @@
     <ClInclude Include="src\windows\WindowsInput.h">
       <Filter>windows</Filter>
     </ClInclude>
+    <ClInclude Include="src\Animation\AnimationClip.h" />
+    <ClInclude Include="src\Animation\AnimationEvaluator.h" />
+    <ClInclude Include="src\Animation\AnimationController.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />

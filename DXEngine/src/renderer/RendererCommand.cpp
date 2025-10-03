@@ -71,7 +71,7 @@ namespace DXEngine {
 			nullptr,
 			D3D_DRIVER_TYPE_HARDWARE,
 			nullptr,
-			D3D11_CREATE_DEVICEDX_DEBUG,
+			D3D11_CREATE_DEVICE_DEBUG,
 			nullptr,
 			0,
 			D3D11_SDK_VERSION,

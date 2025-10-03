@@ -230,7 +230,7 @@ namespace DXEngine
 		DWORD shaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 
 		if (m_Config.enableDebugInfo) {
-			shaderFlags |= D3DCOMPILEDX_DEBUG;
+			shaderFlags |= D3DCOMPILE_DEBUG;
 			shaderFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
 		}
 		else if (m_Config.enableOptimization) {

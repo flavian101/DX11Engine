@@ -109,6 +109,9 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Animation\AnimationClip.h" />
+    <ClInclude Include="src\Animation\AnimationController.h" />
+    <ClInclude Include="src\Animation\AnimationEvaluator.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Ball.h" />
     <ClInclude Include="src\Core\Input.h" />
