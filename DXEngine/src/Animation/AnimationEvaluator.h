@@ -22,15 +22,17 @@ namespace DXEngine
 		{
 			DirectX::XMVECTOR qa = DirectX::XMLoadFloat4(&a);
 			DirectX::XMVECTOR qb = DirectX::XMLoadFloat4(&b);
-			DirectX::XMVECTOR result = DirectX::XMQuaternionSlerp(qa, qb, f);
+			DirectX::XMVECTOR result = DirectX::XMQuaternionSlerp(qa, qb, t);
 			DirectX::XMFLOAT4 output;
 			DirectX::XMStoreFloat4(&output, result);
+
+			return output;
 		}
 
 		inline Keyframe InterpolateKeyframes(const Keyframe& k0, const Keyframe& k1, float t)
 		{
 			Keyframe result;
-			result.TimeStamp = (k0.TimeStamp - k1.TimeStamp) * t;
+			result.TimeStamp = (k0.TimeStamp + k1.TimeStamp) * t;
 			result.Translation = LerpVector(k0.Translation, k1.Translation, t);
 			result.Rotation = SlerpQuaternion(k0.Rotation, k1.Rotation, t);
 			result.Scale = LerpVector(k0.Scale, k1.Scale, t);
