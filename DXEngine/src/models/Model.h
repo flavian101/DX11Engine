@@ -25,37 +25,37 @@ namespace DXEngine {
 		std::string GetDebugInfo()const;
 
 		//mesh managment
-		void SetMesh(std::shared_ptr<Mesh> mesh);//primary
-		const std::shared_ptr<Mesh>& GetMesh()const { return m_PrimaryMesh; }
+		virtual void SetMesh(std::shared_ptr<Mesh> mesh);//primary
+		virtual const std::shared_ptr<Mesh>& GetMesh()const { return m_PrimaryMesh; }
 
-		void AddMesh(std::shared_ptr<Mesh> mesh, const std::string& name = "");// secondary meshes
-		std::shared_ptr<Mesh> GetMesh(size_t index)const;
-		std::shared_ptr<Mesh> GetMesh(const std::string& name)const;
-		size_t GetMeshCount()const { return m_Meshes.size(); }
+		virtual void AddMesh(std::shared_ptr<Mesh> mesh, const std::string& name = "");// secondary meshes
+		virtual std::shared_ptr<Mesh> GetMesh(size_t index)const;
+		virtual std::shared_ptr<Mesh> GetMesh(const std::string& name)const;
+		virtual size_t GetMeshCount()const { return m_Meshes.size(); }
 		void ClearMeshes();
 
 		//material
-		void SetMaterial(std::shared_ptr<Material> material); //primary mesh
-		void SetMaterial(size_t meshIndex, size_t subMeshIndex, std::shared_ptr<Material> material);
-		const std::shared_ptr<Material>& GetMaterial(size_t submeshIndex = 0)const;
-		const std::shared_ptr<Material>& GetMaterial(size_t meshIndex,size_t submeshIndex = 0) const;
+		virtual void SetMaterial(std::shared_ptr<Material> material); //primary mesh
+		virtual void SetMaterial(size_t meshIndex, size_t subMeshIndex, std::shared_ptr<Material> material);
+		virtual const std::shared_ptr<Material>& GetMaterial(size_t submeshIndex = 0)const;
+		virtual const std::shared_ptr<Material>& GetMaterial(size_t meshIndex,size_t submeshIndex = 0) const;
 
-		bool HasMaterial(size_t submeshIndex = 0)const;
-		void EnsureDefaultMaterials();
+		virtual bool HasMaterial(size_t submeshIndex = 0)const;
+		virtual void EnsureDefaultMaterials();
 
 
 		// Transform operations
-		void SetTranslation(const DirectX::XMFLOAT3& translation);
-		const DirectX::XMVECTOR& GetTranslation() const;
-		void SetScale(const DirectX::XMFLOAT3& scale);
-		const DirectX::XMVECTOR& GetScale() const;
-		void SetRotation(const DirectX::XMVECTOR& rotation);
-		const DirectX::XMVECTOR& GetRotation() const;
-		DirectX::XMMATRIX GetModelMatrix() const override;
+		virtual void SetTranslation(const DirectX::XMFLOAT3& translation);
+		virtual const DirectX::XMVECTOR& GetTranslation() const;
+		virtual void SetScale(const DirectX::XMFLOAT3& scale);
+		virtual const DirectX::XMVECTOR& GetScale() const;
+		virtual void SetRotation(const DirectX::XMVECTOR& rotation);
+		virtual const DirectX::XMVECTOR& GetRotation() const;
+		virtual DirectX::XMMATRIX GetModelMatrix() const override;
 
 		// Transform management
-		void SetTransform(std::shared_ptr<Transform> transform);
-		const std::shared_ptr<Transform>& GetTransform() const;
+		virtual void SetTransform(std::shared_ptr<Transform> transform);
+		virtual const std::shared_ptr<Transform>& GetTransform() const;
 
 		//bounding volume operations
 		BoundingBox GetLocalBoundingBox() const;

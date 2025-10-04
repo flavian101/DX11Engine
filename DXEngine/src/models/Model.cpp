@@ -217,6 +217,20 @@ namespace DXEngine {
 		}
 	}
 
+	const std::shared_ptr<Transform>& Model::GetTransform() const
+	{
+		if (m_Transform)
+		{
+			return m_Transform;
+		}
+		else
+		{
+			OutputDebugStringA("No Transform was Found");
+			return nullptr;
+		}
+
+	}
+
 	//Bounding Volume operations
 
 	BoundingBox Model::GetLocalBoundingBox()const

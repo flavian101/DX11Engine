@@ -13,6 +13,9 @@ namespace DXEngine
 		SkinnedModel();
 		explicit SkinnedModel(std::shared_ptr<SkinnedMesh> mesh);
 
+		//add Skinned mesh
+		virtual void AddMesh(std::shared_ptr<Mesh> mesh, const std::string& name = "skinnedSubmesh") override;
+
 		// Set the skeleton for this model
 		void SetSkeleton(std::shared_ptr<Skeleton> skeleton);
 		const std::shared_ptr<Skeleton>& GetSkeleton() const { return m_Skeleton; }
@@ -37,8 +40,16 @@ namespace DXEngine
 		// Rendering helper
 		void BindBoneData() const;
 
+		bool ValidateAnimation(std::shared_ptr<AnimationClip> clip) const;
+
+		// Query states
+		bool IsAnimating() const { return m_AnimationController && m_AnimationController->IsPlaying(); }
+		float GetAnimationTime() const { return m_AnimationController ? m_AnimationController->GetCurrentTime() : 0.0f; }
+		float GetAnimationNormalizedTime() const { return m_AnimationController ? m_AnimationController->GetNormalizedTime() : 0.0f; }
+
 	private:
 		void UpdateBoneMatrices();
+		void InitializeBoneMatrices();
 
 	private:
 		std::shared_ptr<Skeleton> m_Skeleton;

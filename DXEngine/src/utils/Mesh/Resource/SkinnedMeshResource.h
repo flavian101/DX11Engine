@@ -1,32 +1,33 @@
 #pragma once
 #include "utils/Mesh/Resource/MeshResource.h"
-
+#include "Animation/AnimationClip.h" // Use the animation system's Skeleton
 
 namespace DXEngine
 {
-	class SkinnedMeshResource : public MeshResource
-	{
-	public:
-		struct BoneInfo
-		{
-			std::string name;
-			DirectX::XMFLOAT4X4 offsetMatrix;
-			int32_t parentIndex = -1;
-		};
+    class SkinnedMeshResource : public MeshResource
+    {
+    public:
+        SkinnedMeshResource(const std::string& name = "SkinnedMesh") : MeshResource(name) {}
 
-		SkinnedMeshResource(const std::string& name = "SkinnedMesh") : MeshResource(name) {}
+        // Set/Get the skeleton reference
+        void SetSkeleton(std::shared_ptr<Skeleton> skeleton) { m_Skeleton = skeleton; }
+        const std::shared_ptr<Skeleton>& GetSkeleton() const { return m_Skeleton; }
+        std::shared_ptr<Skeleton> GetSkeleton() { return m_Skeleton; }
 
-		// Bone management
-		void AddBone(const BoneInfo& bone);
-		const std::vector<BoneInfo>& GetBones() const { return m_Bones; }
-		BoneInfo& GetBone(size_t index) { return m_Bones[index]; }
-		const BoneInfo& GetBone(size_t index) const { return m_Bones[index]; }
-		size_t GetBoneCount() const { return m_Bones.size(); }
+        // Helper to validate bone weights in vertex data
+        bool ValidateBoneWeights() const;
 
-		int32_t FindBoneIndex(const std::string& name) const;
+        std::string GetDebugInfo() const
+        {
+            std::string info = MeshResource::GetDebugInfo();
+            if (m_Skeleton)
+            {
+                info += "Skeleton Bones: " + std::to_string(m_Skeleton->GetBoneCount()) + "\n";
+            }
+            return info;
+        }
 
-	private:
-		std::vector<BoneInfo> m_Bones;
-	};
+    private:
+        std::shared_ptr<Skeleton> m_Skeleton;
+    };
 }
-

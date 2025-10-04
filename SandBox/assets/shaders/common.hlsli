@@ -133,7 +133,7 @@ cbuffer TransformBuffer : register(b0)
 
 cbuffer cb_BoneMatrices : register(b1)
 {
-    float4x4 BoneMatrices[100];
+    float4x4 BoneMatrices[128];
 };
 
 cbuffer MaterialBufferData : register(b2)

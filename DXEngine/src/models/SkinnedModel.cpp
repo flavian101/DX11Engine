@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "SkinnedModel.h"
+#include "utils/Mesh/Resource/SkinnedMeshResource.h"
 #include "utils/Mesh/SkinnedMesh.h"
 
 
@@ -14,24 +15,70 @@ namespace DXEngine
 	SkinnedModel::SkinnedModel(std::shared_ptr<SkinnedMesh> mesh)
 		:Model(mesh)
 	{
+		if (mesh)
+		{
+			auto skinnedResource = mesh->GetSkinnedResource();
+			if (skinnedResource)
+			{
+				m_Skeleton = skinnedResource->GetSkeleton();
+				InitializeBoneMatrices();
+			}
+		}
+	}
+
+	void SkinnedModel::AddMesh(std::shared_ptr<Mesh> mesh, const std::string& name)
+	{
+		Model::AddMesh(mesh, name);
+
+		//if it's a skinned mesh, ensure it has the same Skeleton
+		auto skinnedMesh = std::dynamic_pointer_cast<SkinnedMesh>(mesh);
+		if (skinnedMesh && m_Skeleton)
+		{
+			auto skinnedResource = skinnedMesh->GetSkinnedResource();
+			if (skinnedResource && !skinnedResource->GetSkeleton())
+			{
+				skinnedResource->SetSkeleton(m_Skeleton);
+			}
+
+			// Set current bone matrices
+			if (!m_BoneMatrices.empty())
+			{
+				skinnedMesh->SetBoneMatrices(m_BoneMatrices);
+			}
+		}
 	}
 
 	void SkinnedModel::SetSkeleton(std::shared_ptr<Skeleton> skeleton)
 	{
 		m_Skeleton = skeleton;
-		if (m_Skeleton)
+
+		//upadate the skeleton in the mesh Resource If we have a skeleton
+		auto skinnedMesh = std::dynamic_pointer_cast<SkinnedMesh>(GetMesh());
+		if (skinnedMesh)
 		{
-			m_BoneMatrices.resize(m_Skeleton->GetBoneCount());
-			for (auto& mat : m_BoneMatrices)
+			auto skinnedResource = skinnedMesh->GetSkinnedResource();
+			if (skinnedResource)
 			{
-				DirectX::XMStoreFloat4x4(&mat, DirectX::XMMatrixIdentity());
+				skinnedResource->SetSkeleton(skeleton);
 			}
 		}
+		//InitializeBoneMatrices();
+		
 	}
 
 	void SkinnedModel::SetAnimationController(std::shared_ptr<AnimationController> controller)
 	{
 		m_AnimationController = controller;
+
+		//Ensure The controller has the same Skeleton
+		if (m_AnimationController && m_Skeleton)
+		{
+			if (m_AnimationController->GetSkeleton() != m_Skeleton)
+			{
+				OutputDebugStringA("Warning: Animation controller skeleton doesn't match model skeleton\n");
+			}
+		}
+
 	}
 
 	void SkinnedModel::PlayAnimation(std::shared_ptr<AnimationClip> clip, PlaybackMode mode)
@@ -106,6 +153,24 @@ namespace DXEngine
 		}
 	}
 
+	bool SkinnedModel::ValidateAnimation(std::shared_ptr<AnimationClip> clip) const
+	{
+		if (!clip || !m_Skeleton)
+			return false;
+
+		// Check if all bones in the animation exist in the skeleton
+		for (const auto& boneAnim : clip->GetBoneAnimations())
+		{
+			if (m_Skeleton->GetBoneIndex(boneAnim.first) < 0)
+			{
+				OutputDebugStringA(("Warning: Animation contains unknown bone: " + boneAnim.first + "\n").c_str());
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	void SkinnedModel::UpdateBoneMatrices()
 	{
 		if (!m_AnimationController)
@@ -114,6 +179,18 @@ namespace DXEngine
 		// Get updated bone matrices from controller
 		const auto& matrices = m_AnimationController->GetBoneMatrices();
 		SetBoneMatrices(matrices);
+	}
+
+	void SkinnedModel::InitializeBoneMatrices()
+	{
+		if (m_Skeleton)
+		{
+			m_BoneMatrices.resize(m_Skeleton->GetBoneCount());
+			for (auto& mat : m_BoneMatrices)
+			{
+				DirectX::XMStoreFloat4x4(&mat, DirectX::XMMatrixIdentity());
+			}
+		}
 	}
 
 	namespace SkinnedModelFactory

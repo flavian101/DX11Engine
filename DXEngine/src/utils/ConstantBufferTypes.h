@@ -15,6 +15,11 @@ namespace DXEngine {
         float time;
     };
 
+    struct BoneMatrixBuffer
+    {
+        DirectX::XMFLOAT4X4 boneMatrices[128];
+    };
+
     /// <summary>
     /// /Light Buffers
     /// </summary>
