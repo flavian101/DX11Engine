@@ -161,6 +161,9 @@ namespace DXEngine
 
 	// Template specializations for common types
 	template<>
+	void VertexData::SetAttribute<DirectX::XMFLOAT4>(size_t vertexIndex, VertexAttributeType type,
+		const DirectX::XMFLOAT4& value, uint32_t slot);
+	template<>
 	void VertexData::SetAttribute<DirectX::XMFLOAT3>(size_t vertexIndex, VertexAttributeType type,
 		const DirectX::XMFLOAT3& value, uint32_t slot);
 
@@ -179,6 +182,10 @@ namespace DXEngine
 	template<>
 	void VertexData::SetAttribute<DirectX::XMUINT4>(size_t vertexIndex, VertexAttributeType type,
 		const DirectX::XMUINT4& value, uint32_t slot);
+
+	template<>
+	void VertexData::SetAttribute<DirectX::XMINT4>(size_t vertexIndex, VertexAttributeType type,
+		const DirectX::XMINT4& value, uint32_t slot);
 
 	template<>
 	DirectX::XMFLOAT3 VertexData::GetAttribute<DirectX::XMFLOAT3>(size_t vertexIndex, VertexAttributeType type, uint32_t slot) const;

@@ -46,6 +46,8 @@ private:
 	std::shared_ptr<DXEngine::Model> m_Shark;
 	std::shared_ptr<DXEngine::Model> m_Ring;
 	std::shared_ptr<DXEngine::Model> m_Wall;
+	std::shared_ptr<DXEngine::SkinnedModel> m_AnimatedSpider;
+
 
 	float m_Speed = 10.0f;
 	float m_CurrentRotation = 0.0f;
@@ -58,5 +60,8 @@ private:
 	float m_LastMouseY = 0.0f;
 	bool m_WireframeMode = false;
 	bool mDX_DEBUGMode = false;
+
+	int m_CurrentAnimationIndex = 0;
+	bool m_IsAnimationPaused = false;
 };
 

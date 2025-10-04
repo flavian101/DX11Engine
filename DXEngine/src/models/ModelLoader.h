@@ -28,22 +28,10 @@ namespace DXEngine {
     class MeshResource;
     class SkinnedMeshResource;
     class Texture;
+    class Skeleton;
+    class AnimationClip;
+    struct Keyframe;
     enum class MaterialType;
-
-    struct LoadedAnimation
-    {
-        std::string name;
-        float duration;
-        float ticksPerSecond;
-        std::vector<DirectX::XMFLOAT4X4> boneTransforms;
-    };
-
-    struct LoadedBone
-    {
-        std::string name;
-        DirectX::XMFLOAT4X4 offsetMatrix;
-        int32_t parentIndex = -1;
-    };
 
     struct ModelLoadOptions
     {
@@ -54,7 +42,7 @@ namespace DXEngine {
         bool optimizeMeshes = true;
         bool validateDataStructure = true;
         bool triangulate = true;
-        bool loadAnimations = false;
+        bool loadAnimations = true;
         bool loadMaterials = true;
         bool loadTextures = true;
         float globalScale = 1.0f;
@@ -77,19 +65,7 @@ namespace DXEngine {
         std::shared_ptr<Model> LoadModel(const std::string& filePath,
             const ModelLoadOptions& options = ModelLoadOptions{});
 
-        std::shared_ptr<Model> LoadModelAsync(const std::string& filePath,
-            const ModelLoadOptions& options = ModelLoadOptions{});
-
-        // Specialized loading methods
-        std::shared_ptr<MeshResource> LoadMeshResource(const std::string& filePath,
-            const ModelLoadOptions& options = ModelLoadOptions{});
-
-        std::vector<std::shared_ptr<Texture>> LoadTextures(const std::string& filePath);
-        std::vector<LoadedAnimation> LoadAnimations(const std::string& filePath);
-
-        // Batch loading
-        std::vector<std::shared_ptr<Model>> LoadModels(const std::vector<std::string>& filePaths,
-            const ModelLoadOptions& options = ModelLoadOptions{});
+        std::vector<std::shared_ptr<AnimationClip>> LoadAnimations(const std::string& filepath);
 
         // Validation and information
         bool ValidateFile(const std::string& filePath);
@@ -156,8 +132,20 @@ namespace DXEngine {
         std::shared_ptr<SkinnedMeshResource> ProcessSkinnedMesh(const aiMesh* mesh,
             const aiScene* scene, const ModelLoadOptions& options);
 
-        std::vector<LoadedAnimation> ProcessAnimations(const aiScene* scene);
-        std::vector<LoadedBone> ProcessBones(const aiMesh* mesh);
+        // Animation and skeleton processing
+        std::shared_ptr<Skeleton> ProcessSkeleton(const aiScene* scene, const aiMesh* mesh);
+        void ProcessNodeHierarchy(const aiNode* node, const aiScene* scene,
+            std::shared_ptr<Skeleton> skeleton, int parentIndex,
+            std::unordered_map<std::string, int>& boneMapping);
+
+        std::vector<std::shared_ptr<AnimationClip>> ProcessAnimations(
+            const aiScene* scene,
+            std::shared_ptr<Skeleton> skeleton);
+
+        std::shared_ptr<AnimationClip> ProcessAnimation(
+            const aiAnimation* anim,
+            std::shared_ptr<Skeleton> skeleton);
+
 
         // Texture loading
         std::shared_ptr<Texture> LoadTexture(const std::string& path, aiTextureType type);
@@ -172,6 +160,11 @@ namespace DXEngine {
         DirectX::XMFLOAT4X4 ConvertMatrix(const aiMatrix4x4& matrix);
         DirectX::XMFLOAT3 ConvertVector3(const aiVector3D& vector);
         DirectX::XMFLOAT4 ConvertColor(const aiColor4D& color);
+        DirectX::XMFLOAT4 ConvertQuaternion(const aiQuaternion& quat);
+        DirectX::XMFLOAT3 FindOrInterpolatePosition(const aiNodeAnim* channel, float time);
+        DirectX::XMFLOAT4 FindOrInterpolateRotation(const aiNodeAnim* channel, float time);
+        DirectX::XMFLOAT3 FindOrInterpolateScale(const aiNodeAnim* channel, float time);
+
 
         // Post-processing
         void PostProcessModel(std::shared_ptr<Model> model, const ModelLoadOptions& options);
@@ -201,7 +194,7 @@ namespace DXEngine {
         // Current loading context
         std::string m_CurrentDirectory;
         const aiScene* m_CurrentScene = nullptr;
-
+        std::shared_ptr<Skeleton> m_CurrentSkeleton;
         // Threading support
         mutable std::mutex m_CacheMutex;
     };

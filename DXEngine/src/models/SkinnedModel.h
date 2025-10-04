@@ -24,8 +24,20 @@ namespace DXEngine
 		void SetAnimationController(std::shared_ptr<AnimationController> controller);
 		const std::shared_ptr<AnimationController>& GetAnimationController() const { return m_AnimationController; }
 
+		//clip Managment 
+		void AddAnimationClip(std::shared_ptr<AnimationClip> clip);
+		void AddAnimationClip(const std::string& name, std::shared_ptr<AnimationClip> clip);
+		std::shared_ptr<AnimationClip> GetAnimationClip(const std::string& name)const;
+		std::shared_ptr<AnimationClip> GetAnimationClip(size_t index) const;
+		size_t GetAnimationClipCount()const { return m_AnimationClips.size(); }
+		const std::vector<std::shared_ptr<AnimationClip>>& GetAllAnimationClips() const { return m_AnimationClips; }
+		std::vector<std::string> GetAnimationClipNames() const;
+
+
 		// Quick animation access
 		void PlayAnimation(std::shared_ptr<AnimationClip> clip, PlaybackMode mode = PlaybackMode::Loop);
+		void PlayAnimation(const std::string& name, PlaybackMode mode = PlaybackMode::Loop);
+		void PlayAnimation(size_t index, PlaybackMode mode = PlaybackMode::Loop);
 		void StopAnimation();
 		void PauseAnimation();
 		void ResumeAnimation();
@@ -55,6 +67,10 @@ namespace DXEngine
 		std::shared_ptr<Skeleton> m_Skeleton;
 		std::shared_ptr<AnimationController> m_AnimationController;
 		std::vector<DirectX::XMFLOAT4X4> m_BoneMatrices;
+
+		//Animation clip storage
+		std::vector<std::shared_ptr<AnimationClip>> m_AnimationClips;
+		std::unordered_map<std::string, size_t> m_AnimationClipNameMap;
 	};
 
 	namespace SkinnedModelFactory
@@ -69,6 +85,13 @@ namespace DXEngine
 			std::shared_ptr<SkinnedMesh> mesh,
 			std::shared_ptr<Skeleton> skeleton,
 			std::shared_ptr<AnimationClip> defaultClip);
+
+		// Create with multiple animations 
+		std::shared_ptr<SkinnedModel> CreateWithAnimations(
+			std::shared_ptr<SkinnedMesh> mesh,
+			std::shared_ptr<Skeleton> skeleton,
+			const std::vector<std::shared_ptr<AnimationClip>>& clips,
+			size_t defaultClipIndex = 0);
 	}
 }
 

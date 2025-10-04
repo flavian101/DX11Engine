@@ -5,9 +5,13 @@
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
 #include "utils/Mesh/Resource/SkinnedMeshResource.h"
+#include "models/SkinnedModel.h"
 #include "utils/material/Material.h"
 #include "utils/Texture.h"
 #include <chrono>
+#include <algorithm>
+#include "Animation/AnimationClip.h"
+#include <set>
 #include <algorithm>
 
 
@@ -126,29 +130,59 @@ namespace DXEngine
         return model;
     }
 
-    std::shared_ptr<Model> ModelLoader::LoadModelAsync(const std::string& filepath, const ModelLoadOptions& options)
+    std::vector<std::shared_ptr<AnimationClip>> ModelLoader::LoadAnimations(const std::string& filepath)
     {
-        return std::shared_ptr<Model>();
-    }
+        std::vector<std::shared_ptr<AnimationClip>> animations;
 
-    std::shared_ptr<MeshResource> ModelLoader::LoadMeshResource(const std::string& filepath, const ModelLoadOptions& options)
-    {
-        return std::shared_ptr<MeshResource>();
-    }
+        ClearError();
 
-    std::vector<std::shared_ptr<Texture>> ModelLoader::LoadTextures(const std::string& filepath)
-    {
-        return std::vector<std::shared_ptr<Texture>>();
-    }
+        if (!ModelLoaderUtils::FileExists(filepath))
+        {
+            SetError("File does not exist: " + filepath);
+            return animations;
+        }
 
-    std::vector<LoadedAnimation> ModelLoader::LoadAnimations(const std::string& filepath)
-    {
-        return std::vector<LoadedAnimation>();
-    }
+        // Load the scene
+        const aiScene* scene = m_Importer->importer.ReadFile(filepath,
+            aiProcess_ValidateDataStructure | aiProcess_PopulateArmatureData);
 
-    std::vector<std::shared_ptr<Model>> ModelLoader::LoadModels(const std::vector<std::string>& filepath, const ModelLoadOptions& options)
-    {
-        return std::vector<std::shared_ptr<Model>>();
+        if (!scene || !scene->HasAnimations())
+        {
+            if (!scene)
+            {
+                SetError("Assimp error: " + std::string(m_Importer->importer.GetErrorString()));
+            }
+            else
+            {
+                SetError("No animations found in file");
+            }
+            return animations;
+        }
+
+        // We need a skeleton to process animations
+        // Try to find a skeleton from the first skinned mesh
+        std::shared_ptr<Skeleton> skeleton;
+
+        for (unsigned int i = 0; i < scene->mNumMeshes && !skeleton; i++)
+        {
+            const aiMesh* mesh = scene->mMeshes[i];
+            if (mesh->HasBones())
+            {
+                skeleton = ProcessSkeleton(scene, mesh);
+                break;
+            }
+        }
+
+        if (!skeleton)
+        {
+            SetError("Cannot load animations without a skeleton");
+            return animations;
+        }
+
+        // Process all animations
+        animations = ProcessAnimations(scene, skeleton);
+
+        return animations;
     }
 
     bool ModelLoader::ValidateFile(const std::string& filePath)
@@ -171,16 +205,85 @@ namespace DXEngine
 
     std::shared_ptr<Model> ModelLoader::ProcessScene(const aiScene* scene, const std::string& directory, const ModelLoadOptions& options)
     {
-        auto model = std::make_shared<Model>();
+        // Reset current skeleton for new model
+        m_CurrentSkeleton.reset();
 
-        //process root node Recursively
-        ProcessNode(model, scene->mRootNode, scene, directory, options);
+        bool hasAnimations = scene->HasAnimations() && options.loadAnimations;
+        bool hasSkinning = false;
 
+        // Check if any mesh has bones
+        for (unsigned int i = 0; i < scene->mNumMeshes; i++)
+        {
+            if (scene->mMeshes[i]->HasBones())
+            {
+                hasSkinning = true;
+                break;
+            }
+        }
+
+        std::shared_ptr<Model> model;
+
+        // Create appropriate model type
+        if (hasSkinning)
+        {
+            auto skinnedModel = std::make_shared<SkinnedModel>();
+            model = skinnedModel;
+
+            // Process nodes (this will create skeleton via ProcessSkinnedMesh)
+            ProcessNode(model, scene->mRootNode, scene, directory, options);
+
+            // Set skeleton on the skinned model
+            if (m_CurrentSkeleton)
+            {
+                skinnedModel->SetSkeleton(m_CurrentSkeleton);
+
+                //Load and process Animations
+                if (hasAnimations)
+                {
+                    auto animations = ProcessAnimations(scene, m_CurrentSkeleton);
+
+                    //Add all animationa to the skinned model
+                    for (const auto& clip : animations)
+                    {
+                        if (clip)
+                        {
+                            skinnedModel->AddAnimationClip(clip);
+                        }
+                    }
+
+                    //create animation controller with first animation
+                    if (!animations.empty())
+                    {
+                        auto controller = std::make_shared<AnimationController>(m_CurrentSkeleton);
+                        controller->SetClip(animations[0]);
+                        skinnedModel->SetAnimationController(controller);
+
+                        OutputDebugStringA(("Loaded " + std::to_string(animations.size()) +
+                            " animation(s) for model\n").c_str());
+
+                        // Store all animations somewhere accessible
+                  // You might want to add a method to SkinnedModel to store all clips
+                    }
+                }
+            }
+            else if(hasSkinning)
+            {
+                OutputDebugStringA("Warning: Model has skinning data but no skeleton was created\n");
+            }  
+        }
+        else
+        {
+            model = std::make_shared<Model>();
+            ProcessNode(model, scene->mRootNode, scene, directory, options);
+        }
+
+        // Apply global scale
         if (options.globalScale != 1.0f)
         {
             DirectX::XMFLOAT3 scale(options.globalScale, options.globalScale, options.globalScale);
             model->SetScale(scale);
         }
+
         return model;
     }
 
@@ -783,26 +886,38 @@ namespace DXEngine
                 );
                 vertexData->SetAttribute(i, VertexAttributeType::Tangent, tangent);
             }
+            //initialize bone data to Zero
+            DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
+            DirectX::XMINT4 indices(0, 0, 0, 0);
+            vertexData->SetAttribute(i, VertexAttributeType::BlendWeights,weights);
+            vertexData->SetAttribute(i, VertexAttributeType::BlendIndices,indices);
         }
 
-        //process bone weights and indices 
-        if (mesh->HasBones())
+        // Process skeleton (reuse if already created for this model)
+        if (!m_CurrentSkeleton)
         {
-            //initialize bone data for all vertices
-            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-            {
-                // Initialize with zeros - you'll need to add these as explicit template specializations
-                // or handle them in your SetAttribute method
-                DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
-                uint32_t indices[4] = { 0, 0, 0, 0 }; // This might need to be handled differently based on your DataFormat
+            m_CurrentSkeleton = ProcessSkeleton(scene, mesh);
+        }
 
-                vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
-                // Note: BlendIndices might need special handling based on your DataFormat (UByte4, etc.)
-                // vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
-            }
+        // Process bone weights and indices
+        if (mesh->HasBones() && m_CurrentSkeleton)
+        {
+            // Temporary storage for bone influences per vertex
+            struct VertexBoneData
+            {
+                std::vector<std::pair<int, float>> influences; // bone index, weight
+            };
+            std::vector<VertexBoneData> vertexBoneData(mesh->mNumVertices);
+
+            // Collect all bone influences
             for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++)
             {
                 const aiBone* bone = mesh->mBones[boneIndex];
+                std::string boneName = bone->mName.C_Str();
+
+                int skeletonBoneIndex = m_CurrentSkeleton->GetBoneIndex(boneName);
+                if (skeletonBoneIndex < 0)
+                    continue;
 
                 for (unsigned int weightIndex = 0; weightIndex < bone->mNumWeights; weightIndex++)
                 {
@@ -810,32 +925,48 @@ namespace DXEngine
                     unsigned int vertexId = weight.mVertexId;
                     float weightValue = weight.mWeight;
 
-                    //get current blend data
-
-                    auto currentWeights = vertexData->GetAttribute<DirectX::XMFLOAT4>(vertexId, VertexAttributeType::BlendWeights);
-
-                    //find empty slot and add weight/ index
-                    //this is simplified- you nend to handle the case where there are more than 4 influences
-                    if (currentWeights.x == 0.0f)
-                    {
-                        currentWeights.x = weightValue;
-                        //set bone index in blend Indices- implementation depends on your formart
-                    }
-                    else if (currentWeights.y == 0.0f) {
-                        currentWeights.y = weightValue;
-                    }
-                    else if (currentWeights.z == 0.0f) {
-                        currentWeights.z = weightValue;
-                    }
-                    else if (currentWeights.w == 0.0f) {
-                        currentWeights.w = weightValue;
-                    }
-                    vertexData->SetAttribute(vertexId, VertexAttributeType::BlendWeights, currentWeights);
+                    vertexBoneData[vertexId].influences.push_back({ skeletonBoneIndex, weightValue });
                 }
+            }
+
+            // Now assign top 4 influences to each vertex
+            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+            {
+                auto& influences = vertexBoneData[i].influences;
+
+                // Sort by weight (descending)
+                std::sort(influences.begin(), influences.end(),
+                    [](const auto& a, const auto& b) { return a.second > b.second; });
+
+                // Take top 4 and normalize
+                DirectX::XMINT4 indices(0, 0, 0, 0);
+                DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
+
+                float totalWeight = 0.0f;
+                size_t count = std::min(influences.size(), size_t(4));
+
+                for (size_t j = 0; j < count; j++)
+                {
+                    reinterpret_cast<int*>(&indices)[j] = influences[j].first;
+                    reinterpret_cast<float*>(&weights)[j] = influences[j].second;
+                    totalWeight += influences[j].second;
+                }
+
+                // Normalize weights
+                if (totalWeight > 0.0f)
+                {
+                    weights.x /= totalWeight;
+                    weights.y /= totalWeight;
+                    weights.z /= totalWeight;
+                    weights.w /= totalWeight;
+                }
+
+                vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
+                vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
             }
         }
 
-        // add index data 
+        // Create index data
         auto indexData = std::make_unique<IndexData>(
             mesh->mNumVertices > 65535 ? IndexType::UInt32 : IndexType::UInt16);
 
@@ -848,75 +979,193 @@ namespace DXEngine
             }
         }
 
-        //now that we have both vertex data with the set layout and Index data
-        //we will create the mesh Resource
-
+        // Create skinned mesh resource
         std::string meshName = mesh->mName.C_Str();
         if (meshName.empty())
             meshName = "SkinnedMesh";
 
-        auto skinnedMesh = std::make_unique<SkinnedMeshResource>(meshName);
+        auto skinnedMesh = std::make_shared<SkinnedMeshResource>(meshName);
         skinnedMesh->SetVertexData(std::move(vertexData));
         skinnedMesh->SetIndexData(std::move(indexData));
         skinnedMesh->SetTopology(PrimitiveTopology::TriangleList);
+        skinnedMesh->SetSkeleton(m_CurrentSkeleton);
 
-        std::vector<LoadedBone> bones = ProcessBones(mesh);
-        for (const auto& bone : bones)
+        // Generate missing data if requested
+        if (options.generateNormals && !mesh->HasNormals())
         {
-            SkinnedMeshResource::BoneInfo boneInfo;
-            boneInfo.name = bone.name;
-            boneInfo.offsetMatrix = bone.offsetMatrix;
-            boneInfo.parentIndex = bone.parentIndex;
-            skinnedMesh->AddBone(boneInfo);
+            skinnedMesh->GenerateNormals();
         }
 
-        m_LastStats.bonesLoaded += static_cast<uint32_t>(bones.size());
+        if (options.generateTangents && !mesh->HasTangentsAndBitangents())
+        {
+            skinnedMesh->GenerateTangents();
+        }
+
+        skinnedMesh->GenerateBounds();
 
         return skinnedMesh;
+
     }
 
-    std::vector<LoadedAnimation> ModelLoader::ProcessAnimations(const aiScene* scene)
+    std::shared_ptr<Skeleton> ModelLoader::ProcessSkeleton(const aiScene* scene, const aiMesh* mesh)
     {
-        std::vector<LoadedAnimation> animations;
+        if (!mesh->HasBones())
+            return nullptr;
+
+        auto skeleton = std::make_shared<Skeleton>();
+        std::unordered_map<std::string, int> boneMapping;
+
+        //first pass: create boned from mesh bone data(get offset matrices)
+        for (unsigned int i = 0; i < mesh->mNumBones; i++)
+        {
+            const aiBone* aiBone = mesh->mBones[i];
+            std::string boneName = aiBone->mName.C_Str();
+
+            Bone bone;
+            bone.Name = boneName;
+            bone.OffsetMatrix = ConvertMatrix(aiBone->mOffsetMatrix);
+            bone.ParentIndex = -1; //to be set in hierarchy pass
+
+            //initialize local transform to identity
+            DirectX::XMStoreFloat4x4(&bone.LocalTransform, DirectX::XMMatrixIdentity());
+
+            boneMapping[boneName] = static_cast<int>(skeleton->GetBoneCount());
+            skeleton->AddBone(bone);
+        }
+
+        //second Pass: build hierarchy from scene node structure
+        if (scene->mRootNode)
+        {
+            ProcessNodeHierarchy(scene->mRootNode, scene, skeleton, -1, boneMapping);
+        }
+        m_LastStats.bonesLoaded += static_cast<uint32_t>(skeleton->GetBoneCount());
+
+        return skeleton;
+    }
+
+    void ModelLoader::ProcessNodeHierarchy(const aiNode* node, const aiScene* scene, std::shared_ptr<Skeleton> skeleton, int parentIndex, std::unordered_map<std::string, int>& boneMapping)
+    {
+        std::string nodeName = node->mName.C_Str();
+        int currentBoneIndex = -1;
+
+        //check if this node corresponds to a bone
+        auto it = boneMapping.find(nodeName);
+        if (it != boneMapping.end())
+        {
+            currentBoneIndex = it->second;
+            Bone& bone = skeleton->GetBone(currentBoneIndex);
+
+            //set parent index
+            bone.ParentIndex = parentIndex;
+            //set local Transform form node transformation
+            bone.LocalTransform = ConvertMatrix(node->mTransformation);
+            //use this bone as parent for Children
+            parentIndex = currentBoneIndex;
+        }
+
+        for (unsigned int i = 0; i < node->mNumChildren; i++)
+        {
+            ProcessNodeHierarchy(node->mChildren[i], scene, skeleton, parentIndex, boneMapping);
+        }
+    }
+
+    std::vector<std::shared_ptr<AnimationClip>> ModelLoader::ProcessAnimations(const aiScene* scene, std::shared_ptr<Skeleton> skeleton)
+    {
+        std::vector<std::shared_ptr<AnimationClip>> animations;
+
+        if (!scene->HasAnimations() || !skeleton)
+            return animations;
+
         animations.reserve(scene->mNumAnimations);
 
         for (unsigned int i = 0; i < scene->mNumAnimations; i++)
         {
-            const aiAnimation* anim = scene->mAnimations[i];
-            LoadedAnimation loadedAnim;
-            loadedAnim.name = anim->mName.C_Str();
-            loadedAnim.duration = static_cast<float>(anim->mDuration);
-            loadedAnim.ticksPerSecond = static_cast<float>(anim->mTicksPerSecond);
-
-            // Process animation channels
-            // This is a simplified version - real implementation would process keyframes
-            loadedAnim.boneTransforms.resize(anim->mNumChannels);
-
-            animations.push_back(loadedAnim);
+            const aiAnimation* aiAnim = scene->mAnimations[i];
+            auto clip = ProcessAnimation(aiAnim, skeleton);
+            if (clip)
+            {
+                animations.push_back(clip);
+                m_LastStats.animationsLoaded++;
+            }
         }
 
-        m_LastStats.animationsLoaded += static_cast<uint32_t>(animations.size());
         return animations;
     }
 
-    std::vector<LoadedBone> ModelLoader::ProcessBones(const aiMesh* mesh)
+    std::shared_ptr<AnimationClip> ModelLoader::ProcessAnimation(const aiAnimation* aiAnim, std::shared_ptr<Skeleton> skeleton)
     {
-        std::vector<LoadedBone> bones;
-        bones.reserve(mesh->mNumBones);
+        if (!aiAnim || !skeleton)
+            return nullptr;
 
-        for (unsigned int i = 0; i < mesh->mNumBones; i++)
+        std::string animName = aiAnim->mName.C_Str();
+        if (animName.empty())
+            animName = "Animation_" + std::to_string(m_LastStats.animationsLoaded);
+
+        float duration = static_cast<float>(aiAnim->mDuration);
+        float ticksPerSecond = static_cast<float>(aiAnim->mTicksPerSecond);
+
+        //default to 25 fps if not specified
+        if (ticksPerSecond <= 0.0f)
+            ticksPerSecond = 25.0f;
+
+        auto clip = std::make_shared<AnimationClip>(animName, duration);
+        clip->SetTicksPerSecond(ticksPerSecond);
+
+        //process each animation channel(bone animation Track)
+        for (unsigned int i = 0; i < aiAnim->mNumChannels; i++)
         {
-            const aiBone* bone = mesh->mBones[i];
-            LoadedBone loadedBone;
-            loadedBone.name = bone->mName.C_Str();
-            loadedBone.offsetMatrix = ConvertMatrix(bone->mOffsetMatrix);
-            loadedBone.parentIndex = -1; //to be filled latter during hierarchy processing
+            const aiNodeAnim* channel = aiAnim->mChannels[i];
+            std::string boneName = channel->mNodeName.C_Str();
 
-            bones.push_back(loadedBone);
+            //check if this bone exists in our skeleton
+            int boneIndex = skeleton->GetBoneIndex(boneName);
+            if (boneIndex < 0)
+            {
+                //skip not in skeleton (might be helper nodes)
+                continue;
+            }
+
+            //build Keyframes for this Bone
+            std::vector<Keyframe> keyframes;
+
+            // We need to handle the case where position, rotation, and scale
+            // keys might not align. We'll create a unified keyframe list.
+            std::set<float> allTimes;
+
+            //collect all unique timestamps
+            for (unsigned int p = 0; p < channel->mNumPositionKeys; p++)
+                allTimes.insert(static_cast<float>(channel->mPositionKeys[p].mTime));
+            for (unsigned int r = 0; r < channel->mNumRotationKeys; r++)
+                allTimes.insert(static_cast<float>(channel->mRotationKeys[r].mTime));
+            for (unsigned int s = 0; s < channel->mNumScalingKeys; s++)
+                allTimes.insert(static_cast<float>(channel->mScalingKeys[s].mTime));
+
+            //create keyframes for each unique time
+            for (float time : allTimes)
+            {
+                Keyframe keyframe;
+                keyframe.TimeStamp = time;
+
+                // Find or interpolate position
+                keyframe.Translation = FindOrInterpolatePosition(channel, time);
+
+                // Find or interpolate rotation
+                keyframe.Rotation = FindOrInterpolateRotation(channel, time);
+
+                // Find or interpolate scale
+                keyframe.Scale = FindOrInterpolateScale(channel, time);
+
+                keyframes.push_back(keyframe);
+            }
+            //add this bone's animation to the clip
+            if (!keyframes.empty())
+            {
+                clip->AddBoneAnimation(boneName, keyframes);
+            }
         }
-        return bones;
-    }
 
+        return clip;
+    }
 
     DirectX::XMFLOAT4X4 ModelLoader::ConvertMatrix(const aiMatrix4x4& matrix)
     {
@@ -936,6 +1185,87 @@ namespace DXEngine
     DirectX::XMFLOAT4 ModelLoader::ConvertColor(const aiColor4D& color)
     {
         return DirectX::XMFLOAT4(color.r, color.g, color.b, color.a);
+    }
+
+    DirectX::XMFLOAT4 ModelLoader::ConvertQuaternion(const aiQuaternion& quat)
+    {
+        return DirectX::XMFLOAT4(quat.x, quat.y, quat.z, quat.w);
+    }
+
+    DirectX::XMFLOAT3 ModelLoader::FindOrInterpolatePosition(const aiNodeAnim* channel, float time)
+    {
+        //if only one  key, return it 
+       if (channel->mNumPositionKeys == 1)
+        return ConvertVector3(channel->mPositionKeys[0].mValue);
+
+    for (unsigned int i = 0; i < channel->mNumPositionKeys - 1; i++)
+    {
+        float t0 = static_cast<float>(channel->mPositionKeys[i].mTime);
+        float t1 = static_cast<float>(channel->mPositionKeys[i + 1].mTime);
+
+        if (time >= t0 && time < t1)
+        {
+            float factor = (time - t0) / (t1 - t0);
+            const aiVector3D& v0 = channel->mPositionKeys[i].mValue;
+            const aiVector3D& v1 = channel->mPositionKeys[i + 1].mValue;
+
+            aiVector3D result = v0 + (v1 - v0) * factor;
+            return ConvertVector3(result);
+        }
+    }
+
+    return ConvertVector3(channel->mPositionKeys[channel->mNumPositionKeys - 1].mValue);
+    }
+
+    DirectX::XMFLOAT4 ModelLoader::FindOrInterpolateRotation(const aiNodeAnim* channel, float time)
+    {
+        if (channel->mNumRotationKeys == 1)
+            return ConvertQuaternion(channel->mRotationKeys[0].mValue);
+
+        for (unsigned int i = 0; i < channel->mNumRotationKeys - 1; i++)
+        {
+            float t0 = static_cast<float>(channel->mRotationKeys[i].mTime);
+            float t1 = static_cast<float>(channel->mRotationKeys[i + 1].mTime);
+
+            if (time >= t0 && time < t1)
+            {
+                float factor = (time - t0) / (t1 - t0);
+                aiQuaternion q0 = channel->mRotationKeys[i].mValue;
+                aiQuaternion q1 = channel->mRotationKeys[i + 1].mValue;
+
+                aiQuaternion result;
+                aiQuaternion::Interpolate(result, q0, q1, factor);
+                result.Normalize();
+
+                return ConvertQuaternion(result);
+            }
+        }
+
+        return ConvertQuaternion(channel->mRotationKeys[channel->mNumRotationKeys - 1].mValue);
+    }
+
+    DirectX::XMFLOAT3 ModelLoader::FindOrInterpolateScale(const aiNodeAnim* channel, float time)
+    {
+        if (channel->mNumScalingKeys == 1)
+            return ConvertVector3(channel->mScalingKeys[0].mValue);
+
+        for (unsigned int i = 0; i < channel->mNumScalingKeys - 1; i++)
+        {
+            float t0 = static_cast<float>(channel->mScalingKeys[i].mTime);
+            float t1 = static_cast<float>(channel->mScalingKeys[i + 1].mTime);
+
+            if (time >= t0 && time < t1)
+            {
+                float factor = (time - t0) / (t1 - t0);
+                const aiVector3D& v0 = channel->mScalingKeys[i].mValue;
+                const aiVector3D& v1 = channel->mScalingKeys[i + 1].mValue;
+
+                aiVector3D result = v0 + (v1 - v0) * factor;
+                return ConvertVector3(result);
+            }
+        }
+
+        return ConvertVector3(channel->mScalingKeys[channel->mNumScalingKeys - 1].mValue);
     }
 
     void ModelLoader::PostProcessModel(std::shared_ptr<Model> model, const ModelLoadOptions& options)

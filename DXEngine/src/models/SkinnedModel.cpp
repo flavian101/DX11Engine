@@ -81,6 +81,72 @@ namespace DXEngine
 
 	}
 
+	void SkinnedModel::AddAnimationClip(std::shared_ptr<AnimationClip> clip)
+	{
+		if (!clip)
+		{
+			return;
+		}
+		AddAnimationClip(clip->GetName(), clip);
+	}
+
+	void SkinnedModel::AddAnimationClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
+	{
+		if (!clip)
+			return;
+
+		//check if with this name already exists
+		auto it = m_AnimationClipNameMap.find(name);
+		if (it != m_AnimationClipNameMap.end())
+		{
+			//replace existing clip
+			m_AnimationClips[it->second] = clip;
+			OutputDebugStringA(("Warning: Replacing existing animation clip: " + name + "\n").c_str());
+		}
+		else
+		{
+			//add new clip
+			size_t index = m_AnimationClips.size();
+			m_AnimationClips.push_back(clip);
+			m_AnimationClipNameMap[name] = index;
+		}
+ 	}
+
+	std::shared_ptr<AnimationClip> SkinnedModel::GetAnimationClip(const std::string& name) const
+	{
+		auto it = m_AnimationClipNameMap.find(name);
+		if (it != m_AnimationClipNameMap.end())
+		{
+			return m_AnimationClips[it->second];
+		}
+
+		return nullptr;
+	}
+
+	std::shared_ptr<AnimationClip> SkinnedModel::GetAnimationClip(size_t index) const
+	{
+		if (index >= m_AnimationClips.size())
+		{
+			return nullptr;
+		}
+		return m_AnimationClips[index];
+	}
+
+	std::vector<std::string> SkinnedModel::GetAnimationClipNames() const
+	{
+		std::vector<std::string> names;
+		names.reserve(m_AnimationClips.size());
+		
+		for (const auto& clip : m_AnimationClips)
+		{
+			if (clip)
+			{
+				names.push_back(clip->GetName());
+			}
+		}
+		return names;
+	}
+
 	void SkinnedModel::PlayAnimation(std::shared_ptr<AnimationClip> clip, PlaybackMode mode)
 	{
 		if (!m_AnimationController && m_Skeleton)
@@ -94,6 +160,31 @@ namespace DXEngine
 			m_AnimationController->SetPlaybackMode(mode);
 			m_AnimationController->Play();
 		}
+	}
+
+	void SkinnedModel::PlayAnimation(const std::string& name, PlaybackMode mode)
+	{
+		auto clip = GetAnimationClip(name);
+		if (!clip)
+		{
+			OutputDebugStringA(("Warning: Animation clip not found: " + name + "\n").c_str());
+			return;
+		}
+
+		PlayAnimation(clip, mode);
+	}
+
+	void SkinnedModel::PlayAnimation(size_t index, PlaybackMode mode)
+	{
+		auto clip = GetAnimationClip(index);
+		if (!clip)
+		{
+			OutputDebugStringA(("Warning: Animation clip index out of range: " +
+				std::to_string(index) + "\n").c_str());
+			return;
+		}
+
+		PlayAnimation(clip, mode);
 	}
 
 	void SkinnedModel::StopAnimation()
@@ -214,6 +305,29 @@ namespace DXEngine
 			auto controller = std::make_shared<AnimationController>(skeleton);
 			controller->SetClip(defaultClip);
 			model->SetAnimationController(controller);
+
+			return model;
+		}
+		std::shared_ptr<SkinnedModel> CreateWithAnimations(std::shared_ptr<SkinnedMesh> mesh, std::shared_ptr<Skeleton> skeleton, const std::vector<std::shared_ptr<AnimationClip>>& clips, size_t defaultClipIndex)
+		{
+			auto model = Create(mesh, skeleton);
+
+			// Add all animation clips
+			for (const auto& clip : clips)
+			{
+				if (clip)
+				{
+					model->AddAnimationClip(clip);
+				}
+			}
+
+			// Set up controller with default clip
+			if (defaultClipIndex < clips.size() && clips[defaultClipIndex])
+			{
+				auto controller = std::make_shared<AnimationController>(skeleton);
+				controller->SetClip(clips[defaultClipIndex]);
+				model->SetAnimationController(controller);
+			}
 
 			return model;
 		}

@@ -4,6 +4,7 @@
 #include "models/InstanceModel.h"
 #include "models/SkinnedModel.h"
 #include "utils/Mesh/Mesh.h"
+#include "utils/Mesh/SkinnedMesh.h"
 #include "camera/Camera.h"
 #include "shaders/ShaderManager.h"
 #include <algorithm>
@@ -728,23 +729,38 @@ namespace DXEngine {
 
         model->EnsureDefaultMaterials();
 
-        // Add frustum culling check (same as ProcessModelSubmission)
+        // Frustum culling check
         if (s_FrustumCullingEnabled && !IsModelVisible(model.get(), RenderCommand::GetCamera()))
         {
             return;
         }
 
-        //submit all meshes as skinned
+        // Check if model has animations and bone matrices
+        if (model->GetBoneMatrices().empty())
+        {
+            OutputDebugStringA("Warning: SkinnedModel has no bone matrices\n");
+        }
+
+        // Submit all meshes as skinned
         for (size_t meshIndex = 0; meshIndex < model->GetMeshCount(); ++meshIndex)
         {
             auto mesh = model->GetMesh(meshIndex);
             if (!mesh || !mesh->IsValid())
                 continue;
 
-            size_t submeshIndexCount = std::max(size_t(1), mesh->GetSubmeshCount());
-            for (size_t submeshIndex = 0; submeshIndex < submeshIndexCount; ++submeshIndex)
+            // Verify it's actually a skinned mesh
+            auto skinnedMesh = std::dynamic_pointer_cast<SkinnedMesh>(mesh);
+            if (!skinnedMesh)
             {
-                DXEngine::RenderSubmission submission = DXEngine::RenderSubmission::CreateFromSkinnedModel(model.get(), meshIndex, submeshIndex);
+                OutputDebugStringA("Warning: Non-skinned mesh in SkinnedModel\n");
+                continue;
+            }
+
+            size_t submeshCount = std::max(size_t(1), mesh->GetSubmeshCount());
+            for (size_t submeshIndex = 0; submeshIndex < submeshCount; ++submeshIndex)
+            {
+                DXEngine::RenderSubmission submission =
+                    DXEngine::RenderSubmission::CreateFromSkinnedModel(model.get(), meshIndex, submeshIndex);
 
                 if (submission.IsValid())
                 {
@@ -752,7 +768,6 @@ namespace DXEngine {
                     s_RenderSubmissions.push_back(submission);
                     s_Stats.submissionProcessed++;
                 }
-
             }
         }
     }
@@ -958,7 +973,7 @@ namespace DXEngine {
 
         // Setup transform and skinning buffers
         SetupTransformBuffer(submission);
-        SetupSkinnedBuffer(submission);
+       // SetupSkinnedBuffer(submission);
 
         // Get shader bytecode
         const void* shaderByteCode = nullptr;
@@ -973,8 +988,21 @@ namespace DXEngine {
             }
         }
 
+        //cast to skinned mesh
+        auto skinnedMesh = std::dynamic_pointer_cast<SkinnedMesh>(submission.mesh);
+
         // Bind mesh and render
-        submission.mesh->Bind(shaderByteCode, byteCodeLength);
+        if (skinnedMesh)
+        {
+            // Bind mesh with input layout
+            skinnedMesh->Bind(shaderByteCode, byteCodeLength);
+        }
+        else
+        {
+            // Fallback for non-skinned mesh
+            submission.mesh->Bind(shaderByteCode, byteCodeLength);
+        }
+
         submission.mesh->Draw(submission.submeshIndex);
 
         // Update statistics
@@ -1181,19 +1209,19 @@ namespace DXEngine {
         RenderCommand::GetContext()->IASetVertexBuffers(1, 1, instanceBuffer->GetAddressOf(), &stride, &offset);
     }
 
-    void Renderer::SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission)
-    {
-        if (!submission.boneMatrices || submission.boneMatrices->empty())
-            return;
-
-        // Create bone matrix constant buffer
-        ConstantBuffer<std::vector<DirectX::XMFLOAT4X4>> boneBuffer;
-        std::vector<DirectX::XMFLOAT4X4> bones = *submission.boneMatrices;
-        boneBuffer.Initialize(&bones);
-        boneBuffer.Update(bones);
-
-        RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Bones, 1, boneBuffer.GetAddressOf());
-    }
+   //void Renderer::SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission)
+   //{
+   //    if (!submission.boneMatrices || submission.boneMatrices->empty())
+   //        return;
+   //
+   //    // Create bone matrix constant buffer
+   //    ConstantBuffer<std::vector<DirectX::XMFLOAT4X4>> boneBuffer;
+   //    std::vector<DirectX::XMFLOAT4X4> bones = *submission.boneMatrices;
+   //    boneBuffer.Initialize(&bones);
+   //    boneBuffer.Update(bones);
+   //
+   //    RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Bones, 1, boneBuffer.GetAddressOf());
+   //}
 
     float Renderer::CalculateDistancetoCamera(const DXEngine::RenderSubmission& submission)
     {

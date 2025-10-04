@@ -1,10 +1,10 @@
 #pragma once
 #include "utils/Mesh/Mesh.h"
 #include "utils/ConstantBufferTypes.h"
+#include "Resource/SkinnedMeshResource.h"
 
 namespace DXEngine
 {
-    class SkinnedMeshResource;
     class RawBuffer;
     class Skeleton;
 
@@ -15,7 +15,7 @@ namespace DXEngine
 
         const std::shared_ptr<SkinnedMeshResource>& GetSkinnedResource() const
         {
-            return std::static_pointer_cast<SkinnedMeshResource>(GetResource());
+            return std::dynamic_pointer_cast<SkinnedMeshResource>(GetResource());
         }
 
         // Bone matrices for animation

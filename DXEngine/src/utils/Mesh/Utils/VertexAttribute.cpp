@@ -398,6 +398,21 @@ namespace DXEngine
     }
 
    
+    template<>
+    void VertexData::SetAttribute<DirectX::XMFLOAT4>(size_t vertexIndex, VertexAttributeType type,
+        const DirectX::XMFLOAT4& value, uint32_t slot)
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        auto& slotData = m_Data[slot];
+        uint32_t stride = m_Layout.GetStride(slot);
+        uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        uint8_t* attrStart = vertexStart + attr->Offset;
+
+        memcpy(attrStart, &value, sizeof(DirectX::XMFLOAT4));
+    }
 
     template<>
     void VertexData::SetAttribute<DirectX::XMFLOAT3>(size_t vertexIndex, VertexAttributeType type,
@@ -432,22 +447,6 @@ namespace DXEngine
     }
 
     template<>
-    void VertexData::SetAttribute<DirectX::XMFLOAT4>(size_t vertexIndex, VertexAttributeType type,
-        const DirectX::XMFLOAT4& value, uint32_t slot)
-    {
-        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
-        assert(attr && "Attribute not found in layout");
-        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
-
-        auto& slotData = m_Data[slot];
-        uint32_t stride = m_Layout.GetStride(slot);
-        uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
-        uint8_t* attrStart = vertexStart + attr->Offset;
-
-        memcpy(attrStart, &value, sizeof(DirectX::XMFLOAT4));
-    }
-
-    template<>
     void VertexData::SetAttribute<uint32_t[4]>(size_t vertexIndex, VertexAttributeType type,
         const uint32_t(&value)[4], uint32_t slot)
     {
@@ -477,6 +476,22 @@ namespace DXEngine
         uint8_t* attrStart = vertexStart + attr->Offset;
 
         memcpy(attrStart, &value, sizeof(DirectX::XMUINT4));
+    }
+
+    template<>
+    void VertexData::SetAttribute<DirectX::XMINT4>(size_t vertexIndex, VertexAttributeType type,
+        const DirectX::XMINT4& value, uint32_t slot)
+    {
+        const VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        auto& slotData = m_Data[slot];
+        uint32_t stride = m_Layout.GetStride(slot);
+        uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        uint8_t* attrStart = vertexStart + attr->Offset;
+
+        memcpy(attrStart, &value, sizeof(DirectX::XMINT4));
     }
 
     /// <summary>

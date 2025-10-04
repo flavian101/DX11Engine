@@ -1,6 +1,6 @@
 #pragma once
 #include "utils/Mesh/Resource/MeshResource.h"
-#include "Animation/AnimationClip.h" // Use the animation system's Skeleton
+#include "Animation/AnimationClip.h"
 
 namespace DXEngine
 {

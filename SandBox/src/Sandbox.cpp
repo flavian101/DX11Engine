@@ -27,8 +27,42 @@ void Sandbox::OnAttach()
 	m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
 	//m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
 	m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
-	m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
+	//m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
+	m_AnimatedSpider = std::dynamic_pointer_cast<DXEngine::SkinnedModel>(m_Loader->LoadModel("assets/models/spider/Spider.fbx"));
 
+	if (m_AnimatedSpider)
+	{
+		OutputDebugStringA("Spaceship loaded with animations!\n");
+
+		// Print animation info
+		size_t animCount = m_AnimatedSpider->GetAnimationClipCount();
+		OutputDebugStringA(("  Animations: " + std::to_string(animCount) + "\n").c_str());
+
+		auto animNames = m_AnimatedSpider->GetAnimationClipNames();
+		for (size_t i = 0; i < animNames.size(); i++)
+		{
+			OutputDebugStringA(("    [" + std::to_string(i) + "] " +
+				animNames[i] + "\n").c_str());
+		}
+
+		// Play first animation if available
+		if (animCount > 0)
+		{
+			m_AnimatedSpider->PlayAnimation(0, DXEngine::PlaybackMode::Loop);
+			OutputDebugStringA(("  Playing: " + animNames[0] + "\n").c_str());
+		}
+
+		// Print skeleton info
+		if (auto skeleton = m_AnimatedSpider->GetSkeleton())
+		{
+			OutputDebugStringA(("  Bones: " +
+				std::to_string(skeleton->GetBoneCount()) + "\n").c_str());
+		}
+	}
+	else
+	{
+		OutputDebugStringA("  spider loaded but has no animations\n");
+	}
 	InitializePicking();
 }
 
@@ -119,6 +153,37 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	//	DXEngine::Renderer::Submit(m_Light);
 	//}
 
+	if (m_AnimatedSpider)
+	{
+		// Update animation
+		m_AnimatedSpider->Update(dt);
+
+		// Set transform
+		m_AnimatedSpider->SetScale({ 1.0f, 1.0f, 1.0f });
+		m_AnimatedSpider->SetTranslation({ 0.0f, 0.0f, -10.0f });
+
+		m_CurrentRotation += m_Speed * dt;
+		//m_AnimatedSpider->SetRotation({ 0.0f, m_CurrentRotation, 0.0f, 0.0f });
+
+		// Submit for rendering
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::SkinnedModel>(m_AnimatedSpider));
+
+		// Debug info (can be removed later)
+		if (mDX_DEBUGMode && m_AnimatedSpider->IsAnimating())
+		{
+			float animTime = m_AnimatedSpider->GetAnimationTime();
+			float normalizedTime = m_AnimatedSpider->GetAnimationNormalizedTime();
+
+		}
+	}
+	else if (m_AnimatedSpider)  // Fallback to non-animated version
+	{
+		m_AnimatedSpider->SetScale({ 1.0f, 1.0f, 1.0f });
+		m_AnimatedSpider->SetTranslation({ 0.0f, 0.0f, -10.0f });
+		m_AnimatedSpider->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::SkinnedModel>(m_AnimatedSpider));
+	}
+
 	if (m_Ring)
 	{
 		m_Ring->SetTranslation({ 0.0f, 8.0f, 0.0f });
@@ -202,6 +267,138 @@ void Sandbox::DetectInput(double time)
 	{
 		static bool debugToggled = false;
 		debugToggled = false;
+	}
+
+	///spider Animation control
+	if (m_AnimatedSpider)
+	{
+		// Switch to next animation with 'N' key
+		if (DXEngine::Input::IsKeyPressed('N'))
+		{
+			static bool animSwitchToggled = false;
+			if (!animSwitchToggled)
+			{
+				size_t animCount = m_AnimatedSpider->GetAnimationClipCount();
+				if (animCount > 0)
+				{
+					m_CurrentAnimationIndex = (m_CurrentAnimationIndex + 1) % animCount;
+					m_AnimatedSpider->PlayAnimation(m_CurrentAnimationIndex,
+						DXEngine::PlaybackMode::Loop);
+
+					auto names = m_AnimatedSpider->GetAnimationClipNames();
+					OutputDebugStringA(("Switched to animation: " +
+						names[m_CurrentAnimationIndex] + "\n").c_str());
+				}
+				animSwitchToggled = true;
+			}
+		}
+		else
+		{
+			static bool animSwitchToggled = false;
+			animSwitchToggled = false;
+		}
+
+		// Pause/Resume animation with 'P' key
+		if (DXEngine::Input::IsKeyPressed('P'))
+		{
+			static bool pauseToggled = false;
+			if (!pauseToggled)
+			{
+				if (m_IsAnimationPaused)
+				{
+					m_AnimatedSpider->ResumeAnimation();
+					OutputDebugStringA("Animation resumed\n");
+				}
+				else
+				{
+					m_AnimatedSpider->PauseAnimation();
+					OutputDebugStringA("Animation paused\n");
+				}
+				m_IsAnimationPaused = !m_IsAnimationPaused;
+				pauseToggled = true;
+			}
+		}
+		else
+		{
+			static bool pauseToggled = false;
+			pauseToggled = false;
+		}
+
+		// Change animation speed with '+' and '-' keys
+		if (DXEngine::Input::IsKeyPressed(VK_OEM_PLUS) || DXEngine::Input::IsKeyPressed(VK_ADD))
+		{
+			static bool speedUpToggled = false;
+			if (!speedUpToggled && m_AnimatedSpider->GetAnimationController())
+			{
+				float currentSpeed = m_AnimatedSpider->GetAnimationController()->GetPlaybackSpeed();
+				float newSpeed = std::min(currentSpeed + 0.25f, 3.0f);
+				m_AnimatedSpider->GetAnimationController()->SetPlaybackSpeed(newSpeed);
+				OutputDebugStringA(("Animation speed: " + std::to_string(newSpeed) + "x\n").c_str());
+				speedUpToggled = true;
+			}
+		}
+		else
+		{
+			static bool speedUpToggled = false;
+			speedUpToggled = false;
+		}
+
+		if (DXEngine::Input::IsKeyPressed(VK_OEM_MINUS) || DXEngine::Input::IsKeyPressed(VK_SUBTRACT))
+		{
+			static bool speedDownToggled = false;
+			if (!speedDownToggled && m_AnimatedSpider->GetAnimationController())
+			{
+				float currentSpeed = m_AnimatedSpider->GetAnimationController()->GetPlaybackSpeed();
+				float newSpeed = std::max(currentSpeed - 0.25f, 0.25f);
+				m_AnimatedSpider->GetAnimationController()->SetPlaybackSpeed(newSpeed);
+				OutputDebugStringA(("Animation speed: " + std::to_string(newSpeed) + "x\n").c_str());
+				speedDownToggled = true;
+			}
+		}
+		else
+		{
+			static bool speedDownToggled = false;
+			speedDownToggled = false;
+		}
+
+		// Change playback mode with 'M' key (Loop -> Once -> PingPong)
+		if (DXEngine::Input::IsKeyPressed('M'))
+		{
+			static bool modeToggled = false;
+			if (!modeToggled && m_AnimatedSpider->GetAnimationController())
+			{
+				auto controller = m_AnimatedSpider->GetAnimationController();
+				auto currentMode = controller->GetPlaybackMode();
+
+				DXEngine::PlaybackMode newMode;
+				std::string modeName;
+
+				switch (currentMode)
+				{
+				case DXEngine::PlaybackMode::Loop:
+					newMode = DXEngine::PlaybackMode::Once;
+					modeName = "Once";
+					break;
+				case DXEngine::PlaybackMode::Once:
+					newMode = DXEngine::PlaybackMode::PingPong;
+					modeName = "PingPong";
+					break;
+				case DXEngine::PlaybackMode::PingPong:
+					newMode = DXEngine::PlaybackMode::Loop;
+					modeName = "Loop";
+					break;
+				}
+
+				controller->SetPlaybackMode(newMode);
+				OutputDebugStringA(("Playback mode: " + modeName + "\n").c_str());
+				modeToggled = true;
+			}
+		}
+		else
+		{
+			static bool modeToggled = false;
+			modeToggled = false;
+		}
 	}
 
 	//call update
