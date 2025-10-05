@@ -13,8 +13,6 @@ namespace DXEngine {
     class ShaderManager;
     class ShaderProgram;
     class Model;
-    class InstanceModel;
-    class SkinnedModel;
     class Mesh;
     class Camera;
     class UIElement;
@@ -63,8 +61,6 @@ namespace DXEngine {
 
         RenderSubmission() = default;
         static RenderSubmission CreateFromModel(const Model* model = nullptr, size_t meshIndex = 0, size_t submeshIndex = 0);
-        static RenderSubmission CreateFromInstanceModel(const InstanceModel* model, size_t meshIndex, size_t subMeshIndex);
-        static RenderSubmission CreateFromSkinnedModel(const SkinnedModel* model, size_t meshIndex, size_t submeshIndex);
         static RenderSubmission CreateFromUIElement(std::shared_ptr<UIElement> element, std::shared_ptr<Material> material);
 
 
@@ -112,8 +108,7 @@ namespace DXEngine {
         static void Submit(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride);
         static void SubmitMesh(std::shared_ptr<Model> model,size_t meshIndex, std::shared_ptr<Material> materialOverride = nullptr);
         static void SubmitSubmesh(std::shared_ptr<Model> model,size_t meshIndex,size_t submeshIndex, std::shared_ptr<Material> materialOverride = nullptr);
-        static void Submit(std::shared_ptr<InstanceModel> model);
-        static void Submit(std::shared_ptr<SkinnedModel> model);
+
 
         static void RenderImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride = nullptr);
         static void RenderMeshImmediate(std::shared_ptr<Model> model, size_t meshIndex, std::shared_ptr<Material> materialOverride = nullptr);
@@ -186,8 +181,6 @@ namespace DXEngine {
 
         //Submissiom processing
         static void ProcessModelSubmission(std::shared_ptr<Model> model, std::shared_ptr<Material> overrideMaterial = nullptr);
-        static void ProcessInstanceModelSubmission(std::shared_ptr<InstanceModel> model);
-        static void ProcessSkinnedModelSubmission(std::shared_ptr<SkinnedModel> model);
 
         //culling and Lod
         static bool IsModelVisible(const Model* model, const std::shared_ptr<Camera>& camera);
@@ -205,7 +198,7 @@ namespace DXEngine {
         static void BindShaderForMaterial(std::shared_ptr<Material> material, std::shared_ptr<Mesh> mesh);
         static void SetupTransformBuffer(const DXEngine::RenderSubmission& submission);
         static void SetupInstanceBuffer(const DXEngine::RenderSubmission& submission);
-        //static void SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission);
+        static void SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission);
 
 
         //sorting and Batching

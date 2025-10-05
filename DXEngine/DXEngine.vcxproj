@@ -127,6 +127,7 @@
     <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
+    <ClInclude Include="src\models\ModelFeatures.h" />
     <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\camera\Camera.h" />
@@ -135,10 +136,8 @@
     <ClInclude Include="src\camera\FreeLookBehavior.h" />
     <ClInclude Include="src\camera\MovementBehavior.h" />
     <ClInclude Include="src\dxpch.h" />
-    <ClInclude Include="src\models\InstanceModel.h" />
     <ClInclude Include="src\models\Model.h" />
     <ClInclude Include="src\models\ModelLoader.h" />
-    <ClInclude Include="src\models\SkinnedModel.h" />
     <ClInclude Include="src\picking\InterfacePickable.h" />
     <ClInclude Include="src\picking\PickingManager.h" />
     <ClInclude Include="src\picking\Ray.h" />
@@ -152,12 +151,8 @@
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
     <ClInclude Include="src\utils\CubeMapTexture.h" />
     <ClInclude Include="src\utils\Light.h" />
-    <ClInclude Include="src\utils\Mesh\InstanceMesh.h" />
     <ClInclude Include="src\utils\Mesh\Mesh.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\InstanceMeshResource.h" />
     <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
-    <ClInclude Include="src\utils\Mesh\Resource\SkinnedMeshResource.h" />
-    <ClInclude Include="src\utils\Mesh\SkinnedMesh.h" />
     <ClInclude Include="src\utils\Mesh\Utils\IndexData.h" />
     <ClInclude Include="src\utils\Mesh\Utils\InputManager.h" />
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
@@ -198,10 +193,8 @@
     <ClCompile Include="src\dxpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\models\InstanceModel.cpp" />
     <ClCompile Include="src\models\Model.cpp" />
     <ClCompile Include="src\models\ModelLoader.cpp" />
-    <ClCompile Include="src\models\SkinnedModel.cpp" />
     <ClCompile Include="src\picking\PickingManager.cpp" />
     <ClCompile Include="src\picking\Ray.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
@@ -212,12 +205,8 @@
     <ClCompile Include="src\utils\Buffer.cpp" />
     <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
-    <ClCompile Include="src\utils\Mesh\InstanceMesh.cpp" />
     <ClCompile Include="src\utils\Mesh\Mesh.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\InstanceMeshResource.cpp" />
     <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp" />
-    <ClCompile Include="src\utils\Mesh\Resource\SkinnedMeshResource.cpp" />
-    <ClCompile Include="src\utils\Mesh\SkinnedMesh.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />

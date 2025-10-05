@@ -94,16 +94,10 @@
       <Filter>camera</Filter>
     </ClInclude>
     <ClInclude Include="src\dxpch.h" />
-    <ClInclude Include="src\models\InstanceModel.h">
-      <Filter>models</Filter>
-    </ClInclude>
     <ClInclude Include="src\models\Model.h">
       <Filter>models</Filter>
     </ClInclude>
     <ClInclude Include="src\models\ModelLoader.h">
-      <Filter>models</Filter>
-    </ClInclude>
-    <ClInclude Include="src\models\SkinnedModel.h">
       <Filter>models</Filter>
     </ClInclude>
     <ClInclude Include="src\picking\InterfacePickable.h">
@@ -143,23 +137,11 @@
     <ClInclude Include="src\utils\Light.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Mesh\InstanceMesh.h">
-      <Filter>utils\Mesh</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\Mesh\Mesh.h">
       <Filter>utils\Mesh</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Mesh\Resource\InstanceMeshResource.h">
-      <Filter>utils\Mesh\Resource</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h">
       <Filter>utils\Mesh\Resource</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\Mesh\Resource\SkinnedMeshResource.h">
-      <Filter>utils\Mesh\Resource</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\Mesh\SkinnedMesh.h">
-      <Filter>utils\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Mesh\Utils\IndexData.h">
       <Filter>utils\Mesh\Utils</Filter>
@@ -227,6 +209,7 @@
     <ClInclude Include="src\Animation\AnimationClip.h" />
     <ClInclude Include="src\Animation\AnimationEvaluator.h" />
     <ClInclude Include="src\Animation\AnimationController.h" />
+    <ClInclude Include="src\models\ModelFeatures.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -258,16 +241,10 @@
       <Filter>camera</Filter>
     </ClCompile>
     <ClCompile Include="src\dxpch.cpp" />
-    <ClCompile Include="src\models\InstanceModel.cpp">
-      <Filter>models</Filter>
-    </ClCompile>
     <ClCompile Include="src\models\Model.cpp">
       <Filter>models</Filter>
     </ClCompile>
     <ClCompile Include="src\models\ModelLoader.cpp">
-      <Filter>models</Filter>
-    </ClCompile>
-    <ClCompile Include="src\models\SkinnedModel.cpp">
       <Filter>models</Filter>
     </ClCompile>
     <ClCompile Include="src\picking\PickingManager.cpp">
@@ -300,23 +277,11 @@
     <ClCompile Include="src\utils\Light.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\Mesh\InstanceMesh.cpp">
-      <Filter>utils\Mesh</Filter>
-    </ClCompile>
     <ClCompile Include="src\utils\Mesh\Mesh.cpp">
       <Filter>utils\Mesh</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\Mesh\Resource\InstanceMeshResource.cpp">
-      <Filter>utils\Mesh\Resource</Filter>
-    </ClCompile>
     <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp">
       <Filter>utils\Mesh\Resource</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\Mesh\Resource\SkinnedMeshResource.cpp">
-      <Filter>utils\Mesh\Resource</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\Mesh\SkinnedMesh.cpp">
-      <Filter>utils\Mesh</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp">
       <Filter>utils\Mesh\Utils</Filter>

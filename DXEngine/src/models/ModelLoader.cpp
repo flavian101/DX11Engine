@@ -4,8 +4,6 @@
 #include "models/Model.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
-#include "utils/Mesh/Resource/SkinnedMeshResource.h"
-#include "models/SkinnedModel.h"
 #include "utils/material/Material.h"
 #include "utils/Texture.h"
 #include <chrono>
@@ -221,60 +219,66 @@ namespace DXEngine
             }
         }
 
-        std::shared_ptr<Model> model;
+        auto model = std::make_shared<Model>();
 
         // Create appropriate model type
         if (hasSkinning)
         {
-            auto skinnedModel = std::make_shared<SkinnedModel>();
-            model = skinnedModel;
-
-            // Process nodes (this will create skeleton via ProcessSkinnedMesh)
-            ProcessNode(model, scene->mRootNode, scene, directory, options);
-
-            // Set skeleton on the skinned model
-            if (m_CurrentSkeleton)
+            // Process skeleton from first skinned mesh
+            for (unsigned int i = 0; i < scene->mNumMeshes; i++)
             {
-                skinnedModel->SetSkeleton(m_CurrentSkeleton);
-
-                //Load and process Animations
-                if (hasAnimations)
+                const aiMesh* mesh = scene->mMeshes[i];
+                if (mesh->HasBones())
                 {
-                    auto animations = ProcessAnimations(scene, m_CurrentSkeleton);
-
-                    //Add all animationa to the skinned model
-                    for (const auto& clip : animations)
-                    {
-                        if (clip)
-                        {
-                            skinnedModel->AddAnimationClip(clip);
-                        }
-                    }
-
-                    //create animation controller with first animation
-                    if (!animations.empty())
-                    {
-                        auto controller = std::make_shared<AnimationController>(m_CurrentSkeleton);
-                        controller->SetClip(animations[0]);
-                        skinnedModel->SetAnimationController(controller);
-
-                        OutputDebugStringA(("Loaded " + std::to_string(animations.size()) +
-                            " animation(s) for model\n").c_str());
-
-                        // Store all animations somewhere accessible
-                  // You might want to add a method to SkinnedModel to store all clips
-                    }
+                    m_CurrentSkeleton = ProcessSkeleton(scene, mesh);
+                    break;
                 }
             }
-            else if(hasSkinning)
+
+            if (m_CurrentSkeleton)
             {
-                OutputDebugStringA("Warning: Model has skinning data but no skeleton was created\n");
-            }  
+                // Enable skinning feature with skeleton
+                model->EnableSkinning(m_CurrentSkeleton);
+
+                OutputDebugStringA(("Skeleton created with " +
+                    std::to_string(m_CurrentSkeleton->GetBoneCount()) +
+                    " bones\n").c_str());
+            }
         }
-        else
+
+        // ====== PROCESS MESHES ======
+        ProcessNode(model, scene->mRootNode, scene, directory, options);
+
+        // ====== LOAD ANIMATIONS ======
+        if (hasAnimations && m_CurrentSkeleton)
         {
-            model = std::make_shared<Model>();
-            ProcessNode(model, scene->mRootNode, scene, directory, options);
+            auto animations = ProcessAnimations(scene, m_CurrentSkeleton);
+
+            // Add all animations to the model
+            for (const auto& clip : animations)
+            {
+                if (clip)
+                {
+                    model->AddAnimationClip(clip);
+                }
+            }
+
+            OutputDebugStringA(("Loaded " + std::to_string(animations.size()) +
+                " animation(s) for model\n").c_str());
+
+            // Create animation controller with first animation
+            if (!animations.empty())
+            {
+                auto controller = std::make_shared<AnimationController>(m_CurrentSkeleton);
+                controller->SetClip(animations[0]);
+                controller->SetPlaybackMode(PlaybackMode::Loop);
+                controller->Play();
+                model->SetAnimationController(controller);
+            }
+        }
+        else if (hasSkinning && !m_CurrentSkeleton)
+        {
+            OutputDebugStringA("Warning: Model has skinning data but no skeleton was created\n");
         }
 
         // Apply global scale
@@ -295,15 +299,7 @@ namespace DXEngine
             const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
             std::shared_ptr<MeshResource> meshResource;
 
-            //check of mesh has bones(skinned mesh)
-            if (mesh->HasBones() && options.loadAnimations)
-            {
-                meshResource = ProcessSkinnedMesh(mesh, scene, options);
-            }
-            else
-            {
-                meshResource = ProcessMesh(mesh, scene, options);
-            }
+            meshResource = ProcessMesh(mesh, scene, options);
 
             if (meshResource)
             {
@@ -362,7 +358,11 @@ namespace DXEngine
         {
             layout.TexCoord(i); // Uses your existing TexCoord(index) method
         }
-
+       
+        if (mesh->HasBones() || options.loadAnimations)
+        {
+            layout.BlendData();
+        }
         layout.Finalize();
 
         // Create vertex data
@@ -403,6 +403,88 @@ namespace DXEngine
                     1.0f // Handedness - calculate properly in real implementation
                 );
                 vertexData->SetAttribute(i, VertexAttributeType::Tangent, tangent);
+            }
+
+            if (mesh->HasBones())
+            {
+                //initialize bone data to Zero
+                DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
+                DirectX::XMINT4 indices(0, 0, 0, 0);
+                vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
+                vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
+            }
+
+            // Process skeleton (reuse if already created for this model)
+            if (!m_CurrentSkeleton)
+            {
+                m_CurrentSkeleton = ProcessSkeleton(scene, mesh);
+            }
+
+            //process bone weights and indiced
+            if (mesh->HasBones() && m_CurrentSkeleton)
+            {
+                // Temporary storage for bone influences per vertex
+                struct VertexBoneData
+                {
+                    std::vector<std::pair<int, float>> influences; // bone index, weight
+                };
+                std::vector<VertexBoneData> vertexBoneData(mesh->mNumVertices);
+
+                // Collect all bone influences
+                for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++)
+                {
+                    const aiBone* bone = mesh->mBones[boneIndex];
+                    std::string boneName = bone->mName.C_Str();
+
+                    int skeletonBoneIndex = m_CurrentSkeleton->GetBoneIndex(boneName);
+                    if (skeletonBoneIndex < 0)
+                        continue;
+
+                    for (unsigned int weightIndex = 0; weightIndex < bone->mNumWeights; weightIndex++)
+                    {
+                        const aiVertexWeight& weight = bone->mWeights[weightIndex];
+                        unsigned int vertexId = weight.mVertexId;
+                        float weightValue = weight.mWeight;
+
+                        vertexBoneData[vertexId].influences.push_back({ skeletonBoneIndex, weightValue });
+                    }
+                }
+
+                // Now assign top 4 influences to each vertex
+                for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+                {
+                    auto& influences = vertexBoneData[i].influences;
+
+                    // Sort by weight (descending)
+                    std::sort(influences.begin(), influences.end(),
+                        [](const auto& a, const auto& b) { return a.second > b.second; });
+
+                    // Take top 4 and normalize
+                    DirectX::XMINT4 indices(0, 0, 0, 0);
+                    DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
+
+                    float totalWeight = 0.0f;
+                    size_t count = std::min(influences.size(), size_t(4));
+
+                    for (size_t j = 0; j < count; j++)
+                    {
+                        reinterpret_cast<int*>(&indices)[j] = influences[j].first;
+                        reinterpret_cast<float*>(&weights)[j] = influences[j].second;
+                        totalWeight += influences[j].second;
+                    }
+
+                    // Normalize weights
+                    if (totalWeight > 0.0f)
+                    {
+                        weights.x /= totalWeight;
+                        weights.y /= totalWeight;
+                        weights.z /= totalWeight;
+                        weights.w /= totalWeight;
+                    }
+
+                    vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
+                    vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
+                }
             }
 
             // Additional UV sets
@@ -842,169 +924,6 @@ namespace DXEngine
             }
         }
         return "";
-    }
-
-    std::shared_ptr<SkinnedMeshResource> ModelLoader::ProcessSkinnedMesh(const aiMesh* mesh, const aiScene* scene, const ModelLoadOptions& options)
-    {
-        //skinned vertex layout from default
-        VertexLayout layout = VertexLayout::CreateSkinned();
-
-        //create vertexData
-        auto vertexData = std::make_unique<VertexData>(layout);
-        vertexData->Resize(mesh->mNumVertices);
-
-        // Fill basic vertex data (same as regular mesh)
-        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-        {
-            if (mesh->HasPositions())
-            {
-                DirectX::XMFLOAT3 pos(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-                vertexData->SetAttribute(i, VertexAttributeType::Position, pos);
-            }
-            // Normal
-            if (mesh->HasNormals())
-            {
-                DirectX::XMFLOAT3 normal(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
-                vertexData->SetAttribute(i, VertexAttributeType::Normal, normal);
-            }
-
-            // Texture coordinates
-            if (mesh->HasTextureCoords(0))
-            {
-                DirectX::XMFLOAT2 uv(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
-                vertexData->SetAttribute(i, VertexAttributeType::TexCoord0, uv);
-            }
-
-            // Tangents
-            if (mesh->HasTangentsAndBitangents())
-            {
-                DirectX::XMFLOAT4 tangent(
-                    mesh->mTangents[i].x,
-                    mesh->mTangents[i].y,
-                    mesh->mTangents[i].z,
-                    1.0f
-                );
-                vertexData->SetAttribute(i, VertexAttributeType::Tangent, tangent);
-            }
-            //initialize bone data to Zero
-            DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
-            DirectX::XMINT4 indices(0, 0, 0, 0);
-            vertexData->SetAttribute(i, VertexAttributeType::BlendWeights,weights);
-            vertexData->SetAttribute(i, VertexAttributeType::BlendIndices,indices);
-        }
-
-        // Process skeleton (reuse if already created for this model)
-        if (!m_CurrentSkeleton)
-        {
-            m_CurrentSkeleton = ProcessSkeleton(scene, mesh);
-        }
-
-        // Process bone weights and indices
-        if (mesh->HasBones() && m_CurrentSkeleton)
-        {
-            // Temporary storage for bone influences per vertex
-            struct VertexBoneData
-            {
-                std::vector<std::pair<int, float>> influences; // bone index, weight
-            };
-            std::vector<VertexBoneData> vertexBoneData(mesh->mNumVertices);
-
-            // Collect all bone influences
-            for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++)
-            {
-                const aiBone* bone = mesh->mBones[boneIndex];
-                std::string boneName = bone->mName.C_Str();
-
-                int skeletonBoneIndex = m_CurrentSkeleton->GetBoneIndex(boneName);
-                if (skeletonBoneIndex < 0)
-                    continue;
-
-                for (unsigned int weightIndex = 0; weightIndex < bone->mNumWeights; weightIndex++)
-                {
-                    const aiVertexWeight& weight = bone->mWeights[weightIndex];
-                    unsigned int vertexId = weight.mVertexId;
-                    float weightValue = weight.mWeight;
-
-                    vertexBoneData[vertexId].influences.push_back({ skeletonBoneIndex, weightValue });
-                }
-            }
-
-            // Now assign top 4 influences to each vertex
-            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-            {
-                auto& influences = vertexBoneData[i].influences;
-
-                // Sort by weight (descending)
-                std::sort(influences.begin(), influences.end(),
-                    [](const auto& a, const auto& b) { return a.second > b.second; });
-
-                // Take top 4 and normalize
-                DirectX::XMINT4 indices(0, 0, 0, 0);
-                DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
-
-                float totalWeight = 0.0f;
-                size_t count = std::min(influences.size(), size_t(4));
-
-                for (size_t j = 0; j < count; j++)
-                {
-                    reinterpret_cast<int*>(&indices)[j] = influences[j].first;
-                    reinterpret_cast<float*>(&weights)[j] = influences[j].second;
-                    totalWeight += influences[j].second;
-                }
-
-                // Normalize weights
-                if (totalWeight > 0.0f)
-                {
-                    weights.x /= totalWeight;
-                    weights.y /= totalWeight;
-                    weights.z /= totalWeight;
-                    weights.w /= totalWeight;
-                }
-
-                vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
-                vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
-            }
-        }
-
-        // Create index data
-        auto indexData = std::make_unique<IndexData>(
-            mesh->mNumVertices > 65535 ? IndexType::UInt32 : IndexType::UInt16);
-
-        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-        {
-            const aiFace& face = mesh->mFaces[i];
-            if (face.mNumIndices == 3)
-            {
-                indexData->AddTriangle(face.mIndices[0], face.mIndices[1], face.mIndices[2]);
-            }
-        }
-
-        // Create skinned mesh resource
-        std::string meshName = mesh->mName.C_Str();
-        if (meshName.empty())
-            meshName = "SkinnedMesh";
-
-        auto skinnedMesh = std::make_shared<SkinnedMeshResource>(meshName);
-        skinnedMesh->SetVertexData(std::move(vertexData));
-        skinnedMesh->SetIndexData(std::move(indexData));
-        skinnedMesh->SetTopology(PrimitiveTopology::TriangleList);
-        skinnedMesh->SetSkeleton(m_CurrentSkeleton);
-
-        // Generate missing data if requested
-        if (options.generateNormals && !mesh->HasNormals())
-        {
-            skinnedMesh->GenerateNormals();
-        }
-
-        if (options.generateTangents && !mesh->HasTangentsAndBitangents())
-        {
-            skinnedMesh->GenerateTangents();
-        }
-
-        skinnedMesh->GenerateBounds();
-
-        return skinnedMesh;
-
     }
 
     std::shared_ptr<Skeleton> ModelLoader::ProcessSkeleton(const aiScene* scene, const aiMesh* mesh)

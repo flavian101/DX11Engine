@@ -26,7 +26,6 @@ namespace DXEngine {
     class Mesh;
     class Material;
     class MeshResource;
-    class SkinnedMeshResource;
     class Texture;
     class Skeleton;
     class AnimationClip;
@@ -127,10 +126,6 @@ namespace DXEngine {
         // Material configuration
         void ConfigureMaterialFromTextures(std::shared_ptr<Material> mat);
         std::string GetTextureTypeName(aiTextureType type);
-
-        // Specialized processing
-        std::shared_ptr<SkinnedMeshResource> ProcessSkinnedMesh(const aiMesh* mesh,
-            const aiScene* scene, const ModelLoadOptions& options);
 
         // Animation and skeleton processing
         std::shared_ptr<Skeleton> ProcessSkeleton(const aiScene* scene, const aiMesh* mesh);

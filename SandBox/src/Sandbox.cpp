@@ -22,14 +22,13 @@ void Sandbox::OnAttach()
 	m_Loader = std::make_shared<DXEngine::ModelLoader>();
 
 	//m_Ship = m_Loader->LoadModel("assets/models/UFO/Rigged_Modular UFO 2.8.glb.gltf");
-	//m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
+	m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
 	//m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
 	m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
 	//m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
 	m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
 	//m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
-	m_AnimatedSpider = std::dynamic_pointer_cast<DXEngine::SkinnedModel>(m_Loader->LoadModel("assets/models/spider/Spider.fbx"));
-
+	m_AnimatedSpider = std::dynamic_pointer_cast<DXEngine::Model>(m_Loader->LoadModel("assets/models/spider/Spider_3.fbx"));
 	if (m_AnimatedSpider)
 	{
 		OutputDebugStringA("Spaceship loaded with animations!\n");
@@ -48,7 +47,7 @@ void Sandbox::OnAttach()
 		// Play first animation if available
 		if (animCount > 0)
 		{
-			m_AnimatedSpider->PlayAnimation(0, DXEngine::PlaybackMode::Loop);
+			m_AnimatedSpider->PlayAnimation(1, DXEngine::PlaybackMode::Loop);
 			OutputDebugStringA(("  Playing: " + animNames[0] + "\n").c_str());
 		}
 
@@ -115,14 +114,14 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Ship));
 	//}
 	//
-	//if (m_Table)
-	//{
-	//	m_Table->SetScale({ 0.04f, 0.04f, 0.04f });
-	//	m_Table->SetTranslation({ 0.0f, 30.0f, -5.0f });
-	//	m_Table->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
-	//
-	//	DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Table));
-	//}
+	if (m_Table)
+	{
+		m_Table->SetScale({ 0.04f, 0.04f, 0.04f });
+		m_Table->SetTranslation({ 0.0f, 30.0f, -5.0f });
+		m_Table->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
+	
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_Table));
+	}
 	//
 	//if (m_Shark)
 	//{
@@ -166,7 +165,7 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		//m_AnimatedSpider->SetRotation({ 0.0f, m_CurrentRotation, 0.0f, 0.0f });
 
 		// Submit for rendering
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::SkinnedModel>(m_AnimatedSpider));
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_AnimatedSpider));
 
 		// Debug info (can be removed later)
 		if (mDX_DEBUGMode && m_AnimatedSpider->IsAnimating())
@@ -181,7 +180,7 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		m_AnimatedSpider->SetScale({ 1.0f, 1.0f, 1.0f });
 		m_AnimatedSpider->SetTranslation({ 0.0f, 0.0f, -10.0f });
 		m_AnimatedSpider->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
-		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::SkinnedModel>(m_AnimatedSpider));
+		DXEngine::Renderer::Submit(std::dynamic_pointer_cast<DXEngine::Model>(m_AnimatedSpider));
 	}
 
 	if (m_Ring)
@@ -236,9 +235,9 @@ bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
 void Sandbox::DetectInput(double time)
 {
 	// Toggle wireframe mode
+	static bool wireframeToggled = false;
 	if (DXEngine::Input::IsKeyPressed('T'))
 	{
-		static bool wireframeToggled = false;
 		if (!wireframeToggled)
 		{
 			DXEngine::Renderer::EnableWireframe(!m_WireframeMode);
@@ -248,14 +247,13 @@ void Sandbox::DetectInput(double time)
 	}
 	else
 	{
-		static bool wireframeToggled = false;
 		wireframeToggled = false;
 	}
 
 	// Toggle debug info
+	static bool debugToggled = false;
 	if (DXEngine::Input::IsKeyPressed('I'))
 	{
-		static bool debugToggled = false;
 		if (!debugToggled)
 		{
 			DXEngine::Renderer::EnableDebugInfo(!mDX_DEBUGMode);
@@ -265,17 +263,16 @@ void Sandbox::DetectInput(double time)
 	}
 	else
 	{
-		static bool debugToggled = false;
 		debugToggled = false;
 	}
 
-	///spider Animation control
+	// Spider Animation control
 	if (m_AnimatedSpider)
 	{
 		// Switch to next animation with 'N' key
+		static bool animSwitchToggled = false;
 		if (DXEngine::Input::IsKeyPressed('N'))
 		{
-			static bool animSwitchToggled = false;
 			if (!animSwitchToggled)
 			{
 				size_t animCount = m_AnimatedSpider->GetAnimationClipCount();
@@ -294,14 +291,13 @@ void Sandbox::DetectInput(double time)
 		}
 		else
 		{
-			static bool animSwitchToggled = false;
 			animSwitchToggled = false;
 		}
 
 		// Pause/Resume animation with 'P' key
+		static bool pauseToggled = false;
 		if (DXEngine::Input::IsKeyPressed('P'))
 		{
-			static bool pauseToggled = false;
 			if (!pauseToggled)
 			{
 				if (m_IsAnimationPaused)
@@ -320,14 +316,13 @@ void Sandbox::DetectInput(double time)
 		}
 		else
 		{
-			static bool pauseToggled = false;
 			pauseToggled = false;
 		}
 
 		// Change animation speed with '+' and '-' keys
+		static bool speedUpToggled = false;
 		if (DXEngine::Input::IsKeyPressed(VK_OEM_PLUS) || DXEngine::Input::IsKeyPressed(VK_ADD))
 		{
-			static bool speedUpToggled = false;
 			if (!speedUpToggled && m_AnimatedSpider->GetAnimationController())
 			{
 				float currentSpeed = m_AnimatedSpider->GetAnimationController()->GetPlaybackSpeed();
@@ -339,13 +334,12 @@ void Sandbox::DetectInput(double time)
 		}
 		else
 		{
-			static bool speedUpToggled = false;
 			speedUpToggled = false;
 		}
 
+		static bool speedDownToggled = false;
 		if (DXEngine::Input::IsKeyPressed(VK_OEM_MINUS) || DXEngine::Input::IsKeyPressed(VK_SUBTRACT))
 		{
-			static bool speedDownToggled = false;
 			if (!speedDownToggled && m_AnimatedSpider->GetAnimationController())
 			{
 				float currentSpeed = m_AnimatedSpider->GetAnimationController()->GetPlaybackSpeed();
@@ -357,14 +351,13 @@ void Sandbox::DetectInput(double time)
 		}
 		else
 		{
-			static bool speedDownToggled = false;
 			speedDownToggled = false;
 		}
 
 		// Change playback mode with 'M' key (Loop -> Once -> PingPong)
+		static bool modeToggled = false;
 		if (DXEngine::Input::IsKeyPressed('M'))
 		{
-			static bool modeToggled = false;
 			if (!modeToggled && m_AnimatedSpider->GetAnimationController())
 			{
 				auto controller = m_AnimatedSpider->GetAnimationController();
@@ -396,7 +389,6 @@ void Sandbox::DetectInput(double time)
 		}
 		else
 		{
-			static bool modeToggled = false;
 			modeToggled = false;
 		}
 	}
@@ -404,8 +396,7 @@ void Sandbox::DetectInput(double time)
 	//call update
 
 	return;
-}
-void Sandbox::InitializePicking()
+}void Sandbox::InitializePicking()
 {
 	m_PickingManager = std::make_unique<DXEngine::PickingManager>();
 

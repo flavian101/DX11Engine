@@ -5,8 +5,6 @@
 #include "picking/InterfacePickable.h"
 #include "picking/Ray.h"
 #include "models/ModelLoader.h"
-#include "models/InstanceModel.h"
-#include "models/SkinnedModel.h"
 #include "utils/mesh\Mesh.h"
 #include "camera/Camera.h"
 #include "camera/CameraController.h"

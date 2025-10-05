@@ -46,7 +46,7 @@ private:
 	std::shared_ptr<DXEngine::Model> m_Shark;
 	std::shared_ptr<DXEngine::Model> m_Ring;
 	std::shared_ptr<DXEngine::Model> m_Wall;
-	std::shared_ptr<DXEngine::SkinnedModel> m_AnimatedSpider;
+	std::shared_ptr<DXEngine::Model> m_AnimatedSpider;
 
 
 	float m_Speed = 10.0f;

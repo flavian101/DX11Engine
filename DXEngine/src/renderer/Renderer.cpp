@@ -1,10 +1,7 @@
 #include "dxpch.h"
 #include "Renderer.h"
 #include "models/Model.h"
-#include "models/InstanceModel.h"
-#include "models/SkinnedModel.h"
 #include "utils/Mesh/Mesh.h"
-#include "utils/Mesh/SkinnedMesh.h"
 #include "camera/Camera.h"
 #include "shaders/ShaderManager.h"
 #include <algorithm>
@@ -80,32 +77,26 @@ namespace DXEngine {
         submission.visible = model->IsVisible();
         submission.castsShadow = model->CastsShadows();
         submission.receivesShadows = model->ReceivesShadows();
+
+        if (model->IsInstanced())
+        {
+            const InstanceData* instanceData = model->GetInstanceData();
+            if (instanceData && instanceData->GetInstanceCount() > 0)
+            {
+                submission.instanceTransforms = &instanceData->transforms;
+                submission.instanceCount = instanceData->GetInstanceCount();
+            }
+        }
+
+        if (model->IsSkinned())
+        {
+            const SkinningData* skinData = model->GetSkinningData();
+            if (skinData && !skinData->boneMatrices.empty())
+            {
+                submission.boneMatrices = &skinData->boneMatrices;
+            }
+        }
         
-        return submission;
-    }
-
-    RenderSubmission RenderSubmission::CreateFromInstanceModel(const InstanceModel* model, size_t meshIndex, size_t submeshIndex)
-    {
-        RenderSubmission submission = CreateFromModel(model, meshIndex, submeshIndex);
-
-        if (model && model->GetInstanceCount() > 0)
-        {
-            submission.instanceTransforms = &model->GetInstanceTransforms();
-            submission.instanceCount = model->GetInstanceCount();
-        }
-
-        return submission;
-    }
-
-    RenderSubmission RenderSubmission::CreateFromSkinnedModel(const SkinnedModel* model, size_t meshIndex, size_t submeshIndex)
-    {
-        RenderSubmission submission = CreateFromModel(model, meshIndex, submeshIndex);
-
-        if (model && !model->GetBoneMatrices().empty())
-        {
-            submission.boneMatrices = &model->GetBoneMatrices();
-        }
-
         return submission;
     }
 
@@ -347,30 +338,6 @@ namespace DXEngine {
             s_Stats.submissionProcessed++;
         }
 
-    }
-
-    void Renderer::Submit(std::shared_ptr<InstanceModel> model)
-    {
-        if (!model || !model->IsValid() || !model->IsVisible())
-            return;
-
-        if (model->GetInstanceCount() == 0)
-        {
-            return;
-        }
-
-        s_Stats.modelsSubmitted++;
-        ProcessInstanceModelSubmission(model);
-    }
-
-    void Renderer::Submit(std::shared_ptr<SkinnedModel> model)
-    {
-        if (!model || !model->IsValid() || !model->IsVisible())
-            return;
-
-
-        s_Stats.modelsSubmitted++;
-        ProcessSkinnedModelSubmission(model);
     }
 
     void Renderer::RenderImmediate(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride)
@@ -680,96 +647,16 @@ namespace DXEngine {
                     ValidateSubmission(submission);
                     s_RenderSubmissions.push_back(submission);
                     s_Stats.submissionProcessed++;
+
+                    //update stats based on features
+                    if (model->IsInstanced())
+                    {
+                        s_Stats.instancesRendered += static_cast<uint32_t>(model->GetInstanceCount());
+                    }
                 }
             }
         }
 
-    }
-
-    void Renderer::ProcessInstanceModelSubmission(std::shared_ptr<InstanceModel> model)
-    {
-        if (!model || !model->IsValid() || model->GetInstanceCount() == 0)
-            return;
-
-        model->EnsureDefaultMaterials();
-
-        // Add frustum culling check (same as ProcessModelSubmission)
-        if (s_FrustumCullingEnabled && !IsModelVisible(model.get(), RenderCommand::GetCamera()))
-        {
-            return;
-        }
-
-        //submit all meshes as instances
-        for (size_t meshIndex = 0; meshIndex < model->GetMeshCount(); ++meshIndex)
-        {
-            auto mesh = model->GetMesh(meshIndex);
-            if (!mesh || !mesh->IsValid())
-                continue;
-
-            size_t submeshCount = std::max(size_t(1), mesh->GetSubmeshCount());
-            for (size_t submeshIndex = 0; submeshIndex < submeshCount; ++submeshIndex)
-            {
-                DXEngine::RenderSubmission submission = DXEngine::RenderSubmission::CreateFromInstanceModel(model.get(), meshIndex, submeshIndex);
-                if (submission.IsValid())
-                {
-                    ValidateSubmission(submission);
-                    s_RenderSubmissions.push_back(submission);
-                    s_Stats.submissionProcessed++;
-                    s_Stats.instancesRendered+= static_cast<uint32_t>(model->GetInstanceCount());
-                }
-            }
-
-        }
-    }
-
-    void Renderer::ProcessSkinnedModelSubmission(std::shared_ptr<SkinnedModel> model)
-    {
-        if (!model || !model->IsValid())
-            return;
-
-        model->EnsureDefaultMaterials();
-
-        // Frustum culling check
-        if (s_FrustumCullingEnabled && !IsModelVisible(model.get(), RenderCommand::GetCamera()))
-        {
-            return;
-        }
-
-        // Check if model has animations and bone matrices
-        if (model->GetBoneMatrices().empty())
-        {
-            OutputDebugStringA("Warning: SkinnedModel has no bone matrices\n");
-        }
-
-        // Submit all meshes as skinned
-        for (size_t meshIndex = 0; meshIndex < model->GetMeshCount(); ++meshIndex)
-        {
-            auto mesh = model->GetMesh(meshIndex);
-            if (!mesh || !mesh->IsValid())
-                continue;
-
-            // Verify it's actually a skinned mesh
-            auto skinnedMesh = std::dynamic_pointer_cast<SkinnedMesh>(mesh);
-            if (!skinnedMesh)
-            {
-                OutputDebugStringA("Warning: Non-skinned mesh in SkinnedModel\n");
-                continue;
-            }
-
-            size_t submeshCount = std::max(size_t(1), mesh->GetSubmeshCount());
-            for (size_t submeshIndex = 0; submeshIndex < submeshCount; ++submeshIndex)
-            {
-                DXEngine::RenderSubmission submission =
-                    DXEngine::RenderSubmission::CreateFromSkinnedModel(model.get(), meshIndex, submeshIndex);
-
-                if (submission.IsValid())
-                {
-                    ValidateSubmission(submission);
-                    s_RenderSubmissions.push_back(submission);
-                    s_Stats.submissionProcessed++;
-                }
-            }
-        }
     }
 
     //culling and LOD
@@ -973,7 +860,7 @@ namespace DXEngine {
 
         // Setup transform and skinning buffers
         SetupTransformBuffer(submission);
-       // SetupSkinnedBuffer(submission);
+        SetupSkinnedBuffer(submission);
 
         // Get shader bytecode
         const void* shaderByteCode = nullptr;
@@ -988,21 +875,9 @@ namespace DXEngine {
             }
         }
 
-        //cast to skinned mesh
-        auto skinnedMesh = std::dynamic_pointer_cast<SkinnedMesh>(submission.mesh);
 
         // Bind mesh and render
-        if (skinnedMesh)
-        {
-            // Bind mesh with input layout
-            skinnedMesh->Bind(shaderByteCode, byteCodeLength);
-        }
-        else
-        {
-            // Fallback for non-skinned mesh
-            submission.mesh->Bind(shaderByteCode, byteCodeLength);
-        }
-
+        submission.mesh->Bind(shaderByteCode, byteCodeLength);
         submission.mesh->Draw(submission.submeshIndex);
 
         // Update statistics
@@ -1209,19 +1084,44 @@ namespace DXEngine {
         RenderCommand::GetContext()->IASetVertexBuffers(1, 1, instanceBuffer->GetAddressOf(), &stride, &offset);
     }
 
-   //void Renderer::SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission)
-   //{
-   //    if (!submission.boneMatrices || submission.boneMatrices->empty())
-   //        return;
-   //
-   //    // Create bone matrix constant buffer
-   //    ConstantBuffer<std::vector<DirectX::XMFLOAT4X4>> boneBuffer;
-   //    std::vector<DirectX::XMFLOAT4X4> bones = *submission.boneMatrices;
-   //    boneBuffer.Initialize(&bones);
-   //    boneBuffer.Update(bones);
-   //
-   //    RenderCommand::GetContext()->VSSetConstantBuffers(BindSlot::CB_Bones, 1, boneBuffer.GetAddressOf());
-   //}
+   void Renderer::SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission)
+   {
+       if (!submission.boneMatrices || submission.boneMatrices->empty())
+           return;
+
+       // Create a CPU-side struct matching the GPU cbuffer layout
+       BoneMatrixBuffer boneData; // 128 matrices
+
+       // Clamp to the supported maximum
+       const size_t boneCount = std::min(submission.boneMatrices->size(), size_t(128));
+
+       // Copy matrices; transpose if your HLSL expects column-major (typical)
+       for (size_t i = 0; i < boneCount; ++i)
+       {
+           // If your shaders use row-major, you can assign directly:
+           boneData.boneMatrices[i] = (*submission.boneMatrices)[i];
+
+           // If your shaders expect column-major, do this instead:
+            DirectX::XMMATRIX m = DirectX::XMLoadFloat4x4(&(*submission.boneMatrices)[i]);
+            DirectX::XMStoreFloat4x4(&boneData.boneMatrices[i], DirectX::XMMatrixTranspose(m));
+       }
+
+       // Optional: zero out the rest to avoid undefined data on the GPU
+       for (size_t i = boneCount; i < 128; ++i)
+           boneData.boneMatrices[i] = DirectX::XMFLOAT4X4(
+               1, 0, 0, 0,
+               0, 1, 0, 0,
+               0, 0, 1, 0,
+               0, 0, 0, 1);
+
+       // Create and upload the constant buffer in the standard pattern
+       ConstantBuffer<BoneMatrixBuffer> boneBuffer;
+       boneBuffer.Initialize(&boneData);
+       boneBuffer.Update(boneData);
+
+       RenderCommand::GetContext()->VSSetConstantBuffers(
+           BindSlot::CB_Bones, 1, boneBuffer.GetAddressOf());
+   }
 
     float Renderer::CalculateDistancetoCamera(const DXEngine::RenderSubmission& submission)
     {

@@ -4,6 +4,7 @@
 #include "shaders/ShaderProgram.h"
 #include "utils/material/Material.h"
 #include <utils/Mesh/Utils/InputManager.h>
+#include <algorithm>
 
 namespace DXEngine {
 
@@ -25,35 +26,15 @@ namespace DXEngine {
 
 	void Model::Update(float deltatime)
 	{
-		// Override in derived classes for custom update logic
+		// Update animation if skinned
+		if (IsSkinned() && m_SkinningData->animationController)
+		{
+			UpdateAnimation(deltatime);
+		}
 	}
 	bool Model::IsValid() const
 	{
 		return !m_Meshes.empty() && m_PrimaryMesh && m_PrimaryMesh->IsValid() && m_Transform;
-	}
-
-	std::string Model::GetDebugInfo()const
-	{
-		std::ostringstream oss;
-		oss << "Model Debug Info:\n";
-		oss << "Valid: " << (IsValid() ? "Yes" : "No") << "\n";
-		oss << "Visible: " << (m_Visible ? "Yes" : "No") << "\n";
-		oss << "Selected: " << (m_IsSelected ? "Yes" : "No") << "\n";
-		oss << "Pickable: " << (IsPickable() ? "Yes" : "No") << "\n";
-		oss << "Casts Shadows: " << (m_CastsShadows ? "Yes" : "No") << "\n";
-		oss << "Receives Shadows: " << (m_ReceivesShadows ? "Yes" : "No") << "\n";
-		oss << "Mesh Count: " << m_Meshes.size() << "\n";
-		oss << "Total Submeshes: " << GetTotalSubmeshCount() << "\n";
-		oss << "Total Triangles: " << GetTotalTriangleCount() << "\n";
-		oss << "Memory Usage: " << GetMemoryUsage() << " bytes\n";
-
-		if (m_PrimaryMesh)
-		{
-			oss << "\nPrimary Mesh Info: \n";
-			oss << m_PrimaryMesh->GetDebugInfo();	
-		}
-
-		return oss.str();
 	}
 
 	//mesh management
@@ -254,12 +235,18 @@ namespace DXEngine {
 	{
 		BoundingBox localBox = GetLocalBoundingBox();
 
+		//Handle diffrent features
+		if (IsInstanced() && m_InstanceData && !m_InstanceData->transforms.empty())
+		{
+			UpdateInstanceBounds();
+			return m_LocalBoundingBox; //Already updated to world space
+		}
+
 		if (!m_Transform)
 			return localBox;
 
+		// Standard world space transform
 		DirectX::XMMATRIX wordlMatrix = GetModelMatrix();
-
-		//Transform bounding box to world space
 		DirectX::XMVECTOR corners[8];
 		localBox.GetCorners(corners);
 
@@ -376,6 +363,259 @@ namespace DXEngine {
 			usage = +sizeof(Transform);
 		}
 		return usage;
+	}
+
+	void Model::EnableInstancing()
+	{
+		if (!HasFeature(ModelFeature::Instanced))
+		{
+			AddFeature(ModelFeature::Instanced);
+			m_InstanceData = std::make_unique<InstanceData>();
+			InvalidateBounds();
+		}
+	}
+
+	void Model::SetInstanceTransform(const std::vector<DirectX::XMFLOAT4X4>& transforms)
+	{
+		if (!m_InstanceData)
+			EnableInstancing();
+
+		m_InstanceData->SetInstances(transforms);
+		InvalidateBounds();
+	}
+
+	void Model::AddInstance(const DirectX::XMFLOAT4X4& transform)
+	{
+		if (!m_InstanceData)
+			EnableInstancing();
+
+		m_InstanceData->AddInstance(transform);
+		InvalidateBounds();
+	}
+
+	void Model::ClearInstances()
+	{
+		if (m_InstanceData)
+		{
+			m_InstanceData->ClearInstances();
+			InvalidateBounds();
+		}
+	}
+
+	size_t Model::GetInstanceCount() const
+	{
+		return m_InstanceData ? m_InstanceData->GetInstanceCount() : 0;
+	}
+
+	void Model::EnableSkinning(std::shared_ptr<Skeleton> skeleton)
+	{
+		if (!HasFeature(ModelFeature::Skinned))
+		{
+			AddFeature(ModelFeature::Skinned);
+		}
+		m_SkinningData = std::make_unique<SkinningData>();
+
+		if (skeleton)
+		{
+			m_SkinningData->skeleton = skeleton;
+			m_SkinningData->boneMatrices.resize(skeleton->GetBoneCount());
+			// Initialize to identity matrices
+			for (auto& mat : m_SkinningData->boneMatrices)
+			{
+				DirectX::XMStoreFloat4x4(&mat, DirectX::XMMatrixIdentity());
+			}
+		}
+
+		InvalidateBounds();
+	}
+
+	void Model::SetSkeleton(std::shared_ptr<Skeleton> skeleton)
+	{
+		if (!m_SkinningData)
+		{
+			EnableSkinning(skeleton);
+		}
+		else
+		{
+			m_SkinningData->skeleton = skeleton;
+			if (skeleton)
+			{
+				m_SkinningData->boneMatrices.resize(skeleton->GetBoneCount());
+				for (auto& mat : m_SkinningData->boneMatrices)
+				{
+					DirectX::XMStoreFloat4x4(&mat, DirectX::XMMatrixIdentity());
+				}
+			}
+		}
+		InvalidateBounds();
+	}
+
+	std::shared_ptr<Skeleton> Model::GetSkeleton() const
+	{
+		return m_SkinningData ? m_SkinningData->skeleton : nullptr;
+	}
+
+	void Model::SetBoneMatrices(const std::vector<DirectX::XMFLOAT4X4>& matrices)
+	{
+		if (m_SkinningData)
+		{
+			m_SkinningData->UpdateBoneMatrices(matrices);
+		}
+	}
+
+	const std::vector<DirectX::XMFLOAT4X4>& Model::GetBoneMatrices() const
+	{
+		static std::vector<DirectX::XMFLOAT4X4> empty;
+		return m_SkinningData ? m_SkinningData->boneMatrices : empty;
+	}
+
+	void Model::SetAnimationController(std::shared_ptr<AnimationController> controller)
+	{
+		if (!m_SkinningData)
+			EnableSkinning(nullptr);
+
+		m_SkinningData->animationController = controller;
+
+	}
+
+	std::shared_ptr<AnimationController> Model::GetAnimationController() const
+	{
+		return m_SkinningData ? m_SkinningData->animationController : nullptr;
+	}
+
+	void Model::AddAnimationClip(std::shared_ptr<AnimationClip> clip)
+	{
+		if (!m_SkinningData)
+		{
+			OutputDebugStringA("Warning cannot add Clip");
+			return;
+		}
+		m_SkinningData->AddAnimationClip(clip);
+	}
+
+	void Model::AddAnimationClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
+	{
+		if (!m_SkinningData)
+		{
+			OutputDebugStringA("Warning: Cannot add animation to non-skinned model\n");
+			return;
+		}
+
+		m_SkinningData->AddAnimationClip(name, clip);
+	}
+
+	std::shared_ptr<AnimationClip> Model::GetAnimationClip(const std::string& name) const
+	{
+		return m_SkinningData ? m_SkinningData->GetAnimationClip(name) : nullptr;
+	}
+
+	std::shared_ptr<AnimationClip> Model::GetAnimationClip(size_t index) const
+	{
+		return m_SkinningData ? m_SkinningData->GetAnimationClip(index) : nullptr;
+	}
+
+	size_t Model::GetAnimationClipCount() const
+	{
+		return m_SkinningData ? m_SkinningData->animationClips.size() : 0;
+	}
+
+	std::vector<std::string> Model::GetAnimationClipNames() const
+	{
+		return m_SkinningData->GetAnimationClipNames();
+	}
+
+	const std::vector<std::shared_ptr<AnimationClip>>& Model::GetAllAnimationClips() const
+	{
+		return m_SkinningData->GetAllAnimationClips();
+	}
+
+	void Model::PlayAnimation(const std::string& name, PlaybackMode mode)
+	{
+		m_SkinningData->PlayAnimation(name, mode);
+	}
+
+	void Model::PlayAnimation(size_t index, PlaybackMode mode)
+	{
+		m_SkinningData->PlayAnimation(index, mode);
+	}
+
+	void Model::PlayAnimation(std::shared_ptr<AnimationClip> clip, PlaybackMode mode)
+	{
+		m_SkinningData->PlayAnimation(clip, mode);
+	}
+
+	void Model::StopAnimation()
+	{
+		m_SkinningData->StopAnimation();
+	}
+
+	void Model::PauseAnimation()
+	{
+		m_SkinningData->PauseAnimation();
+	}
+
+	void Model::ResumeAnimation()
+	{
+		m_SkinningData->ResumeAnimation();
+	}
+
+
+	bool Model::IsAnimating() const
+	{
+		return m_SkinningData &&
+			m_SkinningData->animationController &&
+			m_SkinningData->animationController->IsPlaying();
+	}
+
+	float Model::GetAnimationTime() const
+	{
+		return (m_SkinningData && m_SkinningData->animationController) ?
+			m_SkinningData->animationController->GetCurrentTime() : 0.0f;
+	}
+
+	float Model::GetAnimationNormalizedTime() const
+	{
+		return (m_SkinningData && m_SkinningData->animationController) ?
+			m_SkinningData->animationController->GetNormalizedTime() : 0.0f;
+	}
+
+	void Model::EnableLOD()
+	{
+		if (!HasFeature(ModelFeature::LOD))
+		{
+			AddFeature(ModelFeature::LOD);
+			m_LODData = std::make_unique<LODData>();
+		}
+	}
+
+	void Model::AddLODLevel(float distance, size_t meshIndex)
+	{
+		if (!m_LODData)
+			EnableLOD();
+
+		m_LODData->levels.push_back({ distance, meshIndex });
+
+		// Sort by distance
+		std::sort(m_LODData->levels.begin(), m_LODData->levels.end(),
+			[](const LODData::LODLevel& a, const LODData::LODLevel& b) {
+				return a.distance < b.distance;
+			});
+	}
+
+	size_t Model::SelectLOD(float distance) const
+	{
+		return m_LODData ? m_LODData->SelectLOD(distance) : 0;
+	}
+
+	// ====== MORPH TARGETS FEATURE ======
+
+	void Model::EnableMorphTargets()
+	{
+		if (!HasFeature(ModelFeature::Morph))
+		{
+			AddFeature(ModelFeature::Morph);
+			m_MorphData = std::make_unique<MorphData>();
+		}
 	}
 
 	//interfacePickable implementation
@@ -496,6 +736,67 @@ namespace DXEngine {
 		}
 	}
 
+	void Model::EnsureMaterialSlots()
+	{
+	}
+
+	void Model::UpdateAnimation(float deltaTime)
+	{
+		if (!m_SkinningData || !m_SkinningData->animationController)
+		{
+			return;
+		}
+		m_SkinningData->animationController->Update(deltaTime);
+
+		//Get updated bone matrices
+		const auto& matrices = m_SkinningData->animationController->GetBoneMatrices();
+		SetBoneMatrices(matrices);
+	}
+
+	void Model::UpdateInstanceBounds() const
+	{
+		if (!m_InstanceData || m_InstanceData->transforms.empty())
+		{
+			OutputDebugStringA("cannot update Instance Bounds");
+			return;
+		}
+
+		BoundingBox localBox = GetLocalBoundingBox();
+		BoundingBox combinedBox;
+		bool first = true;
+
+		for (const auto& instanceTransform : m_InstanceData->transforms)
+		{
+			DirectX::XMMATRIX instanceMatrix = DirectX::XMLoadFloat4x4(&instanceTransform);
+			DirectX::XMMATRIX worldMatrix = DirectX::XMMatrixMultiply(GetModelMatrix(), instanceMatrix);
+
+			DirectX::XMVECTOR corners[8];
+			localBox.GetCorners(corners);
+
+			for (int i = 0; i < 8; i++)
+			{
+				DirectX::XMVECTOR worldCorner = DirectX::XMVector3Transform(corners[i], worldMatrix);
+				DirectX::XMFLOAT3 cornerPos;
+				DirectX::XMStoreFloat3(&cornerPos, worldCorner);
+
+				if (first)
+				{
+					combinedBox = BoundingBox(cornerPos, cornerPos);
+					first = false;
+				}
+				else
+				{
+					combinedBox.Expand(cornerPos);
+				}
+			}
+		}
+		m_LocalBoundingBox = combinedBox;
+	}
+
+	void Model::UpdateSkinnedBounds() const
+	{
+	}
+
 	//factory methods 
 	std::shared_ptr<Model> Model::CreateQuad(float width, float height)
 	{
@@ -528,6 +829,61 @@ namespace DXEngine {
 		model->EnsureDefaultMaterials();
 		return model;
 	}
+
+	std::shared_ptr<Model> Model::CreateInstancedModel(std::shared_ptr<Mesh> mesh)
+	{
+		auto model = std::make_shared<Model>(mesh);
+		model->EnableInstancing();
+		return model;
+	}
+
+	std::shared_ptr<Model> Model::CreateSkinnedModel(std::shared_ptr<Mesh> mesh, std::shared_ptr<Skeleton> skeleton)
+	{
+		auto model = std::make_shared<Model>(mesh);
+		model->EnableSkinning(skeleton);
+		return model;
+	}
+	std::string Model::GetDebugInfo()const
+	{
+		std::ostringstream oss;
+		oss << "Model Debug Info:\n";
+		oss << "Valid: " << (IsValid() ? "Yes" : "No") << "\n";
+		oss << "Visible: " << (m_Visible ? "Yes" : "No") << "\n";
+
+		// Feature info
+		oss << "\nFeatures:\n";
+		if (HasFeature(ModelFeature::Static)) oss << "  - Static\n";
+		if (HasFeature(ModelFeature::Instanced))
+		{
+			oss << "  - Instanced (" << GetInstanceCount() << " instances)\n";
+		}
+		if (HasFeature(ModelFeature::Skinned))
+		{
+			oss << "  - Skinned";
+			if (auto skeleton = GetSkeleton())
+			{
+				oss << " (" << skeleton->GetBoneCount() << " bones)";
+			}
+			oss << "\n";
+		}
+		if (HasFeature(ModelFeature::LOD))
+		{
+			oss << "  - LOD (" << (m_LODData ? m_LODData->levels.size() : 0) << " levels)\n";
+		}
+		if (HasFeature(ModelFeature::Morph))
+		{
+			oss << "  - Morph Targets\n";
+		}
+
+		// Standard info
+		oss << "\nMesh Count: " << m_Meshes.size() << "\n";
+		oss << "Total Submeshes: " << GetTotalSubmeshCount() << "\n";
+		oss << "Total Triangles: " << GetTotalTriangleCount() << "\n";
+		oss << "Memory Usage: " << GetMemoryUsage() << " bytes\n";
+
+		return oss.str();
+	}
+
 
 	namespace ModelUtils
 	{
