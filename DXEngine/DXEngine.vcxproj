@@ -58,7 +58,7 @@
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -71,12 +71,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>vendor\assimp\build\lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mtd.lib;zlibstaticd.lib;legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\assimp\build\lib\Debug;vendor\assimp\build\contrib\zlib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
-    <PostBuildEvent>
-      <Command>IF EXIST "..\DXEngine\vendor\assimp\build\bin\Debug\"\ (xcopy /Q /E /Y /I "..\DXEngine\vendor\assimp\build\bin\Debug\" "..\bin\Debug-windows-x86_64\DXEngine\" &gt; nul) ELSE (xcopy /Q /Y /I "..\DXEngine\vendor\assimp\build\bin\Debug\" "..\bin\Debug-windows-x86_64\DXEngine\" &gt; nul)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -84,7 +81,7 @@
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -101,12 +98,9 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>vendor\assimp\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;zlibstatic.lib;legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\assimp\build\lib\Release;vendor\assimp\build\contrib\zlib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
-    <PostBuildEvent>
-      <Command>IF EXIST "..\DXEngine\vendor\assimp\build\bin\Release\"\ (xcopy /Q /E /Y /I "..\DXEngine\vendor\assimp\build\bin\Release\" "..\bin\Release-windows-x86_64\DXEngine\" &gt; nul) ELSE (xcopy /Q /Y /I "..\DXEngine\vendor\assimp\build\bin\Release\" "..\bin\Release-windows-x86_64\DXEngine\" &gt; nul)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\Animation\AnimationClip.h" />
@@ -127,7 +121,6 @@
     <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
-    <ClInclude Include="src\models\ModelFeatures.h" />
     <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\camera\Camera.h" />
@@ -137,6 +130,7 @@
     <ClInclude Include="src\camera\MovementBehavior.h" />
     <ClInclude Include="src\dxpch.h" />
     <ClInclude Include="src\models\Model.h" />
+    <ClInclude Include="src\models\ModelFeatures.h" />
     <ClInclude Include="src\models\ModelLoader.h" />
     <ClInclude Include="src\picking\InterfacePickable.h" />
     <ClInclude Include="src\picking\PickingManager.h" />

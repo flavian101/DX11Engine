@@ -1,141 +1,117 @@
 workspace "DX11Engine"
-	architecture "x64"
+    architecture "x64"
 
-	configurations
-	{
-		"Debug",
-		"Release"
-	}
-	startproject "Sandbox"
-
-
+    configurations { "Debug", "Release" }
+    startproject "Sandbox"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
---include directories relative to root folder (solution directory)
+-- include directories relative to root folder
 IncludeDir = {}
 IncludeDir["AssimpPublic"] = "DXEngine/vendor/assimp/include"
 IncludeDir["AssimpGen"]    = "DXEngine/vendor/assimp/build/include"
-IncludeDir["ImGui"] = "DXEngine/vendor/imgui"
+IncludeDir["ImGui"]        = "DXEngine/vendor/imgui"
+IncludeDir["Zlib"]         = "DXEngine/vendor/assimp/contrib/zlib"
 
 group "Dependencies"
-	include "DXEngine/vendor/imgui"
+    include "DXEngine/vendor/imgui"
 group ""
 
--- Define Assimp paths
+-- Assimp paths
 AssimpLibPath = "DXEngine/vendor/assimp/build/lib"
-AssimpBinPath = "DXEngine/vendor/assimp/build/bin"
-
--- Add post-build command helper function
-function CopyDLL(dllName)
-    if os.host() == "windows" then
-        postbuildcommands {
-            '{COPY} "../%{AssimpBinPath}/%{cfg.buildcfg}/%{dllName}" "%{cfg.targetdir}/"'
-        }
-    end
-end
+ZlibLibPath   = "DXEngine/vendor/assimp/build/contrib/zlib"
 
 project "DXEngine"
-	location "DXEngine"
-	kind "StaticLib"
-	staticruntime "on"
-	language "C++"
-	cppdialect "C++23"
+    location "DXEngine"
+    kind "StaticLib"
+    staticruntime "on"
+    language "C++"
+    cppdialect "C++23"
 
+    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-	
-	pchheader("dxpch.h")
-	pchsource("DXEngine/src/dxpch.cpp")
+    pchheader "dxpch.h"
+    pchsource "DXEngine/src/dxpch.cpp"
 
+    files {
+        "%{prj.name}/src/**.h",
+        "%{prj.name}/src/**.cpp",
+    }
 
-	files{
-		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp",
-	}
-	includedirs{
-		"%{prj.name}/src",
-		"%{prj.name}/vendor/stb",
-		"%{IncludeDir.AssimpPublic}",
+    includedirs {
+        "%{prj.name}/src",
+        "%{prj.name}/vendor/stb",
+        "%{IncludeDir.AssimpPublic}",
         "%{IncludeDir.AssimpGen}",
-		"%{IncludeDir.ImGui}",
+        "%{IncludeDir.ImGui}",
+        "%{IncludeDir.Zlib}",
+    }
 
-	}
-	defines{
-		"_CRT_SECURE_NO_WARNINGS",
-		"ASSIMP_BUILD_STATIC",
-	}
-	links{
-		"ImGui"
-	}
+    defines {
+        "_CRT_SECURE_NO_WARNINGS",
+        "ASSIMP_BUILD_STATIC"
+    }
 
-	filter "system:windows"
-		systemversion "latest"
-		buildoptions { "/utf-8" }
+    links { "ImGui" }
 
-		filter "configurations:Debug"
-			defines "DX_DEBUG"
-			runtime "Debug"
-			symbols "on"
-			libdirs { "%{AssimpLibPath}/Debug" }
-			links   { "assimp-vc143-mtd" }
-			CopyDLL("assimp-vc143-mtd.dll")
+    filter "system:windows"
+        systemversion "latest"
+        buildoptions { "/utf-8" }
 
+    filter "configurations:Debug"
+        defines "DX_DEBUG"
+        runtime "Debug"
+        symbols "on"
+        libdirs { "%{AssimpLibPath}/Debug", "%{ZlibLibPath}/Debug" }
+        links   { "assimp-vc143-mtd", "zlibstaticd", "legacy_stdio_definitions" }
 
-		filter "configurations:Release"
-			defines "DX_RELEASE"
-			runtime "Release"
-			optimize "on"
-			libdirs { "%{AssimpLibPath}/Release" }
-			links   { "assimp-vc143-mt" }
-			CopyDLL("assimp-vc143-mt.dll")
+    filter "configurations:Release"
+        defines "DX_RELEASE"
+        runtime "Release"
+        optimize "on"
+        libdirs { "%{AssimpLibPath}/Release", "%{ZlibLibPath}/Release" }
+        links   { "assimp-vc143-mt", "zlibstatic", "legacy_stdio_definitions" }
 
 project "Sandbox"
-location "Sandbox"
-	kind "ConsoleApp"
-	staticruntime "on"
-	language "C++"
-	cppdialect "C++23"
+    location "Sandbox"
+    kind "ConsoleApp"
+    staticruntime "on"
+    language "C++"
+    cppdialect "C++23"
 
+    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
-	targetdir ("bin/"..outputdir.."/%{prj.name}")
-	objdir ("bin-int/"..outputdir.."/%{prj.name}")
+    files {
+        "%{prj.name}/src/**.h",
+        "%{prj.name}/src/**.cpp",
+    }
 
-	files{
-		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp",
-	}
-	includedirs{
-		"DXEngine/src",
-		"DXEngine/vendor/",
-		"%{IncludeDir.AssimpPublic}",
+    includedirs {
+        "DXEngine/src",
+        "DXEngine/vendor/",
+        "%{IncludeDir.AssimpPublic}",
         "%{IncludeDir.AssimpGen}",
-	}
+        "%{IncludeDir.Zlib}",
+    }
 
-	links{
-		"DXEngine"
-	}
+    links { "DXEngine" }
 
-	filter "system:windows"
-		systemversion "latest"
-		buildoptions { "/utf-8" }
+    filter "system:windows"
+        systemversion "latest"
+        buildoptions { "/utf-8" }
 
-	filter "configurations:Debug"
-			defines "DX_DEBUG"
-			runtime "Debug"
-			symbols "on"
-			libdirs { "%{AssimpLibPath}/Debug" }
-			links   { "assimp-vc143-mtd" }
-			CopyDLL("assimp-vc143-mtd.dll")
+    filter "configurations:Debug"
+        defines "DX_DEBUG"
+        runtime "Debug"
+        symbols "on"
+        libdirs { "%{AssimpLibPath}/Debug", "%{ZlibLibPath}/Debug" }
+        links   { "assimp-vc143-mtd", "zlibstaticd", "legacy_stdio_definitions" }
 
-	filter "configurations:Release"
-			defines "DX_RELEASE"
-			runtime "Release"
-			optimize "on"
-			libdirs { "%{AssimpLibPath}/Release" }
-			links   { "assimp-vc143-mt" }
-			CopyDLL("assimp-vc143-mt.dll")
-
-
-
+    filter "configurations:Release"
+        defines "DX_RELEASE"
+        runtime "Release"
+        optimize "on"
+        libdirs { "%{AssimpLibPath}/Release", "%{ZlibLibPath}/Release" }
+        links   { "assimp-vc143-mt", "zlibstatic", "legacy_stdio_definitions" }
