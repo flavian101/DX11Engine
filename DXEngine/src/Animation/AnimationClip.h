@@ -20,7 +20,8 @@ namespace DXEngine
 			Translation(0.0f, 0.0f, 0.0f),
 			Rotation(0.0f, 0.0f, 0.0f, 1.0f),
 			Scale(1.0f, 1.0f, 1.0f)
-		{}
+		{
+		}
 	};
 
 	//Animation Track for a single Bone
@@ -28,7 +29,7 @@ namespace DXEngine
 	{
 		std::string BoneName;
 		std::vector<Keyframe> Keyframes;
-		
+
 		// Helper to find keyframes for interpolation
 		void GetFrameIndices(float time, size_t& frame0, size_t& frame1, float& interpolation)const
 		{
@@ -47,7 +48,7 @@ namespace DXEngine
 					frame0 = i;
 					frame1 = i + 1;
 					float dt = Keyframes[i + 1].TimeStamp - Keyframes[i].TimeStamp;
-					interpolation = (time - Keyframes[i].TimeStamp) / dt;
+					interpolation = (dt > 0.0f) ? (time - Keyframes[i].TimeStamp) / dt : 0.0f; 
 					return;
 				}
 			}
@@ -65,7 +66,8 @@ namespace DXEngine
 			: m_Name(name)
 			, m_Duration(duration)
 			, m_TicksPerSecond(30.0f)  // Default 30 FPS
-		{}
+		{
+		}
 
 		//Add Animation data for a bone
 		void AddBoneAnimation(const std::string& boneName, const std::vector<Keyframe>& keyframes)
@@ -95,7 +97,7 @@ namespace DXEngine
 		std::string m_Name;
 		float m_Duration;
 		float m_TicksPerSecond;
-		std::map<std::string, BoneAnimation> m_BoneAnimations;	
+		std::map<std::string, BoneAnimation> m_BoneAnimations;
 	};
 
 	//bone Hierachy or simple skeleton
@@ -140,5 +142,5 @@ namespace DXEngine
 		std::map<std::string, int> m_BoneNameToIndex;
 	};
 
-	
+
 }

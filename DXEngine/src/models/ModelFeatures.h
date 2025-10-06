@@ -88,14 +88,14 @@ namespace DXEngine
         }
         void AddAnimationClip(std::shared_ptr<AnimationClip> clip)
         {
-            if (clip)
+            if (!clip)
                 return;
             AddAnimationClip(clip->GetName(), clip);
             animationClips.push_back(clip);
         }
         void AddAnimationClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
         {
-            if (clip)
+            if (!clip)
             {
                 return;
             }

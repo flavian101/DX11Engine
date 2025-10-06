@@ -341,24 +341,26 @@ namespace DXEngine
         {
             layout.Normal();
         }
+
         // Texture coordinates
         if (mesh->HasTextureCoords(0))
         {
-            layout.TexCoord(0); // Uses your existing TexCoord(index) method
+            layout.TexCoord(0);
         }
 
         // Tangents (if present or generated)
         if (mesh->HasTangentsAndBitangents() || options.generateTangents)
         {
-            layout.Tangent(); // Uses your existing Tangent() method
+            layout.Tangent();
         }
 
         // Additional texture coordinate sets
         for (unsigned int i = 1; i < mesh->GetNumUVChannels() && i < 4; i++)
         {
-            layout.TexCoord(i); // Uses your existing TexCoord(index) method
+            layout.TexCoord(i);
         }
-       
+
+        // FIX: Add blend data to layout if bones exist
         if (mesh->HasBones() || options.loadAnimations)
         {
             layout.BlendData();
@@ -369,7 +371,95 @@ namespace DXEngine
         auto vertexData = std::make_unique<VertexData>(layout);
         vertexData->Resize(mesh->mNumVertices);
 
-        // Fill vertex data using your existing SetAttribute method
+        //Process skeleton BEFORE vertex processing
+        if (mesh->HasBones() && !m_CurrentSkeleton)
+        {
+            m_CurrentSkeleton = ProcessSkeleton(scene, mesh);
+        }
+
+        // Initialize bone data for ALL vertices FIRST
+        if (mesh->HasBones() && m_CurrentSkeleton)
+        {
+            // Initialize all vertices with zero bone data
+            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+            {
+                DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
+                DirectX::XMINT4 indices(0, 0, 0, 0);
+                vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
+                vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
+            }
+
+            // Temporary storage for bone influences per vertex
+            struct VertexBoneData
+            {
+                std::vector<std::pair<int, float>> influences; // bone index, weight
+            };
+            std::vector<VertexBoneData> vertexBoneData(mesh->mNumVertices);
+
+            // Collect all bone influences
+            for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++)
+            {
+                const aiBone* bone = mesh->mBones[boneIndex];
+                std::string boneName = bone->mName.C_Str();
+
+                int skeletonBoneIndex = m_CurrentSkeleton->GetBoneIndex(boneName);
+                if (skeletonBoneIndex < 0)
+                    continue;
+
+                for (unsigned int weightIndex = 0; weightIndex < bone->mNumWeights; weightIndex++)
+                {
+                    const aiVertexWeight& weight = bone->mWeights[weightIndex];
+                    unsigned int vertexId = weight.mVertexId;
+                    float weightValue = weight.mWeight;
+
+                    if (vertexId < mesh->mNumVertices)
+                    {
+                        vertexBoneData[vertexId].influences.push_back({ skeletonBoneIndex, weightValue });
+                    }
+                }
+            }
+
+            // Assign top 4 influences to each vertex
+            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+            {
+                auto& influences = vertexBoneData[i].influences;
+
+                if (influences.empty())
+                    continue;
+
+                // Sort by weight (descending)
+                std::sort(influences.begin(), influences.end(),
+                    [](const auto& a, const auto& b) { return a.second > b.second; });
+
+                // Take top 4 and normalize
+                DirectX::XMINT4 indices(0, 0, 0, 0);
+                DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
+
+                float totalWeight = 0.0f;
+                size_t count = std::min(influences.size(), size_t(4));
+
+                for (size_t j = 0; j < count; j++)
+                {
+                    reinterpret_cast<int*>(&indices)[j] = influences[j].first;
+                    reinterpret_cast<float*>(&weights)[j] = influences[j].second;
+                    totalWeight += influences[j].second;
+                }
+
+                // Normalize weights
+                if (totalWeight > 0.0f)
+                {
+                    weights.x /= totalWeight;
+                    weights.y /= totalWeight;
+                    weights.z /= totalWeight;
+                    weights.w /= totalWeight;
+                }
+
+                vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
+                vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
+            }
+        }
+
+        // Fill vertex data with positions, normals, etc.
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
             // Position
@@ -403,88 +493,6 @@ namespace DXEngine
                     1.0f // Handedness - calculate properly in real implementation
                 );
                 vertexData->SetAttribute(i, VertexAttributeType::Tangent, tangent);
-            }
-
-            if (mesh->HasBones())
-            {
-                //initialize bone data to Zero
-                DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
-                DirectX::XMINT4 indices(0, 0, 0, 0);
-                vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
-                vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
-            }
-
-            // Process skeleton (reuse if already created for this model)
-            if (!m_CurrentSkeleton)
-            {
-                m_CurrentSkeleton = ProcessSkeleton(scene, mesh);
-            }
-
-            //process bone weights and indiced
-            if (mesh->HasBones() && m_CurrentSkeleton)
-            {
-                // Temporary storage for bone influences per vertex
-                struct VertexBoneData
-                {
-                    std::vector<std::pair<int, float>> influences; // bone index, weight
-                };
-                std::vector<VertexBoneData> vertexBoneData(mesh->mNumVertices);
-
-                // Collect all bone influences
-                for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++)
-                {
-                    const aiBone* bone = mesh->mBones[boneIndex];
-                    std::string boneName = bone->mName.C_Str();
-
-                    int skeletonBoneIndex = m_CurrentSkeleton->GetBoneIndex(boneName);
-                    if (skeletonBoneIndex < 0)
-                        continue;
-
-                    for (unsigned int weightIndex = 0; weightIndex < bone->mNumWeights; weightIndex++)
-                    {
-                        const aiVertexWeight& weight = bone->mWeights[weightIndex];
-                        unsigned int vertexId = weight.mVertexId;
-                        float weightValue = weight.mWeight;
-
-                        vertexBoneData[vertexId].influences.push_back({ skeletonBoneIndex, weightValue });
-                    }
-                }
-
-                // Now assign top 4 influences to each vertex
-                for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-                {
-                    auto& influences = vertexBoneData[i].influences;
-
-                    // Sort by weight (descending)
-                    std::sort(influences.begin(), influences.end(),
-                        [](const auto& a, const auto& b) { return a.second > b.second; });
-
-                    // Take top 4 and normalize
-                    DirectX::XMINT4 indices(0, 0, 0, 0);
-                    DirectX::XMFLOAT4 weights(0.0f, 0.0f, 0.0f, 0.0f);
-
-                    float totalWeight = 0.0f;
-                    size_t count = std::min(influences.size(), size_t(4));
-
-                    for (size_t j = 0; j < count; j++)
-                    {
-                        reinterpret_cast<int*>(&indices)[j] = influences[j].first;
-                        reinterpret_cast<float*>(&weights)[j] = influences[j].second;
-                        totalWeight += influences[j].second;
-                    }
-
-                    // Normalize weights
-                    if (totalWeight > 0.0f)
-                    {
-                        weights.x /= totalWeight;
-                        weights.y /= totalWeight;
-                        weights.z /= totalWeight;
-                        weights.w /= totalWeight;
-                    }
-
-                    vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
-                    vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
-                }
             }
 
             // Additional UV sets

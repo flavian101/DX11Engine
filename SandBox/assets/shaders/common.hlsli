@@ -853,6 +853,7 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
 {
     StandardVertexOutput output;
     
+    // Initialize local space position and normals
     float4 localPos = float4(input.position, 1.0);
     float3 localNormal = float3(0.0, 0.0, 1.0); // Default flat normal
     float3 localTangent = float3(1.0, 0.0, 0.0); // Default tangent
@@ -865,80 +866,110 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     localTangent = input.tangent.xyz;
 #endif
 
+    // ========================================================================
+    // SKINNING PATH - Apply bone transformations
+    // ========================================================================
 #if HAS_SKINNING_ATTRIBUTES
-    // Apply linear blend skinning (up to 4 bones)
+    // FIX: Moved ALL skinning logic outside the loop
     float4 skinnedPos = float4(0.0, 0.0, 0.0, 0.0);
     float3 skinnedNormal = float3(0.0, 0.0, 0.0);
-#if HAS_TANGENT_ATTRIBUTE
     float3 skinnedTangent = float3(0.0, 0.0, 0.0);
-#endif
     
+    // Apply linear blend skinning (up to 4 bones)
     [unroll]
     for (int i = 0; i < 4; ++i)
     {
         float weight = input.blendWeights[i];
+        
+        // Skip bones with zero weight
         if (weight > 0.0)
         {
             uint boneIndex = input.blendIndices[i];
-            if (boneIndex < 100)  // Safety bound
+            
+            // Safety check - ensure bone index is valid
+            if (boneIndex < 128)
             {
                 float4x4 boneMatrix = BoneMatrices[boneIndex];
                 
+                // Accumulate weighted transformation
                 skinnedPos += weight * mul(localPos, boneMatrix);
                 
 #if HAS_NORMAL_ATTRIBUTE
+                // Transform normal (using 3x3 part of bone matrix)
                 skinnedNormal += weight * mul(localNormal, (float3x3)boneMatrix);
 #endif
                 
 #if HAS_TANGENT_ATTRIBUTE
+                // Transform tangent (using 3x3 part of bone matrix)
                 skinnedTangent += weight * mul(localTangent, (float3x3)boneMatrix);
 #endif
             }
         }
     }
     
-    // Transform skinned local to world/projected space
+    // Use the accumulated skinned transformations
+    // Transform skinned local space to world/projection space
     output.worldPos = mul(skinnedPos, Model);
     output.position = mul(skinnedPos, WVP);
     
 #if HAS_NORMAL_ATTRIBUTE
+    // Normalize the accumulated normal and transform to world space
+    skinnedNormal = normalize(skinnedNormal);
     output.normal = normalize(mul(skinnedNormal, (float3x3)Model));
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE
+    // Normalize the accumulated tangent and transform to world space
+    skinnedTangent = normalize(skinnedTangent);
     output.tangent = float4(normalize(mul(skinnedTangent, (float3x3)Model)), input.tangent.w);
 #endif
 
-#else  // Non-skinned path
+#else  
+    // ========================================================================
+    // NON-SKINNED PATH - Standard transformation
+    // ========================================================================
     output.worldPos = mul(localPos, Model);
     output.position = mul(localPos, WVP);
     
 #if HAS_NORMAL_ATTRIBUTE
-    output.normal = mul(localNormal, (float3x3)Model);
+    output.normal = normalize(mul(localNormal, (float3x3)Model));
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE
-    output.tangent = float4(mul(localTangent, (float3x3)Model), input.tangent.w);
+    output.tangent = float4(normalize(mul(localTangent, (float3x3)Model)), input.tangent.w);
 #endif
+    
 #endif  // End HAS_SKINNING_ATTRIBUTES
 
-    // Remaining attributes (UVs, colors, etc.) are not affected by skinning
+    // ========================================================================
+    // PASS-THROUGH ATTRIBUTES (not affected by skinning)
+    // ========================================================================
+    
+    // Texture coordinates
 #if HAS_TEXCOORDS_ATTRIBUTE
     output.texCoord = input.texCoord;
 #endif
     
+    // Second UV set
 #if HAS_SECOND_UV_ATTRIBUTE
     output.texCoord1 = input.texCoord1;
 #endif
     
+    // Vertex colors
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     output.color = input.color;
 #endif
 
-    output.viewDir = normalize(CameraPosition - output.worldPos.xyz);
+    // ========================================================================
+    // COMMON OUTPUT (always calculated)
+    // ========================================================================
+    
+    // Calculate view direction (camera to vertex)
+    output.viewDir = CameraPosition - output.worldPos.xyz;
+    
+    // Pass time for animated effects
     output.time = Time;
     
     return output;
 }
-
 #endif
