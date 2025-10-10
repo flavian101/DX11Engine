@@ -127,6 +127,8 @@ cbuffer TransformBuffer : register(b0)
 {
     float4x4 WVP;
     float4x4 Model;
+    float4x4 View;
+    float4x4 Projection;
     float3 CameraPosition;
     float Time;
 };
@@ -853,10 +855,10 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
 {
     StandardVertexOutput output;
     
-    // Initialize local space position and normals
+    // Initialize local space data
     float4 localPos = float4(input.position, 1.0);
-    float3 localNormal = float3(0.0, 0.0, 1.0); // Default flat normal
-    float3 localTangent = float3(1.0, 0.0, 0.0); // Default tangent
+    float3 localNormal = float3(0.0, 0.0, 1.0);
+    float3 localTangent = float3(1.0, 0.0, 0.0);
     
 #if HAS_NORMAL_ATTRIBUTE
     localNormal = input.normal;
@@ -867,105 +869,109 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
 #endif
 
     // ========================================================================
-    // SKINNING PATH - Apply bone transformations
+    // SKINNING TRANSFORMATION
     // ========================================================================
 #if HAS_SKINNING_ATTRIBUTES
-    // FIX: Moved ALL skinning logic outside the loop
+    
+    // Accumulate weighted bone transformations
     float4 skinnedPos = float4(0.0, 0.0, 0.0, 0.0);
     float3 skinnedNormal = float3(0.0, 0.0, 0.0);
     float3 skinnedTangent = float3(0.0, 0.0, 0.0);
     
-    // Apply linear blend skinning (up to 4 bones)
+    // Apply linear blend skinning (max 4 bones per vertex)
     [unroll]
     for (int i = 0; i < 4; ++i)
     {
         float weight = input.blendWeights[i];
         
-        // Skip bones with zero weight
+        // Skip bones with zero influence
         if (weight > 0.0)
         {
             uint boneIndex = input.blendIndices[i];
             
-            // Safety check - ensure bone index is valid
+            // Validate bone index
             if (boneIndex < 128)
             {
                 float4x4 boneMatrix = BoneMatrices[boneIndex];
                 
-                // Accumulate weighted transformation
+                // Transform and accumulate position
+                // BoneMatrix = OffsetMatrix * AnimatedWorldTransform
+                // This transforms: MeshSpace -> BoneSpace -> AnimatedWorldSpace
                 skinnedPos += weight * mul(localPos, boneMatrix);
                 
 #if HAS_NORMAL_ATTRIBUTE
-                // Transform normal (using 3x3 part of bone matrix)
+                // Transform normal (only rotation/scale, no translation)
                 skinnedNormal += weight * mul(localNormal, (float3x3)boneMatrix);
 #endif
                 
 #if HAS_TANGENT_ATTRIBUTE
-                // Transform tangent (using 3x3 part of bone matrix)
+                // Transform tangent
                 skinnedTangent += weight * mul(localTangent, (float3x3)boneMatrix);
 #endif
             }
         }
     }
     
-    // Use the accumulated skinned transformations
-    // Transform skinned local space to world/projection space
-    output.worldPos = mul(skinnedPos, Model);
-    output.position = mul(skinnedPos, WVP);
+    // After skinning, vertex is already in WORLD SPACE
+    // BoneMatrices already include world transformation
+    output.worldPos = skinnedPos;
+    
+    // Transform world position to clip space using View * Projection
+    // Do NOT use Model matrix - bones are already in world space
+    float4x4 viewProj = mul(View, Projection);
+    output.position = mul(output.worldPos, viewProj);
     
 #if HAS_NORMAL_ATTRIBUTE
-    // Normalize the accumulated normal and transform to world space
-    skinnedNormal = normalize(skinnedNormal);
-    output.normal = normalize(mul(skinnedNormal, (float3x3)Model));
+    // Normalize the accumulated normal
+    output.normal = normalize(skinnedNormal);
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE
-    // Normalize the accumulated tangent and transform to world space
-    skinnedTangent = normalize(skinnedTangent);
-    output.tangent = float4(normalize(mul(skinnedTangent, (float3x3)Model)), input.tangent.w);
+    // Normalize tangent and preserve handedness (w component)
+    output.tangent = float4(normalize(skinnedTangent), input.tangent.w);
 #endif
 
 #else  
     // ========================================================================
-    // NON-SKINNED PATH - Standard transformation
+    // NON-SKINNED TRANSFORMATION (Standard pipeline)
     // ========================================================================
+    
+    // Transform local position to world space using Model matrix
     output.worldPos = mul(localPos, Model);
+    
+    // Transform to clip space using full WVP
     output.position = mul(localPos, WVP);
     
 #if HAS_NORMAL_ATTRIBUTE
+    // Transform normal to world space (using 3x3 part for rotation only)
     output.normal = normalize(mul(localNormal, (float3x3)Model));
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE
+    // Transform tangent to world space
     output.tangent = float4(normalize(mul(localTangent, (float3x3)Model)), input.tangent.w);
 #endif
     
 #endif  // End HAS_SKINNING_ATTRIBUTES
 
     // ========================================================================
-    // PASS-THROUGH ATTRIBUTES (not affected by skinning)
+    // PASS-THROUGH ATTRIBUTES (same for skinned and non-skinned)
     // ========================================================================
     
-    // Texture coordinates
 #if HAS_TEXCOORDS_ATTRIBUTE
     output.texCoord = input.texCoord;
 #endif
     
-    // Second UV set
 #if HAS_SECOND_UV_ATTRIBUTE
     output.texCoord1 = input.texCoord1;
 #endif
     
-    // Vertex colors
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     output.color = input.color;
 #endif
 
-    // ========================================================================
-    // COMMON OUTPUT (always calculated)
-    // ========================================================================
-    
-    // Calculate view direction (camera to vertex)
-    output.viewDir = CameraPosition - output.worldPos.xyz;
+    // Calculate view direction (from vertex to camera)
+    output.viewDir = normalize(CameraPosition - output.worldPos.xyz);
     
     // Pass time for animated effects
     output.time = Time;

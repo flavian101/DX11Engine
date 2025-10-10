@@ -22,13 +22,13 @@ void Sandbox::OnAttach()
 	m_Loader = std::make_shared<DXEngine::ModelLoader>();
 
 //	m_Ship = m_Loader->LoadModel("assets/models/UFO/Rigged_Modular UFO 2.8.glb.gltf");
-	m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
-	m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
-	m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
-	m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
-	m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
-	m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
-	m_AnimatedSpider = m_Loader->LoadModel("assets/models/horse/source/Horse.fbx");
+	//m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
+	//m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
+	//m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
+	//m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
+	//m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
+	//m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
+	m_AnimatedSpider = m_Loader->LoadModel("assets/models/cube/cube.fbx");
 	if (m_AnimatedSpider)
 	{
 		OutputDebugStringA("Spaceship loaded with animations!\n");
@@ -174,13 +174,6 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 			float normalizedTime = m_AnimatedSpider->GetAnimationNormalizedTime();
 
 		}
-	}
-	else if (m_AnimatedSpider)  // Fallback to non-animated version
-	{
-		m_AnimatedSpider->SetScale({ 1.0f, 1.0f, 1.0f });
-		m_AnimatedSpider->SetTranslation({ 0.0f, 0.0f, -10.0f });
-		m_AnimatedSpider->SetRotation({ -20.0f, 0.0f, 0.0f, 0.0f });
-		DXEngine::Renderer::Submit(m_AnimatedSpider);
 	}
 
 	if (m_Ring)

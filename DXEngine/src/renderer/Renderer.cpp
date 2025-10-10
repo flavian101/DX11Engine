@@ -1057,6 +1057,8 @@ namespace DXEngine {
         s_TransformBufferData = std::make_unique<TransfomBufferData>();
         s_TransformBufferData->WVP = DirectX::XMMatrixTranspose(modelMatrix * view * proj);
         s_TransformBufferData->Model = DirectX::XMMatrixTranspose(modelMatrix);
+        s_TransformBufferData->View = DirectX::XMMatrixTranspose(view);
+        s_TransformBufferData->Projection = DirectX::XMMatrixTranspose(proj);
         s_TransformBufferData->cameraPosition = camera->GetPosition();
         s_TransformBufferData->time = s_Time;
         vsBuffer.Initialize(s_TransformBufferData.get());

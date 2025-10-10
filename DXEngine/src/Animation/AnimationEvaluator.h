@@ -65,18 +65,14 @@ namespace DXEngine
 			for (size_t i = 0; i < boneCount; i++)
 			{
 				const Bone& bone = skeleton.GetBone(i);
-
-				//Get Animation data for i bone
 				const BoneAnimation* boneAnim = clip.GetBoneAnimation(bone.Name);
 
 				if (boneAnim && !boneAnim->Keyframes.empty())
 				{
-					//interpolate between keyframes
 					localTransforms[i] = EvaluteBoneAnimation(*boneAnim, animTime);
 				}
 				else
 				{
-					//No animation data, use bind Pose
 					localTransforms[i] = DirectX::XMLoadFloat4x4(&bone.LocalTransform);
 				}
 			}
@@ -85,15 +81,20 @@ namespace DXEngine
 			std::vector<DirectX::XMMATRIX> worldTransforms(boneCount);
 			CalculateWorldTransforms(skeleton, localTransforms, worldTransforms);
 
-			//Calculate final bone matrices
+			// Calculate final bone matrices
+			// Formula: FinalMatrix = OffsetMatrix * WorldTransform
+			// - OffsetMatrix: transforms FROM mesh space TO bone's local space (bind pose)
+			// - WorldTransform: animated transformation of the bone in world space
 			for (size_t i = 0; i < boneCount; i++)
 			{
 				const Bone& bone = skeleton.GetBone(i);
 				DirectX::XMMATRIX offset = DirectX::XMLoadFloat4x4(&bone.OffsetMatrix);
+
+				// This gives us: MeshSpace -> BoneLocalSpace -> AnimatedWorldSpace
 				DirectX::XMMATRIX finalTransform = offset * worldTransforms[i];
 
-				DirectX::XMStoreFloat4x4(&outBoneMatrices[i], finalTransform);
-
+				// *** TRANSPOSE for HLSL (HLSL uses column-major by default) ***
+				DirectX::XMStoreFloat4x4(&outBoneMatrices[i], DirectX::XMMatrixTranspose(finalTransform));
 			}
 		}
 

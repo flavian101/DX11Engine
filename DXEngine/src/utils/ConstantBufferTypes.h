@@ -11,6 +11,8 @@ namespace DXEngine {
     {
         DirectX::XMMATRIX WVP;
         DirectX::XMMATRIX Model;
+        DirectX::XMMATRIX View;
+        DirectX::XMMATRIX Projection;
         DirectX::XMFLOAT3 cameraPosition;
         float time;
     };
