@@ -43,6 +43,9 @@ namespace DXEngine
 		std::string GetTextureFilename(const aiMaterial* material, aiTextureType type,
 			const std::string& directory);
 
+	private:
+		std::string ResolveTexturePath(const std::string& texturePath, const std::string& modelDirectory);
+
 
 	private:
 		std::shared_ptr<TextureLoader> m_TextureLoader;

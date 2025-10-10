@@ -33,7 +33,11 @@ namespace DXEngine {
 
 	void Transform::SetRotation(const DirectX::XMVECTOR& rotation)
 	{
-		m_Rotation = rotation;
+		m_Rotation = DirectX::XMQuaternionNormalize(rotation);
+	}
+	void Transform::SetRotation(float pitch, float yaw, float roll)
+	{
+		m_Rotation = DirectX::XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
 	}
 
 	const DirectX::XMVECTOR& Transform::GetRotation() const
@@ -44,7 +48,7 @@ namespace DXEngine {
 	DirectX::XMMATRIX Transform::GetTransform() const
 	{
 		return DirectX::XMMatrixScalingFromVector(m_Scale) *
-				DirectX::XMMatrixRotationRollPitchYawFromVector(m_Rotation) *
+				DirectX::XMMatrixRotationQuaternion(m_Rotation) *
 				DirectX::XMMatrixTranslationFromVector(m_Translation);
 	}
 

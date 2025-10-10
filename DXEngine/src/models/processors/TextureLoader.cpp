@@ -2,6 +2,7 @@
 #include "TextureLoader.h"
 #include "utils/Texture.h"
 #include "ModelLoaderUtils.h"
+#include <filesystem>
 
 namespace DXEngine
 {
@@ -9,11 +10,18 @@ namespace DXEngine
     {
         if (filepath.empty())
         {
-            OutputDebugStringA("Filepath is empty");
-            return CreateSolidColorTexture(255, 255, 255, 255);
+            OutputDebugStringA("TextureLoader: Filepath is empty\n");
+            return CreateFallbackTexture(type);
         }
 
-        //check cache first
+        // Check if texture is embedded (starts with '*')
+        if (filepath[0] == '*')
+        {
+            OutputDebugStringA("TextureLoader: Embedded texture detected but no scene provided\n");
+            return CreateFallbackTexture(type);
+        }
+
+        // Check cache first
         if (m_CachingEnabled)
         {
             auto it = m_TextureCache.find(filepath);
@@ -30,36 +38,32 @@ namespace DXEngine
             }
         }
 
-        //check if texture is embedded(starts with'*')
-        if (filepath[0] == '*')
-        {
-            OutputDebugStringA("TextureLoader: Embedded texture detected but no scene provided\n");
-            return CreateFallbackTexture(type);
-        }
-
-        //load from file
+        // Check if file exists
         if (!ModelLoaderUtils::FileExists(filepath))
         {
             OutputDebugStringA(("TextureLoader: Texture file not found: " + filepath + "\n").c_str());
             return CreateFallbackTexture(type);
         }
+
+        // Load from file
         try
         {
             auto texture = Texture::CreateFromFile(filepath);
             if (texture && texture->IsValid())
             {
-                //cache the texture
+                // Cache the texture
                 if (m_CachingEnabled)
                 {
                     m_TextureCache[filepath] = texture;
                 }
                 m_TexturesLoaded++;
+
                 return texture;
             }
         }
         catch (const std::exception& e)
         {
-            OutputDebugStringA(("TextureLoader: Failed to load texture: " +
+            OutputDebugStringA(("TextureLoader: Exception loading texture: " +
                 std::string(e.what()) + "\n").c_str());
         }
 
@@ -70,7 +74,7 @@ namespace DXEngine
     {
         if (!scene || filepath.empty() || filepath[0] != '*')
         {
-            OutputDebugStringA("TexureLoader: Error (either scene, filepath or embeded path empty)");
+            OutputDebugStringA("TextureLoader: Invalid embedded texture path\n");
             return CreateSolidColorTexture(255, 255, 255, 255);
         }
 
@@ -80,7 +84,7 @@ namespace DXEngine
         {
             const aiTexture* texture = scene->mTextures[textureIndex];
 
-            //Handele compresses texture (png jpg, etc)
+            // Handle compressed texture (png, jpg, etc)
             if (texture->mHeight == 0)
             {
                 const unsigned char* data = reinterpret_cast<const unsigned char*>(texture->pcData);
@@ -90,12 +94,15 @@ namespace DXEngine
                 if (loadedTexture && loadedTexture->IsValid())
                 {
                     m_TexturesLoaded++;
+#ifdef DX_DEBUG
+                    OutputDebugStringA(("TextureLoader: Loaded embedded compressed texture\n"));
+#endif
                     return loadedTexture;
                 }
             }
             else
             {
-                //uncompressed texture data (RGBA)
+                // Uncompressed texture data (RGBA)
                 const aiTexel* texels = texture->pcData;
                 size_t width = texture->mWidth;
                 size_t height = texture->mHeight;
@@ -109,59 +116,70 @@ namespace DXEngine
                     pixels[i * 4 + 3] = texels[i].a;
                 }
 
-                auto loadedTexture = Texture::CreateFromPixels(pixels.data(), static_cast<int>(width), static_cast<int>(height), 4);
+                auto loadedTexture = Texture::CreateFromPixels(pixels.data(),
+                    static_cast<int>(width), static_cast<int>(height), 4);
 
                 if (loadedTexture && loadedTexture->IsValid())
                 {
                     m_TexturesLoaded++;
+#ifdef DX_DEBUG
+                    OutputDebugStringA(("TextureLoader: Loaded embedded uncompressed texture\n"));
+#endif
                     return loadedTexture;
                 }
             }
         }
+
+        OutputDebugStringA(("TextureLoader: Failed to load embedded texture at index " +
+            std::to_string(textureIndex) + "\n").c_str());
         return CreateSolidColorTexture(255, 255, 255, 255);
     }
 
     std::shared_ptr<Texture> TextureLoader::CreateFallbackTexture(aiTextureType type)
     {
+#ifdef DX_DEBUG
+        OutputDebugStringA(("TextureLoader: Creating fallback texture for type: " +
+            GetTextureTypeName(type) + "\n").c_str());
+#endif
+
         switch (type)
         {
         case aiTextureType_DIFFUSE:
-            return CreateSolidColorTexture(255, 255, 255, 255);
+            return CreateSolidColorTexture(255, 255, 255, 255); // White
 
         case aiTextureType_NORMALS:
-            return CreateSolidColorTexture(128, 128, 255, 128);
+            return CreateSolidColorTexture(128, 128, 255, 255); // Flat normal (pointing up)
 
         case aiTextureType_SPECULAR:
-            return CreateSolidColorTexture(0, 0, 0, 255);
+            return CreateSolidColorTexture(128, 128, 128, 255); // Medium gray
 
         case aiTextureType_METALNESS:
-            return CreateSolidColorTexture(128, 128, 128, 255);
+            return CreateSolidColorTexture(0, 0, 0, 255); // Non-metallic
 
         case aiTextureType_DIFFUSE_ROUGHNESS:
-            return CreateSolidColorTexture(128, 128, 128, 255);
+            return CreateSolidColorTexture(128, 128, 128, 255); // Medium roughness
 
         case aiTextureType_AMBIENT_OCCLUSION:
-            return CreateSolidColorTexture(255, 255, 255, 255);
+            return CreateSolidColorTexture(255, 255, 255, 255); // No occlusion
 
         case aiTextureType_HEIGHT:
-            return CreateSolidColorTexture(0, 0, 0, 255);
+            return CreateSolidColorTexture(128, 128, 128, 255); // Flat height
 
         case aiTextureType_EMISSIVE:
-            return CreateSolidColorTexture(0, 0, 0, 255);
+            return CreateSolidColorTexture(0, 0, 0, 255); // No emission
 
         case aiTextureType_OPACITY:
-            return CreateSolidColorTexture(255, 255, 255, 255);
-            
+            return CreateSolidColorTexture(255, 255, 255, 255); // Fully opaque
+
         default:
-            CreateSolidColorTexture(255, 0, 255, 255);
+            return CreateSolidColorTexture(255, 0, 255, 255); // Magenta (error color)
         }
-        return std::shared_ptr<Texture>();
     }
 
     std::shared_ptr<Texture> TextureLoader::CreateSolidColorTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     {
-        uint8_t pixels[4] = { r,g,b,a };
-        return Texture::CreateFromPixels(pixels,1,1,4);
+        uint8_t pixels[4] = { r, g, b, a };
+        return Texture::CreateFromPixels(pixels, 1, 1, 4);
     }
 
     std::string TextureLoader::GetTextureTypeName(aiTextureType type) const
@@ -186,10 +204,12 @@ namespace DXEngine
     {
         if (!texture)
         {
-            OutputDebugStringA("No Texture to check if height map");
             return false;
         }
+
         const std::string& filename = texture->GetFilePath();
+        if (filename.empty())
+            return false;
 
         TextureType type = TextureUtils::DetectTextureType(filename);
         return (type == TextureType::Height);

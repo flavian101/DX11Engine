@@ -1091,38 +1091,44 @@ namespace DXEngine {
    void Renderer::SetupSkinnedBuffer(const DXEngine::RenderSubmission& submission)
    {
        if (!submission.boneMatrices || submission.boneMatrices->empty())
+       {
+           OutputDebugStringA("SetupSkinnedBuffer: No bone matrices available\n");
            return;
+       }
 
        // Create a CPU-side struct matching the GPU cbuffer layout
-       BoneMatrixBuffer boneData; // 128 matrices
+       BoneMatrixBuffer boneData;
 
        // Clamp to the supported maximum
        const size_t boneCount = std::min(submission.boneMatrices->size(), size_t(128));
 
-       // Copy matrices; transpose if your HLSL expects column-major (typical)
+       // so we can copy them directly
        for (size_t i = 0; i < boneCount; ++i)
        {
-           // If your shaders use row-major, you can assign directly:
+           // Matrices are already in the correct format from AnimationEvaluator
            boneData.boneMatrices[i] = (*submission.boneMatrices)[i];
-
-           // If your shaders expect column-major, do this instead:
-            DirectX::XMMATRIX m = DirectX::XMLoadFloat4x4(&(*submission.boneMatrices)[i]);
-            DirectX::XMStoreFloat4x4(&boneData.boneMatrices[i], DirectX::XMMatrixTranspose(m));
        }
 
-       // Optional: zero out the rest to avoid undefined data on the GPU
-       for (size_t i = boneCount; i < 128; ++i)
-           boneData.boneMatrices[i] = DirectX::XMFLOAT4X4(
-               1, 0, 0, 0,
-               0, 1, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1);
+       // Initialize remaining matrices to identity
+       DirectX::XMFLOAT4X4 identity;
+       DirectX::XMStoreFloat4x4(&identity, DirectX::XMMatrixIdentity());
 
-       // Create and upload the constant buffer in the standard pattern
+       for (size_t i = boneCount; i < 128; ++i)
+       {
+           boneData.boneMatrices[i] = identity;
+       }
+
+       // Create and upload the constant buffer
        ConstantBuffer<BoneMatrixBuffer> boneBuffer;
-       boneBuffer.Initialize(&boneData);
+       if (!boneBuffer.Initialize(&boneData))
+       {
+           OutputDebugStringA("SetupSkinnedBuffer: Failed to initialize bone buffer\n");
+           return;
+       }
+
        boneBuffer.Update(boneData);
 
+       // Bind to vertex shader at slot b1 (CB_Bones)
        RenderCommand::GetContext()->VSSetConstantBuffers(
            BindSlot::CB_Bones, 1, boneBuffer.GetAddressOf());
    }

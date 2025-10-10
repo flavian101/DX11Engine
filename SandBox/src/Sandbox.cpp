@@ -15,7 +15,7 @@ void Sandbox::OnAttach()
 
 	m_CameraController = std::make_shared<DXEngine::CameraController>();
 
-	m_Ground = std::make_shared<DXEngine::Ground>();
+//	m_Ground = std::make_shared<DXEngine::Ground>();
 	m_Moon = std::make_shared<DXEngine::Ball>();
 	m_Sky = std::make_shared<DXEngine::SkySphere>();
 	m_Light = std::make_shared<DXEngine::LightSphere>();

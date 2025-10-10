@@ -172,7 +172,8 @@ namespace DXEngine
         return animations;
     }
 
-    std::shared_ptr<Model> ModelLoader::ProcessScene(const aiScene* scene,
+    std::shared_ptr<Model> ModelLoader::ProcessScene(
+        const aiScene* scene,
         const std::string& directory,
         const ModelLoadOptions& options)
     {
@@ -180,55 +181,66 @@ namespace DXEngine
         m_CurrentSkeleton.reset();
 
         bool hasAnimations = scene->HasAnimations() && options.loadAnimations;
-        bool HasSkinning = false;
+        bool hasSkinning = false;
 
-        // Check if any mesh has bones
+        // FIX: First pass - detect if ANY mesh has bones
         for (unsigned int i = 0; i < scene->mNumMeshes; i++)
         {
             if (scene->mMeshes[i]->HasBones())
             {
-                HasSkinning = true;
+                hasSkinning = true;
                 break;
             }
         }
 
         auto model = std::make_shared<Model>();
 
-        // FIX: Process skeleton if skinning detected - moved break inside if block
-        if (HasSkinning)
+        // FIX: Process skeleton ONLY if skinning detected
+        if (hasSkinning)
         {
+            // Find the mesh with the most bones (most complete skeleton)
+            const aiMesh* bestSkeletonMesh = nullptr;
+            unsigned int maxBones = 0;
+
             for (unsigned int i = 0; i < scene->mNumMeshes; i++)
             {
                 const aiMesh* mesh = scene->mMeshes[i];
-                if (mesh->HasBones())
+                if (mesh->HasBones() && mesh->mNumBones > maxBones)
                 {
-                    m_CurrentSkeleton = m_SkeletonProcessor->ProcessSkeleton(scene, mesh);
-                    if (m_CurrentSkeleton) {
-                        break;
-                    }
+                    maxBones = mesh->mNumBones;
+                    bestSkeletonMesh = mesh;
                 }
             }
 
-            // Verify skeleton was created
-            if (!m_CurrentSkeleton) {
-                OutputDebugStringA("Warning: Model has skinning data but skeleton creation failed\n");
+            if (bestSkeletonMesh)
+            {
+                m_CurrentSkeleton = m_SkeletonProcessor->ProcessSkeleton(scene, bestSkeletonMesh);
+
+                if (!m_CurrentSkeleton) {
+                    OutputDebugStringA("Warning: Model has skinning data but skeleton creation failed\n");
+                    hasSkinning = false; // Disable skinning if skeleton failed
+                }
+                else {
+#ifdef DX_DEBUG
+                    OutputDebugStringA(("Skeleton created with " +
+                        std::to_string(m_CurrentSkeleton->GetBoneCount()) +
+                        " bones from mesh with " + std::to_string(maxBones) +
+                        " bone references\n").c_str());
+#endif
+                }
             }
         }
 
+        // Enable skinning on model if we have a valid skeleton
         if (m_CurrentSkeleton)
         {
             model->EnableSkinning(m_CurrentSkeleton);
-#ifdef DX_DEBUG
-            OutputDebugStringA(("Skeleton created with " +
-                std::to_string(m_CurrentSkeleton->GetBoneCount()) +
-                " bones\n").c_str());
-#endif
         }
 
-        // Process meshes
+        // Process meshes (will now correctly handle skinned vs non-skinned)
         ProcessNode(model, scene->mRootNode, scene, directory, options);
 
-        // Load Animations
+        // Load Animations (only if we have both animations AND a skeleton)
         if (hasAnimations && m_CurrentSkeleton)
         {
             auto animations = m_AnimationProcessor->ProcessAnimations(scene, m_CurrentSkeleton);
@@ -252,9 +264,13 @@ namespace DXEngine
                 model->SetAnimationController(controller);
             }
         }
-        else if (HasSkinning && !m_CurrentSkeleton)
+        else if (hasSkinning && !m_CurrentSkeleton)
         {
             OutputDebugStringA("Warning: Model has skinning data but no skeleton was created\n");
+        }
+        else if (hasAnimations && !m_CurrentSkeleton)
+        {
+            OutputDebugStringA("Warning: Model has animations but no skeleton - animations will be ignored\n");
         }
 
         // Apply global scale
@@ -265,7 +281,6 @@ namespace DXEngine
 
         return model;
     }
-
 
     void ModelLoader::ProcessNode(std::shared_ptr<Model> model,const aiNode* node,const aiScene* scene,const std::string& directory,const ModelLoadOptions& options)
     {

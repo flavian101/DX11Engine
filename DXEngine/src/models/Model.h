@@ -59,6 +59,7 @@ namespace DXEngine {
 		void SetScale(const DirectX::XMFLOAT3& scale);
 		const DirectX::XMVECTOR& GetScale() const;
 		void SetRotation(const DirectX::XMVECTOR& rotation);
+		void SetRotation(float pitch, float yaw, float roll);
 		const DirectX::XMVECTOR& GetRotation() const;
 		DirectX::XMMATRIX GetModelMatrix() const override;
 

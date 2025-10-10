@@ -3,29 +3,31 @@
 #include "utils/material/Material.h"
 #include "TextureLoader.h"
 #include "utils/Texture.h"
-
+#include <filesystem>
 
 namespace DXEngine
 {
 	MaterialProcessor::MaterialProcessor(std::shared_ptr<TextureLoader> textureLoader)
-		:
-		m_TextureLoader(textureLoader),
-		m_MaterialsProcessed(0)
+		: m_TextureLoader(textureLoader), m_MaterialsProcessed(0)
 	{
 		if (!m_TextureLoader)
 		{
 			m_TextureLoader = std::make_shared<TextureLoader>();
 		}
 	}
-	std::shared_ptr<Material> MaterialProcessor::ProcessMaterial(const aiMaterial* aiMaterial, const std::string& directory, const ModelLoadOptions& options)
+
+	std::shared_ptr<Material> MaterialProcessor::ProcessMaterial(
+		const aiMaterial* aiMaterial,
+		const std::string& directory,
+		const ModelLoadOptions& options)
 	{
 		if (!aiMaterial)
 		{
-			OutputDebugStringA("Material Processor: Null aiMaterial");
+			OutputDebugStringA("MaterialProcessor: Null aiMaterial\n");
 			return nullptr;
 		}
 
-		//Get Material name
+		// Get Material name
 		aiString materialName;
 		aiMaterial->Get(AI_MATKEY_NAME, materialName);
 		std::string name = materialName.C_Str();
@@ -42,21 +44,27 @@ namespace DXEngine
 			LoadAllTextures(material, aiMaterial, directory, options);
 		}
 
-		//configure Material based on loaded textures
+		// Configure Material based on loaded textures
 		ConfigureMaterialFromTextures(material);
 		m_MaterialsProcessed++;
 
+#ifdef DX_DEBUG
+		OutputDebugStringA(("MaterialProcessor: Processed material '" + name +
+			"' (Type: " + std::to_string(static_cast<int>(type)) + ")\n").c_str());
+#endif
+
 		return material;
 	}
+
 	MaterialType MaterialProcessor::DetermineMaterialType(const aiMaterial* material) const
 	{
 		if (!material)
 		{
-			OutputDebugStringA("Material Processor: aiMaterial in null");
+			OutputDebugStringA("MaterialProcessor: aiMaterial is null\n");
 			return MaterialType::Unlit;
 		}
 
-		//check for transparency
+		// Check for transparency
 		float opacity = 1.0f;
 		if (material->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS && opacity < 1.0f)
 		{
@@ -79,6 +87,7 @@ namespace DXEngine
 
 		return MaterialType::Lit;
 	}
+
 	void MaterialProcessor::LoadBasicProperties(std::shared_ptr<Material> mat, const aiMaterial* aiMat)
 	{
 		// Load color properties
@@ -110,7 +119,12 @@ namespace DXEngine
 		mat->SetMetallic(metallic);
 		mat->SetRoughness(roughness);
 	}
-	void MaterialProcessor::LoadAllTextures(std::shared_ptr<Material> mat, const aiMaterial* aiMat, const std::string& directory, const ModelLoadOptions& options)
+
+	void MaterialProcessor::LoadAllTextures(
+		std::shared_ptr<Material> mat,
+		const aiMaterial* aiMat,
+		const std::string& directory,
+		const ModelLoadOptions& options)
 	{
 		// Core textures
 		LoadTextureOfType(mat, aiMat, directory, aiTextureType_DIFFUSE,
@@ -153,28 +167,45 @@ namespace DXEngine
 			mat->SetHeightTexture(nullptr);
 		}
 	}
-	void MaterialProcessor::LoadTextureOfType(std::shared_ptr<Material> mat, const aiMaterial* aiMat, const std::string& directory, aiTextureType type, std::function<void(std::shared_ptr<Texture>)> setter)
+
+	void MaterialProcessor::LoadTextureOfType(
+		std::shared_ptr<Material> mat,
+		const aiMaterial* aiMat,
+		const std::string& directory,
+		aiTextureType type,
+		std::function<void(std::shared_ptr<Texture>)> setter)
 	{
-		std::string texturePath = GetTextureFilename(aiMat, type, directory);
+		std::string relativePath = GetTextureFilename(aiMat, type, directory);
 
-		if (!texturePath.empty()) {
-			auto texture = m_TextureLoader->LoadTexture(texturePath, type);
+		if (relativePath.empty())
+			return;
 
-			if (texture && texture->IsValid()) {
-				setter(texture);
+		// FIX: Resolve the full path
+		std::string fullPath = ResolveTexturePath(relativePath, directory);
+
+		if (fullPath.empty()) {
+			OutputDebugStringA(("MaterialProcessor: Could not resolve texture path: " +
+				relativePath + "\n").c_str());
+			return;
+		}
+
+		auto texture = m_TextureLoader->LoadTexture(fullPath, type);
+
+		if (texture && texture->IsValid()) {
+			setter(texture);
 #ifdef DX_DEBUG
-				OutputDebugStringA(("MaterialProcessor: Loaded " +
-					m_TextureLoader->GetTextureTypeName(type) +
-					" texture: " + texturePath + "\n").c_str());
+			OutputDebugStringA(("MaterialProcessor: Loaded " +
+				m_TextureLoader->GetTextureTypeName(type) +
+				" texture: " + fullPath + "\n").c_str());
 #endif
-			}
-			else {
-				OutputDebugStringA(("MaterialProcessor: Failed to load " +
-					m_TextureLoader->GetTextureTypeName(type) +
-					" texture: " + texturePath + "\n").c_str());
-			}
+		}
+		else {
+			OutputDebugStringA(("MaterialProcessor: Failed to load " +
+				m_TextureLoader->GetTextureTypeName(type) +
+				" texture: " + fullPath + "\n").c_str());
 		}
 	}
+
 	void MaterialProcessor::ConfigureMaterialFromTextures(std::shared_ptr<Material> mat)
 	{
 		// Update material type based on loaded textures
@@ -197,18 +228,22 @@ namespace DXEngine
 			mat->SetDetailTextureScale({ 8.0f, 8.0f });
 		}
 	}
-	std::string MaterialProcessor::GetTextureFilename(const aiMaterial* material, aiTextureType type, const std::string& directory)
+
+	std::string MaterialProcessor::GetTextureFilename(
+		const aiMaterial* material,
+		aiTextureType type,
+		const std::string& directory)
 	{
 		if (material->GetTextureCount(type) > 0) {
 			aiString path;
 			if (material->GetTexture(type, 0, &path) == AI_SUCCESS) {
 				std::string texturePath = std::string(path.C_Str());
 
-				// Handle embedded textures
+				// Handle embedded textures (start with '*')
 				if (!texturePath.empty() && texturePath[0] == '*')
 					return texturePath;
 
-				// Normalize slashes
+				// Normalize slashes to forward slashes
 				std::replace(texturePath.begin(), texturePath.end(), '\\', '/');
 
 				// Strip leading ./ or ../
@@ -221,5 +256,91 @@ namespace DXEngine
 			}
 		}
 		return "";
+	}
+
+	std::string MaterialProcessor::ResolveTexturePath(
+		const std::string& texturePath,
+		const std::string& modelDirectory)
+	{
+		namespace fs = std::filesystem;
+
+		// If path is embedded, return as-is
+		if (!texturePath.empty() && texturePath[0] == '*')
+			return texturePath;
+
+		// Try different path resolution strategies
+		std::vector<std::string> pathsToTry;
+
+		// 1. Exact path as specified (might be absolute)
+		pathsToTry.push_back(texturePath);
+
+		// 2. Relative to model directory
+		if (!modelDirectory.empty()) {
+			fs::path modelDir(modelDirectory);
+			fs::path texPath(texturePath);
+			pathsToTry.push_back((modelDir / texPath).string());
+		}
+
+		// 3. Just the filename in model directory
+		fs::path textureFilename = fs::path(texturePath).filename();
+		if (!modelDirectory.empty()) {
+			fs::path modelDir(modelDirectory);
+			pathsToTry.push_back((modelDir / textureFilename).string());
+		}
+
+		// 4. Look in common texture subdirectories
+		if (!modelDirectory.empty()) {
+			std::vector<std::string> commonTextureDirs = {
+				"textures", "Textures", "TEXTURES",
+				"maps", "Maps", "MAPS",
+				"materials", "Materials"
+			};
+
+			for (const auto& subdir : commonTextureDirs) {
+				fs::path modelDir(modelDirectory);
+				fs::path combined = modelDir / subdir / textureFilename;
+				pathsToTry.push_back(combined.string());
+
+				// Also try parent directory
+				fs::path parentCombined = modelDir.parent_path() / subdir / textureFilename;
+				pathsToTry.push_back(parentCombined.string());
+			}
+		}
+
+		// Try each path
+		for (const auto& path : pathsToTry) {
+			try {
+				fs::path fsPath(path);
+				if (fs::exists(fsPath)) {
+#ifdef DX_DEBUG
+					OutputDebugStringA(("MaterialProcessor: Resolved texture path: " +
+						texturePath + " -> " + fsPath.string() + "\n").c_str());
+#endif
+					return fsPath.string();
+				}
+			}
+			catch (const std::exception&) {
+				// Invalid path, continue trying
+				continue;
+			}
+		}
+
+		// Could not resolve path
+		OutputDebugStringA(("MaterialProcessor: Could not find texture file: " +
+			texturePath + " (searched " + std::to_string(pathsToTry.size()) +
+			" locations)\n").c_str());
+
+#ifdef DX_DEBUG
+		OutputDebugStringA("  Searched paths:\n");
+		for (size_t i = 0; i < std::min(pathsToTry.size(), size_t(5)); ++i) {
+			OutputDebugStringA(("    " + pathsToTry[i] + "\n").c_str());
+		}
+		if (pathsToTry.size() > 5) {
+			OutputDebugStringA(("    ... and " +
+				std::to_string(pathsToTry.size() - 5) + " more\n").c_str());
+		}
+#endif
+
+		return ""; // Not found
 	}
 }

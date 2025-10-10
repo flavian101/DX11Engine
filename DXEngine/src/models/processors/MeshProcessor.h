@@ -41,9 +41,10 @@ namespace DXEngine
         void ProcessIndexData(const aiMesh* aiMesh, IndexData* indexData);
 
         // Layout creation
-        VertexLayout CreateVertexLayout(
-            const aiMesh* aiMesh,
-            const ModelLoadOptions& options) const;
+		VertexLayout CreateVertexLayout(
+			const aiMesh* aiMesh,
+			bool needsSkinning,
+			const ModelLoadOptions& options) const;
 
 	private:
 		size_t m_MeshesProcessed = 0;

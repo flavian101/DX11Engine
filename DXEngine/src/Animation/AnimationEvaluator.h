@@ -82,15 +82,15 @@ namespace DXEngine
 			}
 
 			//calculate world Transform (accumulate parent transform)
-			std::vector<DirectX::XMMATRIX> worldTransform(boneCount);
-			CalculateWorldTransforms(skeleton, localTransforms, worldTransform);
+			std::vector<DirectX::XMMATRIX> worldTransforms(boneCount);
+			CalculateWorldTransforms(skeleton, localTransforms, worldTransforms);
 
 			//Calculate final bone matrices
 			for (size_t i = 0; i < boneCount; i++)
 			{
 				const Bone& bone = skeleton.GetBone(i);
 				DirectX::XMMATRIX offset = DirectX::XMLoadFloat4x4(&bone.OffsetMatrix);
-				DirectX::XMMATRIX finalTransform = offset * worldTransform[i];
+				DirectX::XMMATRIX finalTransform = offset * worldTransforms[i];
 
 				DirectX::XMStoreFloat4x4(&outBoneMatrices[i], finalTransform);
 
@@ -118,7 +118,7 @@ namespace DXEngine
 			DirectX::XMVECTOR scale = DirectX::XMLoadFloat3(&interpolated.Scale);
 
 			DirectX::XMMATRIX transform = DirectX::XMMatrixScalingFromVector(scale) *
-				DirectX::XMMatrixRotationRollPitchYawFromVector(rotation) *
+				DirectX::XMMatrixRotationQuaternion(rotation) *
 				DirectX::XMMatrixTranslationFromVector(translation);
 
 			return transform;

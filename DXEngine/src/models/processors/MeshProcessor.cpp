@@ -4,7 +4,11 @@
 
 namespace DXEngine
 {
-	std::shared_ptr<MeshResource> MeshProcessor::ProcessMesh(const aiMesh* aiMesh, const aiScene* scene, std::shared_ptr<Skeleton> skeleton, const ModelLoadOptions& options)
+	std::shared_ptr<MeshResource> MeshProcessor::ProcessMesh(
+		const aiMesh* aiMesh,
+		const aiScene* scene,
+		std::shared_ptr<Skeleton> skeleton,
+		const ModelLoadOptions& options)
 	{
 		if (!aiMesh || !scene)
 		{
@@ -12,37 +16,36 @@ namespace DXEngine
 			return nullptr;
 		}
 
-		//create a vertexLayout
-		VertexLayout layout = CreateVertexLayout(aiMesh, options);
+		// FIX: Determine if THIS mesh needs skinning
+		bool meshNeedsSkinning = aiMesh->HasBones() && skeleton;
 
-		//create and setup vertexData
+		// Create vertex layout based on mesh properties
+		VertexLayout layout = CreateVertexLayout(aiMesh, meshNeedsSkinning, options);
+
+		// Create and setup vertex data
 		auto vertexData = std::make_unique<VertexData>(layout);
 		vertexData->Resize(aiMesh->mNumVertices);
 
-		//iniatialize bone data if skinned
-		if (aiMesh->HasBones() && skeleton)
+		// FIX: Only initialize bone data if THIS mesh has bones
+		if (meshNeedsSkinning)
 		{
 			InitializeBoneData(vertexData.get(), aiMesh->mNumVertices);
-		}
-
-		//process Bone weights before vertexAttributes
-		if (aiMesh->HasBones() && skeleton)
-		{
+			// Process bone weights before vertex attributes
 			ProcessBoneWeights(aiMesh, vertexData.get(), skeleton);
 		}
 
-		//process vertex attributes (positions, normals, etc)
+		// Process vertex attributes (positions, normals, etc)
 		ProcessVertexData(aiMesh, vertexData.get(), skeleton);
 
-		//create Index data
+		// Create index data
 		auto indexData = std::make_unique<IndexData>(
 			aiMesh->mNumVertices > 65535 ? IndexType::UInt32 : IndexType::UInt16);
 
 		ProcessIndexData(aiMesh, indexData.get());
 
-		//create mesh resource
+		// Create mesh resource
 		std::string meshName = aiMesh->mName.C_Str();
-		if(meshName.empty())
+		if (meshName.empty())
 			meshName = "ProcessedMesh_" + std::to_string(m_MeshesProcessed);
 
 		auto meshResource = std::make_unique<MeshResource>(meshName);
@@ -64,9 +67,18 @@ namespace DXEngine
 
 		m_MeshesProcessed++;
 
+#ifdef DX_DEBUG
+		OutputDebugStringA(("MeshProcessor: Processed mesh '" + meshName +
+			"' - Skinned: " + (meshNeedsSkinning ? "Yes" : "No") + "\n").c_str());
+#endif
+
 		return meshResource;
 	}
-	void MeshProcessor::ProcessVertexData(const aiMesh* aiMesh, VertexData* vertexData, std::shared_ptr<Skeleton> skeleton)
+
+	void MeshProcessor::ProcessVertexData(
+		const aiMesh* aiMesh,
+		VertexData* vertexData,
+		std::shared_ptr<Skeleton> skeleton)
 	{
 		for (unsigned int i = 0; i < aiMesh->mNumVertices; i++) {
 			// Position
@@ -120,21 +132,25 @@ namespace DXEngine
 			}
 		}
 	}
-	void MeshProcessor::ProcessBoneWeights(const aiMesh* aiMesh, VertexData* vertexData, std::shared_ptr<Skeleton> skeleton)
+
+	void MeshProcessor::ProcessBoneWeights(
+		const aiMesh* aiMesh,
+		VertexData* vertexData,
+		std::shared_ptr<Skeleton> skeleton)
 	{
 		if (!aiMesh->HasBones() || !skeleton)
 		{
-			OutputDebugStringA("Mesh Processor: Invalid aiMesh or skeleton passed");
+			OutputDebugStringA("MeshProcessor: Invalid aiMesh or skeleton for bone weights\n");
 			return;
 		}
 
-		//temporary storage for bone influences per vertex
+		// Temporary storage for bone influences per vertex
 		struct VertexBoneData {
-			std::vector<std::pair<int, float>> influences;//bone index and weight
+			std::vector<std::pair<int, float>> influences; // bone index and weight
 		};
 		std::vector<VertexBoneData> vertexBoneData(aiMesh->mNumVertices);
 
-		//collect all bone influences
+		// Collect all bone influences
 		for (unsigned int boneIndex = 0; boneIndex < aiMesh->mNumBones; boneIndex++)
 		{
 			const aiBone* bone = aiMesh->mBones[boneIndex];
@@ -142,7 +158,8 @@ namespace DXEngine
 
 			int skeletonBoneIndex = skeleton->GetBoneIndex(boneName);
 			if (skeletonBoneIndex < 0) {
-				OutputDebugStringA(("MeshProcessor: Bone not found in skeleton: " + boneName + "\n").c_str());
+				OutputDebugStringA(("MeshProcessor: Bone not found in skeleton: " +
+					boneName + "\n").c_str());
 				continue;
 			}
 
@@ -151,18 +168,24 @@ namespace DXEngine
 				unsigned int vertexId = weight.mVertexId;
 				float weightValue = weight.mWeight;
 
-				if (vertexId < aiMesh->mNumVertices) {
-					vertexBoneData[vertexId].influences.push_back({ skeletonBoneIndex, weightValue });
+				if (vertexId < aiMesh->mNumVertices && weightValue > 0.0001f) {
+					vertexBoneData[vertexId].influences.push_back(
+						{ skeletonBoneIndex, weightValue });
 				}
 			}
 		}
 
-		//assign top 4 influences to each vertex
+		// Assign top 4 influences to each vertex
+		int verticesWithoutWeights = 0;
 		for (unsigned int i = 0; i < aiMesh->mNumVertices; i++)
 		{
 			auto& influences = vertexBoneData[i].influences;
-			if (influences.empty())
+
+			if (influences.empty()) {
+				verticesWithoutWeights++;
 				continue;
+			}
+
 			// Sort by weight (descending)
 			std::sort(influences.begin(), influences.end(),
 				[](const auto& a, const auto& b) { return a.second > b.second; });
@@ -191,7 +214,14 @@ namespace DXEngine
 			vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
 			vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
 		}
+
+		if (verticesWithoutWeights > 0) {
+			OutputDebugStringA(("MeshProcessor: Warning - " +
+				std::to_string(verticesWithoutWeights) +
+				" vertices have no bone weights\n").c_str());
+		}
 	}
+
 	void MeshProcessor::InitializeBoneData(VertexData* vertexData, size_t vertexCount)
 	{
 		// Initialize all vertices with zero bone data
@@ -203,6 +233,7 @@ namespace DXEngine
 			vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, zeroIndices);
 		}
 	}
+
 	void MeshProcessor::ProcessIndexData(const aiMesh* aiMesh, IndexData* indexData)
 	{
 		for (unsigned int i = 0; i < aiMesh->mNumFaces; i++) {
@@ -217,9 +248,14 @@ namespace DXEngine
 			}
 		}
 	}
-	VertexLayout MeshProcessor::CreateVertexLayout(const aiMesh* aiMesh, const ModelLoadOptions& options) const
+
+	VertexLayout MeshProcessor::CreateVertexLayout(
+		const aiMesh* aiMesh,
+		bool needsSkinning,
+		const ModelLoadOptions& options) const
 	{
 		VertexLayout layout;
+
 		// Position is always required
 		layout.Position();
 
@@ -243,9 +279,12 @@ namespace DXEngine
 			layout.TexCoord(i);
 		}
 
-		// Skinning data
-		if (aiMesh->HasBones() || options.loadAnimations) {
+		// Only add skinning data if THIS mesh actually needs it
+		if (needsSkinning) {
 			layout.BlendData();
+#ifdef DX_DEBUG
+			OutputDebugStringA("MeshProcessor: Adding blend data to vertex layout\n");
+#endif
 		}
 
 		layout.Finalize();

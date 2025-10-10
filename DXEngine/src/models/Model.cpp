@@ -176,6 +176,15 @@ namespace DXEngine {
 		}
 	}
 
+	void Model::SetRotation(float pitch, float yaw, float roll)
+	{
+		if (m_Transform)
+		{
+			m_Transform->SetRotation(pitch,yaw,roll);
+			InvalidateBounds();
+		}
+	}
+
 	const DirectX::XMVECTOR& Model::GetRotation() const
 	{
 		static DirectX::XMVECTOR identity = DirectX::XMQuaternionIdentity();
