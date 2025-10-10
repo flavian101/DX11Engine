@@ -614,7 +614,7 @@ float2 ParallaxOcclusionMapping(float2 texCoords, float3 viewDir,
 
 
 ///PBR BRDF functions
-
+//Improved GGX Distribution (Trowbridge-Reitz)
 float DistributionGGX(float3 N, float3 H, float roughness)
 {
     float a = roughness * roughness;
@@ -629,10 +629,13 @@ float DistributionGGX(float3 N, float3 H, float roughness)
     return num / max(denom, EPSILON);
 }
 
-float GeometrySchlickGXX(float NdotV, float roughness)
+
+float GeometrySchlickGGX(float NdotV, float roughness)
 {
+    // Direct lighting uses different k than IBL
     float r = (roughness + 1.0);
     float k = (r * r) / 8.0;
+    
     float num = NdotV;
     float denom = NdotV * (1.0 - k) + k;
     
@@ -643,8 +646,8 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGXX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGXX(NdotL, roughness);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
     
     return ggx1 * ggx2;
 }
@@ -661,8 +664,12 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
 
 float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 {
-    return F0 + (max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), F0) - F0) *
-           pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+    float oneMinusCosTheta = saturate(1.0 - cosTheta);
+    float oneMinusCosThetaPow5 = oneMinusCosTheta * oneMinusCosTheta;
+    oneMinusCosThetaPow5 *= oneMinusCosThetaPow5;
+    oneMinusCosThetaPow5 *= oneMinusCosTheta;
+    
+    return F0 + (max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), F0) - F0) * oneMinusCosThetaPow5;
 }
 
 //Shadow Sampling 
@@ -705,6 +712,10 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
     
+    float NdotV = max(dot(N, V), 0.0);
+    if (NdotV <= 0.0)
+        return float3(0, 0, 0);
+    
     float shadow = 1.0;
 #if ENABLE_SHADOWS
     if (light.shadowMapIndex >= 0 && (flags & RECEIVES_SHADOWS_FLAG))
@@ -724,13 +735,17 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     
     float3 kS = F;
     float3 kD = float3(1.0, 1.0, 1.0) - kS;
-    kD *= 1.0 - metallicValue;
+    kD *= (1.0 - metallicValue);
     
     float3 numerator = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + EPSILON;
+    float denominator = 4.0 * NdotV * NdotL + EPSILON;
     float3 specular = numerator / denominator;
     
-    return (kD * albedo / PI + specular) * radiance * NdotL * shadow;
+    //Lambert diffuse (divided by PI for energy conservation)
+    float3 diffuse = kD * albedo / PI;
+    
+    // Final contribution
+    return (diffuse + specular) * radiance * NdotL * shadow;
 }
 
 float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float3 V,
@@ -752,11 +767,18 @@ float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
     
+    float NdotV = max(dot(N, V), 0.0);
+    if (NdotV <= 0.0)
+        return float3(0, 0, 0);
+    
     //physical attenuation with smooth falloff
     float attenuation = 1.0 / (light.attenuation.x +
                               light.attenuation.y * distance +
                               light.attenuation.z * distance * distance);
-    float falloff = saturate(1.0 - pow(distance / light.radius, 4.0));
+    
+    // Window function for smooth falloff at radius
+    float distanceRatio = distance / light.radius;
+    float falloff = saturate(1.0 - pow(distanceRatio, 4.0));
     falloff *= falloff;
     attenuation *= falloff;
     
@@ -771,11 +793,14 @@ float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float
     float3 kD = float3(1.0, 1.0, 1.0) - kS;
     kD *= 1.0 - metallicValue;
     
+   // BRDF
     float3 numerator = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + EPSILON;
+    float denominator = 4.0 * NdotV * NdotL + EPSILON;
     float3 specular = numerator / denominator;
     
-    return (kD * albedo / PI + specular) * radiance * NdotL;
+    float3 diffuse = kD * albedo / PI;
+    
+    return (diffuse + specular) * radiance * NdotL;
 }
 
 float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 V,
@@ -797,11 +822,16 @@ float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
     
+    float NdotV = max(dot(N, V), 0.0);
+    if (NdotV <= 0.0)
+        return float3(0, 0, 0);
+    
     //spotLight cone calculation
     float3 spotDirection = normalize(light.direction);
     float cosAngle = dot(-L, spotDirection);
     
-    float spotFalloff = saturate((cosAngle - light.outerCone) / (light.innerCone - light.outerCone));
+    float epsilon = light.innerCone - light.outerCone;
+    float spotFalloff = saturate((cosAngle - light.outerCone) / epsilon);
     if (spotFalloff <= 0.0)
         return float3(0, 0, 0);
     
@@ -826,11 +856,12 @@ float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 
     kD *= 1.0 - metallicValue;
     
     float3 numerator = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + EPSILON;
-    
+    float denominator = 4.0 * NdotV * NdotL + EPSILON;
     float3 specular = numerator / denominator;
     
-    return (kD * albedo / PI + specular) * radiance * NdotL;
+    float3 diffuse = kD * albedo / PI;
+    
+    return (diffuse + specular) * radiance * NdotL;
 }
 
 ///Tone mapping

@@ -160,7 +160,7 @@ namespace DXEngine {
        auto sunLight = s_LightManager->CreateDirectionalLight();
        if (sunLight)
        {
-           sunLight->SetDirection({ 0.3f,-0.8,0.2 });
+           sunLight->SetDirection({ 0.4f,-0.7,0.2 });
            sunLight->SetColor({ 1.0f, 0.95f, 0.8f });
            sunLight->SetIntensity(2.0f);
            sunLight->SetCastShadows(false);
@@ -168,6 +168,8 @@ namespace DXEngine {
        // Set default ambient
         s_LightManager->SetAmbientLight({ 0.2f, 0.25f, 0.3f }, 0.1f);
         s_LightManager->SetExposure(0.4f);
+        s_LightManager->SetGamma(2.2f);
+        s_LightManager->SetIBLIntensity(0.8f);
 
        // auto point = s_LightManager->CreatePointLight();
        // if (point)

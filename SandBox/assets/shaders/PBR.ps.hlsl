@@ -23,12 +23,9 @@ float4 main(StandardVertexOutput input) : SV_Target
     float metallicValue = metallic;
     
     // Additional properties from material buffer
-    float occlusionValue = 1.0;
+    float occlusionValue = occlusionStrength;
     float opacityValue = alpha;
     float3 emissiveValue = emissiveColor.rgb * emissiveIntensity;
-    
-    // Specular workflow properties
-    float3 specularValue = specularColor.rgb;
     
     // ========================================================================
     // TEXTURE SAMPLING - Modulate material buffer with textures
@@ -49,12 +46,8 @@ float4 main(StandardVertexOutput input) : SV_Target
         float3 specularSample = SampleSpecularMap(input.texCoord);
         
         // Check if we're using specular workflow or metallic workflow
-        // If we have dedicated metallic/roughness maps, use specular as color
-        // Otherwise, treat it as packed PBR data
-#if HAS_METALLIC_MAP || HAS_ROUGHNESS_MAP
-            // Specular workflow - use as specular color
-            specularValue *= specularSample;
-#else
+        // If we have dedicated metallic/roughness maps, use specular as packed data
+#if !HAS_METALLIC_MAP && !HAS_ROUGHNESS_MAP
             // Packed PBR workflow - extract from channels
             occlusionValue *= specularSample.r;      // Red = AO
             roughnessValue *= specularSample.g;      // Green = Roughness
@@ -89,11 +82,9 @@ float4 main(StandardVertexOutput input) : SV_Target
 #endif
     
     // ========== DETAIL TEXTURES ==========
-    // Blend detail textures over base if available
 #if HAS_DETAIL_TEXTURES
 #if HAS_DETAIL_DIFFUSE_MAP
             float4 detailDiffuse = SampleDetailDiffuse(input.texCoord);
-            // Blend based on detail alpha channel
             baseColor.rgb = lerp(baseColor.rgb, baseColor.rgb * detailDiffuse.rgb, detailDiffuse.a * 0.5);
 #endif
 #endif
@@ -127,7 +118,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     // PBR MATERIAL FINALIZATION
     // ========================================================================
     
-    // Clamp roughness to avoid artifacts
+    // Clamp roughness to avoid artifacts (critical for PBR)
     roughnessValue = clamp(roughnessValue, MIN_ROUGHNESS, 1.0);
     
     // Clamp metallic to valid range
@@ -136,19 +127,25 @@ float4 main(StandardVertexOutput input) : SV_Target
     // Apply occlusion strength from material buffer
     occlusionValue = lerp(1.0, occlusionValue, occlusionStrength);
     
-    // Calculate F0 (surface reflection at zero incidence)
-    // For metallic workflow: interpolate between dielectric (0.04) and conductor (albedo)
-    float3 F0 = float3(0.04, 0.04, 0.04);
-    F0 = lerp(F0, baseColor.rgb, metallicValue);
+    // Convert albedo to linear space if using sRGB textures
+    // Most texture formats store colors in sRGB, but lighting calculations need linear
+#if HAS_DIFFUSE_TEXTURE
+    baseColor.rgb = pow(abs(baseColor.rgb), 2.2); // sRGB to Linear
+#endif
     
-    // For specular workflow, we could also use:
-    // F0 = specularValue; // Direct specular color control
+    // Proper F0 calculation for metallic workflow
+    // Dielectrics: ~0.04 (4% reflectance)
+    // Metals: Use albedo color
+    float3 F0 = lerp(float3(0.04, 0.04, 0.04), baseColor.rgb, metallicValue);
+    
+    //For metals, diffuse component should be black (energy conservation)
+    float3 albedo = baseColor.rgb * (1.0 - metallicValue);
     
     // ========================================================================
     // LIGHTING ACCUMULATION
     // ========================================================================
     
-    // Start with ambient + occlusion
+    // Start with ambient + occlusion + emissive
     float3 color = ambientColor * ambientIntensity * baseColor.rgb * occlusionValue;
     
     // ========== DIRECTIONAL LIGHTS ==========
@@ -159,7 +156,7 @@ float4 main(StandardVertexOutput input) : SV_Target
             directionalLights[i],
             N,
             V,
-            baseColor.rgb,
+            albedo,
             metallicValue,
             roughnessValue,
             F0,
@@ -176,7 +173,7 @@ float4 main(StandardVertexOutput input) : SV_Target
             input.worldPos.xyz,
             N,
             V,
-            baseColor.rgb,
+            albedo,
             metallicValue,
             roughnessValue,
             F0
@@ -192,7 +189,7 @@ float4 main(StandardVertexOutput input) : SV_Target
             input.worldPos.xyz,
             N,
             V,
-            baseColor.rgb,
+            albedo,
             metallicValue,
             roughnessValue,
             F0
@@ -200,8 +197,40 @@ float4 main(StandardVertexOutput input) : SV_Target
     }
     
     // ========================================================================
+    // IMAGE-BASED LIGHTING (IBL)
+    // ========================================================================
+    
+#if HAS_ENVIRONMENT_MAP
+    // Sample environment map for specular reflection
+    float3 R = reflect(-V, N);
+    float3 prefilteredColor = environmentTexture.SampleLevel(standardSampler, R, roughnessValue * 8.0).rgb;
+    
+    // Fresnel for environment reflection
+    float3 F_env = FresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughnessValue);
+    
+    // Energy-conserving specular IBL
+    float3 kS_env = F_env;
+    float3 kD_env = (1.0 - kS_env) * (1.0 - metallicValue);
+    
+    // Add diffuse IBL if we have irradiance map
+#if HAS_IRRADIANCE_MAP
+    float3 irradiance = irradianceTexture.Sample(standardSampler, N).rgb;
+    float3 diffuseIBL = kD_env * irradiance * baseColor.rgb;
+#else
+    float3 diffuseIBL = float3(0.0, 0.0, 0.0);
+#endif
+    
+    // Simplified BRDF integration (without LUT)
+    float NdotV = max(dot(N, V), 0.0);
+    float2 envBRDF = float2(1.0 - roughnessValue, 1.0) * NdotV;
+    float3 specularIBL = prefilteredColor * (F_env * envBRDF.x + envBRDF.y);
+    
+    // Add IBL contribution with intensity control
+    color += (diffuseIBL + specularIBL) * iblIntensity;
+#endif
+    
+    // ========================================================================
     // EMISSIVE CONTRIBUTION
-    // Only add if enabled via flag or texture is present
     // ========================================================================
     
 #if ENABLE_EMISSIVE || HAS_EMISSIVE_MAP
@@ -226,7 +255,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     // Apply exposure tone mapping
     color = ToneMapExposure(color, exposure);
     
-    // Apply gamma correction
+    // Apply gamma correction (Linear to sRGB)
     color = ApplyGamma(color, gamma);
     
     // ========================================================================
@@ -237,7 +266,6 @@ float4 main(StandardVertexOutput input) : SV_Target
     
     // ========================================================================
     // ALPHA TESTING
-    // Discard transparent pixels if alpha testing is enabled
     // ========================================================================
     
 #if ENABLE_ALPHA_TEST
