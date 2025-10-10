@@ -12,7 +12,7 @@ namespace DXEngine {
         LightSphere();
 
         // Override update to sync light position
-        void Update(float deltaTime = 0.0f) override;
+        void Update(FrameTime deltatime) override;
 
     private:
         void Initialize();

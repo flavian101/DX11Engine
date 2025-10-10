@@ -11,6 +11,7 @@ namespace DXEngine {
 
 	class Mesh;
 	class Material;
+	class FrameTime;
 
 	class Model : public InterfacePickable
 	{
@@ -20,7 +21,7 @@ namespace DXEngine {
 		explicit Model(std::shared_ptr<Mesh> mesh);
 		virtual ~Model();
 
-		virtual void Update(float deltaTime = 0.0f);
+		virtual void Update(FrameTime deltatime);
 		bool IsValid()const;
 		std::string GetDebugInfo()const;
 
@@ -176,7 +177,7 @@ namespace DXEngine {
 		void ComputeBounds()const;
 		void EnsureMeshMaterials(size_t meshIndex);
 		void EnsureMaterialSlots();
-		void UpdateAnimation(float deltaTime);
+		void UpdateAnimation(FrameTime deltatime);
 		void UpdateInstanceBounds() const;
 		void UpdateSkinnedBounds() const;
 

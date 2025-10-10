@@ -88,10 +88,10 @@ namespace DXEngine
 			for (size_t i = 0; i < boneCount; i++)
 			{
 				const Bone& bone = skeleton.GetBone(i);
-				DirectX::XMMATRIX offset = DirectX::XMLoadFloat4x4(&bone.OffsetMatrix);
+				DirectX::XMMATRIX offsetMatrix = DirectX::XMLoadFloat4x4(&bone.OffsetMatrix);
 
 				// This gives us: MeshSpace -> BoneLocalSpace -> AnimatedWorldSpace
-				DirectX::XMMATRIX finalTransform = offset * worldTransforms[i];
+				DirectX::XMMATRIX finalTransform = DirectX::XMMatrixMultiply(offsetMatrix, worldTransforms[i]);
 
 				// *** TRANSPOSE for HLSL (HLSL uses column-major by default) ***
 				DirectX::XMStoreFloat4x4(&outBoneMatrices[i], DirectX::XMMatrixTranspose(finalTransform));
@@ -118,9 +118,14 @@ namespace DXEngine
 			DirectX::XMVECTOR rotation = DirectX::XMLoadFloat4(&interpolated.Rotation);
 			DirectX::XMVECTOR scale = DirectX::XMLoadFloat3(&interpolated.Scale);
 
-			DirectX::XMMATRIX transform = DirectX::XMMatrixScalingFromVector(scale) *
-				DirectX::XMMatrixRotationQuaternion(rotation) *
-				DirectX::XMMatrixTranslationFromVector(translation);
+			// Build transformation matrix in correct order
+			DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScalingFromVector(scale);
+			DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationQuaternion(rotation);
+			DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslationFromVector(translation);
+
+			// Combine: Scale -> Rotate -> Translate
+			DirectX::XMMATRIX transform = DirectX::XMMatrixMultiply(scaleMatrix, rotationMatrix);
+			transform = DirectX::XMMatrixMultiply(transform, translationMatrix);
 
 			return transform;
 		}
@@ -143,7 +148,9 @@ namespace DXEngine
 				else
 				{
 					// Child bone: multiply by parent's world transform
-					outWorldTransforms[i] = outWorldTransforms[bone.ParentIndex] * localTransforms[i];
+					outWorldTransforms[i] = DirectX::XMMatrixMultiply(
+						localTransforms[i],
+						outWorldTransforms[bone.ParentIndex]);
 				}
 			}
 		}

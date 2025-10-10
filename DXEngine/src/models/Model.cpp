@@ -5,6 +5,7 @@
 #include "utils/material/Material.h"
 #include <utils/Mesh/Utils/InputManager.h>
 #include <algorithm>
+#include "FrameTime.h"
 
 namespace DXEngine {
 
@@ -24,7 +25,7 @@ namespace DXEngine {
 
 	}
 
-	void Model::Update(float deltatime)
+	void Model::Update(FrameTime deltatime)
 	{
 		// Update animation if skinned
 		if (IsSkinned() && m_SkinningData->animationController)
@@ -751,13 +752,13 @@ namespace DXEngine {
 	{
 	}
 
-	void Model::UpdateAnimation(float deltaTime)
+	void Model::UpdateAnimation(FrameTime deltatime)
 	{
 		if (!m_SkinningData || !m_SkinningData->animationController)
 		{
 			return;
 		}
-		m_SkinningData->animationController->Update(deltaTime);
+		m_SkinningData->animationController->Update(deltatime);
 
 		//Get updated bone matrices
 		const auto& matrices = m_SkinningData->animationController->GetBoneMatrices();

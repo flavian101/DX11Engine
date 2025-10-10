@@ -2,6 +2,7 @@
 #include "AnimationClip.h"
 #include "AnimationEvaluator.h"
 #include <memory>
+#include "FrameTime.h"
 
 namespace DXEngine
 {
@@ -58,13 +59,13 @@ namespace DXEngine
 		}
 
 		//update Animation (calls Every frame)
-		void Update(float deltaTime)
+		void Update(FrameTime deltatime)
 		{
 			if (!m_IsPlaying || !m_CurrentClip)
 				return;
 
 			float direction = m_IsReversed ? -1.0f : 1.0f;
-			m_CurrentTime += deltaTime * m_PlaybackSpeed * direction;
+			m_CurrentTime += deltatime * m_PlaybackSpeed * direction;
 
 			float duration = m_CurrentClip->GetDuration();
 

@@ -28,7 +28,7 @@ void Sandbox::OnAttach()
 	//m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
 	//m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
 	//m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
-	m_AnimatedSpider = m_Loader->LoadModel("assets/models/cube/cube.fbx");
+	m_AnimatedSpider = m_Loader->LoadModel("assets/models/horse/source/Horse.fbx");
 	if (m_AnimatedSpider)
 	{
 		OutputDebugStringA("Spaceship loaded with animations!\n");

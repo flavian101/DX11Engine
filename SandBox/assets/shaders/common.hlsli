@@ -878,14 +878,23 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     float3 skinnedNormal = float3(0.0, 0.0, 0.0);
     float3 skinnedTangent = float3(0.0, 0.0, 0.0);
     
+    // Normalize blend weights (safety check)
+    float totalWeight = input.blendWeights.x + input.blendWeights.y + 
+                       input.blendWeights.z + input.blendWeights.w;
+    float4 normalizedWeights = input.blendWeights;
+    if (totalWeight > 0.0001)
+    {
+        normalizedWeights /= totalWeight;
+    }
+    
     // Apply linear blend skinning (max 4 bones per vertex)
     [unroll]
     for (int i = 0; i < 4; ++i)
     {
-        float weight = input.blendWeights[i];
+        float weight = normalizedWeights[i];
         
         // Skip bones with zero influence
-        if (weight > 0.0)
+        if (weight > 0.0001)
         {
             uint boneIndex = input.blendIndices[i];
             
@@ -895,7 +904,7 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
                 float4x4 boneMatrix = BoneMatrices[boneIndex];
                 
                 // Transform and accumulate position
-                // BoneMatrix = OffsetMatrix * AnimatedWorldTransform
+                // BoneMatrix already includes: OffsetMatrix * AnimatedWorldTransform
                 // This transforms: MeshSpace -> BoneSpace -> AnimatedWorldSpace
                 skinnedPos += weight * mul(localPos, boneMatrix);
                 
@@ -912,12 +921,12 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
         }
     }
     
-    // After skinning, vertex is already in WORLD SPACE
-    // BoneMatrices already include world transformation
+    // IMPORTANT: The bone matrices already transformed vertices to world space
+    // So skinnedPos is in WORLD SPACE, not local space
     output.worldPos = skinnedPos;
     
-    // Transform world position to clip space using View * Projection
-    // Do NOT use Model matrix - bones are already in world space
+    // Transform from world space to clip space (NOT using Model matrix)
+    // Skinned vertices bypass the Model matrix since bones handle transformation
     float4x4 viewProj = mul(View, Projection);
     output.position = mul(output.worldPos, viewProj);
     
@@ -932,23 +941,15 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
 #endif
 
 #else  
-    // ========================================================================
     // NON-SKINNED TRANSFORMATION (Standard pipeline)
-    // ========================================================================
-    
-    // Transform local position to world space using Model matrix
     output.worldPos = mul(localPos, Model);
-    
-    // Transform to clip space using full WVP
     output.position = mul(localPos, WVP);
     
 #if HAS_NORMAL_ATTRIBUTE
-    // Transform normal to world space (using 3x3 part for rotation only)
     output.normal = normalize(mul(localNormal, (float3x3)Model));
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE
-    // Transform tangent to world space
     output.tangent = float4(normalize(mul(localTangent, (float3x3)Model)), input.tangent.w);
 #endif
     
