@@ -7,7 +7,7 @@ namespace DXEngine
 {
 	std::shared_ptr<Skeleton> SkeletonProcessor::ProcessSkeleton(const aiScene* scene, const aiMesh* mesh)
 	{
-		if (!mesh || mesh->HasBones()|| !scene)
+		if (!mesh || !mesh->HasBones() || !scene)
 		{
 			OutputDebugStringA("SkeletonProcessor: Empty aiScene or emtpy aiMesh");
 			return nullptr;
@@ -102,51 +102,78 @@ namespace DXEngine
 	}
 	bool SkeletonProcessor::ValidateSkeleton(std::shared_ptr<Skeleton> skeleton) const
 	{
-		if (!skeleton || skeleton->GetBoneCount() == 0) {
-			OutputDebugStringA("SkeletonProcessor: Empty skeleton\n");
+		if (!skeleton)
+		{
+			OutputDebugStringA("ValidateSkeleton: skeleton is NULL\n");
 			return false;
 		}
+
+		if (skeleton->GetBoneCount() == 0)
+		{
+			OutputDebugStringA("ValidateSkeleton: skeleton has 0 bones\n");
+			return false;
+		}
+
+		OutputDebugStringA(("Validating skeleton with " +
+			std::to_string(skeleton->GetBoneCount()) + " bones...\n").c_str());
 
 		// Check for circular dependencies
 		std::vector<bool> visited(skeleton->GetBoneCount(), false);
 
-		for (size_t i = 0; i < skeleton->GetBoneCount(); i++) {
-			if (!ValidateBoneHierarchy(skeleton, i, visited)) {
-				OutputDebugStringA(("SkeletonProcessor: Invalid hierarchy at bone " +
-					std::to_string(i) + "\n").c_str());
+		for (size_t i = 0; i < skeleton->GetBoneCount(); i++)
+		{
+			// Reset visited for each bone chain check
+			std::fill(visited.begin(), visited.end(), false);
+
+			if (!ValidateBoneHierarchy(skeleton, i, visited))
+			{
+				OutputDebugStringA(("ValidateSkeleton: Invalid hierarchy at bone " +
+					std::to_string(i) + " (" + skeleton->GetBone(i).Name + ")\n").c_str());
 				return false;
 			}
 		}
 
 		// Check for orphaned bones (except root)
 		int rootCount = 0;
-		for (size_t i = 0; i < skeleton->GetBoneCount(); i++) {
+		for (size_t i = 0; i < skeleton->GetBoneCount(); i++)
+		{
 			const Bone& bone = skeleton->GetBone(i);
-			if (bone.ParentIndex == -1) {
+			if (bone.ParentIndex == -1)
+			{
 				rootCount++;
+#ifdef DX_DEBUG
+				OutputDebugStringA(("  Root bone found: " + bone.Name + "\n").c_str());
+#endif
 			}
 		}
 
-		if (rootCount == 0) {
-			OutputDebugStringA("SkeletonProcessor: No root bone found\n");
+		if (rootCount == 0)
+		{
+			OutputDebugStringA("ValidateSkeleton: No root bone found\n");
 			return false;
 		}
 
-		if (rootCount > 1) {
-			OutputDebugStringA(("SkeletonProcessor: Multiple root bones found (" +
-				std::to_string(rootCount) + ")\n").c_str());
-			// This is a warning, not a failure - some models have multiple roots
+		if (rootCount > 1)
+		{
+			OutputDebugStringA(("ValidateSkeleton: Multiple root bones found (" +
+				std::to_string(rootCount) + ") - this is acceptable\n").c_str());
 		}
 
+		OutputDebugStringA("Skeleton validation passed\n");
 		return true;
 	}
 	bool SkeletonProcessor::ValidateBoneHierarchy(std::shared_ptr<Skeleton> skeleton, int boneIndex, std::vector<bool>& visited) const
 	{
+		// Out of bounds check
 		if (boneIndex < 0 || boneIndex >= static_cast<int>(skeleton->GetBoneCount()))
 			return true;  // End of chain
 
-		if (visited[boneIndex]) {
-			// Circular dependency detected!
+		// Circular dependency check
+		if (visited[boneIndex])
+		{
+			OutputDebugStringA(("Circular dependency detected at bone " +
+				std::to_string(boneIndex) + " (" +
+				skeleton->GetBone(boneIndex).Name + ")\n").c_str());
 			return false;
 		}
 
@@ -155,11 +182,13 @@ namespace DXEngine
 		const Bone& bone = skeleton->GetBone(boneIndex);
 
 		// Validate parent
-		if (bone.ParentIndex >= 0) {
-			if (bone.ParentIndex >= static_cast<int>(skeleton->GetBoneCount())) {
-				OutputDebugStringA(("SkeletonProcessor: Invalid parent index " +
+		if (bone.ParentIndex >= 0)
+		{
+			if (bone.ParentIndex >= static_cast<int>(skeleton->GetBoneCount()))
+			{
+				OutputDebugStringA(("Invalid parent index " +
 					std::to_string(bone.ParentIndex) + " for bone " +
-					std::to_string(boneIndex) + "\n").c_str());
+					std::to_string(boneIndex) + " (" + bone.Name + ")\n").c_str());
 				return false;
 			}
 

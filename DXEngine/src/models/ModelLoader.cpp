@@ -172,15 +172,17 @@ namespace DXEngine
         return animations;
     }
 
-    std::shared_ptr<Model> ModelLoader::ProcessScene(const aiScene* scene, const std::string& directory, const ModelLoadOptions& options)
+    std::shared_ptr<Model> ModelLoader::ProcessScene(const aiScene* scene,
+        const std::string& directory,
+        const ModelLoadOptions& options)
     {
-        //reset current skeleton for new model
+        // Reset current skeleton for new model
         m_CurrentSkeleton.reset();
 
         bool hasAnimations = scene->HasAnimations() && options.loadAnimations;
         bool HasSkinning = false;
 
-        //check of any mesh has bones
+        // Check if any mesh has bones
         for (unsigned int i = 0; i < scene->mNumMeshes; i++)
         {
             if (scene->mMeshes[i]->HasBones())
@@ -192,15 +194,24 @@ namespace DXEngine
 
         auto model = std::make_shared<Model>();
 
-        //process skeleton if skinning detected
+        // FIX: Process skeleton if skinning detected - moved break inside if block
         if (HasSkinning)
         {
             for (unsigned int i = 0; i < scene->mNumMeshes; i++)
             {
                 const aiMesh* mesh = scene->mMeshes[i];
                 if (mesh->HasBones())
+                {
                     m_CurrentSkeleton = m_SkeletonProcessor->ProcessSkeleton(scene, mesh);
-                break;
+                    if (m_CurrentSkeleton) {
+                        break;
+                    }
+                }
+            }
+
+            // Verify skeleton was created
+            if (!m_CurrentSkeleton) {
+                OutputDebugStringA("Warning: Model has skinning data but skeleton creation failed\n");
             }
         }
 
@@ -214,10 +225,10 @@ namespace DXEngine
 #endif
         }
 
-        //process meshes
+        // Process meshes
         ProcessNode(model, scene->mRootNode, scene, directory, options);
 
-        //load Animations
+        // Load Animations
         if (hasAnimations && m_CurrentSkeleton)
         {
             auto animations = m_AnimationProcessor->ProcessAnimations(scene, m_CurrentSkeleton);
@@ -228,10 +239,10 @@ namespace DXEngine
             }
 
 #ifdef DX_DEBUG
-
             OutputDebugStringA(("Loaded " + std::to_string(animations.size()) +
                 " animation(s) for model\n").c_str());
 #endif
+
             if (!animations.empty())
             {
                 auto controller = std::make_shared<AnimationController>(m_CurrentSkeleton);
@@ -240,22 +251,21 @@ namespace DXEngine
                 controller->Play();
                 model->SetAnimationController(controller);
             }
-            else if (HasSkinning && !m_CurrentSkeleton)
-            {
-                OutputDebugStringA("Warning: Model has skinning data but no skeleton was created\n");
-
-            }
         }
+        else if (HasSkinning && !m_CurrentSkeleton)
+        {
+            OutputDebugStringA("Warning: Model has skinning data but no skeleton was created\n");
+        }
+
         // Apply global scale
         if (options.globalScale != 1.0f) {
             DirectX::XMFLOAT3 scale(options.globalScale, options.globalScale, options.globalScale);
             model->SetScale(scale);
         }
 
-
         return model;
-
     }
+
 
     void ModelLoader::ProcessNode(std::shared_ptr<Model> model,const aiNode* node,const aiScene* scene,const std::string& directory,const ModelLoadOptions& options)
     {

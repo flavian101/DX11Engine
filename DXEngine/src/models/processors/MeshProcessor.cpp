@@ -135,7 +135,7 @@ namespace DXEngine
 		std::vector<VertexBoneData> vertexBoneData(aiMesh->mNumVertices);
 
 		//collect all bone influences
-		for (unsigned int boneIndex = 0; boneIndex < aiMesh->mNumVertices; boneIndex++)
+		for (unsigned int boneIndex = 0; boneIndex < aiMesh->mNumBones; boneIndex++)
 		{
 			const aiBone* bone = aiMesh->mBones[boneIndex];
 			std::string boneName = bone->mName.C_Str();

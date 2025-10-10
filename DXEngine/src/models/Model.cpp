@@ -200,14 +200,16 @@ namespace DXEngine {
 
 	const std::shared_ptr<Transform>& Model::GetTransform() const
 	{
+		static std::shared_ptr<Transform> nullTransform;
+
 		if (m_Transform)
 		{
 			return m_Transform;
 		}
 		else
 		{
-			OutputDebugStringA("No Transform was Found");
-			return nullptr;
+			OutputDebugStringA("Warning: No Transform was found, returning null\n");
+			return nullTransform;
 		}
 
 	}
@@ -915,7 +917,7 @@ namespace DXEngine {
 		}
 		std::shared_ptr<Model> CreateFromMeshResource(std::shared_ptr<MeshResource> resource)
 		{
-			if (!resource || resource->IsValid())
+			if (!resource || !resource->IsValid())
 				return nullptr;
 
 			auto mesh = std::make_shared<Mesh>(resource);

@@ -614,7 +614,11 @@ namespace DXEngine {
     void Renderer::ProcessModelSubmission(std::shared_ptr<Model> model, std::shared_ptr<Material> materialOverride)
     {
         if (!model || !model->IsValid())
+        {
+            OutputDebugStringA("Warning: Attempting to submit invalid model\n");
             return;
+        }
+
 
         model->EnsureDefaultMaterials();
 
