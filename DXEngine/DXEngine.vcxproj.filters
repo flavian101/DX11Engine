@@ -221,6 +221,14 @@
     <ClInclude Include="src\windows\WindowsInput.h">
       <Filter>windows</Filter>
     </ClInclude>
+    <ClInclude Include="src\models\processors\AssimpContext.h" />
+    <ClInclude Include="src\models\processors\TextureLoader.h" />
+    <ClInclude Include="src\models\processors\MaterialProcessor.h" />
+    <ClInclude Include="src\models\processors\SkeletonProcessor.h" />
+    <ClInclude Include="src\models\processors\AnimationProcessor.h" />
+    <ClInclude Include="src\models\processors\MeshProcessor.h" />
+    <ClInclude Include="src\models\processors\ModelLoaderUtils.h" />
+    <ClInclude Include="src\models\processors\ModelPostProcessor.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -348,5 +356,12 @@
     <ClCompile Include="src\windows\WindowsInput.cpp">
       <Filter>windows</Filter>
     </ClCompile>
+    <ClCompile Include="src\models\processors\AssimpContext.cpp" />
+    <ClCompile Include="src\models\processors\TextureLoader.cpp" />
+    <ClCompile Include="src\models\processors\MaterialProcessor.cpp" />
+    <ClCompile Include="src\models\processors\SkeletonProcessor.cpp" />
+    <ClCompile Include="src\models\processors\AnimationProcessor.cpp" />
+    <ClCompile Include="src\models\processors\MeshProcessor.cpp" />
+    <ClCompile Include="src\models\processors\ModelPostProcessor.cpp" />
   </ItemGroup>
 </Project>

@@ -118,7 +118,7 @@ namespace DXEngine
 			DirectX::XMVECTOR scale = DirectX::XMLoadFloat3(&interpolated.Scale);
 
 			DirectX::XMMATRIX transform = DirectX::XMMatrixScalingFromVector(scale) *
-				DirectX::XMMatrixRotationQuaternion(rotation) *
+				DirectX::XMMatrixRotationRollPitchYawFromVector(rotation) *
 				DirectX::XMMatrixTranslationFromVector(translation);
 
 			return transform;
@@ -142,7 +142,7 @@ namespace DXEngine
 				else
 				{
 					// Child bone: multiply by parent's world transform
-					outWorldTransforms[i] = localTransforms[i] * outWorldTransforms[bone.ParentIndex];
+					outWorldTransforms[i] = outWorldTransforms[bone.ParentIndex] * localTransforms[i];
 				}
 			}
 		}

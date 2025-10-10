@@ -21,14 +21,14 @@ void Sandbox::OnAttach()
 	m_Light = std::make_shared<DXEngine::LightSphere>();
 	m_Loader = std::make_shared<DXEngine::ModelLoader>();
 
-	m_Ship = m_Loader->LoadModel("assets/models/UFO/Rigged_Modular UFO 2.8.glb.gltf");
+//	m_Ship = m_Loader->LoadModel("assets/models/UFO/Rigged_Modular UFO 2.8.glb.gltf");
 	m_Table = m_Loader->LoadModel("assets/models/eShip/Intergalactic Spaceship_Blender_2.8_Packed textures.glb");
 	m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
 	m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
 	m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
 	m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
 	m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
-	m_AnimatedSpider = std::dynamic_pointer_cast<DXEngine::Model>(m_Loader->LoadModel("assets/models/horse/realistic_horse_3d_model_free_download.glb"));
+	m_AnimatedSpider = m_Loader->LoadModel("assets/models/horse/source/Horse.fbx");
 	if (m_AnimatedSpider)
 	{
 		OutputDebugStringA("Spaceship loaded with animations!\n");
@@ -107,12 +107,12 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 		DXEngine::Renderer::Submit(m_Tunnel);
 	}
 	
-	if (m_Ship)
-	{
-		m_Ship->SetScale({ 3.0f, 3.0f, 3.0f });
-		m_Ship->SetTranslation({ 0.0f, 4.0f, 15.0f });
-		DXEngine::Renderer::Submit(m_Ship);
-	}
+	//if (m_Ship)
+	//{
+	//	m_Ship->SetScale({ 3.0f, 3.0f, 3.0f });
+	//	m_Ship->SetTranslation({ 0.0f, 4.0f, 15.0f });
+	//	DXEngine::Renderer::Submit(m_Ship);
+	//}
 	
 	if (m_Table)
 	{

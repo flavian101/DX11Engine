@@ -103,6 +103,13 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\models\processors\ModelPostProcessor.h" />
+    <ClInclude Include="src\models\processors\AnimationProcessor.h" />
+    <ClInclude Include="src\models\processors\AssimpContext.h" />
+    <ClInclude Include="src\models\processors\MaterialProcessor.h" />
+    <ClInclude Include="src\models\processors\MeshProcessor.h" />
+    <ClInclude Include="src\models\processors\ModelLoaderUtils.h" />
+    <ClInclude Include="src\models\processors\SkeletonProcessor.h" />
     <ClInclude Include="src\Animation\AnimationClip.h" />
     <ClInclude Include="src\Animation\AnimationController.h" />
     <ClInclude Include="src\Animation\AnimationEvaluator.h" />
@@ -168,8 +175,15 @@
     <ClInclude Include="src\utils\material\MaterialProperties.h" />
     <ClInclude Include="src\utils\material\MaterialTypes.h" />
     <ClInclude Include="src\windows\WindowsInput.h" />
+    <ClInclude Include="src\models\processors\TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\models\processors\ModelPostProcessor.cpp" />
+    <ClCompile Include="src\models\processors\AnimationProcessor.cpp" />
+    <ClCompile Include="src\models\processors\AssimpContext.cpp" />
+    <ClCompile Include="src\models\processors\MaterialProcessor.cpp" />
+    <ClCompile Include="src\models\processors\MeshProcessor.cpp" />
+    <ClCompile Include="src\models\processors\SkeletonProcessor.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Ball.cpp" />
     <ClCompile Include="src\Core\Input.cpp" />
@@ -219,6 +233,7 @@
     <ClCompile Include="src\utils\VertexShader.cpp" />
     <ClCompile Include="src\utils\material\Material.cpp" />
     <ClCompile Include="src\windows\WindowsInput.cpp" />
+    <ClCompile Include="src\models\processors\TextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

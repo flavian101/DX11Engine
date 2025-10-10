@@ -7,9 +7,8 @@
 #include <DirectXMath.h>
 #include <mutex>
 #include <functional> 
+#include "processors/ModelLoaderUtils.h"
 
-#include <assimp/scene.h>
-#include <assimp/mesh.h>
 #include <assimp/material.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -31,28 +30,12 @@ namespace DXEngine {
     class AnimationClip;
     struct Keyframe;
     enum class MaterialType;
-
-    struct ModelLoadOptions
-    {
-        bool makeLeftHanded = true;
-        bool generateNormals = true;
-        bool generateTangents = true;
-        bool flipUVs = false;
-        bool optimizeMeshes = true;
-        bool validateDataStructure = true;
-        bool triangulate = true;
-        bool loadAnimations = true;
-        bool loadMaterials = true;
-        bool loadTextures = true;
-        float globalScale = 1.0f;
-
-        // Optimization settings
-        bool joinIdenticalVertices = true;
-        bool removeRedundantMaterials = true;
-        bool fixInfacingNormals = true;
-        bool limitBoneWeights = true;
-        uint32_t maxBoneWeights = 4;
-    };
+    class TextureLoader;
+    class MaterialProcessor;
+    class MeshProcessor;
+    class SkeletonProcessor;
+    class AnimationProcessor;
+    class ModelPostProcessor;
 
     class ModelLoader
     {
@@ -72,7 +55,7 @@ namespace DXEngine {
         std::string GetFileInfo(const std::string& filePath);
 
         // Cache management
-        void EnableCaching(bool enable) { m_CachingEnabled = enable; }
+        void EnableCaching(bool enable);
         void ClearCache();
         size_t GetCacheSize() const { return m_ModelCache.size(); }
 
@@ -90,10 +73,19 @@ namespace DXEngine {
             uint32_t bonesLoaded = 0;
             float loadTimeSeconds = 0.0f;
             size_t memoryUsed = 0;
+
+            void Reset()
+            {
+                meshesLoaded = materialsLoaded = texturesLoaded = 0;
+                animationsLoaded = bonesLoaded = 0;
+                loadTimeSeconds = 0.0f;
+                memoryUsed = 0;
+            }
+
+            std::string ToString() const;
         };
 
-        const LoadStatistics& GetLastLoadStats() const { return m_LastStats; }
-
+        const LoadStatistics& GetLastLoadStats() const { return m_Stats; }
     private:
         // Core processing methods
         std::shared_ptr<Model> ProcessScene(const aiScene* scene, const std::string& directory,
@@ -101,53 +93,7 @@ namespace DXEngine {
 
         void ProcessNode(std::shared_ptr<Model> model, const aiNode* node, const aiScene* scene,
             const std::string& directory, const ModelLoadOptions& options);
-
-        std::shared_ptr<MeshResource> ProcessMesh(const aiMesh* mesh, const aiScene* scene,
-            const ModelLoadOptions& options);
-
-        // Enhanced material processing methods
-        std::shared_ptr<Material> ProcessMaterial(const aiMaterial* material,
-            const std::string& directory, const ModelLoadOptions& options);
-        MaterialType DetermineMaterialType(const aiMaterial* material);
-        void LoadBasicMaterialProperties(std::shared_ptr<Material> mat, const aiMaterial* material);
-        void LoadAllTextures(std::shared_ptr<Material> mat, const aiMaterial* material, const std::string& directory, const ModelLoadOptions& options);
-        void LoadTextureOfType(std::shared_ptr<Material> mat,
-            const aiMaterial* material,
-            const std::string& directory,
-            aiTextureType type,
-            std::function<void(std::shared_ptr<Texture>)> setter);
-        bool IsItHeightMap(std::shared_ptr<Texture> texture);
-
-        // Fallback texture creation
-        std::shared_ptr<Texture> CreateFallbackTexture(aiTextureType type);
-        std::shared_ptr<Texture> CreateSolidColorTexture(uint8_t r, uint8_t g,
-            uint8_t b, uint8_t a);
-
-        // Material configuration
-        void ConfigureMaterialFromTextures(std::shared_ptr<Material> mat);
-        std::string GetTextureTypeName(aiTextureType type);
-
-        // Animation and skeleton processing
-        std::shared_ptr<Skeleton> ProcessSkeleton(const aiScene* scene, const aiMesh* mesh);
-        void ProcessNodeHierarchy(const aiNode* node, const aiScene* scene,
-            std::shared_ptr<Skeleton> skeleton, int parentIndex,
-            std::unordered_map<std::string, int>& boneMapping);
-
-        std::vector<std::shared_ptr<AnimationClip>> ProcessAnimations(
-            const aiScene* scene,
-            std::shared_ptr<Skeleton> skeleton);
-
-        std::shared_ptr<AnimationClip> ProcessAnimation(
-            const aiAnimation* anim,
-            std::shared_ptr<Skeleton> skeleton);
-
-
-        // Texture loading
-        std::shared_ptr<Texture> LoadTexture(const std::string& path, aiTextureType type);
-        std::shared_ptr<Texture> LoadEmbeddedTexture(const aiScene* scene, const std::string& path);
-
-        
-
+ 
         // Utility methods
         std::string GetTextureFilename(const aiMaterial* material, aiTextureType type,
             const std::string& directory);
@@ -156,64 +102,43 @@ namespace DXEngine {
         DirectX::XMFLOAT3 ConvertVector3(const aiVector3D& vector);
         DirectX::XMFLOAT4 ConvertColor(const aiColor4D& color);
         DirectX::XMFLOAT4 ConvertQuaternion(const aiQuaternion& quat);
-        DirectX::XMFLOAT3 FindOrInterpolatePosition(const aiNodeAnim* channel, float time);
-        DirectX::XMFLOAT4 FindOrInterpolateRotation(const aiNodeAnim* channel, float time);
-        DirectX::XMFLOAT3 FindOrInterpolateScale(const aiNodeAnim* channel, float time);
-
-
-        // Post-processing
-        void PostProcessModel(std::shared_ptr<Model> model, const ModelLoadOptions& options);
-        void OptimizeModel(std::shared_ptr<Model> model);
-        void ValidateModel(std::shared_ptr<Model> model);
 
         // Error handling
         void SetError(const std::string& error);
         void ClearError();
 
+        unsigned int BuildProcessingFlags(const ModelLoadOptions& options) const;
+
         // Caching
         std::string GenerateCacheKey(const std::string& filePath, const ModelLoadOptions& options);
 
     private:
-        // Cache for loaded models
-        std::unordered_map<std::string, std::weak_ptr<Model>> m_ModelCache;
-        std::unordered_map<std::string, std::weak_ptr<Texture>> m_TextureCache;
-        std::unordered_map<std::string, std::weak_ptr<Material>> m_MaterialCache;
+        // Processing components
+        std::shared_ptr<TextureLoader> m_TextureLoader;
+        std::shared_ptr<MaterialProcessor> m_MaterialProcessor;
+        std::shared_ptr<MeshProcessor> m_MeshProcessor;
+        std::shared_ptr<SkeletonProcessor> m_SkeletonProcessor;
+        std::shared_ptr<AnimationProcessor> m_AnimationProcessor;
+        std::shared_ptr<ModelPostProcessor> m_PostProcessor;
 
-        bool m_CachingEnabled = true;
-        std::string m_LastError;
-        LoadStatistics m_LastStats;
-
-        // Assimp importer instance
+        // Assimp
         class AssimpImporter* m_Importer;
 
         // Current loading context
-        std::string m_CurrentDirectory;
         const aiScene* m_CurrentScene = nullptr;
+        std::string m_CurrentDirectory;
         std::shared_ptr<Skeleton> m_CurrentSkeleton;
-        // Threading support
+
+        // Cache
+        std::unordered_map<std::string, std::weak_ptr<Model>> m_ModelCache;
+        bool m_CachingEnabled = true;
         mutable std::mutex m_CacheMutex;
+
+        // State
+        std::string m_LastError;
+        LoadStatistics m_Stats;
     };
 
     // Utility functions
-    namespace ModelLoaderUtils
-    {
-        // Format detection
-        bool IsSupportedFormat(const std::string& extension);
-        std::string GetFormatDescription(const std::string& extension);
-
-        // Path utilities
-        std::string GetFileExtension(const std::string& filePath);
-        std::string GetFileName(const std::string& filePath);
-        std::string GetDirectory(const std::string& filePath);
-        std::string NormalizePath(const std::string& path);
-
-        // Validation
-        bool FileExists(const std::string& filePath);
-        bool IsValidModelFile(const std::string& filePath);
-
-        // Options presets
-        ModelLoadOptions GetGameOptimizedOptions();
-        ModelLoadOptions GetHighQualityOptions();
-        ModelLoadOptions GetFastLoadOptions();
-    }
+    
 }
