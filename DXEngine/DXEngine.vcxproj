@@ -103,6 +103,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="D3D11Device.h" />
     <ClInclude Include="src\models\processors\ModelPostProcessor.h" />
     <ClInclude Include="src\models\processors\AnimationProcessor.h" />
     <ClInclude Include="src\models\processors\AssimpContext.h" />
@@ -128,6 +129,8 @@
     <ClInclude Include="src\Ground.h" />
     <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
+    <ClInclude Include="src\RHI\GraphicsDevice.h" />
+    <ClInclude Include="src\RHI\GraphicsTypes.h" />
     <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\camera\Camera.h" />
@@ -178,6 +181,7 @@
     <ClInclude Include="src\models\processors\TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="D3D11Device.cpp" />
     <ClCompile Include="src\models\processors\ModelPostProcessor.cpp" />
     <ClCompile Include="src\models\processors\AnimationProcessor.cpp" />
     <ClCompile Include="src\models\processors\AssimpContext.cpp" />

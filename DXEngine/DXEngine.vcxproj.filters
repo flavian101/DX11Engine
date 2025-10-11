@@ -229,6 +229,9 @@
     <ClInclude Include="src\models\processors\MeshProcessor.h" />
     <ClInclude Include="src\models\processors\ModelLoaderUtils.h" />
     <ClInclude Include="src\models\processors\ModelPostProcessor.h" />
+    <ClInclude Include="src\RHI\GraphicsTypes.h" />
+    <ClInclude Include="src\RHI\GraphicsDevice.h" />
+    <ClInclude Include="D3D11Device.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -363,5 +366,6 @@
     <ClCompile Include="src\models\processors\AnimationProcessor.cpp" />
     <ClCompile Include="src\models\processors\MeshProcessor.cpp" />
     <ClCompile Include="src\models\processors\ModelPostProcessor.cpp" />
+    <ClCompile Include="D3D11Device.cpp" />
   </ItemGroup>
 </Project>
