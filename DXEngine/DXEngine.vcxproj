@@ -103,7 +103,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="D3D11Device.h" />
+    <ClInclude Include="src\RHI\D3D11\D3D11Device.h" />
     <ClInclude Include="src\models\processors\ModelPostProcessor.h" />
     <ClInclude Include="src\models\processors\AnimationProcessor.h" />
     <ClInclude Include="src\models\processors\AssimpContext.h" />
@@ -151,7 +151,6 @@
     <ClInclude Include="src\shaders\ShaderManager.h" />
     <ClInclude Include="src\shaders\ShaderProgram.h" />
     <ClInclude Include="src\shaders\ShaderVariantManager.h" />
-    <ClInclude Include="src\utils\Buffer.h" />
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
     <ClInclude Include="src\utils\CubeMapTexture.h" />
     <ClInclude Include="src\utils\Light.h" />
@@ -181,7 +180,7 @@
     <ClInclude Include="src\models\processors\TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="D3D11Device.cpp" />
+    <ClCompile Include="src\RHI\D3D11\D3D11Device.cpp" />
     <ClCompile Include="src\models\processors\ModelPostProcessor.cpp" />
     <ClCompile Include="src\models\processors\AnimationProcessor.cpp" />
     <ClCompile Include="src\models\processors\AssimpContext.cpp" />
@@ -214,7 +213,6 @@
     <ClCompile Include="src\shaders\ShaderManager.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
     <ClCompile Include="src\shaders\ShaderVariantManager.cpp" />
-    <ClCompile Include="src\utils\Buffer.cpp" />
     <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
     <ClCompile Include="src\utils\Mesh\Mesh.cpp" />

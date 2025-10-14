@@ -102,8 +102,8 @@ namespace DXEngine::RHI
 		virtual void SetPipeLine(IPipeline* pipeline) = 0;
 		virtual void SetVertexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) = 0;
 		virtual void SetIndexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) = 0;
-		virtual void SetConstantBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage) = 0;
-		virtual void SetTexture(ITexture* texture, uint32_t slot = 0, ShaderStage stage) = 0;
+		virtual void SetConstantBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage = ShaderStage::Vertex) = 0;
+		virtual void SetTexture(ITexture* texture, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) = 0;
 
 
 		//Drawing Commands

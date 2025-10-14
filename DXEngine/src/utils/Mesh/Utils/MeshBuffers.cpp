@@ -9,7 +9,7 @@ namespace DXEngine
         Release();
     }
 
-    bool MeshBuffers::CreateFromResource(const MeshResource& resource)
+    bool MeshBuffers::CreateFromResource(RHI::IGraphicsDevice* device,const MeshResource& resource)
     {
         Release();
 
@@ -36,19 +36,14 @@ namespace DXEngine
             if (dataSize == 0)
                 continue;
 
-            auto vertexBuffer = std::make_unique<RawBuffer>();
-            BufferDesc bufferDesc;
-            bufferDesc.bufferType = BufferType::Vertex;
-            bufferDesc.usageType = UsageType::Immutable;  // Default for static mesh data
-            bufferDesc.byteWidth = static_cast<UINT>(dataSize);
+            RHI::BufferDesc bufferDesc;
+            bufferDesc.type = RHI::BufferType::Vertex;
+            bufferDesc.usage = RHI::BufferUsage::Static;  // Default for static mesh data
+            bufferDesc.size = static_cast<uint32_t>(dataSize);
             bufferDesc.initialData = data;
+            bufferDesc.debugName = resource.GetName() + "_VB_Slot" + std::to_string(attr.Slot);
 
-            if (!vertexBuffer->Initialize(bufferDesc))
-            {
-                OutputDebugStringA(("Failed to create vertex buffer for slot " + std::to_string(attr.Slot) + "\n").c_str());
-                return false;
-            }
-
+            auto  vertexBuffer = device->CreateBuffer(bufferDesc);
             VertexBufferData vbData;
             vbData.buffer = std::move(vertexBuffer);
             vbData.stride = stride;
@@ -62,43 +57,14 @@ namespace DXEngine
         // Create index buffer if available
         if (indexData && indexData->GetIndexCount() > 0)
         {
-            m_IndexBuffer = std::make_unique<IndexBufferData>();
-            m_IndexBuffer->indexType = indexData->GetIndexType();
-
-            if (indexData->GetIndexType() == IndexType::UInt16)
-            {
-                m_IndexBuffer->buffer16 = std::make_unique<IndexBuffer<uint16_t>>();
-                const uint16_t* indexPtr = static_cast<const uint16_t*>(indexData->GetData());
-
-                if (!m_IndexBuffer->buffer16->Initialize(indexPtr, static_cast<UINT>(indexData->GetIndexCount()), UsageType::Immutable))
-                {
-                    OutputDebugStringA("Failed to create uint16 index buffer\n");
-                    m_IndexBuffer.reset();
-                    return false;
-                }
-            }
-            else
-            {
-                m_IndexBuffer->buffer32 = std::make_unique<IndexBuffer<uint32_t>>();
-                const uint32_t* indexPtr = static_cast<const uint32_t*>(indexData->GetData());
-
-                if (!m_IndexBuffer->buffer32->Initialize(indexPtr, static_cast<UINT>(indexData->GetIndexCount()), UsageType::Immutable))
-                {
-                    OutputDebugStringA("Failed to create uint32 index buffer\n");
-                    m_IndexBuffer.reset();
-                    return false;
-                }
-            }
-
-            m_IndexCount = indexData->GetIndexCount();
-            m_IndexType = indexData->GetIndexType();
+            if (!CreateIndexBuffer(device, indexData, resource.GetName()));
         }
 
         m_Topology = static_cast<PrimitiveTopology>(resource.GetTopology());
         return true;
     }
 
-    bool MeshBuffers::CreateFromVertexData(const VertexData& vertexData, const IndexData* indexData)
+    bool MeshBuffers::CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData)
     {
         // Create a temporary resource and use the existing method
         MeshResource tempResource;
@@ -111,10 +77,10 @@ namespace DXEngine
             const_cast<MeshResource&>(tempResource).SetIndexData(std::move(indexDataCopy));
         }
 
-        return CreateFromResource(tempResource);
+        return CreateFromResource(device,tempResource);
     }
 
-    bool MeshBuffers::AddVertexBuffer(const VertexData& vertexData, uint32_t slot)
+    bool MeshBuffers::AddVertexBuffer(RHI::IGraphicsDevice* device, const VertexData& vertexData, uint32_t slot)
     {
         const void* data = vertexData.GetVertexData(slot);
         size_t dataSize = vertexData.GetDataSize(slot);
@@ -123,74 +89,47 @@ namespace DXEngine
         if (dataSize == 0)
             return false;
 
-        BufferDesc bufferDesc;
-        bufferDesc.bufferType = BufferType::Vertex;
-        bufferDesc.usageType = UsageType::Immutable;  // Default for static mesh data
-        bufferDesc.byteWidth = static_cast<UINT>(dataSize);
+        RHI::BufferDesc bufferDesc;
+        bufferDesc.type = RHI::BufferType::Vertex;
+        bufferDesc.usage = RHI::BufferUsage::Static;  // Default for static mesh data
+        bufferDesc.size = static_cast<uint32_t>(dataSize);
         bufferDesc.initialData = data;
+      //  bufferDesc.debugName = resource.GetName() + "_VB_Slot" + std::to_string(attr.Slot);
 
-        auto vertexBuffer = std::make_unique<RawBuffer>();
-
-        if (!vertexBuffer->Initialize(bufferDesc))
-        {
-            OutputDebugStringA(("Failed to create vertex buffer for slot " + std::to_string(slot) + "\n").c_str());
-            return false;
-        }
+        auto vertexBuffer = device->CreateBuffer(bufferDesc);
 
         VertexBufferData vbData;
         vbData.buffer = std::move(vertexBuffer);
         vbData.stride = stride;
         vbData.offset = 0;
-
         m_VertexBuffers[slot] = std::move(vbData);
         return true;
     }
 
-    void MeshBuffers::Bind(uint32_t startSlot) const
+    void MeshBuffers::Bind(RHI::ICommandBuffer* cmd,uint32_t startSlot) const
     {
-        BindVertexBuffers(startSlot);
+        BindVertexBuffers(cmd,startSlot);
         if (m_IndexBuffer)
-            BindIndexBuffer();
+            BindIndexBuffer(cmd);
     }
 
-    void MeshBuffers::BindVertexBuffers(uint32_t startSlot) const
+    void MeshBuffers::BindVertexBuffers(RHI::ICommandBuffer* cmd, uint32_t startSlot) const
     {
-        // Find the range of slots we need to bind
-        if (m_VertexBuffers.empty())
+        if (m_VertexBuffers.empty() || !cmd)
             return;
-
-        uint32_t maxSlot = 0;
-        for (const auto& [slot, data] : m_VertexBuffers)
-        {
-            maxSlot = std::max(maxSlot, slot);
-        }
-
-        // Create arrays for binding
-        std::vector<ID3D11Buffer*> buffers(maxSlot + 1, nullptr);
-        std::vector<UINT> strides(maxSlot + 1, 0);
-        std::vector<UINT> offsets(maxSlot + 1, 0);
 
         for (const auto& [slot, data] : m_VertexBuffers)
         {
-            buffers[slot] = data.buffer->GetBuffer();
-            strides[slot] = data.stride;
-            offsets[slot] = data.offset;
+            cmd->SetVertexBuffer(data.buffer.get(), startSlot + slot, data.offset);
         }
-
-        RenderCommand::GetContext()->IASetVertexBuffers(
-            startSlot,
-            static_cast<UINT>(buffers.size()),
-            buffers.data(),
-            strides.data(),
-            offsets.data()
-        );
     }
 
-    void MeshBuffers::BindIndexBuffer() const
+    void MeshBuffers::BindIndexBuffer(RHI::ICommandBuffer* cmd) const
     {
-        if (!m_IndexBuffer)
+        if (!m_IndexBuffer || !m_IndexBuffer->IsValid() || !cmd)
             return;
-        RenderCommand::GetContext()->IASetIndexBuffer(m_IndexBuffer->GetBuffer(), m_IndexBuffer->GetFormat(), 0);
+
+        cmd->SetIndexBuffer(m_IndexBuffer->buffer.get(), 0, 0);
     }
 
     void MeshBuffers::Release()
@@ -206,21 +145,60 @@ namespace DXEngine
         return !m_VertexBuffers.empty() && m_VertexCount > 0;
     }
 
+    bool MeshBuffers::CreateIndexBuffer(RHI::IGraphicsDevice* device, const IndexData* indexData, const std::string& debugName)
+    {
+        if (!device || !indexData)
+            return false;
+
+        const void* indexPtr = indexData->GetData();
+        if (!indexPtr)
+            return false;
+
+        m_IndexType = indexData->GetIndexType();
+        m_IndexCount = indexData->GetIndexCount();
+
+        // Calculate buffer size based on index type
+        size_t indexSize = (m_IndexType == IndexType::UInt16) ? sizeof(uint16_t) : sizeof(uint32_t);
+        size_t bufferSize = m_IndexCount * indexSize;
+
+        // Create single buffer
+        RHI::BufferDesc bufferDesc;
+        bufferDesc.type = RHI::BufferType::Index;
+        bufferDesc.usage = RHI::BufferUsage::Static;
+        bufferDesc.size = static_cast<uint32_t>(bufferSize);
+        bufferDesc.stride = static_cast<uint32_t>(indexSize);
+        bufferDesc.initialData = indexPtr;
+        bufferDesc.debugName = debugName + "_IB_" +
+            (m_IndexType == IndexType::UInt16 ? "16" : "32");
+
+        m_IndexBuffer = std::make_unique<IndexBufferInfo>();
+        m_IndexBuffer->buffer = device->CreateBuffer(bufferDesc);
+        m_IndexBuffer->indexType = m_IndexType;
+
+        if (!m_IndexBuffer->IsValid())
+        {
+            m_IndexBuffer.reset();
+            return false;
+        }
+
+        return true;
+    }
+
     size_t MeshBuffers::GetGPUMemoryUsage() const
     {
         size_t usage = 0;
 
         for (const auto& [slot, data] : m_VertexBuffers)
         {
-            usage += m_VertexCount * data.stride;
+            usage += data.buffer->GetMemoryUsage();
         }
 
-        if (m_IndexBuffer && m_IndexCount > 0)
+        if (m_IndexBuffer && m_IndexBuffer->IsValid())
         {
-            size_t indexSize = m_IndexType == IndexType::UInt32 ? sizeof(uint32_t) : sizeof(uint16_t);
-            usage += m_IndexCount * indexSize;
+            usage += m_IndexBuffer->buffer->GetMemoryUsage();
         }
 
         return usage;
     }
+
 }

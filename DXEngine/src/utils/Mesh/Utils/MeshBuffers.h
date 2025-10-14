@@ -1,5 +1,5 @@
 #pragma once
-#include "utils/Buffer.h"
+#include "RHI/GraphicsDevice.h"
 #include "utils/Mesh/Utils/IndexData.h"
 #include "utils/Mesh/Resource/MeshResource.h"
 
@@ -20,16 +20,15 @@ namespace DXEngine
         MeshBuffers& operator=(MeshBuffers&&) = default;
 
         // Buffer creation from mesh resource
-        bool CreateFromResource(const MeshResource& resource);
-        bool CreateFromVertexData(const VertexData& vertexData, const IndexData* indexData = nullptr);
+        bool CreateFromResource(RHI::IGraphicsDevice* device,const MeshResource& resource);
+        bool CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData = nullptr);
 
         // Multiple vertex buffer support for complex meshes
-        bool AddVertexBuffer(const VertexData& vertexData, uint32_t slot);
+        bool AddVertexBuffer(RHI::IGraphicsDevice* device, const VertexData& vertexData, uint32_t slot);
 
         // GPU resource access
-        void Bind(uint32_t startSlot = 0) const;
-        void BindVertexBuffers(uint32_t startSlot = 0) const;
-        void BindIndexBuffer() const;
+        void Bind(RHI::ICommandBuffer* cmd,uint32_t startSlot = 0) const;
+
 
         // Resource management
         void Release();
@@ -43,43 +42,32 @@ namespace DXEngine
 
         // Memory usage
         size_t GetGPUMemoryUsage() const;
-
+    private:
+        //create index Buffer
+        bool CreateIndexBuffer(RHI::IGraphicsDevice* device, const IndexData* indexData, const std::string& debugName);
+        //bind index and vertex buffers
+        void BindVertexBuffers(RHI::ICommandBuffer* cmd, uint32_t startSlot = 0) const;
+        void BindIndexBuffer(RHI::ICommandBuffer* cmd) const;
     private:
         struct VertexBufferData
         {
-            std::unique_ptr<RawBuffer> buffer;
+            std::shared_ptr<RHI::IBuffer> buffer;
             uint32_t stride;
             uint32_t offset;
         };
-        struct IndexBufferData
+        struct IndexBufferInfo
         {
-            std::unique_ptr<IndexBuffer<uint16_t>> buffer16;
-            std::unique_ptr<IndexBuffer<uint32_t>> buffer32;
+            std::shared_ptr<RHI::IBuffer> buffer;  // Single buffer
             IndexType indexType;
-
-            ID3D11Buffer* GetBuffer() const
-            {
-                return indexType == IndexType::UInt16 ?
-                    (buffer16 ? buffer16->GetBuffer() : nullptr) :
-                    (buffer32 ? buffer32->GetBuffer() : nullptr);
-            }
-
-            DXGI_FORMAT GetFormat() const
-            {
-                return indexType == IndexType::UInt16 ?
-                    DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-            }
 
             bool IsValid() const
             {
-                return indexType == IndexType::UInt16 ?
-                    (buffer16 && buffer16->IsValid()) :
-                    (buffer32 && buffer32->IsValid());
+                return buffer && buffer->IsValid();
             }
         };
 
         std::unordered_map<uint32_t, VertexBufferData> m_VertexBuffers;
-        std::unique_ptr<IndexBufferData> m_IndexBuffer;
+        std::unique_ptr<IndexBufferInfo> m_IndexBuffer;
 
         size_t m_VertexCount = 0;
         size_t m_IndexCount = 0;

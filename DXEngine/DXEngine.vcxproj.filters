@@ -140,9 +140,6 @@
     <ClInclude Include="src\shaders\ShaderVariantManager.h">
       <Filter>shaders</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Buffer.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\ConstantBufferTypes.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -231,7 +228,7 @@
     <ClInclude Include="src\models\processors\ModelPostProcessor.h" />
     <ClInclude Include="src\RHI\GraphicsTypes.h" />
     <ClInclude Include="src\RHI\GraphicsDevice.h" />
-    <ClInclude Include="D3D11Device.h" />
+    <ClInclude Include="src\RHI\D3D11\D3D11Device.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -289,9 +286,6 @@
     </ClCompile>
     <ClCompile Include="src\shaders\ShaderVariantManager.cpp">
       <Filter>shaders</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\Buffer.cpp">
-      <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\CubeMapTexture.cpp">
       <Filter>utils</Filter>
@@ -366,6 +360,6 @@
     <ClCompile Include="src\models\processors\AnimationProcessor.cpp" />
     <ClCompile Include="src\models\processors\MeshProcessor.cpp" />
     <ClCompile Include="src\models\processors\ModelPostProcessor.cpp" />
-    <ClCompile Include="D3D11Device.cpp" />
+    <ClCompile Include="src\RHI\D3D11\D3D11Device.cpp" />
   </ItemGroup>
 </Project>
