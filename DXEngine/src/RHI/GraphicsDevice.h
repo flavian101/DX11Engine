@@ -63,7 +63,7 @@ namespace DXEngine::RHI
 		virtual bool GenerateMips() = 0;
 		
 		//Binding
-		virtual void GetNativeHandle()const = 0; //platform-specific handle
+		virtual void* GetNativeHandle()const = 0; //platform-specific handle
 	};
 
 	class IShader : public IGraphicsResource
