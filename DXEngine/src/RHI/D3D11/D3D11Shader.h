@@ -9,6 +9,7 @@ namespace DXEngine::RHI
 
 	class D3D11Shader: public IShader
 	{
+    public:
 		D3D11Shader(ID3D11Device* device, const ShaderDesc& desc);
 		~D3D11Shader() override = default;
 

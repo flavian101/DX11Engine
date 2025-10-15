@@ -232,6 +232,8 @@
     <ClInclude Include="src\RHI\D3D11\D3D11Texture.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Buffer.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Shader.h" />
+    <ClInclude Include="src\RHI\D3D11\D3D11CommandBuffer.h" />
+    <ClInclude Include="src\RHI\D3D11\D3D11Pipeline.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -367,5 +369,7 @@
     <ClCompile Include="src\RHI\D3D11\D3D11Texture.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Buffer.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Shader.cpp" />
+    <ClCompile Include="src\RHI\D3D11\D3D11CommandBuffer.cpp" />
+    <ClCompile Include="src\RHI\D3D11\D3D11Pipeline.cpp" />
   </ItemGroup>
 </Project>

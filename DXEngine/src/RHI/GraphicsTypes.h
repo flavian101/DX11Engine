@@ -127,7 +127,7 @@ namespace DXEngine::RHI
 		class IShader* computeShader = nullptr;
 		class IShader* geometryShader = nullptr;
 
-		//Input Layout(vertex formart)
+		//Input Layout(vertex format)
 		struct VertexInputElement {
 			std::string semantic;
 			uint32_t semanticIndex = 0;

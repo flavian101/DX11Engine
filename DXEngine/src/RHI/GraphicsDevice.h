@@ -99,7 +99,7 @@ namespace DXEngine::RHI
 		virtual bool IsRecording()const = 0;
 
 		//Binding Operations
-		virtual void SetPipeLine(IPipeline* pipeline) = 0;
+		virtual void SetPipeline(IPipeline* pipeline) = 0;
 		virtual void SetVertexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) = 0;
 		virtual void SetIndexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) = 0;
 		virtual void SetConstantBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage = ShaderStage::Vertex) = 0;
@@ -110,9 +110,9 @@ namespace DXEngine::RHI
 		virtual void Draw(uint32_t vertexCount, uint32_t startVertex = 0) = 0;
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseIndex = 0) = 0;
 		virtual void DrawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
-		virtual void DrawIndexedInstanced(uint32_t indexCount, 
+		virtual void DrawIndexedInstanced(uint32_t indexCount,
 			uint32_t instanceCount, uint32_t startIndex,
-			uint32_t baseVertex = 0, uint32_t startInstance = 0) = 0;
+			int32_t baseVertex = 0, uint32_t startInstance = 0) = 0;
 
 		//render Targets
 		virtual void SetRenderTarget(ITexture* colorTarget, ITexture* depthTarget = nullptr);
