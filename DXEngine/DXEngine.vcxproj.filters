@@ -231,6 +231,7 @@
     <ClInclude Include="src\RHI\D3D11\D3D11Device.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Texture.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Buffer.h" />
+    <ClInclude Include="src\RHI\D3D11\D3D11Shader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -365,5 +366,6 @@
     <ClCompile Include="src\RHI\D3D11\D3D11Device.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Texture.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Buffer.cpp" />
+    <ClCompile Include="src\RHI\D3D11\D3D11Shader.cpp" />
   </ItemGroup>
 </Project>

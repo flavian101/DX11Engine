@@ -72,7 +72,7 @@ namespace DXEngine::RHI
 		virtual ~IShader() = default;
 
 		virtual ShaderStage GetStage() const = 0;
-		virtual const void* GetByteCode() const = 0;
+		virtual const void* GetBytecode() const = 0;
 		virtual size_t GetBytecodeSize() const = 0;
 		virtual bool IsCompiled()const = 0;
 	};
