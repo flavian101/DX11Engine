@@ -6,22 +6,11 @@
 #include <memory>
 #include <string>
 #include "utils/Mesh/Utils/IndexData.h"
+#include "RHI/GraphicsTypes.h"
 
 namespace DXEngine
 {
 
-	enum class PrimitiveTopology
-	{
-		TriangleList,
-		TriangleStrip,
-		LineList,
-		LineStrip,
-		PointList,
-		TriangleListAdj,
-		TriangleStripAdj,
-		LineListAdj,
-		LineStripAdj
-	};
 	struct BoundingBox
 	{
 		DirectX::XMFLOAT3 min;
@@ -96,8 +85,8 @@ namespace DXEngine
 		IndexData* GetIndexData() { return m_IndexData.get(); }
 
 		// Topology
-		void SetTopology(PrimitiveTopology topology) { m_Topology = topology; }
-		PrimitiveTopology GetTopology() const { return m_Topology; }
+		void SetTopology(RHI::PrimitiveTopology topology) { m_Topology = topology; }
+		RHI::PrimitiveTopology GetTopology() const { return m_Topology; }
 
 		// Submesh management
 		void AddSubMesh(const SubMesh& submesh);
@@ -156,7 +145,7 @@ namespace DXEngine
 		std::string m_Name;
 		std::unique_ptr<VertexData> m_VertexData;
 		std::unique_ptr<IndexData> m_IndexData;
-		PrimitiveTopology m_Topology = PrimitiveTopology::TriangleList;
+		RHI::PrimitiveTopology m_Topology = RHI::PrimitiveTopology::TriangleList;
 
 		std::vector<SubMesh> m_SubMeshes;
 
