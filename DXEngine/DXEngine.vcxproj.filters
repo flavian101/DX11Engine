@@ -234,6 +234,7 @@
     <ClInclude Include="src\RHI\D3D11\D3D11Shader.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11CommandBuffer.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Pipeline.h" />
+    <ClInclude Include="src\ResourceManager\ResourceManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -371,5 +372,6 @@
     <ClCompile Include="src\RHI\D3D11\D3D11Shader.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11CommandBuffer.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Pipeline.cpp" />
+    <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
   </ItemGroup>
 </Project>
