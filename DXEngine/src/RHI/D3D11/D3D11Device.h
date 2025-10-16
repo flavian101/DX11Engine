@@ -2,65 +2,61 @@
 #include "RHI/GraphicsDevice.h"
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <memory>
+#include "D3D11Texture.h"
 
 namespace DXEngine::RHI
 {
 	using Microsoft::WRL::ComPtr;
 
-
-
-	class D3D11Texture : public ITexture
+	class D3D11Device : public IGraphicsDevice
 	{
-		D3D11Texture(ID3D11Device* device, const TextureDesc& desc);
-		~D3D11Texture() override = default;
+	public:
+		D3D11Device();
+		~D3D11Device() override;
 
-		//IGraphicsResource
-		const std::string& GetDebugName() const override { return m_DebugName; }
-		void SetDebugName(const std::string& name) override;
-		uint64_t GetGPUHandle() const override {
-			return reinterpret_cast<uint64_t>(m_SRV.Get());
-		}
-		size_t GetMemoryUsage() const override;
-		bool IsValid() const override;
+		//IGraphicsDevice
+		bool Initialize(void* windowHandle, uint32_t width, uint32_t height) override;
+		void Shutdown() override;
 
-		//ITexture
-		TextureType GetType() const override { return m_Desc.type; }
-		TextureFormat GetFormat() const override { return m_Desc.format; }
-		uint32_t GetWidth() const override { return m_Desc.width; }
-		uint32_t GetHeight() const override { return m_Desc.height; }
-		uint32_t GetDepth() const override { return m_Desc.depth; }
-		uint32_t GetMipLevels() const override { return m_Desc.mipLevels; }
+		std::shared_ptr<IBuffer> CreateBuffer(const BufferDesc& desc) override;
+		std::shared_ptr<ITexture> CreateTexture(const TextureDesc& desc) override;
+		std::shared_ptr<IShader> CreateShader(const ShaderDesc& desc) override;
+		std::shared_ptr<IPipeline> CreatePipeline(const PipelineDesc& desc) override;
 
-		bool Update(const void* data, uint32_t mipLevel, uint32_t arraySlice) override;
-		bool GenerateMips() override;
-		void* GetNativeHandle() const override { return m_SRV.Get(); }
+		std::shared_ptr<ICommandBuffer> CreateCommandBuffer() override;
+		void Submit(ICommandBuffer* cmd) override;
+		void Present() override;
+		void WaitIdle() override;
 
-		// D3D11-specific
-		ID3D11Texture2D* GetD3D11Texture2D() const { return m_Texture2D.Get(); }
-		ID3D11Texture3D* GetD3D11Texture3D() const { return m_Texture3D.Get(); }
-		ID3D11ShaderResourceView* GetSRV() const { return m_SRV.Get(); }
-		ID3D11RenderTargetView* GetRTV() const { return m_RTV.Get(); }
-		ID3D11DepthStencilView* GetDSV() const { return m_DSV.Get(); }
+		GraphicsAPI GetAPI()const override { return GraphicsAPI::DirectX11; }
+		const DeviceCapabilities& GetCapabilities()const override { return m_Capabilities; }
 
-	private:
-		bool CreateTexture2D(const TextureDesc& desc);
-		bool CreateTexture3D(const TextureDesc& desc);
-		bool CreateViews(const TextureDesc& desc, DXGI_FORMAT format);
-		uint32_t CalculateMipSize(uint32_t baseDimension, uint32_t mipLevel) const;
+		void Resize(uint32_t width, uint32_t height) override;
+		ITexture* GetBackBuffer() override { return m_BackBuffer.get(); }
+		uint32_t GetBackBufferWidth() const override { return m_Width; }
+		uint32_t GetBackBufferHeight() const override { return m_Height; }
+
+		// Internal D3D11 access (for advanced users)
+		ID3D11Device* GetD3D11Device() const { return m_Device.Get(); }
+		ID3D11DeviceContext* GetD3D11Context() const { return m_Context.Get(); }
 
 	private:
-		ComPtr<ID3D11Texture2D> m_Texture2D;
-		ComPtr<ID3D11Texture3D> m_Texture3D;
-		ComPtr<ID3D11ShaderResourceView> m_SRV;
-		ComPtr<ID3D11RenderTargetView> m_RTV;
-		ComPtr<ID3D11DepthStencilView> m_DSV;
+		bool CreateDeviceAndSwapChain(void* windowHandle, uint32_t width, uint32_t height);
+		bool CreateBackBuffer();
+		void QueryCapabilities();
+	private:
 		ComPtr<ID3D11Device> m_Device;
 		ComPtr<ID3D11DeviceContext> m_Context;
-		TextureDesc m_Desc;
-		std::string m_DebugName;
-	};
-	class D3D11Device
-	{
+		ComPtr<IDXGISwapChain> m_SwapChain;
+
+		std::shared_ptr<D3D11Texture> m_BackBuffer;
+		std::shared_ptr<D3D11Texture> m_DepthStencil;
+
+		DeviceCapabilities m_Capabilities;
+		uint32_t m_Width = 0;
+		uint32_t m_Height = 0;
+		HWND m_WindowHandle = nullptr;
 	};
 }
 
