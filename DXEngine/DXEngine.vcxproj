@@ -103,6 +103,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="MaterialSystem.h" />
     <ClInclude Include="src\ResourceManager\ResourceManager.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Pipeline.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11CommandBuffer.h" />
@@ -151,8 +152,8 @@
     <ClInclude Include="src\picking\InterfacePickable.h" />
     <ClInclude Include="src\picking\PickingManager.h" />
     <ClInclude Include="src\picking\Ray.h" />
-    <ClInclude Include="src\renderer\Renderer.h" />
-    <ClInclude Include="src\renderer\RendererCommand.h" />
+    <ClInclude Include="src\renderer\legacy\Renderer.h" />
+    <ClInclude Include="src\renderer\legacy\RendererCommand.h" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\shaders\ShaderManager.h" />
     <ClInclude Include="src\shaders\ShaderProgram.h" />
@@ -186,6 +187,7 @@
     <ClInclude Include="src\models\processors\TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MaterialSystem.cpp" />
     <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Pipeline.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11CommandBuffer.cpp" />
@@ -220,8 +222,8 @@
     <ClCompile Include="src\models\ModelLoader.cpp" />
     <ClCompile Include="src\picking\PickingManager.cpp" />
     <ClCompile Include="src\picking\Ray.cpp" />
-    <ClCompile Include="src\renderer\Renderer.cpp" />
-    <ClCompile Include="src\renderer\RendererCommand.cpp" />
+    <ClCompile Include="src\renderer\legacy\Renderer.cpp" />
+    <ClCompile Include="src\renderer\legacy\RendererCommand.cpp" />
     <ClCompile Include="src\shaders\ShaderManager.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
     <ClCompile Include="src\shaders\ShaderVariantManager.cpp" />

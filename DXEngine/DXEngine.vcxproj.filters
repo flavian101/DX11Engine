@@ -124,10 +124,10 @@
     <ClInclude Include="src\picking\Ray.h">
       <Filter>picking</Filter>
     </ClInclude>
-    <ClInclude Include="src\renderer\Renderer.h">
+    <ClInclude Include="src\renderer\legacy\Renderer.h">
       <Filter>renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\renderer\RendererCommand.h">
+    <ClInclude Include="src\renderer\legacy\RendererCommand.h">
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\resource.h" />
@@ -235,6 +235,7 @@
     <ClInclude Include="src\RHI\D3D11\D3D11CommandBuffer.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Pipeline.h" />
     <ClInclude Include="src\ResourceManager\ResourceManager.h" />
+    <ClInclude Include="MaterialSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -278,10 +279,10 @@
     <ClCompile Include="src\picking\Ray.cpp">
       <Filter>picking</Filter>
     </ClCompile>
-    <ClCompile Include="src\renderer\Renderer.cpp">
+    <ClCompile Include="src\renderer\legacy\Renderer.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\renderer\RendererCommand.cpp">
+    <ClCompile Include="src\renderer\legacy\RendererCommand.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\shaders\ShaderManager.cpp">
@@ -373,5 +374,6 @@
     <ClCompile Include="src\RHI\D3D11\D3D11CommandBuffer.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Pipeline.cpp" />
     <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
+    <ClCompile Include="MaterialSystem.cpp" />
   </ItemGroup>
 </Project>

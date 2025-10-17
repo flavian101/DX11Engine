@@ -115,14 +115,6 @@ static const float TWO_PI = 6.28318530718;
 static const float MIN_ROUGHNESS = 0.04;
 static const float EPSILON = 0.0001;
 
-// === MATERIAL FLAGS ===
-#define HAS_DIFFUSE_TEXTURE_FLAG   0x01
-#define HAS_NORMAL_MAP_FLAG        0x02
-#define HAS_SPECULAR_MAP_FLAG      0x04
-#define HAS_EMISSIVE_MAP_FLAG      0x08
-#define CASTS_SHADOWS_FLAG         0x40
-#define RECEIVES_SHADOWS_FLAG      0x80
-
 cbuffer TransformBuffer : register(b0)
 {
     float4x4 WVP;
@@ -163,9 +155,6 @@ cbuffer MaterialBufferData : register(b2)
     float2 detailScale;      //Detail texture scale
     float2 detailOffset;     //Detail texture offset
     
-    // ========== FLAGS ==========
-    uint flags;
-    float3 padding;
 };
 
 // Enhanced Scene Lighting buffer
@@ -718,7 +707,7 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     
     float shadow = 1.0;
 #if ENABLE_SHADOWS
-    if (light.shadowMapIndex >= 0 && (flags & RECEIVES_SHADOWS_FLAG))
+    if (light.shadowMapIndex >= 0)
     {
         // Transform world position to shadow space
         float4 shadowPos = mul(worldPos, light.shadowMatrices[0]);

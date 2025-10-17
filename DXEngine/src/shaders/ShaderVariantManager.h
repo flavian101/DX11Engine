@@ -16,45 +16,38 @@ namespace DXEngine
 {
 	class Material;
 
-    enum class ShaderFeature : uint32_t {
-        // Core texture features
-        HasDiffuseTexture = 0,
-        HasNormalMap = 1,
-        HasSpecularMap = 2,
-        HasEmissiveMap = 3,
-        HasEnvironmentMap = 4,
 
-        // PBR texture features
-        HasRoughnessMap = 5,
-        HasMetallicMap = 6,
-        HasAOMap = 7,
+    namespace ShaderFeature {
+        constexpr uint32_t None = 0;
+        constexpr uint32_t HasNormals = 1 << 0;
+        constexpr uint32_t HasTangents = 1 << 1;
+        constexpr uint32_t HasTexCoords = 1 << 2;
+        constexpr uint32_t HasSecondTexCoords = 1 << 3;
+        constexpr uint32_t HasVertexColors = 1 << 4;
+        constexpr uint32_t HasSkinning = 1 << 5;
+        constexpr uint32_t DiffuseMap = 1 << 6;
+        constexpr uint32_t NormalMap = 1 << 7;
+        constexpr uint32_t SpecularMap = 1 << 8;
+        constexpr uint32_t EmissiveMap = 1 << 9;
+        constexpr uint32_t EnvironmentMap = 1 << 10;
+        constexpr uint32_t RoughnessMap = 1 << 11;
+        constexpr uint32_t MetallicMap = 1 << 12;
+        constexpr uint32_t AOMap = 1 << 13;
+        constexpr uint32_t HeightMap = 1 << 14;
+        constexpr uint32_t OpacityMap = 1 << 15;
+        constexpr uint32_t DetailDiffuseMap = 1 << 16;
+        constexpr uint32_t DetailNormalMap = 1 << 17;
+        constexpr uint32_t UseDetailsTextures = 1 << 18;
 
-        // Vertex attribute features
-        HasTexcoords = 8,
-        HasNormals = 9,
-        HasTangent = 10,
-        HasVertexColor = 11,
-        HasBlendWeights = 12,
-        HasBlendIndices = 13,
-        HasSecondUV = 14,
+        constexpr uint32_t Fog = 1 << 19;
+        constexpr uint32_t ParallaxMapping = 1 << 20;
+        constexpr uint32_t Instancing = 1 << 21;
+        constexpr uint32_t AlphaTest = 1 << 22;
+        constexpr uint32_t Lighting = 1 << 23;
+        constexpr uint32_t Shadows = 1 << 24;
+    }
 
-        // Rendering features
-        EnableShadows = 15,
-        EnableFog = 16,
-        EnableInstancing = 17,
-        EnableAlphaTest = 18,
-        EnableEmissive = 19,
-
-        // Advanced features
-        EnableParallaxMapping = 20,
-        HasHeightMap = 21,
-        HasOpacityMap = 22,
-        HasDetailDiffuseMap = 23,
-        HasDetailNormalMap = 24,
-        UseDetailTextures = 25,
-
-        MaxFeatures = 32
-    };
+ 
 
     using ShaderFeatureFlags = std::bitset<32>;
 

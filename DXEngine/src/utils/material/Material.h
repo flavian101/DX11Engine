@@ -4,12 +4,12 @@
 #include "utils/Sampler.h"
 #include <string>
 #include <memory>
+#include "RHI/GraphicsDevice.h"
 
 namespace DXEngine {
 
 	class ShaderProgram;
-	class Texture;
-	class CubeMapTexture;
+
 
 	class Material
 	{
@@ -17,22 +17,43 @@ namespace DXEngine {
 		Material(const std::string& name = "DefaultMaterial", MaterialType type = MaterialType::Lit);
 		~Material();
 
-		void Bind();
-		bool IsValid() const;
-
 		//material type and Properties 
 		MaterialType GetType()const { return m_Type; }
-		void SetType(MaterialType type);
 
 		const std::string& GetName()const { return m_Name; }
 		void SetName(const std::string& name) { m_Name = name; }
-
-		RenderQueue GetRenderQueue() const { return m_RenderQueue; }
-		void SetRenderQueue(RenderQueue queue) { m_RenderQueue = queue; }
 		
 		//Material Properties
 		MaterialProperties& GetProperties() { return m_Properties; }
 		const MaterialProperties& GetProperties() const { return m_Properties; }
+
+		//setTextures
+		void SetTexture(TextureSlot slot, RHI::ITexture* texture);
+		RHI::ITexture* GetTexture(TextureSlot slot);
+		const std::vector<RHI::ITexture*>& GetTextures() const { return m_Textures; }
+
+		// ========== Constant Buffer ==========
+		RHI::IBuffer* GetConstantBuffer() { return m_ConstantBuffer.get(); }
+		void UpdateConstantBuffer(RHI::IGraphicsDevice* device);
+
+		// ========== Features ==========
+		uint32_t GetFeatureFlags() const { return m_FeatureFlags; }
+		void EnableFeature(uint32_t feature) { m_FeatureFlags |= feature; }
+		void DisableFeature(uint32_t feature) { m_FeatureFlags &= ~feature; }
+		bool HasFeature(uint32_t feature) const { return (m_FeatureFlags & feature) != 0; }
+
+		// ========== Render State ==========
+		void SetBlendMode(RHI::BlendMode mode) { m_BlendMode = mode; }
+		RHI::BlendMode GetBlendMode() const { return m_BlendMode; }
+
+		void SetCullMode(RHI::CullMode mode) { m_CullMode = mode; }
+		RHI::CullMode GetCullMode() const { return m_CullMode; }
+
+		void SetDepthTest(RHI::DepthTestMode mode) { m_DepthTest = mode; }
+		RHI::DepthTestMode GetDepthTest() const { return m_DepthTest; }
+
+		// ========== Shader Selection ==========
+		std::string GetShaderName() const;  // Determined by type
 
 		void SetDiffuseColor(const DirectX::XMFLOAT4& color);
 		void SetSpecularColor(const DirectX::XMFLOAT4& color);
@@ -48,77 +69,34 @@ namespace DXEngine {
 		void SetTextureScale(const DirectX::XMFLOAT2& scale);
 		void SetTextureOffset(const DirectX::XMFLOAT2& offset);
 
-		void SetDiffuseTexture(std::shared_ptr<Texture> texture);
-		void SetNormalTexture(std::shared_ptr<Texture> texture);
-		void SetSpecularTexture(std::shared_ptr<Texture> texture);
-		void SetEmissiveTexture(std::shared_ptr<Texture> texture);
-		void SetRoughnessTexture(std::shared_ptr<Texture> texture);
-		void SetMetallicTexture(std::shared_ptr<Texture> texture);
-		void SetAOTexture(std::shared_ptr<Texture> texture);
-		void SetHeightTexture(std::shared_ptr<Texture> texture);
-		void SetOpacityTexture(std::shared_ptr<Texture> texture);
-		void SetDetailDiffuseTexture(std::shared_ptr<Texture> texture);
-		void SetDetailNormalTexture(std::shared_ptr<Texture> texture);
-		void SetEnvironmentTexture(std::shared_ptr<CubeMapTexture> texture);
-
-		//texture checking
-		bool HasDiffuseTexture()const { return m_Resources.diffuseTexture != nullptr; }
-		bool HasNormalTexture()const { return m_Resources.normalTexture != nullptr; }
-		bool HasEmissiveTexture()const { return m_Resources.emissiveTexture != nullptr; }
-		bool HasRoughnessTexture() const { return m_Resources.roughnessTexture != nullptr; }
-		bool HasMetallicTexture() const { return m_Resources.metallicTexture != nullptr; }
-		bool HasAOTexture() const { return m_Resources.aoTexture != nullptr; }
-		bool HasHeightTexture() const { return m_Resources.heightTexture != nullptr; }
-		bool HasOpacityTexture() const { return m_Resources.opacityTexture != nullptr; }
-
-		std::shared_ptr<Texture> GetRoughnessTexture() const { return m_Resources.roughnessTexture; }
-		std::shared_ptr<Texture> GetMetallicTexture() const { return m_Resources.metallicTexture; }
-		std::shared_ptr<Texture> GetAOTexture() const { return m_Resources.aoTexture; }
-		std::shared_ptr<Texture> GetHeightTexture() const { return m_Resources.heightTexture; }
-		std::shared_ptr<Texture> GetOpacityTexture() const { return m_Resources.opacityTexture; }
-
 		float GetMetallic() const { return m_Properties.metallic; }
 		float GetRoughness() const { return m_Properties.roughness; }
 		float GetNormalScale() const { return m_Properties.normalScale; }
 		float GetHeightScale() const { return m_Properties.heightScale; }
 
-
-
 		// Texture configuration
 		void SetDetailTextureScale(const DirectX::XMFLOAT2& scale);
 		void SetDetailTextureOffset(const DirectX::XMFLOAT2& offset);
 
-
-		// Utility methods
-		size_t GetTextureCount() const;
-		std::vector<std::shared_ptr<Texture>> GetAllTextures() const;
-		bool IsTextureSlotUsed(TextureSlot slot) const;
-		bool ValidateTextures() const;
-		std::string GetTextureInfo() const;
-
-
-		void SetFlag(MaterialFlags flag, bool enabled);
-		bool HasFlag(MaterialFlags flag) const;
-
-		std::string GetDebugInfo() const;
-
-	private:
-		void UpdateTextureFlags();
-		void InitializeConstantBuffer();
-		void UpdateConstantBuffer();
-
-
 	private:
 		std::string m_Name;
+		uint32_t m_ID;
 		MaterialType m_Type;
 		RenderQueue m_RenderQueue;
 		MaterialProperties m_Properties;
-		MaterialResources m_Resources;
+		std::vector<RHI::ITexture*> m_Textures;
+		std::shared_ptr<RHI::IBuffer> m_ConstantBuffer;
 
-		ConstantBuffer<MaterialProperties> m_ConstantBuffer;
-		
-		bool m_ConstantBufferInitialized = false;
-		bool m_PropertiesDirty = true;
+		uint32_t m_FeatureFlags = 0;
+		bool m_Dirty = true;
+
+
+		// Render state
+		RHI::BlendMode m_BlendMode = RHI::BlendMode::Opaque;
+		RHI::CullMode m_CullMode = RHI::CullMode::Back;
+		RHI::DepthTestMode m_DepthTest = RHI::DepthTestMode::Less;
+
+		static uint32_t s_NextID;
 	};
 
 

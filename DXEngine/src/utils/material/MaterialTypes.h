@@ -9,41 +9,10 @@ namespace DXEngine
 		Unlit,
 		Lit,
 		PBR,           //Physically Based Rendering
-		Skybox,
 		Transparent,
-		Emissive,
 		UI,
-		Terrain,       //For terrain materials
-		Vegetation,    //For plants/grass with wind
-		Water,         //For water surfaces
-		Glass          //For glass materials
-	};
-
-	//material config flags 
-	enum MaterialFlags : uint32_t
-	{
-		NoneMaterialFlag = 0,
-		HasDiffuseTexture = 1 << 0,
-		HasNormalMap = 1 << 1,
-		HasSpecularMap = 1 << 2,
-		HasEmissiveMap = 1 << 3,
-		HasRoughnessMap = 1 << 4,      //
-		HasMetallicMap = 1 << 5,       //
-		HasAOMap = 1 << 6,             // Ambient Occlusion
-		HasHeightMap = 1 << 7,         // Height/Displacement
-		HasDetailMap = 1 << 8,         // Detail textures
-		HasOpacityMap = 1 << 9,        // Alpha channel
-		HasSubsurfaceMap = 1 << 10,    // Subsurface scattering
-		HasAnisotropyMap = 1 << 11,    // Anisotropic reflections
-		HasClearcoatMap = 1 << 12,     // Clear coat laye
-		HasEnvironmentMap = 1<<13,
-		IsTransparent = 1 << 14,
-		IsTwoSided = 1 << 15,
-		CastsShadows = 1 << 16,
-		ReceivesShadows = 1 << 17,
-		UseParallaxMapping = 1 << 18,  // Parallax occlusion
-		UseAlphaTest = 1 << 19,        // Alpha testing
-		UseDetailTextures = 1 << 20    // Detail texture blending
+		Skybox,
+		Emissive,
 	};
 
 	// Texture Binding slots 
