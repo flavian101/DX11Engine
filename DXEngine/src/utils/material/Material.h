@@ -10,7 +10,6 @@ namespace DXEngine {
 
 	class ShaderProgram;
 
-
 	class Material
 	{
 	public:
