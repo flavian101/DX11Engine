@@ -68,22 +68,23 @@ namespace DXEngine::Rendering
 	{
 		m_Materials.erase(name);
 	}
-	std::shared_ptr<ShaderProgram> MaterialSystem::GetShaderForMaterial(Material* material)
+	std::shared_ptr<ShaderProgram> MaterialSystem::GetShaderForMaterial(Material* material, const VertexLayout& layout)
 	{
 		if (!material) return nullptr;
 
 		// Create shader variant key based on material properties
-		ShaderVariantKey key = CreateVariantKey(material);
+		ShaderVariantKey key = CreateVariantKey(material, layout);
 
 		// Get shader variant from cache
 		return m_ShaderCache->GetShaderVariant(key);
 	}
 
-	ShaderVariantKey MaterialSystem::CreateVariantKey(Material* material)
+	ShaderVariantKey MaterialSystem::CreateVariantKey(Material* material, const VertexLayout& layout)
 	{
 		ShaderVariantKey key;
 		key.baseName = material->GetShaderName();
 		key.featureFlags = material->GetFeatureFlags();
+		key.actualLayout = layout;
 
 		// Add lighting features based on material type
 		if (material->GetType() == MaterialType::Lit ||

@@ -31,7 +31,7 @@ namespace DXEngine::Rendering
 		void RemoveMaterial(const std::string& name);
 
 		// ========== Shader Resolution ==========
-		std::shared_ptr<ShaderProgram> GetShaderForMaterial(Material* material);
+		std::shared_ptr<ShaderProgram> GetShaderForMaterial(Material* material, const VertexLayout& layout);
 
 		// ========== Statistics ==========
 		size_t GetMaterialCount() const;
@@ -39,7 +39,7 @@ namespace DXEngine::Rendering
 
 	private:
 		void CreateDefaultMaterials();
-		ShaderVariantKey CreateVariantKey(Material* material);
+		ShaderVariantKey CreateVariantKey(Material* material, const VertexLayout& layout);
 
 
 	private:
