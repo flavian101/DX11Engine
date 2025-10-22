@@ -2,7 +2,7 @@
 #include "Material.h"
 #include "utils/Texture.h"
 #include "utils/CubeMapTexture.h"
-#include "shaders/ShaderManager.h"
+#include "renderer/ShaderCache.h"
 #include <algorithm>
 
 namespace DXEngine {
@@ -29,23 +29,23 @@ namespace DXEngine {
 			//auto enable feature flags based on texture slot
 			if (texture) {
 				switch (textureSlot) {
-				case 0: EnableFeature(ShaderFeature::DiffuseMap);        break;
-				case 1: EnableFeature(ShaderFeature::NormalMap);         break;
-				case 2: EnableFeature(ShaderFeature::SpecularMap);       break;
-				case 3: EnableFeature(ShaderFeature::EmissiveMap);       break;
-				case 4: EnableFeature(ShaderFeature::EnvironmentMap);    break; //TO-DO add irradiance and BRDF_LUT features for IBL
-				case 5: EnableFeature(ShaderFeature::RoughnessMap);      break;
-				case 6: EnableFeature(ShaderFeature::MetallicMap);       break;
-				case 7: EnableFeature(ShaderFeature::AOMap);             break;
-				case 8: EnableFeature(ShaderFeature::HeightMap);         break;
-				case 9: EnableFeature(ShaderFeature::OpacityMap);        break;
+				case 0: EnableFeature(Rendering::ShaderFeature::DiffuseMap);        break;
+				case 1: EnableFeature(Rendering::ShaderFeature::NormalMap);         break;
+				case 2: EnableFeature(Rendering::ShaderFeature::SpecularMap);       break;
+				case 3: EnableFeature(Rendering::ShaderFeature::EmissiveMap);       break;
+				case 4: EnableFeature(Rendering::ShaderFeature::EnvironmentMap);    break; //TO-DO add irradiance and BRDF_LUT features for IBL
+				case 5: EnableFeature(Rendering::ShaderFeature::RoughnessMap);      break;
+				case 6: EnableFeature(Rendering::ShaderFeature::MetallicMap);       break;
+				case 7: EnableFeature(Rendering::ShaderFeature::AOMap);             break;
+				case 8: EnableFeature(Rendering::ShaderFeature::HeightMap);         break;
+				case 9: EnableFeature(Rendering::ShaderFeature::OpacityMap);        break;
 				case 10:
-					EnableFeature(ShaderFeature::DetailDiffuseMap);
-					EnableFeature(ShaderFeature::UseDetailsTextures);
+					EnableFeature(Rendering::ShaderFeature::DetailDiffuseMap);
+					EnableFeature(Rendering::ShaderFeature::UseDetailsTextures);
 					break;
 				case 11:
-					EnableFeature(ShaderFeature::DetailNormalMap);
-					EnableFeature(ShaderFeature::UseDetailsTextures);
+					EnableFeature(Rendering::ShaderFeature::DetailNormalMap);
+					EnableFeature(Rendering::ShaderFeature::UseDetailsTextures);
 					break;
 				default: break; // no feature for this slot
 				}

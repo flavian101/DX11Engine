@@ -16,6 +16,7 @@ namespace DXEngine::RHI
 		default: return "vs_5_0";
 		}
 	}
+
 	D3D11Shader::D3D11Shader(ID3D11Device* device, const ShaderDesc& desc)
 		:m_Stage(desc.stage), m_DebugName(desc.debugName)
 	{
@@ -26,10 +27,33 @@ namespace DXEngine::RHI
 	}
 
     bool D3D11Shader::CompileFromSource(ID3D11Device* device, const ShaderDesc& desc) {
-        DWORD flags = D3DCOMPILE_ENABLE_STRICTNESS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
+        // Setup D3D11 compilation flags
+        DWORD flags = 0;
+
+        if (desc.enableStrictness) {
+            flags |= D3DCOMPILE_ENABLE_STRICTNESS;
+        }
+
+        if (desc.enableDebug) {
+            flags |= D3DCOMPILE_DEBUG;
+            flags |= D3DCOMPILE_SKIP_OPTIMIZATION;
+        }
+        else {
+            switch (desc.optimizationLevel) {
+            case OptimizationLevel::None:
+                flags |= D3DCOMPILE_SKIP_OPTIMIZATION;
+                break;
+            case OptimizationLevel::Level1:
+                flags |= D3DCOMPILE_OPTIMIZATION_LEVEL1;
+                break;
+            case OptimizationLevel::Level2:
+                flags |= D3DCOMPILE_OPTIMIZATION_LEVEL2;
+                break;
+            case OptimizationLevel::Level3:
+                flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+                break;
+            }
+        }
 
         ComPtr<ID3DBlob> errorBlob;
         HRESULT hr = D3DCompile(

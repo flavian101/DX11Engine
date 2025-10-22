@@ -1,28 +1,26 @@
 #pragma once
-#include "..\utils\VertexShader.h"
-#include "..\utils\PixelShader.h"
 #include <memory>
-#include "renderer/Renderer.h"
+#include "RHI/GraphicsDevice.h"
 
 namespace DXEngine {
-
 
 	class ShaderProgram
 	{
 	public:
-		ShaderProgram( LPCWSTR vertexShader, LPCWSTR pixelShader);
-		ShaderProgram(std::shared_ptr<VertexShader> vs, std::shared_ptr<PixelShader> ps);
-		ShaderProgram(Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, Microsoft::WRL::ComPtr<ID3DBlob> psBlob);
-
-
+		ShaderProgram(std::shared_ptr<RHI::IShader> vs, std::shared_ptr<RHI::IShader> ps);
 		~ShaderProgram();
 
-		ID3DBlob* GetByteCode();
 
-		void Bind();
+		RHI::IShader* GetVertexShader() const { return m_VertexShader.get(); }
+		RHI::IShader* GetPixelShader() const { return m_PixelShader.get(); }
+
+		bool IsValid() const {
+			return m_VertexShader && m_PixelShader &&
+				m_VertexShader->IsCompiled() && m_PixelShader->IsCompiled();
+		}
 	private:
-		std::shared_ptr<VertexShader> m_VertexShader;
-		std::shared_ptr <PixelShader> m_PixelShader;;
+		std::shared_ptr<RHI::IShader> m_VertexShader;
+		std::shared_ptr<RHI::IShader> m_PixelShader;;
 	};
 
 }

@@ -131,13 +131,7 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\resource.h" />
-    <ClInclude Include="src\shaders\ShaderManager.h">
-      <Filter>shaders</Filter>
-    </ClInclude>
     <ClInclude Include="src\shaders\ShaderProgram.h">
-      <Filter>shaders</Filter>
-    </ClInclude>
-    <ClInclude Include="src\shaders\ShaderVariantManager.h">
       <Filter>shaders</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\ConstantBufferTypes.h">
@@ -170,9 +164,6 @@
     <ClInclude Include="src\utils\PerfomanceProfiller.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\PixelShader.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\Sampler.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -203,9 +194,6 @@
     <ClInclude Include="src\utils\UI\UIText.h">
       <Filter>utils\UI</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\VertexShader.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\material\Material.h">
       <Filter>utils\material</Filter>
     </ClInclude>
@@ -235,7 +223,8 @@
     <ClInclude Include="src\RHI\D3D11\D3D11CommandBuffer.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Pipeline.h" />
     <ClInclude Include="src\ResourceManager\ResourceManager.h" />
-    <ClInclude Include="MaterialSystem.h" />
+    <ClInclude Include="src\renderer\MaterialSystem.h" />
+    <ClInclude Include="src\renderer\ShaderCache.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -285,13 +274,7 @@
     <ClCompile Include="src\renderer\legacy\RendererCommand.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\shaders\ShaderManager.cpp">
-      <Filter>shaders</Filter>
-    </ClCompile>
     <ClCompile Include="src\shaders\ShaderProgram.cpp">
-      <Filter>shaders</Filter>
-    </ClCompile>
-    <ClCompile Include="src\shaders\ShaderVariantManager.cpp">
       <Filter>shaders</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\CubeMapTexture.cpp">
@@ -317,9 +300,6 @@
     </ClCompile>
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp">
       <Filter>utils\Mesh\Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\PixelShader.cpp">
-      <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Sampler.cpp">
       <Filter>utils</Filter>
@@ -351,9 +331,6 @@
     <ClCompile Include="src\utils\UI\UIText.cpp">
       <Filter>utils\UI</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\VertexShader.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
     <ClCompile Include="src\utils\material\Material.cpp">
       <Filter>utils\material</Filter>
     </ClCompile>
@@ -374,6 +351,7 @@
     <ClCompile Include="src\RHI\D3D11\D3D11CommandBuffer.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Pipeline.cpp" />
     <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
-    <ClCompile Include="MaterialSystem.cpp" />
+    <ClCompile Include="src\renderer\MaterialSystem.cpp" />
+    <ClCompile Include="src\renderer\ShaderCache.cpp" />
   </ItemGroup>
 </Project>

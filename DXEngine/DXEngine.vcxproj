@@ -103,7 +103,8 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="MaterialSystem.h" />
+    <ClInclude Include="src\renderer\MaterialSystem.h" />
+    <ClInclude Include="src\renderer\ShaderCache.h" />
     <ClInclude Include="src\ResourceManager\ResourceManager.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Pipeline.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11CommandBuffer.h" />
@@ -155,9 +156,7 @@
     <ClInclude Include="src\renderer\legacy\Renderer.h" />
     <ClInclude Include="src\renderer\legacy\RendererCommand.h" />
     <ClInclude Include="src\resource.h" />
-    <ClInclude Include="src\shaders\ShaderManager.h" />
     <ClInclude Include="src\shaders\ShaderProgram.h" />
-    <ClInclude Include="src\shaders\ShaderVariantManager.h" />
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
     <ClInclude Include="src\utils\CubeMapTexture.h" />
     <ClInclude Include="src\utils\Light.h" />
@@ -168,7 +167,6 @@
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
     <ClInclude Include="src\utils\PerfomanceProfiller.h" />
-    <ClInclude Include="src\utils\PixelShader.h" />
     <ClInclude Include="src\utils\Sampler.h" />
     <ClInclude Include="src\utils\Texture.h" />
     <ClInclude Include="src\utils\Topology.h" />
@@ -179,7 +177,6 @@
     <ClInclude Include="src\utils\UI\UIManager.h" />
     <ClInclude Include="src\utils\UI\UIPanel.h" />
     <ClInclude Include="src\utils\UI\UIText.h" />
-    <ClInclude Include="src\utils\VertexShader.h" />
     <ClInclude Include="src\utils\material\Material.h" />
     <ClInclude Include="src\utils\material\MaterialProperties.h" />
     <ClInclude Include="src\utils\material\MaterialTypes.h" />
@@ -187,7 +184,8 @@
     <ClInclude Include="src\models\processors\TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MaterialSystem.cpp" />
+    <ClCompile Include="src\renderer\MaterialSystem.cpp" />
+    <ClCompile Include="src\renderer\ShaderCache.cpp" />
     <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Pipeline.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11CommandBuffer.cpp" />
@@ -224,9 +222,7 @@
     <ClCompile Include="src\picking\Ray.cpp" />
     <ClCompile Include="src\renderer\legacy\Renderer.cpp" />
     <ClCompile Include="src\renderer\legacy\RendererCommand.cpp" />
-    <ClCompile Include="src\shaders\ShaderManager.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
-    <ClCompile Include="src\shaders\ShaderVariantManager.cpp" />
     <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
     <ClCompile Include="src\utils\Mesh\Mesh.cpp" />
@@ -235,7 +231,6 @@
     <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
-    <ClCompile Include="src\utils\PixelShader.cpp" />
     <ClCompile Include="src\utils\Sampler.cpp" />
     <ClCompile Include="src\utils\Texture.cpp" />
     <ClCompile Include="src\utils\Topology.cpp" />
@@ -246,7 +241,6 @@
     <ClCompile Include="src\utils\UI\UIManager.cpp" />
     <ClCompile Include="src\utils\UI\UIPanel.cpp" />
     <ClCompile Include="src\utils\UI\UIText.cpp" />
-    <ClCompile Include="src\utils\VertexShader.cpp" />
     <ClCompile Include="src\utils\material\Material.cpp" />
     <ClCompile Include="src\windows\WindowsInput.cpp" />
     <ClCompile Include="src\models\processors\TextureLoader.cpp" />

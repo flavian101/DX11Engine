@@ -59,6 +59,27 @@ namespace DXEngine::RHI
 		Domain
 	};
 
+	enum class OptimizationLevel {
+		None,      // No optimization (debug builds)
+		Level1,    // Basic optimization
+		Level2,    // Moderate optimization
+		Level3     // Maximum optimization (release builds)
+	};
+
+	struct ShaderDesc {
+		ShaderStage stage;
+		std::string sourceCode;
+		std::string entryPoint = "main";
+		std::string defines;         // Preprocessor defines
+		std::string debugName;
+
+		// Compilation flags
+		bool enableDebug = false;            // Include debug info
+		bool enableStrictness = true;        // Strict compilation mode
+		OptimizationLevel optimizationLevel = OptimizationLevel::Level1;
+	};
+
+
 	enum class PrimitiveTopology {
 		TriangleList,
 		TriangleStrip,
@@ -231,13 +252,7 @@ namespace DXEngine::RHI
 		std::string debugName;
 	};
 
-	struct ShaderDesc {
-		ShaderStage stage;
-		std::string sourceCode;
-		std::string entryPoint = "main";
-		std::string defines;         // Preprocessor defines
-		std::string debugName;
-	};
+
 
 	struct PipelineDesc
 	{
