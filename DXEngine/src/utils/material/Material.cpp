@@ -19,7 +19,7 @@ namespace DXEngine {
 	Material::~Material()
 	{}
 
-	void Material::SetTexture(TextureSlot slot, RHI::ITexture* texture)
+	void Material::SetTexture(TextureSlot slot, std::shared_ptr < RHI::ITexture> texture)
 	{
 		int textureSlot = static_cast<int>(slot);
 		if (textureSlot < m_Textures.size())
@@ -51,8 +51,9 @@ namespace DXEngine {
 				}
 			}
 		}
+		m_Dirty = true;
 	}
-	RHI::ITexture* Material::GetTexture(TextureSlot slot)
+	std::shared_ptr<RHI::ITexture> Material::GetTexture(TextureSlot slot)
 	{
 		int textureSlot = static_cast<int>(slot);
 		return  textureSlot < m_Textures.size() ? m_Textures[textureSlot] : nullptr;
@@ -72,8 +73,11 @@ namespace DXEngine {
 			m_ConstantBuffer = device->CreateBuffer(desc);
 		}
 
-		m_ConstantBuffer->Update(&m_Properties, sizeof(MaterialProperties));
-		m_Dirty = false;
+		if (m_ConstantBuffer)
+		{
+			m_ConstantBuffer->Update(&m_Properties, sizeof(MaterialProperties));
+			m_Dirty = false;
+		}
 	}
 	std::string Material::GetShaderName() const {
 		// Shader name is derived from material type
@@ -133,6 +137,11 @@ namespace DXEngine {
 	{
 		m_Properties.roughness = std::clamp(roughness, 0.04f, 1.0f);
 		m_Dirty = true;
+
+		if (roughness > 0.1f && m_Type == MaterialType::Lit)
+		{
+			m_Type = MaterialType::PBR;
+		}
 	}
 
 	void Material::SetNormalScale(float scale)
@@ -183,37 +192,60 @@ namespace DXEngine {
 	
 	std::shared_ptr<Material> MaterialFactory::CreateUnlitMaterial(const std::string& name)
 	{
-		return std::make_shared<Material>(name, MaterialType::Unlit);
+		auto mat = std::make_shared<Material>(name, MaterialType::Unlit);
+		mat->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateLitMaterial(const std::string& name)
 	{
-		return std::make_shared<Material>(name, MaterialType::Lit);
+		auto mat = std::make_shared<Material>(name, MaterialType::Lit);
+		mat->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
+		mat->SetSpecularColor({ 0.5f, 0.5f, 0.5f, 1.0f });
+		mat->SetShininess(32.0f);
+		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreatePBRMaterial(const std::string& name)
 	{
-		return std::make_shared<Material>(name, MaterialType::PBR);
+		auto mat = std::make_shared<Material>(name, MaterialType::PBR);
+		mat->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
+		mat->SetMetallic(0.0f);
+		mat->SetRoughness(0.5f);
+		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateEmissiveMaterial(const std::string& name)
 	{
-		return std::make_shared<Material>(name, MaterialType::Emissive);
+		auto mat = std::make_shared<Material>(name, MaterialType::Emissive);
+		mat->SetEmissiveColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+		mat->SetEmissiveIntensity(3.0f);
+		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateSkyboxMaterial(const std::string& name)
 	{
-		return std::make_shared<Material>(name, MaterialType::Skybox);
+		auto mat = std::make_shared<Material>(name, MaterialType::Skybox);
+		mat->SetCullMode(RHI::CullMode::Front);
+		mat->SetDepthTest(RHI::DepthTestMode::LessEqual);
+		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateTransparentMaterial(const std::string& name)
 	{
-		return std::make_shared<Material>(name, MaterialType::Transparent);
+		auto mat = std::make_shared<Material>(name, MaterialType::Transparent);
+		mat->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 0.5f });
+		mat->SetBlendMode(RHI::BlendMode::AlphaBlend);
+		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateUIMaterial(const std::string& name)
 	{
-		return std::make_shared<Material>(name, MaterialType::UI);
+		auto mat = std::make_shared<Material>(name, MaterialType::UI);
+		mat->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+		mat->SetDepthTest(RHI::DepthTestMode::None);
+		mat->SetBlendMode(RHI::BlendMode::AlphaBlend);
+		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateFromConfig(const std::string& configPath)

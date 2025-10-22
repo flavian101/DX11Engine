@@ -27,9 +27,9 @@ namespace DXEngine {
 		const MaterialProperties& GetProperties() const { return m_Properties; }
 
 		//setTextures
-		void SetTexture(TextureSlot slot, RHI::ITexture* texture);
-		RHI::ITexture* GetTexture(TextureSlot slot);
-		const std::vector<RHI::ITexture*>& GetTextures() const { return m_Textures; }
+		void SetTexture(TextureSlot slot, std::shared_ptr <RHI::ITexture> texture);
+		std::shared_ptr<RHI::ITexture> GetTexture(TextureSlot slot);
+		const std::vector<std::shared_ptr<RHI::ITexture>>& GetTextures() const { return m_Textures; }
 
 		// ========== Constant Buffer ==========
 		RHI::IBuffer* GetConstantBuffer() { return m_ConstantBuffer.get(); }
@@ -83,7 +83,7 @@ namespace DXEngine {
 		MaterialType m_Type;
 		RenderQueue m_RenderQueue;
 		MaterialProperties m_Properties;
-		std::vector<RHI::ITexture*> m_Textures;
+		std::vector<std::shared_ptr<RHI::ITexture>> m_Textures;
 		std::shared_ptr<RHI::IBuffer> m_ConstantBuffer;
 
 		uint32_t m_FeatureFlags = 0;
