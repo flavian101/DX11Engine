@@ -72,30 +72,6 @@ namespace DXEngine
         return it != m_SlotStrides.end() ? it->second : 0;
     }
 
-   // std::vector<D3D11_INPUT_ELEMENT_DESC> VertexLayout::CreateD3D11InputElements() const
-   // {
-   //     assert(m_Finalized && "Layout must be finalized before creating D3D11 elements");
-   //
-   //     std::vector<D3D11_INPUT_ELEMENT_DESC> elements;
-   //     elements.reserve(m_Attributes.size());
-   //
-   //     for (const auto& attr : m_Attributes)
-   //     {
-   //         D3D11_INPUT_ELEMENT_DESC desc = {};
-   //         desc.SemanticName = attr.SemanticName.c_str();
-   //         desc.SemanticIndex = attr.SemanticIndex;
-   //         desc.Format = attr.GetDXGIFormat();
-   //         desc.InputSlot = attr.Slot;
-   //         desc.AlignedByteOffset = attr.Offset;
-   //         desc.InputSlotClass = attr.PerInstance ? D3D11_INPUT_PER_INSTANCE_DATA : D3D11_INPUT_PER_VERTEX_DATA;
-   //         desc.InstanceDataStepRate = attr.PerInstance ? 1 : 0;
-   //
-   //         elements.push_back(desc);
-   //     }
-   //
-   //     return elements;
-   // }
-
     bool VertexLayout::HasAttribute(RHI::VertexAttributeType type, uint32_t slot) const
     {
         return FindAttribute(type, slot) != nullptr;

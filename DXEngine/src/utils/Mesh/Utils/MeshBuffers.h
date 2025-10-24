@@ -29,7 +29,6 @@ namespace DXEngine
         // GPU resource access
         void Bind(RHI::ICommandBuffer* cmd,uint32_t startSlot = 0) const;
 
-
         // Resource management
         void Release();
         bool IsValid() const;

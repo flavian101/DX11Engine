@@ -103,6 +103,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\RHI\D3D11\D3D11Sampler.h" />
     <ClInclude Include="src\renderer\MaterialSystem.h" />
     <ClInclude Include="src\renderer\ShaderCache.h" />
     <ClInclude Include="src\ResourceManager\ResourceManager.h" />
@@ -167,9 +168,7 @@
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
     <ClInclude Include="src\utils\PerfomanceProfiller.h" />
-    <ClInclude Include="src\utils\Sampler.h" />
     <ClInclude Include="src\utils\Texture.h" />
-    <ClInclude Include="src\utils\Topology.h" />
     <ClInclude Include="src\utils\Transform.h" />
     <ClInclude Include="src\utils\UI\UIButton.h" />
     <ClInclude Include="src\utils\UI\UIElement.h" />
@@ -184,6 +183,7 @@
     <ClInclude Include="src\models\processors\TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
     <ClCompile Include="src\renderer\MaterialSystem.cpp" />
     <ClCompile Include="src\renderer\ShaderCache.cpp" />
     <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
@@ -231,9 +231,7 @@
     <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
-    <ClCompile Include="src\utils\Sampler.cpp" />
     <ClCompile Include="src\utils\Texture.cpp" />
-    <ClCompile Include="src\utils\Topology.cpp" />
     <ClCompile Include="src\utils\Transform.cpp" />
     <ClCompile Include="src\utils\UI\UIButton.cpp" />
     <ClCompile Include="src\utils\UI\UIElement.cpp" />

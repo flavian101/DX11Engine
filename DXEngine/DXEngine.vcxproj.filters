@@ -164,13 +164,7 @@
     <ClInclude Include="src\utils\PerfomanceProfiller.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Sampler.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\Texture.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\Topology.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Transform.h">
@@ -225,6 +219,7 @@
     <ClInclude Include="src\ResourceManager\ResourceManager.h" />
     <ClInclude Include="src\renderer\MaterialSystem.h" />
     <ClInclude Include="src\renderer\ShaderCache.h" />
+    <ClInclude Include="src\RHI\D3D11\D3D11Sampler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -301,13 +296,7 @@
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp">
       <Filter>utils\Mesh\Utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\Sampler.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
     <ClCompile Include="src\utils\Texture.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\Topology.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Transform.cpp">
@@ -353,5 +342,6 @@
     <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
     <ClCompile Include="src\renderer\MaterialSystem.cpp" />
     <ClCompile Include="src\renderer\ShaderCache.cpp" />
+    <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
   </ItemGroup>
 </Project>

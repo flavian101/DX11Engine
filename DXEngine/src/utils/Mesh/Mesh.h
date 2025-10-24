@@ -33,12 +33,6 @@ namespace DXEngine {
         const std::shared_ptr<Material>& GetMaterial(size_t submeshIndex = 0) const;
         const std::vector<std::shared_ptr<Material>>& GetMaterials() const { return m_Materials; }
 
-        // Rendering
-        void Bind(const void* shaderByteCode = nullptr, size_t byteCodeLength = 0) const;
-        void Draw(size_t submeshIndex = 0) const;
-        void DrawAll() const;  // Draw all submeshes
-        void DrawInstanced(uint32_t instanceCount, size_t submeshIndex = 0) const;
-
         // Properties
         bool IsValid() const;
         size_t GetSubmeshCount() const;

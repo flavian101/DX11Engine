@@ -1,5 +1,4 @@
 #pragma once
-#include "renderer/RendererCommand.h"
 #include "wrl.h"
 #include "material/materialTypes.h"
 
