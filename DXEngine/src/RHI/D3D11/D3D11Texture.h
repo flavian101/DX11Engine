@@ -10,6 +10,10 @@ namespace DXEngine::RHI
     class D3D11Texture : public ITexture {
     public:
         D3D11Texture(ID3D11Device* device, const TextureDesc& desc);
+        D3D11Texture(ID3D11Device* device,
+            ID3D11Texture2D* existingTexture,
+            ID3D11RenderTargetView* existingRTV,
+            const TextureDesc& desc);
         ~D3D11Texture() override = default;
 
         // IGraphicsResource
@@ -28,8 +32,13 @@ namespace DXEngine::RHI
         uint32_t GetHeight() const override { return m_Desc.height; }
         uint32_t GetDepth() const override { return m_Desc.depth; }
         uint32_t GetMipLevels() const override { return m_Desc.mipLevels; }
+        uint32_t GetArraySize() const override { return m_Desc.arraySize; }
+        uint32_t GetSampleCount() const override { return m_Desc.sampleCount; }
+
 
         bool Update(const void* data, uint32_t mipLevel, uint32_t arraySlice) override;
+        bool ReadPixels(void* outData, uint32_t mipLevel = 0, uint32_t arraySlice = 0) override;
+
         bool GenerateMips() override;
         void* GetNativeHandle() const override { return m_SRV.Get(); }
 
@@ -45,6 +54,8 @@ namespace DXEngine::RHI
         bool CreateTexture3D(const TextureDesc& desc);
         bool CreateViews(const TextureDesc& desc, DXGI_FORMAT format);
         uint32_t CalculateMipSize(uint32_t baseDimension, uint32_t mipLevel) const;
+        static size_t CalculateCompressedSize(TextureFormat format, uint32_t width, uint32_t height);
+
 
         ComPtr<ID3D11Texture2D> m_Texture2D;
         ComPtr<ID3D11Texture3D> m_Texture3D;

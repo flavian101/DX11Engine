@@ -63,10 +63,6 @@ namespace DXEngine::RHI
 		return std::make_shared<D3D11CommandBuffer>(m_Context.Get());
 	}
 
-	std::shared_ptr<ICommandBuffer> D3D11Device::CreateCommandBuffer()
-	{
-		return std::shared_ptr<ICommandBuffer>();
-	}
 
 	void D3D11Device::Submit(ICommandBuffer* cmd)
 	{

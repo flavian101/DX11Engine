@@ -34,6 +34,15 @@ namespace DXEngine::RHI
 		}
 	}
 
+    static bool IsCompressedFormat(TextureFormat format)
+    {
+        return format == TextureFormat::BC1_UNORM ||
+            format == TextureFormat::BC3_UNORM ||
+            format == TextureFormat::BC5_UNORM ||
+            format == TextureFormat::BC6H_UFLOAT ||
+            format == TextureFormat::BC7_UNORM;
+    }
+
     D3D11Texture::D3D11Texture(ID3D11Device* device, const TextureDesc& desc)
         : m_Desc(desc)
         , m_DebugName(desc.debugName)
@@ -69,6 +78,32 @@ namespace DXEngine::RHI
         if (!desc.debugName.empty()) {
             SetDebugName(desc.debugName);
         }
+    }
+
+    D3D11Texture::D3D11Texture(ID3D11Device* device, ID3D11Texture2D* existingTexture, ID3D11RenderTargetView* existingRTV, const TextureDesc& desc)
+        :m_Desc(desc),
+        m_DebugName(desc.debugName)
+    {
+        m_Device = device;
+        device->GetImmediateContext(m_Context.GetAddressOf());
+
+        m_Texture2D = existingTexture;
+        m_RTV = existingRTV;
+
+        // Create SRV if needed
+        DXGI_FORMAT format = GetDXGIFormat(desc.format);
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format = format;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+
+        m_Device->CreateShaderResourceView(m_Texture2D.Get(), &srvDesc, m_SRV.GetAddressOf());
+
+        if (!m_DebugName.empty()) {
+            SetDebugName(m_DebugName);
+        }
+
     }
 
     bool D3D11Texture::CreateTexture2D(const TextureDesc& desc) {
@@ -275,6 +310,35 @@ namespace DXEngine::RHI
         return true;
     }
 
+    uint32_t D3D11Texture::CalculateMipSize(uint32_t baseDimension, uint32_t mipLevel) const
+    {
+        return 0;
+    }
+
+    size_t D3D11Texture::CalculateCompressedSize(TextureFormat format, uint32_t width, uint32_t height)
+    {
+        uint32_t blocksWide = (width + 3) / 4;
+        uint32_t blocksHigh = (height + 3) / 4;
+        uint32_t blockCount = blocksWide * blocksHigh;
+
+        size_t bytesPerBlock = 0;
+        switch (format) {
+        case TextureFormat::BC1_UNORM:
+            bytesPerBlock = 8;
+            break;
+        case TextureFormat::BC3_UNORM:
+        case TextureFormat::BC5_UNORM:
+        case TextureFormat::BC6H_UFLOAT:
+        case TextureFormat::BC7_UNORM:
+            bytesPerBlock = 16;
+            break;
+        default:
+            return 0;
+        }
+
+        return blockCount * bytesPerBlock;
+    }
+
     bool D3D11Texture::Update(const void* data, uint32_t mipLevel, uint32_t arraySlice) {
         if (!data) {
             return false;
@@ -321,6 +385,70 @@ namespace DXEngine::RHI
         return false;
     }
 
+    bool D3D11Texture::ReadPixels(void* outData, uint32_t mipLevel, uint32_t arraySlice)
+    {
+        if (!outData || !m_Texture2D)
+        {
+            OutputDebugStringA("D3D11Texture: Cannot Read pixles as either outData or m_Texture2D in null");
+            return false;
+        }
+
+        // Create staging texture
+        D3D11_TEXTURE2D_DESC texDesc;
+        m_Texture2D->GetDesc(&texDesc);
+
+        texDesc.Usage = D3D11_USAGE_STAGING;
+        texDesc.BindFlags = 0;
+        texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        texDesc.MiscFlags = 0;
+
+        ComPtr<ID3D11Texture2D> stagingTexture;
+        HRESULT hr = m_Device->CreateTexture2D(&texDesc, nullptr, stagingTexture.GetAddressOf());
+        if (FAILED(hr))
+            return false;
+
+        // Copy texture to staging
+        uint32_t subresource = D3D11CalcSubresource(mipLevel, arraySlice, m_Desc.mipLevels);
+        m_Context->CopySubresourceRegion(
+            stagingTexture.Get(), subresource,
+            0, 0, 0,
+            m_Texture2D.Get(), subresource,
+            nullptr
+        );
+
+        // Map and read
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        hr = m_Context->Map(stagingTexture.Get(), subresource, D3D11_MAP_READ, 0, &mapped);
+        if (FAILED(hr))
+            return false;
+
+        // Calculate size and copy
+        uint32_t width = CalculateMipSize(m_Desc.width, mipLevel);
+        uint32_t height = CalculateMipSize(m_Desc.height, mipLevel);
+
+        if (IsCompressedFormat(m_Desc.format)) {
+            size_t size = CalculateCompressedSize(m_Desc.format, width, height);
+            memcpy(outData, mapped.pData, size);
+        }
+        else {
+            uint32_t bytesPerPixel = GetBytesPerPixel(m_Desc.format);
+            uint32_t rowSize = width * bytesPerPixel;
+
+            for (uint32_t row = 0; row < height; ++row) {
+                memcpy(
+                    static_cast<uint8_t*>(outData) + row * rowSize,
+                    static_cast<const uint8_t*>(mapped.pData) + row * mapped.RowPitch,
+                    rowSize
+                );
+            }
+        }
+
+        m_Context->Unmap(stagingTexture.Get(), subresource);
+        return true;
+
+        return false;
+    }
+
     bool D3D11Texture::GenerateMips() {
         if (!m_SRV) {
             return false;
@@ -341,34 +469,40 @@ namespace DXEngine::RHI
     }
 
     size_t D3D11Texture::GetMemoryUsage() const {
-        uint32_t bytesPerPixel = GetBytesPerPixel(m_Desc.format);
         size_t totalSize = 0;
 
         if (m_Desc.type == TextureType::Texture3D) {
-            // 3D texture with mips
             uint32_t width = m_Desc.width;
             uint32_t height = m_Desc.height;
             uint32_t depth = m_Desc.depth;
 
             for (uint32_t mip = 0; mip < m_Desc.mipLevels; ++mip) {
-                totalSize += width * height * depth * bytesPerPixel;
+                if (IsCompressedFormat(m_Desc.format)) {
+                    totalSize += CalculateCompressedSize(m_Desc.format, width, height) * depth;
+                }
+                else {
+                    totalSize += width * height * depth * GetBytesPerPixel(m_Desc.format);
+                }
                 width = std::max(1u, width / 2);
                 height = std::max(1u, height / 2);
                 depth = std::max(1u, depth / 2);
             }
         }
         else {
-            // 2D texture with mips and arrays
             uint32_t width = m_Desc.width;
             uint32_t height = m_Desc.height;
 
             for (uint32_t mip = 0; mip < m_Desc.mipLevels; ++mip) {
-                totalSize += width * height * bytesPerPixel;
+                if (IsCompressedFormat(m_Desc.format)) {
+                    totalSize += CalculateCompressedSize(m_Desc.format, width, height);
+                }
+                else {
+                    totalSize += width * height * GetBytesPerPixel(m_Desc.format);
+                }
                 width = std::max(1u, width / 2);
                 height = std::max(1u, height / 2);
             }
 
-            // Multiply by array size (or 6 for cubemaps)
             if (m_Desc.type == TextureType::TextureCube) {
                 totalSize *= 6 * m_Desc.arraySize;
             }
