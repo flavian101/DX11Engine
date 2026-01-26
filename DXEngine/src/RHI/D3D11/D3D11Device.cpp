@@ -5,6 +5,7 @@
 #include "D3D11Buffer.h"
 #include "D3D11Texture.h"
 #include "D3D11CommandBuffer.h"
+#include "D3D11Sampler.h"
 
 namespace DXEngine::RHI
 {
@@ -59,14 +60,72 @@ namespace DXEngine::RHI
 		return std::make_shared<D3D11Pipeline>(m_Device.Get(), desc);
 	}
 
+	std::shared_ptr<ISampler> D3D11Device::CreateSampler(const SamplerDesc& desc)
+	{
+		try
+		{
+			auto sampler = std::make_shared<D3D11Sampler>(m_Device.Get(), desc);
+			//track memory usage
+			m_MemoryStats.totalAllocated += sampler->GetMemoryUsage();
+			return sampler;
+		}
+		catch (const std::exception& e)
+		{
+			OutputDebugStringA(("Failed to create sampler: " + std::string(e.what()) + "\n").c_str());
+			return nullptr;
+		}
+	}
+
 	std::shared_ptr<ICommandBuffer> D3D11Device::CreateCommandBuffer() {
 		return std::make_shared<D3D11CommandBuffer>(m_Context.Get());
+	}
+
+	std::shared_ptr<IRenderPass> D3D11Device::CreateRenderPass(const RenderPassDesc& desc)
+	{
+		//D3D11 does not have explicit render passes, so we return an empty implementation
+		OutputDebugStringA("D3D11Device::CreateRenderPass - Render passes are implicit in D3D11\n");
+		return nullptr;
+	}
+
+	std::shared_ptr<IFence> D3D11Device::CreateFence(const FenceDesc& desc)
+	{
+		//D3D11 does not have fences, but we can create a dummy implementation if needed
+		//that uses ID3D11Query for synchronization
+		OutputDebugStringA("D3D11Device::CreateFence - Creating stub fence (D3D11 limitation)\n");
+
+		// TODO: Implement D3D11Fence using ID3D11Query
+		return nullptr;
+	}
+
+	std::shared_ptr<IQuery> D3D11Device::CreateQuery(const QueryDesc& desc)
+	{
+		// TODO: Implement D3D11Query using ID3D11Query
+		OutputDebugStringA("D3D11Device::CreateQuery - Not yet implemented\n");
+		return nullptr;
 	}
 
 
 	void D3D11Device::Submit(ICommandBuffer* cmd)
 	{
 		// In D3D11, commands are immediately executed, so nothing to do here
+	}
+
+	void D3D11Device::Submit(ICommandBuffer** cmds, uint32_t count, IFence* signalFence)
+	{
+		//D3D11 note: commands execute immediately, so this is mostly a no-op
+		// we process them for API compatibility
+		for (uint32_t i = i; i < count; i++)
+		{
+			Submit(cmds[i]); //call single submit for each command buffer
+		}
+
+		//signal Fence if provieded 
+		if (signalFence)
+		{
+			//D3D11 doesn't support fences natively(true fences), but we can signal completion
+			//since everything is immediate
+			signalFence->Signal(signalFence->GetCompletedValue() + 1);
+		}
 	}
 
 	void D3D11Device::Present()
@@ -89,6 +148,59 @@ namespace DXEngine::RHI
 
 		m_SwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 		CreateBackBuffer();
+	}
+
+	IGraphicsDevice::MemoryStats D3D11Device::GetMemoryStats() const
+	{
+		//query DXGI adapter for Memory info
+		Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
+		m_Device.As(&dxgiDevice);
+
+		if(dxgiDevice)
+		{
+			ComPtr<IDXGIAdapter> adapter;
+			dxgiDevice->GetAdapter(&adapter);
+
+			if (adapter)
+			{
+				DXGI_ADAPTER_DESC adapterDesc;
+				adapter->GetDesc(&adapterDesc);
+
+				m_MemoryStats.totalAllocated = adapterDesc.DedicatedVideoMemory;
+				// Note: D3D11 doesn't expose current usage directly
+				// approximation
+			}
+		}
+		return m_MemoryStats;
+	}
+
+	uint64_t D3D11Device::GetTimestampFrequency() const
+	{
+		// D3D11 timestamp frequency
+			// Query using ID3D11Query with D3D11_QUERY_TIMESTAMP_DISJOINT
+
+		D3D11_QUERY_DESC queryDesc = {};
+		queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+
+		ComPtr<ID3D11Query> query;
+		HRESULT hr = m_Device->CreateQuery(&queryDesc, &query);
+
+		if (SUCCEEDED(hr))
+		{
+			m_Context->Begin(query.Get());
+			m_Context->End(query.Get());
+
+			D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
+			while (m_Context->GetData(query.Get(), &disjointData, sizeof(disjointData), 0) == S_FALSE)
+			{
+				// Wait for data
+			}
+
+			return disjointData.Frequency;
+		}
+
+		// Fallback: typical value is 10MHz
+		return 10000000;
 	}
 
 	bool D3D11Device::CreateDeviceAndSwapChain(void* windowHandle, uint32_t width, uint32_t height)
