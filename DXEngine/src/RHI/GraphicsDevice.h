@@ -259,7 +259,7 @@ namespace DXEngine::RHI
 
 		//Device Info
 		virtual GraphicsAPI GetAPI() const = 0;
-		virtual const DeviceCapabilities& GetCapabilities() const = 0;
+		virtual const DeviceCapability& GetCapabilities() const = 0;
 		virtual void* GetnativeDevice() const = 0;
 
 		//SwapChain Management

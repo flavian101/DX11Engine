@@ -37,7 +37,7 @@ namespace DXEngine::RHI
 		void WaitIdle() override;
 
 		GraphicsAPI GetAPI()const override { return GraphicsAPI::DirectX11; }
-		const DeviceCapabilities& GetCapabilities()const override { return m_Capabilities; }
+		const DeviceCapability& GetCapabilities()const override { return m_Capabilities; }
 
 		void Resize(uint32_t width, uint32_t height) override;
 		ITexture* GetBackBuffer() override { return m_BackBuffer.get(); }
@@ -66,7 +66,7 @@ namespace DXEngine::RHI
 		std::shared_ptr<D3D11Texture> m_BackBuffer;
 		std::shared_ptr<D3D11Texture> m_DepthStencil;
 
-		DeviceCapabilities m_Capabilities;
+		DeviceCapability m_Capabilities;
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
 		HWND m_WindowHandle = nullptr;

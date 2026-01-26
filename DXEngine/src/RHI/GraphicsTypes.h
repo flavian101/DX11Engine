@@ -577,7 +577,7 @@ namespace DXEngine::RHI
         float maxDepth = 1.0f;
     };
 
-    struct DeviceCapabilities {
+    struct DeviceCapability {
         uint32_t maxTextureSize = 0;
         uint32_t maxAnisotropy = 0;
         uint32_t maxConstantBufferSize = 0;
