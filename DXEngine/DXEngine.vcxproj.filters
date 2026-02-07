@@ -344,4 +344,7 @@
     <ClCompile Include="src\renderer\ShaderCache.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="src\RHI\Readme_OwnerShip.md" />
+  </ItemGroup>
 </Project>

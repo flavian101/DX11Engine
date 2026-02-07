@@ -9,7 +9,7 @@ namespace DXEngine
         Release();
     }
 
-    bool MeshBuffers::CreateFromResource(RHI::IGraphicsDevice* device,const MeshResource& resource)
+    bool MeshBuffers::CreateFromResource(std::shared_ptr<RHI::IGraphicsDevice> device,const MeshResource& resource)
     {
         Release();
 
@@ -60,11 +60,11 @@ namespace DXEngine
             if (!CreateIndexBuffer(device, indexData, resource.GetName()));
         }
 
-        m_Topology = static_cast<PrimitiveTopology>(resource.GetTopology());
+        m_Topology = static_cast<RHI::PrimitiveTopology>(resource.GetTopology());
         return true;
     }
 
-    bool MeshBuffers::CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData)
+    bool MeshBuffers::CreateFromVertexData(std::shared_ptr<RHI::IGraphicsDevice> device,const VertexData& vertexData, const IndexData* indexData)
     {
         // Create a temporary resource and use the existing method
         MeshResource tempResource;
@@ -80,7 +80,7 @@ namespace DXEngine
         return CreateFromResource(device,tempResource);
     }
 
-    bool MeshBuffers::AddVertexBuffer(RHI::IGraphicsDevice* device, const VertexData& vertexData, uint32_t slot)
+    bool MeshBuffers::AddVertexBuffer(std::shared_ptr<RHI::IGraphicsDevice> device, const VertexData& vertexData, uint32_t slot)
     {
         const void* data = vertexData.GetVertexData(slot);
         size_t dataSize = vertexData.GetDataSize(slot);
@@ -115,11 +115,31 @@ namespace DXEngine
 
     void MeshBuffers::BindVertexBuffers(RHI::ICommandBuffer* cmd, uint32_t startSlot) const
     {
-        if (m_VertexBuffers.empty() || !cmd)
+        if (!cmd) {
+            OutputDebugStringA("ERROR: MeshBuffers::BindVertexBuffers - cmd is null\n");
             return;
+        }
+
+        if (m_VertexBuffers.empty()) {
+            OutputDebugStringA("WARNING: MeshBuffers::BindVertexBuffers - No vertex buffers to bind\n");
+            return;
+        }
 
         for (const auto& [slot, data] : m_VertexBuffers)
         {
+            // CRITICAL: Check buffer validity before use
+            if (!data.buffer) {
+                OutputDebugStringA(("ERROR: MeshBuffers - Null buffer at slot " +
+                    std::to_string(slot) + "\n").c_str());
+                continue;
+            }
+
+            if (!data.buffer->IsValid()) {
+                OutputDebugStringA(("ERROR: MeshBuffers - Invalid buffer at slot " +
+                    std::to_string(slot) + "\n").c_str());
+                continue;
+            }
+
             cmd->SetVertexBuffer(data.buffer.get(), startSlot + slot, data.offset);
         }
     }
@@ -128,6 +148,21 @@ namespace DXEngine
     {
         if (!m_IndexBuffer || !m_IndexBuffer->IsValid() || !cmd)
             return;
+
+        if (!cmd) {
+            OutputDebugStringA("ERROR: MeshBuffers::BindIndexBuffer - cmd is null\n");
+            return;
+        }
+
+        if (!m_IndexBuffer) {
+            // Not an error - mesh might not have indices
+            return;
+        }
+
+        if (!m_IndexBuffer->IsValid()) {
+            OutputDebugStringA("ERROR: MeshBuffers::BindIndexBuffer -Index buffer invalid\n");
+            return;
+        }
 
         cmd->SetIndexBuffer(m_IndexBuffer->buffer.get(), 0, 0);
     }
@@ -145,7 +180,7 @@ namespace DXEngine
         return !m_VertexBuffers.empty() && m_VertexCount > 0;
     }
 
-    bool MeshBuffers::CreateIndexBuffer(RHI::IGraphicsDevice* device, const IndexData* indexData, const std::string& debugName)
+    bool MeshBuffers::CreateIndexBuffer(std::shared_ptr<RHI::IGraphicsDevice> device, const IndexData* indexData, const std::string& debugName)
     {
         if (!device || !indexData)
             return false;
