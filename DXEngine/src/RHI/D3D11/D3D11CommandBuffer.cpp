@@ -14,7 +14,7 @@ namespace DXEngine::RHI
 	}
 	void D3D11CommandBuffer::Begin()
 	{
-		m_IsRecording = true;
+		m_IsRecording = true;// does nothing since D3D11 is immediate context and does not record commands
 	}
 	void D3D11CommandBuffer::End()
 	{
@@ -23,6 +23,7 @@ namespace DXEngine::RHI
 	void D3D11CommandBuffer::SetPipeline(IPipeline* pipeline)
 	{
 		auto* d3d11Pipeline = static_cast<D3D11Pipeline*>(pipeline);
+		// Executes IMMEDIATELY, not recorded
 
 		m_Context->IASetInputLayout(d3d11Pipeline->GetInputLayout());
 		m_Context->RSSetState(d3d11Pipeline->GetRasterizerState());
