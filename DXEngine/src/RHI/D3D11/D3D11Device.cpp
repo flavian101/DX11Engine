@@ -45,11 +45,30 @@ namespace DXEngine::RHI
 	}
 
 	std::shared_ptr<IBuffer> D3D11Device::CreateBuffer(const BufferDesc& desc) {
-		return std::make_shared<D3D11Buffer>(m_Device.Get(), desc);
+		auto buffer = std::make_shared<D3D11Buffer>(m_Device.Get(), desc);
+
+		//track Memory
+		m_MemoryStats.totalAllocated += desc.size;
+		m_MemoryStats.totalUsed += desc.size;
+		m_MemoryStats.bufferMemory += desc.size;
+		m_MemoryStats.bufferCount++;
+
+		return buffer;
 	}
 
 	std::shared_ptr<ITexture> D3D11Device::CreateTexture(const TextureDesc& desc) {
-		return std::make_shared<D3D11Texture>(m_Device.Get(), desc);
+
+		auto texture = std::make_shared<D3D11Texture>(m_Device.Get(), desc);
+
+		// Calculate texture memory (approximate)
+		size_t textureMemory = texture->GetMemoryUsage();
+
+		m_MemoryStats.totalAllocated += textureMemory;
+		m_MemoryStats.totalUsed += textureMemory;
+		m_MemoryStats.textureMemory += textureMemory;
+		m_MemoryStats.textureCount++;
+
+		return texture;
 	}
 
 	std::shared_ptr<IShader> D3D11Device::CreateShader(const ShaderDesc& desc) {
