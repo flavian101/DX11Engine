@@ -159,7 +159,7 @@ namespace DXEngine
         }
 
         const VertexLayout& layout = m_VertexData->GetLayout();
-        const VertexAttribute* posAttr = layout.FindAttribute(VertexAttributeType::Position);
+        const RHI::VertexAttribute* posAttr = layout.FindAttribute(RHI::VertexAttributeType::Position);
 
         if (!posAttr)
         {
@@ -170,13 +170,13 @@ namespace DXEngine
         }
 
         // Initialize bounds with first vertex
-        auto firstPos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(0, VertexAttributeType::Position);
+        auto firstPos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(0, RHI::VertexAttributeType::Position);
         m_BoundingBox = BoundingBox(firstPos, firstPos);
 
         // Expand bounds with all vertices
         for (size_t i = 1; i < m_VertexData->GetVertexCount(); ++i)
         {
-            auto pos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Position);
+            auto pos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, RHI::VertexAttributeType::Position);
             m_BoundingBox.Expand(pos);
         }
 
@@ -186,7 +186,7 @@ namespace DXEngine
 
         for (size_t i = 0; i < m_VertexData->GetVertexCount(); ++i)
         {
-            auto pos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Position);
+            auto pos = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, RHI::VertexAttributeType::Position);
             float dx = pos.x - center.x;
             float dy = pos.y - center.y;
             float dz = pos.z - center.z;
@@ -235,15 +235,15 @@ namespace DXEngine
             return;
 
         const VertexLayout& layout = m_VertexData->GetLayout();
-        if (!layout.HasAttribute(VertexAttributeType::Position) ||
-            !layout.HasAttribute(VertexAttributeType::Normal))
+        if (!layout.HasAttribute(RHI::VertexAttributeType::Position) ||
+            !layout.HasAttribute(RHI::VertexAttributeType::Normal))
             return;
 
         // Zero out existing normals
         DirectX::XMFLOAT3 zeroNormal(0.0f, 0.0f, 0.0f);
         for (size_t i = 0; i < m_VertexData->GetVertexCount(); ++i)
         {
-            m_VertexData->SetAttribute(i, VertexAttributeType::Normal, zeroNormal);
+            m_VertexData->SetAttribute(i, RHI::VertexAttributeType::Normal, zeroNormal);
         }
 
         // Calculate face normals and accumulate
@@ -254,9 +254,9 @@ namespace DXEngine
             uint32_t i1 = m_IndexData->GetIndex(i + 1);
             uint32_t i2 = m_IndexData->GetIndex(i + 2);
 
-            auto p0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, VertexAttributeType::Position);
-            auto p1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, VertexAttributeType::Position);
-            auto p2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, VertexAttributeType::Position);
+            auto p0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, RHI::VertexAttributeType::Position);
+            auto p1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, RHI::VertexAttributeType::Position);
+            auto p2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, RHI::VertexAttributeType::Position);
 
             // Calculate face normal
             DirectX::XMVECTOR v0 = DirectX::XMLoadFloat3(&p0);
@@ -271,27 +271,27 @@ namespace DXEngine
             DirectX::XMStoreFloat3(&faceNormal, normal);
 
             // Accumulate to vertex normals
-            auto n0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, VertexAttributeType::Normal);
-            auto n1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, VertexAttributeType::Normal);
-            auto n2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, VertexAttributeType::Normal);
+            auto n0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, RHI::VertexAttributeType::Normal);
+            auto n1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, RHI::VertexAttributeType::Normal);
+            auto n2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, RHI::VertexAttributeType::Normal);
 
             n0.x += faceNormal.x; n0.y += faceNormal.y; n0.z += faceNormal.z;
             n1.x += faceNormal.x; n1.y += faceNormal.y; n1.z += faceNormal.z;
             n2.x += faceNormal.x; n2.y += faceNormal.y; n2.z += faceNormal.z;
 
-            m_VertexData->SetAttribute(i0, VertexAttributeType::Normal, n0);
-            m_VertexData->SetAttribute(i1, VertexAttributeType::Normal, n1);
-            m_VertexData->SetAttribute(i2, VertexAttributeType::Normal, n2);
+            m_VertexData->SetAttribute(i0, RHI::VertexAttributeType::Normal, n0);
+            m_VertexData->SetAttribute(i1, RHI::VertexAttributeType::Normal, n1);
+            m_VertexData->SetAttribute(i2, RHI::VertexAttributeType::Normal, n2);
         }
 
         // Normalize all normals
         for (size_t i = 0; i < m_VertexData->GetVertexCount(); ++i)
         {
-            auto normal = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Normal);
+            auto normal = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, RHI::VertexAttributeType::Normal);
             DirectX::XMVECTOR normalVec = DirectX::XMLoadFloat3(&normal);
             normalVec = DirectX::XMVector3Normalize(normalVec);
             DirectX::XMStoreFloat3(&normal, normalVec);
-            m_VertexData->SetAttribute(i, VertexAttributeType::Normal, normal);
+            m_VertexData->SetAttribute(i, RHI::VertexAttributeType::Normal, normal);
         }
 
         OnDataChanged();
@@ -303,10 +303,10 @@ namespace DXEngine
             return;
 
         const VertexLayout& layout = m_VertexData->GetLayout();
-        if (!layout.HasAttribute(VertexAttributeType::Position) ||
-            !layout.HasAttribute(VertexAttributeType::Normal) ||
-            !layout.HasAttribute(VertexAttributeType::Tangent) ||
-            !layout.HasAttribute(VertexAttributeType::TexCoord0))
+        if (!layout.HasAttribute(RHI::VertexAttributeType::Position) ||
+            !layout.HasAttribute(RHI::VertexAttributeType::Normal) ||
+            !layout.HasAttribute(RHI::VertexAttributeType::Tangent) ||
+            !layout.HasAttribute(RHI::VertexAttributeType::TexCoord0))
             return;
 
         size_t vertexCount = m_VertexData->GetVertexCount();
@@ -323,13 +323,13 @@ namespace DXEngine
             uint32_t i1 = m_IndexData->GetIndex(i + 1);
             uint32_t i2 = m_IndexData->GetIndex(i + 2);
 
-            auto p0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, VertexAttributeType::Position);
-            auto p1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, VertexAttributeType::Position);
-            auto p2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, VertexAttributeType::Position);
+            auto p0 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i0, RHI::VertexAttributeType::Position);
+            auto p1 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i1, RHI::VertexAttributeType::Position);
+            auto p2 = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i2, RHI::VertexAttributeType::Position);
 
-            auto uv0 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i0, VertexAttributeType::TexCoord0);
-            auto uv1 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i1, VertexAttributeType::TexCoord0);
-            auto uv2 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i2, VertexAttributeType::TexCoord0);
+            auto uv0 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i0, RHI::VertexAttributeType::TexCoord0);
+            auto uv1 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i1, RHI::VertexAttributeType::TexCoord0);
+            auto uv2 = m_VertexData->GetAttribute<DirectX::XMFLOAT2>(i2, RHI::VertexAttributeType::TexCoord0);
 
             DirectX::XMFLOAT3 edge1(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
             DirectX::XMFLOAT3 edge2(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z);
@@ -364,7 +364,7 @@ namespace DXEngine
         // Orthogonalize and normalize tangents
         for (size_t i = 0; i < vertexCount; ++i)
         {
-            auto normal = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Normal);
+            auto normal = m_VertexData->GetAttribute<DirectX::XMFLOAT3>(i, RHI::VertexAttributeType::Normal);
 
             DirectX::XMVECTOR n = DirectX::XMLoadFloat3(&normal);
             DirectX::XMVECTOR t = DirectX::XMLoadFloat3(&tangents[i]);
@@ -380,7 +380,7 @@ namespace DXEngine
             DirectX::XMStoreFloat3(reinterpret_cast<DirectX::XMFLOAT3*>(&finalTangent), t);
             finalTangent.w = handedness;
 
-            m_VertexData->SetAttribute(i, VertexAttributeType::Tangent, finalTangent);
+            m_VertexData->SetAttribute(i, RHI::VertexAttributeType::Tangent, finalTangent);
         }
 
         OnDataChanged();
@@ -462,23 +462,23 @@ namespace DXEngine
         float halfHeight = height * 0.5f;
 
         // Positions
-        vertexData->SetAttribute(0, VertexAttributeType::Position, DirectX::XMFLOAT3(-halfWidth, -halfHeight, 0.0f));
-        vertexData->SetAttribute(1, VertexAttributeType::Position, DirectX::XMFLOAT3(halfWidth, -halfHeight, 0.0f));
-        vertexData->SetAttribute(2, VertexAttributeType::Position, DirectX::XMFLOAT3(halfWidth, halfHeight, 0.0f));
-        vertexData->SetAttribute(3, VertexAttributeType::Position, DirectX::XMFLOAT3(-halfWidth, halfHeight, 0.0f));
+        vertexData->SetAttribute(0, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(-halfWidth, -halfHeight, 0.0f));
+        vertexData->SetAttribute(1, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(halfWidth, -halfHeight, 0.0f));
+        vertexData->SetAttribute(2, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(halfWidth, halfHeight, 0.0f));
+        vertexData->SetAttribute(3, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(-halfWidth, halfHeight, 0.0f));
 
         // Normals
         DirectX::XMFLOAT3 normal(0.0f, 0.0f, 1.0f);
         for (int i = 0; i < 4; ++i)
         {
-            vertexData->SetAttribute(i, VertexAttributeType::Normal, normal);
+            vertexData->SetAttribute(i, RHI::VertexAttributeType::Normal, normal);
         }
 
         // Texture coordinates
-        vertexData->SetAttribute(0, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.0f, 1.0f));
-        vertexData->SetAttribute(1, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(1.0f, 1.0f));
-        vertexData->SetAttribute(2, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(1.0f, 0.0f));
-        vertexData->SetAttribute(3, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.0f, 0.0f));
+        vertexData->SetAttribute(0, RHI::VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.0f, 1.0f));
+        vertexData->SetAttribute(1, RHI::VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(1.0f, 1.0f));
+        vertexData->SetAttribute(2, RHI::VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(1.0f, 0.0f));
+        vertexData->SetAttribute(3, RHI::VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.0f, 0.0f));
 
         auto indexData = std::make_unique<IndexData>(IndexType::UInt16);
         indexData->AddTriangle(0, 1, 2);
@@ -487,7 +487,7 @@ namespace DXEngine
         auto resource = std::make_unique<MeshResource>(name);
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
-        resource->SetTopology(PrimitiveTopology::TriangleList);
+        resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
 
         return resource;
     }
@@ -538,9 +538,9 @@ namespace DXEngine
         // Set vertex data
         for (int i = 0; i < 24; ++i)
         {
-            vertexData->SetAttribute(i, VertexAttributeType::Position, positions[i]);
-            vertexData->SetAttribute(i, VertexAttributeType::Normal, normals[i]);
-            vertexData->SetAttribute(i, VertexAttributeType::TexCoord0, texCoords[i % 4]);
+            vertexData->SetAttribute(i, RHI::VertexAttributeType::Position, positions[i]);
+            vertexData->SetAttribute(i, RHI::VertexAttributeType::Normal, normals[i]);
+            vertexData->SetAttribute(i, RHI::VertexAttributeType::TexCoord0, texCoords[i % 4]);
         }
 
         // Create indices (6 faces * 2 triangles * 3 vertices = 36 indices)
@@ -555,7 +555,7 @@ namespace DXEngine
         auto resource = std::make_unique<MeshResource>(name);
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
-        resource->SetTopology(PrimitiveTopology::TriangleList);
+        resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
 
         return resource;
     }
@@ -593,9 +593,9 @@ namespace DXEngine
                     static_cast<float>(ring) / rings
                 );
 
-                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, position);
-                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
-                vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Position, position);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Normal, normal);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::TexCoord0, texCoord);
 
                 ++vertexIndex;
             }
@@ -618,7 +618,7 @@ namespace DXEngine
         auto resource = std::make_unique<MeshResource>(name);
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
-        resource->SetTopology(PrimitiveTopology::TriangleList);
+        resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
 
         return resource;
     }
@@ -637,15 +637,15 @@ namespace DXEngine
         uint32_t vertexIndex = 0;
 
         // Bottom cap center
-        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(0.0f, -halfHeight, 0.0f));
-        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f));
-        vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.5f, 0.5f));
+        vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(0.0f, -halfHeight, 0.0f));
+        vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Normal, DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f));
+        vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.5f, 0.5f));
         ++vertexIndex;
 
         // Top cap center
-        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(0.0f, halfHeight, 0.0f));
-        vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f));
-        vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.5f, 0.5f));
+        vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(0.0f, halfHeight, 0.0f));
+        vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Normal, DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f));
+        vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.5f, 0.5f));
         ++vertexIndex;
 
         // Side vertices (bottom and top rings)
@@ -659,16 +659,16 @@ namespace DXEngine
             DirectX::XMFLOAT2 texCoord(static_cast<float>(segment) / segments, 0.0f);
 
             // Bottom ring
-            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(x, -halfHeight, z));
-            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
-            vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+            vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(x, -halfHeight, z));
+            vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Normal, normal);
+            vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::TexCoord0, texCoord);
             ++vertexIndex;
 
             // Top ring
             texCoord.y = 1.0f;
-            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, DirectX::XMFLOAT3(x, halfHeight, z));
-            vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
-            vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+            vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(x, halfHeight, z));
+            vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Normal, normal);
+            vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::TexCoord0, texCoord);
             ++vertexIndex;
         }
 
@@ -706,7 +706,7 @@ namespace DXEngine
         auto resource = std::make_unique<MeshResource>(name);
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
-        resource->SetTopology(PrimitiveTopology::TriangleList);
+        resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
 
         return resource;
     }
@@ -738,9 +738,9 @@ namespace DXEngine
                     static_cast<float>(z) / depthSegments
                 );
 
-                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Position, position);
-                vertexData->SetAttribute(vertexIndex, VertexAttributeType::Normal, normal);
-                vertexData->SetAttribute(vertexIndex, VertexAttributeType::TexCoord0, texCoord);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Position, position);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Normal, normal);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::TexCoord0, texCoord);
 
                 ++vertexIndex;
             }
@@ -765,7 +765,7 @@ namespace DXEngine
         auto resource = std::make_unique<MeshResource>(name);
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
-        resource->SetTopology(PrimitiveTopology::TriangleList);
+        resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
 
         return resource;
     }

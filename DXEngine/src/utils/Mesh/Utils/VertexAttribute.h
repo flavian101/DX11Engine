@@ -33,8 +33,6 @@ namespace DXEngine
 		uint32_t GetAttributeCount() const { return static_cast<uint32_t>(m_Attributes.size()); }
 		bool IsFinalized() const { return m_Finalized; }
 
-		std::vector<D3D11_INPUT_ELEMENT_DESC> CreateD3D11InputElements() const;
-
 		bool HasAttribute(RHI::VertexAttributeType type, uint32_t slot = 0) const;
 		const RHI::VertexAttribute* FindAttribute(RHI::VertexAttributeType type, uint32_t slot = 0) const;
 

@@ -31,6 +31,7 @@ namespace DXEngine {
         void SetMaterial(std::shared_ptr<Material> material);
         void SetMaterial(size_t submeshIndex, std::shared_ptr<Material> material);
         const std::shared_ptr<Material>& GetMaterial(size_t submeshIndex = 0) const;
+        void Bind(const void* shaderByteCode, size_t byteCodeLength) const;
         const std::vector<std::shared_ptr<Material>>& GetMaterials() const { return m_Materials; }
 
         // Properties
