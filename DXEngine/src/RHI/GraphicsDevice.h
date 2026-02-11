@@ -189,7 +189,7 @@ namespace DXEngine::RHI
 		virtual void DrawIndexedIndirect(IBuffer* argsBuffer, uint32_t offset = 0) = 0;
 
 		//render Targets
-		virtual void SetRenderTarget(ITexture* colorTarget, ITexture* depthTarget = nullptr);
+		virtual void SetRenderTarget(ITexture* colorTarget, ITexture* depthTarget = nullptr) = 0;
 		virtual void SetRenderTargets(ITexture** colorTargets, uint32_t count, ITexture* depthTarget = nullptr) = 0;
 		virtual void ClearRenderTarget(ITexture* target, float r, float g, float b, float a) = 0;
 		virtual void ClearDepthStencil(ITexture* target, float depth, uint8_t stencil = 0) = 0;
