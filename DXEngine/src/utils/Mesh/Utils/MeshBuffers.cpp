@@ -9,7 +9,7 @@ namespace DXEngine
         Release();
     }
 
-    bool MeshBuffers::CreateFromResource(std::shared_ptr<RHI::IGraphicsDevice> device,const MeshResource& resource)
+    bool MeshBuffers::CreateFromResource(RHI::IGraphicsDevice* device,const MeshResource& resource)
     {
         Release();
 
@@ -64,7 +64,7 @@ namespace DXEngine
         return true;
     }
 
-    bool MeshBuffers::CreateFromVertexData(std::shared_ptr<RHI::IGraphicsDevice> device,const VertexData& vertexData, const IndexData* indexData)
+    bool MeshBuffers::CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData)
     {
         // Create a temporary resource and use the existing method
         MeshResource tempResource;
@@ -80,7 +80,7 @@ namespace DXEngine
         return CreateFromResource(device,tempResource);
     }
 
-    bool MeshBuffers::AddVertexBuffer(std::shared_ptr<RHI::IGraphicsDevice> device, const VertexData& vertexData, uint32_t slot)
+    bool MeshBuffers::AddVertexBuffer(RHI::IGraphicsDevice* device, const VertexData& vertexData, uint32_t slot)
     {
         const void* data = vertexData.GetVertexData(slot);
         size_t dataSize = vertexData.GetDataSize(slot);
@@ -180,7 +180,7 @@ namespace DXEngine
         return !m_VertexBuffers.empty() && m_VertexCount > 0;
     }
 
-    bool MeshBuffers::CreateIndexBuffer(std::shared_ptr<RHI::IGraphicsDevice> device, const IndexData* indexData, const std::string& debugName)
+    bool MeshBuffers::CreateIndexBuffer(RHI::IGraphicsDevice* device, const IndexData* indexData, const std::string& debugName)
     {
         if (!device || !indexData)
             return false;

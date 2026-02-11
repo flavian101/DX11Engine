@@ -20,11 +20,11 @@ namespace DXEngine
         MeshBuffers& operator=(MeshBuffers&&) = default;
 
         // Buffer creation from mesh resource (Device Must outlive MeshBuffer we use Shared_Ptr)
-        bool CreateFromResource(std::shared_ptr<RHI::IGraphicsDevice> device, const MeshResource& resource);
-        bool CreateFromVertexData(std::shared_ptr<RHI::IGraphicsDevice> device,const VertexData& vertexData, const IndexData* indexData = nullptr);
+        bool CreateFromResource(RHI::IGraphicsDevice* device, const MeshResource& resource);
+        bool CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData = nullptr);
 
         // Multiple vertex buffer support for complex meshes
-        bool AddVertexBuffer(std::shared_ptr<RHI::IGraphicsDevice> device, const VertexData& vertexData, uint32_t slot);
+        bool AddVertexBuffer(RHI::IGraphicsDevice* device, const VertexData& vertexData, uint32_t slot);
 
         // GPU resource access
         void Bind(RHI::ICommandBuffer* cmd,uint32_t startSlot = 0) const;
@@ -43,7 +43,7 @@ namespace DXEngine
         size_t GetGPUMemoryUsage() const;
     private:
         //create index Buffer
-        bool CreateIndexBuffer(std::shared_ptr<RHI::IGraphicsDevice> device, const IndexData* indexData, const std::string& debugName);
+        bool CreateIndexBuffer(RHI::IGraphicsDevice* device, const IndexData* indexData, const std::string& debugName);
         //bind index and vertex buffers
         void BindVertexBuffers(RHI::ICommandBuffer* cmd, uint32_t startSlot = 0) const;
         void BindIndexBuffer(RHI::ICommandBuffer* cmd) const;

@@ -164,7 +164,6 @@
     <ClInclude Include="src\utils\Mesh\Mesh.h" />
     <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
     <ClInclude Include="src\utils\Mesh\Utils\IndexData.h" />
-    <ClInclude Include="src\utils\Mesh\Utils\InputManager.h" />
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
     <ClInclude Include="src\utils\PerfomanceProfiller.h" />
@@ -228,7 +227,6 @@
     <ClCompile Include="src\utils\Mesh\Mesh.cpp" />
     <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp" />
-    <ClCompile Include="src\utils\Mesh\Utils\InputManager.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
     <ClCompile Include="src\utils\Texture.cpp" />
