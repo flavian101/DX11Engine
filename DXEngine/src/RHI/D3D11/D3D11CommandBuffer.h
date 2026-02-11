@@ -48,7 +48,7 @@ namespace DXEngine::RHI
 		//Binding
 		void SetPipeline(IPipeline* pipeline) override;
 		void SetVertexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) override;
-		void SetIndexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) = 0;
+		void SetIndexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) override;
 		void SetConstantBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage = ShaderStage::Vertex) override;
 		void SetTexture(ITexture* texture, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) override;
 		void SetSampler(ISampler* sampler, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) override;
@@ -90,7 +90,7 @@ namespace DXEngine::RHI
 
 		//Copy operations
 		virtual void CopyBuffer(IBuffer* src, IBuffer* dst, uint32_t srcOffset, uint32_t dstOffset, uint32_t size)override;
-		virtual void CopyTexture(ITexture* src, ITexture* dst) = 0;
+		virtual void CopyTexture(ITexture* src, ITexture* dst) override;
 		virtual void CopyBufferToTexture(IBuffer* src, ITexture* dst, uint32_t mipLevel = 0, uint32_t arraySlice = 0)override;
 		virtual void CopyTextureToBuffer(ITexture* src, IBuffer* dst, uint32_t mipLevel = 0, uint32_t arraySlice = 0)override;
 

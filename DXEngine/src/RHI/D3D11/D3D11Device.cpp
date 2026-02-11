@@ -133,7 +133,7 @@ namespace DXEngine::RHI
 	{
 		//D3D11 note: commands execute immediately, so this is mostly a no-op
 		// we process them for API compatibility
-		for (uint32_t i = i; i < count; i++)
+		for (uint32_t i = 0; i < count; i++)
 		{
 			Submit(cmds[i]); //call single submit for each command buffer
 		}
