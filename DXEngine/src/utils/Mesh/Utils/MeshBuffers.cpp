@@ -40,6 +40,7 @@ namespace DXEngine
             bufferDesc.type = RHI::BufferType::Vertex;
             bufferDesc.usage = RHI::BufferUsage::Static;  // Default for static mesh data
             bufferDesc.size = static_cast<uint32_t>(dataSize);
+			bufferDesc.stride = stride;
             bufferDesc.initialData = data;
             bufferDesc.debugName = resource.GetName() + "_VB_Slot" + std::to_string(attr.Slot);
 
@@ -60,24 +61,30 @@ namespace DXEngine
             if (!CreateIndexBuffer(device, indexData, resource.GetName()));
         }
 
-        m_Topology = static_cast<RHI::PrimitiveTopology>(resource.GetTopology());
+        m_Topology = resource.GetTopology();
         return true;
     }
 
-    bool MeshBuffers::CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData)
+    bool MeshBuffers::CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData, RHI::PrimitiveTopology topology)
     {
-        // Create a temporary resource and use the existing method
-        MeshResource tempResource;
+        if (!device)
+        {
+            OutputDebugStringA("ERROR: Device is null\n");
+            return false;
+        }
+
+        MeshResource tempResource("TempMesh");
         auto vertexDataCopy = std::make_unique<VertexData>(vertexData);
-        const_cast<MeshResource&>(tempResource).SetVertexData(std::move(vertexDataCopy));
+        tempResource.SetVertexData(std::move(vertexDataCopy));
 
         if (indexData)
         {
             auto indexDataCopy = std::make_unique<IndexData>(*indexData);
-            const_cast<MeshResource&>(tempResource).SetIndexData(std::move(indexDataCopy));
+            tempResource.SetIndexData(std::move(indexDataCopy));
         }
 
-        return CreateFromResource(device,tempResource);
+        tempResource.SetTopology(topology); 
+        return CreateFromResource(device, tempResource);
     }
 
     bool MeshBuffers::AddVertexBuffer(RHI::IGraphicsDevice* device, const VertexData& vertexData, uint32_t slot)
@@ -93,8 +100,9 @@ namespace DXEngine
         bufferDesc.type = RHI::BufferType::Vertex;
         bufferDesc.usage = RHI::BufferUsage::Static;  // Default for static mesh data
         bufferDesc.size = static_cast<uint32_t>(dataSize);
+        bufferDesc.stride = stride;
         bufferDesc.initialData = data;
-      //  bufferDesc.debugName = resource.GetName() + "_VB_Slot" + std::to_string(attr.Slot);
+        bufferDesc.debugName = "VertexBuffer_Slot" + std::to_string(slot);
 
         auto vertexBuffer = device->CreateBuffer(bufferDesc);
 

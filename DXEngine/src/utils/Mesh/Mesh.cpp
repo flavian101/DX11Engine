@@ -1,20 +1,19 @@
 #include "dxpch.h"
 #include "Mesh.h"
-#include "renderer/RendererCommand.h"
 #include <utils/material/Material.h>
 #include <cassert>
 #include <sstream>
 #include <algorithm>
-#include "utils/Mesh/Utils/InputManager.h"
 
 
 namespace DXEngine {
 
    // ===== Mesh Implementation =====
 
-    Mesh::Mesh(std::shared_ptr<MeshResource> resource)
-        : m_Resource(resource)
-        , m_GPUResourcesDirty(true)
+    Mesh::Mesh(std::shared_ptr<MeshResource> resource, std::shared_ptr<RHI::IGraphicsDevice> device)
+        : m_Resource(resource),
+        m_Device(device),
+        m_GPUResourcesDirty(true)
     {
         if (m_Resource)
         {
@@ -38,14 +37,14 @@ namespace DXEngine {
         if (!m_GPUResourcesDirty && m_Buffers.IsValid())
             return true;
 
-        if (!m_Resource || !m_Resource->IsValid())
+        if (!m_Resource || !m_Resource->IsValid() || !m_Device)
             return false;
-        bool success = m_Buffers.CreateFromResource(*m_Resource);
+
+        bool success = m_Buffers.CreateFromResource(m_Device.get(), *m_Resource);
         if (success)
         {
             m_GPUResourcesDirty = false;
         }
-
         return success;
     }
 
@@ -66,7 +65,7 @@ namespace DXEngine {
 
         if (submeshIndex >= m_Materials.size())
             return;
-
+        
         if (m_Materials[submeshIndex] != material)
         {
             m_Materials[submeshIndex] = material;
@@ -84,13 +83,22 @@ namespace DXEngine {
         return m_Materials[submeshIndex];
     }
 
-    void Mesh::Bind(const void* shaderByteCode, size_t byteCodeLength) const
+    void Mesh::Bind(RHI::ICommandBuffer* cmd) const
     {
-        if (!EnsureGPUResources())
+        if (!cmd)
+        {
+            OutputDebugStringA("ERROR: Mesh::Bind - command buffer is null\n");
             return;
+        }
+
+        if (!EnsureGPUResources())
+        {
+            OutputDebugStringA("ERROR: Mesh::Bind - failed to ensure GPU resources\n");
+            return;
+        }
 
         // Bind vertex buffers and index buffer
-        m_Buffers.Bind();
+        m_Buffers.Bind(cmd);
     }
 
     bool Mesh::IsValid() const
@@ -200,28 +208,28 @@ namespace DXEngine {
 
     // ===== Factory Methods =====
 
-    std::shared_ptr<Mesh> Mesh::CreateQuad(float width, float height)
+    std::shared_ptr<Mesh> Mesh::CreateQuad(std::shared_ptr<RHI::IGraphicsDevice> device, float width, float height)
     {
         auto resource = MeshResource::CreateQuad("Quad", width, height);
-        return std::make_shared<Mesh>(std::move(resource));
+        return std::make_shared<Mesh>(std::move(resource),device);
     }
 
-    std::shared_ptr<Mesh> Mesh::CreateCube(float size)
+    std::shared_ptr<Mesh> Mesh::CreateCube(std::shared_ptr<RHI::IGraphicsDevice> device, float size)
     {
         auto resource = MeshResource::CreateCube("Cube", size);
-        return std::make_shared<Mesh>(std::move(resource));
+        return std::make_shared<Mesh>(std::move(resource),device);
     }
 
-    std::shared_ptr<Mesh> Mesh::CreateSphere(float radius, uint32_t segments)
+    std::shared_ptr<Mesh> Mesh::CreateSphere(std::shared_ptr<RHI::IGraphicsDevice> device, float radius, uint32_t segments)
     {
         auto resource = MeshResource::CreateSphere("Sphere", radius, segments);
-        return std::make_shared<Mesh>(std::move(resource));
+        return std::make_shared<Mesh>(std::move(resource),device);
     }
 
-    std::shared_ptr<Mesh> Mesh::CreatePlane(float width, float depth, uint32_t widthSegments, uint32_t depthSegments)
+    std::shared_ptr<Mesh> Mesh::CreatePlane(std::shared_ptr<RHI::IGraphicsDevice> device, float width, float depth, uint32_t widthSegments, uint32_t depthSegments)
     {
         auto resource = MeshResource::CreatePlane("Plane", width, depth, widthSegments, depthSegments);
-        return std::make_shared<Mesh>(std::move(resource));
+        return std::make_shared<Mesh>(std::move(resource),device);
     }
   
     // ===== MeshUtils Implementation =====
@@ -332,7 +340,7 @@ namespace DXEngine {
 
             // Check vertex layout has position
             const VertexLayout& layout = vertexData->GetLayout();
-            if (!layout.HasAttribute(VertexAttributeType::Position))
+            if (!layout.HasAttribute(RHI::VertexAttributeType::Position))
             {
                 errorMessage = "Vertex layout missing position attribute";
                 return false;

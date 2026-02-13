@@ -1,6 +1,5 @@
 #pragma once
 #include "Resource/MeshResource.h"
-#include "renderer/RendererCommand.h"
 #include <memory>
 #include <unordered_map>
 #include "utils/Mesh/Utils/IndexData.h"
@@ -15,7 +14,7 @@ namespace DXEngine {
     class Mesh
     {
     public:
-        explicit Mesh(std::shared_ptr<MeshResource> resource);
+        explicit Mesh(std::shared_ptr<MeshResource> resource,std::shared_ptr<RHI::IGraphicsDevice> device);
         virtual ~Mesh() = default;
 
         // Resource management
@@ -31,7 +30,7 @@ namespace DXEngine {
         void SetMaterial(std::shared_ptr<Material> material);
         void SetMaterial(size_t submeshIndex, std::shared_ptr<Material> material);
         const std::shared_ptr<Material>& GetMaterial(size_t submeshIndex = 0) const;
-        void Bind(const void* shaderByteCode, size_t byteCodeLength) const;
+        void Bind(RHI::ICommandBuffer* cmd) const;
         const std::vector<std::shared_ptr<Material>>& GetMaterials() const { return m_Materials; }
 
         // Properties
@@ -50,10 +49,10 @@ namespace DXEngine {
         size_t GetTotalMemoryUsage() const;
 
         // Factory methods
-        static std::shared_ptr<Mesh> CreateQuad(float width = 1.0f, float height = 1.0f);
-        static std::shared_ptr<Mesh> CreateCube(float size = 1.0f);
-        static std::shared_ptr<Mesh> CreateSphere(float radius = 1.0f, uint32_t segments = 32);
-        static std::shared_ptr<Mesh> CreatePlane(float width = 10.0f, float depth = 10.0f,
+        static std::shared_ptr<Mesh> CreateQuad(std::shared_ptr<RHI::IGraphicsDevice> device, float width = 1.0f, float height = 1.0f);
+        static std::shared_ptr<Mesh> CreateCube(std::shared_ptr<RHI::IGraphicsDevice> device, float size = 1.0f);
+        static std::shared_ptr<Mesh> CreateSphere(std::shared_ptr<RHI::IGraphicsDevice> device, float radius = 1.0f, uint32_t segments = 32);
+        static std::shared_ptr<Mesh> CreatePlane(std::shared_ptr<RHI::IGraphicsDevice> device, float width = 10.0f, float depth = 10.0f,
             uint32_t widthSegments = 10, uint32_t depthSegments = 10);
 
     protected:
@@ -65,6 +64,7 @@ namespace DXEngine {
         void EnsureMaterialSlots();
 
     private:
+        std::shared_ptr<RHI::IGraphicsDevice> m_Device; // use a std::weak_ptr and Test if it still works
         std::shared_ptr<MeshResource> m_Resource;
         mutable MeshBuffers m_Buffers;
         std::vector<std::shared_ptr<Material>> m_Materials;

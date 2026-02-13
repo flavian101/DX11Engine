@@ -1,7 +1,6 @@
 #pragma once
 #include "MaterialTypes.h"
 #include "MaterialProperties.h"
-#include "utils/Sampler.h"
 #include <string>
 #include <memory>
 #include "RHI/GraphicsDevice.h"

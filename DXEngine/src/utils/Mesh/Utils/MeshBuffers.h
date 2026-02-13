@@ -21,7 +21,7 @@ namespace DXEngine
 
         // Buffer creation from mesh resource (Device Must outlive MeshBuffer we use Shared_Ptr)
         bool CreateFromResource(RHI::IGraphicsDevice* device, const MeshResource& resource);
-        bool CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData = nullptr);
+        bool CreateFromVertexData(RHI::IGraphicsDevice* device,const VertexData& vertexData, const IndexData* indexData = nullptr, RHI::PrimitiveTopology topology);
 
         // Multiple vertex buffer support for complex meshes
         bool AddVertexBuffer(RHI::IGraphicsDevice* device, const VertexData& vertexData, uint32_t slot);
