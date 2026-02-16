@@ -103,6 +103,8 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\renderer\Core\Renderer.h" />
+    <ClInclude Include="src\renderer\Core\RendererUtils.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Sampler.h" />
     <ClInclude Include="src\renderer\MaterialSystem.h" />
     <ClInclude Include="src\renderer\ShaderCache.h" />
@@ -154,8 +156,6 @@
     <ClInclude Include="src\picking\InterfacePickable.h" />
     <ClInclude Include="src\picking\PickingManager.h" />
     <ClInclude Include="src\picking\Ray.h" />
-    <ClInclude Include="src\renderer\legacy\Renderer.h" />
-    <ClInclude Include="src\renderer\legacy\RendererCommand.h" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\shaders\ShaderProgram.h" />
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
@@ -182,6 +182,8 @@
     <ClInclude Include="src\models\processors\TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\renderer\Core\Renderer.cpp" />
+    <ClCompile Include="src\renderer\Core\RendererUtils.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
     <ClCompile Include="src\renderer\MaterialSystem.cpp" />
     <ClCompile Include="src\renderer\ShaderCache.cpp" />
@@ -219,8 +221,6 @@
     <ClCompile Include="src\models\ModelLoader.cpp" />
     <ClCompile Include="src\picking\PickingManager.cpp" />
     <ClCompile Include="src\picking\Ray.cpp" />
-    <ClCompile Include="src\renderer\legacy\Renderer.cpp" />
-    <ClCompile Include="src\renderer\legacy\RendererCommand.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
     <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
