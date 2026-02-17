@@ -103,7 +103,26 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\renderer\Core\Renderer.h" />
+    <ClInclude Include="CullingSystem.h" />
+    <ClInclude Include="LightCuller.h" />
+    <ClInclude Include="RenderBatcher.h" />
+    <ClInclude Include="SortingStrategy.h" />
+    <ClInclude Include="src\renderer\Scene\DeferredRenderer.h" />
+    <ClInclude Include="src\renderer\Scene\ForwardRenderer.h" />
+    <ClInclude Include="src\renderer\Scene\SceneRenderer.h" />
+    <ClInclude Include="src\renderer\Cache\BufferPool.h" />
+    <ClInclude Include="src\renderer\Cache\PipelineCache.h" />
+    <ClInclude Include="src\renderer\Cache\ResourceManager.h" />
+    <ClInclude Include="src\renderer\Passes\ForwardPass.h" />
+    <ClInclude Include="src\renderer\Passes\GBufferPass.h" />
+    <ClInclude Include="src\renderer\Passes\PostProcessPass.h" />
+    <ClInclude Include="src\renderer\Passes\shadowPass.h" />
+    <ClInclude Include="src\renderer\Passes\SkyboxPass.h" />
+    <ClInclude Include="src\renderer\Core\CommandQueue.h" />
+    <ClInclude Include="src\renderer\Core\FrameContext.h" />
+    <ClInclude Include="src\renderer\Core\RenderGraph.h" />
+    <ClInclude Include="src\renderer\Core\RenderPass.h" />
+    <ClInclude Include="src\renderer\Renderer.h" />
     <ClInclude Include="src\renderer\Core\RendererUtils.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Sampler.h" />
     <ClInclude Include="src\renderer\MaterialSystem.h" />
@@ -180,9 +199,30 @@
     <ClInclude Include="src\utils\material\MaterialTypes.h" />
     <ClInclude Include="src\windows\WindowsInput.h" />
     <ClInclude Include="src\models\processors\TextureLoader.h" />
+    <ClInclude Include="src\renderer\Passes\TransparentPass.h" />
+    <ClInclude Include="src\renderer\Passes\UIPass.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\renderer\Core\Renderer.cpp" />
+    <ClCompile Include="CullingSystem.cpp" />
+    <ClCompile Include="LightCuller.cpp" />
+    <ClCompile Include="RenderBatcher.cpp" />
+    <ClCompile Include="SortingStrategy.cpp" />
+    <ClCompile Include="src\renderer\Scene\DeferredRenderer.cpp" />
+    <ClCompile Include="src\renderer\Scene\ForwardRenderer.cpp" />
+    <ClCompile Include="src\renderer\Scene\SceneRenderer.cpp" />
+    <ClCompile Include="src\renderer\Cache\BufferPool.cpp" />
+    <ClCompile Include="src\renderer\Cache\PipelineCache.cpp" />
+    <ClCompile Include="src\renderer\Cache\ResourceManager.cpp" />
+    <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
+    <ClCompile Include="src\renderer\Passes\GBufferPass.cpp" />
+    <ClCompile Include="src\renderer\Passes\PostProcessPass.cpp" />
+    <ClCompile Include="src\renderer\Passes\shadowPass.cpp" />
+    <ClCompile Include="src\renderer\Passes\SkyboxPass.cpp" />
+    <ClCompile Include="src\renderer\Core\CommandQueue.cpp" />
+    <ClCompile Include="src\renderer\Core\FrameContext.cpp" />
+    <ClCompile Include="src\renderer\Core\RenderGraph.cpp" />
+    <ClCompile Include="src\renderer\Core\RenderPass.cpp" />
+    <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\Core\RendererUtils.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
     <ClCompile Include="src\renderer\MaterialSystem.cpp" />
@@ -240,6 +280,8 @@
     <ClCompile Include="src\utils\material\Material.cpp" />
     <ClCompile Include="src\windows\WindowsInput.cpp" />
     <ClCompile Include="src\models\processors\TextureLoader.cpp" />
+    <ClCompile Include="src\renderer\Passes\TransparentPass.cpp" />
+    <ClCompile Include="src\renderer\Passes\UIPass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
@@ -247,6 +289,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\renderer\Readme.md" />
     <None Include="src\RHI\Readme_OwnerShip.md">
       <SubType>
       </SubType>

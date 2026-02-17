@@ -149,6 +149,7 @@ namespace DXEngine::RHI
 
 	void D3D11Device::Present()
 	{
+		//TO-Do add support for V-sync later
 		m_SwapChain->Present(0, 0);
 	}
 

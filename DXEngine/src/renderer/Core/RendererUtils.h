@@ -146,7 +146,7 @@ namespace DXEngine
 
 	//Renderer Configuration
 
-	struct RenderConfig
+	struct RendererConfig
 	{
 		// Rendering features
 		bool enableInstancing = true;
