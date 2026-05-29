@@ -230,10 +230,10 @@
     <ClInclude Include="src\renderer\Scene\SceneRenderer.h" />
     <ClInclude Include="src\renderer\Scene\ForwardRenderer.h" />
     <ClInclude Include="src\renderer\Scene\DeferredRenderer.h" />
-    <ClInclude Include="RenderBatcher.h" />
-    <ClInclude Include="CullingSystem.h" />
-    <ClInclude Include="LightCuller.h" />
-    <ClInclude Include="SortingStrategy.h" />
+    <ClInclude Include="src\renderer\Systems\RenderBatcher.h" />
+    <ClInclude Include="src\renderer\Systems\CullingSystem.h" />
+    <ClInclude Include="src\renderer\Systems\LightCuller.h" />
+    <ClInclude Include="src\renderer\Systems\SortingStrategy.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -367,10 +367,10 @@
     <ClCompile Include="src\renderer\Scene\SceneRenderer.cpp" />
     <ClCompile Include="src\renderer\Scene\ForwardRenderer.cpp" />
     <ClCompile Include="src\renderer\Scene\DeferredRenderer.cpp" />
-    <ClCompile Include="RenderBatcher.cpp" />
-    <ClCompile Include="CullingSystem.cpp" />
-    <ClCompile Include="LightCuller.cpp" />
-    <ClCompile Include="SortingStrategy.cpp" />
+    <ClCompile Include="src\renderer\Systems\RenderBatcher.cpp" />
+    <ClCompile Include="src\renderer\Systems\CullingSystem.cpp" />
+    <ClCompile Include="src\renderer\Systems\LightCuller.cpp" />
+    <ClCompile Include="src\renderer\Systems\SortingStrategy.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\RHI\Readme_OwnerShip.md" />
