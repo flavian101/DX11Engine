@@ -361,6 +361,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-#directories to ignore
-bin-int/
+
+
+#cmake things 
+build/
 bin/
+bin-int/
+CMakeFiles/
+CMakeCache.txt
+*.sln
+*.vcxproj*
