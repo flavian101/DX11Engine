@@ -37,7 +37,7 @@ namespace DXEngine::Rendering
 		*  Add a render pass the graph
 		*  Example:
 		*	graph.AddPass<ShadowPass>("shadows");
-		*	graph.AddPass<gbufferPass>("gbuffer").DependsOn("shadows");
+		*	graph.AddPass<gBufferPass>("gBuffer").DependsOn("shadows");
 		*/
 
 		template<typename T, typename... Args>
@@ -61,7 +61,7 @@ namespace DXEngine::Rendering
 		//Enable/Disable pass without removing it
 		void EnablePass(const std::string& name, bool enable = true);
 
-		///Compile the Graph - resolves dependecies, determins execution order
+		///Compile the Graph - resolves dependencies, determines execution order
 		//must be called after adding passes and before execution
 		bool Compile();
 
@@ -85,9 +85,9 @@ namespace DXEngine::Rendering
 		std::string GetDebugInfo()const;
 
 	private:
-		//Topological sort for Dependecy resolution
+		//Topological sort for Dependency resolution
 		bool TopologicalSort();
-		void VistNode(const std::string& name, std::unordered_map<std::string, int>& visited, std::vector<std::string>& sorted);
+		void VisitNode(const std::string& name, std::unordered_map<std::string, int>& visited, std::vector<std::string>& sorted);
 
 
 	private:

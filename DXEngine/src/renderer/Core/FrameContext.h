@@ -23,6 +23,7 @@ namespace DXEngine::Rendering
 	class CullingSystem;
 	class RenderBatcher;
 	class ShaderCache;
+    class ResourceCache;
 
 	/// <summary>
 	/// Frame Context - Blackboard passed through every system and pass each frame 
