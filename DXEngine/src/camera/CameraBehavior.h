@@ -14,7 +14,7 @@ namespace DXEngine
 		{}
 		virtual ~CameraBehavior() = default;
 
-		virtual CameraContribution GetCameraContribution(Camera& camera, FrameTime deltaTime) = 0;
+		virtual CameraContribution GetCameraContribution(Camera& camera, float deltaTime) = 0;
 
 		float GetPriority()const { return m_Priority; }
 		void SetPriority(bool active) { m_IsActive = active; }

@@ -31,7 +31,7 @@ namespace DXEngine
         ClearElements();
     }
 
-    void UIManager::Update(FrameTime dt)
+    void UIManager::Update(float dt)
     {
         // Update all root elements (they will update their children)
         for (auto& element : m_RootElements)
@@ -42,7 +42,7 @@ namespace DXEngine
             }
         }
     }
-    void UIManager::UpdateElementRecursive(std::shared_ptr<UIElement> element, FrameTime dt)
+    void UIManager::UpdateElementRecursive(std::shared_ptr<UIElement> element, float dt)
     {
         if (!element)return;
 

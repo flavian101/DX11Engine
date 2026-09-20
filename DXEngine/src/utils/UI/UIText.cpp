@@ -8,7 +8,7 @@ namespace DXEngine
     {
     }
 
-    void UIText::Update(FrameTime dt)
+    void UIText::Update(float dt)
     {
         // Text elements typically don't need complex updates
         // Could add text animations, typewriter effects, etc. here

@@ -21,7 +21,7 @@ namespace DXEngine
 
 		void Move();
 
-		void Update(FrameTime dt);
+		void Update(float dt);
 		void OnEvent(Event& event);
 
 		float moveLeftRight = 0.0f;

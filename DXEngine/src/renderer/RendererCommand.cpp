@@ -403,29 +403,44 @@ namespace DXEngine {
 
 	void RenderCommand::CreateRasterizerStates()
 	{
-		D3D11_RASTERIZER_DESC desc = {};
-		desc.FillMode = D3D11_FILL_SOLID;
-		desc.FrontCounterClockwise = false;
-		desc.DepthClipEnable = true;
+		auto make = [&](D3D11_RASTERIZER_DESC& d,
+			D3D11_FILL_MODE fill,
+			D3D11_CULL_MODE cull,
+			BOOL fccw)
+			{
+				ZeroMemory(&d, sizeof(d));
+				d.FillMode = fill;
+				d.CullMode = cull;
+				d.FrontCounterClockwise = fccw;
+				d.DepthClipEnable = TRUE;
+				d.ScissorEnable = FALSE;
+				d.MultisampleEnable = TRUE;
+				d.AntialiasedLineEnable = FALSE;
+			};
 
-		// Solid, Back-Face Culling
-		desc.CullMode = D3D11_CULL_BACK;
-		s_Device->CreateRasterizerState(&desc, s_RasterizerStates[RasterizerMode::SolidBackCull].GetAddressOf());
+		D3D11_RASTERIZER_DESC desc;
+
+		// Solid, Back-Face Culling (DX11 default)
+		make(desc, D3D11_FILL_SOLID, D3D11_CULL_BACK, FALSE);
+		s_Device->CreateRasterizerState(&desc,
+			s_RasterizerStates[RasterizerMode::SolidBackCull].GetAddressOf());
 
 		// Solid, Front-Face Culling
-		desc.CullMode = D3D11_CULL_FRONT;
-		desc.FrontCounterClockwise = TRUE;
-		s_Device->CreateRasterizerState(&desc, s_RasterizerStates[RasterizerMode::SolidFrontCull].GetAddressOf());
+		make(desc, D3D11_FILL_SOLID, D3D11_CULL_FRONT, FALSE);
+		s_Device->CreateRasterizerState(&desc,
+			s_RasterizerStates[RasterizerMode::SolidFrontCull].GetAddressOf());
 
 		// Solid, No Culling
-		desc.CullMode = D3D11_CULL_NONE;
-		desc.FrontCounterClockwise = FALSE;
-		s_Device->CreateRasterizerState(&desc, s_RasterizerStates[RasterizerMode::SolidNoCull].GetAddressOf());
+		make(desc, D3D11_FILL_SOLID, D3D11_CULL_NONE, FALSE);
+		s_Device->CreateRasterizerState(&desc,
+			s_RasterizerStates[RasterizerMode::SolidNoCull].GetAddressOf());
 
-		// Wireframe
-		desc.FillMode = D3D11_FILL_WIREFRAME;
-		s_Device->CreateRasterizerState(&desc, s_RasterizerStates[RasterizerMode::Wireframe].GetAddressOf());
+		// Wireframe (no culling, default winding)
+		make(desc, D3D11_FILL_WIREFRAME, D3D11_CULL_NONE, FALSE);
+		s_Device->CreateRasterizerState(&desc,
+			s_RasterizerStates[RasterizerMode::Wireframe].GetAddressOf());
 	}
+
 	void RenderCommand::CreateUIBlendState()
 	{
 		D3D11_BLEND_DESC blendDesc = {};

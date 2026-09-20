@@ -7,7 +7,7 @@
 namespace DXEngine {
 
 	Camera::Camera()
-		: m_Position(-10.0f, 8.0f, 0.0f)
+		: m_Position(-5.0f, 3.0f, 0.0f)
 		, m_Rotation(0.0f, 0.0f, 0.0f)
 		, m_ViewMatrixDirty(true)
 		, m_FieldOfView(DirectX::XM_PIDIV4)//45 
@@ -30,7 +30,7 @@ namespace DXEngine {
 		UpdateProjectionMatrix();
 	}
 
-	void Camera::Update(FrameTime deltatime)
+	void Camera::Update(float deltatime)
 	{
 		std::vector<CameraContribution> contributions;
 

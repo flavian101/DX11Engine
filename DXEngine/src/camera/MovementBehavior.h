@@ -12,7 +12,7 @@ namespace DXEngine
 		MovementBehavior(float moveSpeed = 20.0f);
 		~MovementBehavior() = default;
 
-		virtual CameraContribution GetCameraContribution(Camera& camera, FrameTime deltatime) override;
+		virtual CameraContribution GetCameraContribution(Camera& camera, float deltaTime) override;
 
 		void SetMoveSpeed(float speed) { m_MoveSpeed = speed; }
 		float GetMoveSpeed() { return m_MoveSpeed; }

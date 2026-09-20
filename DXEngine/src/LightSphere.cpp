@@ -31,7 +31,7 @@ namespace DXEngine {
         SetMesh(lightMesh);
     }
 
-    void LightSphere::Update(FrameTime deltatime)
+    void LightSphere::Update(float deltatime)
     {
         Model::Update(deltatime);
     }

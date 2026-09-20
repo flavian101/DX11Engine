@@ -14,7 +14,7 @@ namespace DXEngine
 		, m_FirstMouse(true)
 	{
 	}
-	CameraContribution FreeLookBehavior::GetCameraContribution(Camera& camera, FrameTime deltatime)
+	CameraContribution FreeLookBehavior::GetCameraContribution(Camera& camera, float deltatime)
 	{
 		if (!IsActive())
 			return CameraContribution();

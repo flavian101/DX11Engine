@@ -25,7 +25,7 @@ namespace DXEngine {
 
 	}
 
-	void Model::Update(FrameTime deltatime)
+	void Model::Update(float deltatime)
 	{
 		// Update animation if skinned
 		if (IsSkinned() && m_SkinningData->animationController)
@@ -168,20 +168,20 @@ namespace DXEngine {
 		return m_Transform ? m_Transform->GetScale() : one;
 	}
 
-	void Model::SetRotation(const DirectX::XMVECTOR& rotation)
+	void Model::SetRotationQuaternion(const DirectX::XMVECTOR& rotation)
 	{
 		if (m_Transform)
 		{
-			m_Transform->SetRotation(rotation);
+			m_Transform->SetRotationQuaternion(rotation);
 			InvalidateBounds();
 		}
 	}
 
-	void Model::SetRotation(float pitch, float yaw, float roll)
+	void Model::SetRotationDegrees(float pitch, float yaw, float roll)
 	{
 		if (m_Transform)
 		{
-			m_Transform->SetRotation(pitch,yaw,roll);
+			m_Transform->SetRotationDegrees(pitch,yaw,roll);
 			InvalidateBounds();
 		}
 	}
@@ -752,7 +752,7 @@ namespace DXEngine {
 	{
 	}
 
-	void Model::UpdateAnimation(FrameTime deltatime)
+	void Model::UpdateAnimation(float deltatime)
 	{
 		if (!m_SkinningData || !m_SkinningData->animationController)
 		{

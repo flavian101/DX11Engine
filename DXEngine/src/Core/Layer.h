@@ -11,7 +11,7 @@ namespace DXEngine {
 
 		virtual void OnAttach(){}
 		virtual void OnDetach(){}
-		virtual void OnUpdate(FrameTime dt){}
+		virtual void OnUpdate(float dt){}
 		virtual void OnUIRender(){}
 		virtual void OnEvent(Event& event){}
 	protected:
