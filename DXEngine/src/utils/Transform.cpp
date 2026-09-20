@@ -31,13 +31,16 @@ namespace DXEngine {
 		return m_Scale;
 	}
 
-	void Transform::SetRotation(const DirectX::XMVECTOR& rotation)
+	void Transform::SetRotationQuaternion(const DirectX::XMVECTOR& rotation)
 	{
 		m_Rotation = DirectX::XMQuaternionNormalize(rotation);
 	}
-	void Transform::SetRotation(float pitch, float yaw, float roll)
+	void Transform::SetRotationDegrees(float pitch, float yaw, float roll)
 	{
-		m_Rotation = DirectX::XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
+		m_Rotation = DirectX::XMQuaternionRotationRollPitchYaw(
+			DirectX::XMConvertToRadians(pitch), 
+			DirectX::XMConvertToRadians(yaw),
+			DirectX::XMConvertToRadians(roll));
 	}
 
 	const DirectX::XMVECTOR& Transform::GetRotation() const

@@ -20,7 +20,7 @@ namespace DXEngine
         void Shutdown();
 
         // Update and render - now submits to unified renderer
-        void Update(FrameTime dt);
+        void Update(float dt);
         void Render();
         void SubmitForRendering(); 
 
@@ -58,7 +58,7 @@ namespace DXEngine
         void SubmitDebugElements();
         void RenderDebugInfo();
 
-        void UpdateElementRecursive(std::shared_ptr<UIElement> element,FrameTime dt);
+        void UpdateElementRecursive(std::shared_ptr<UIElement> element, float dt);
 
         bool HandleElementInputRecursive(std::shared_ptr <UIElement> element, float mouseX, float mouseY, bool leftClick, bool rightClick);
         UIElement* FindElementAtRecursive(UIElement* element, float x, float y);

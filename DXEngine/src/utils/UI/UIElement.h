@@ -36,7 +36,7 @@ namespace DXEngine
 		UIElement(const UIRect& bounds = UIRect());
 		virtual ~UIElement() = default;
 
-		virtual void Update(FrameTime dt){}
+		virtual void Update(float dt){}
 		virtual bool HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick) { return false; }
 
 

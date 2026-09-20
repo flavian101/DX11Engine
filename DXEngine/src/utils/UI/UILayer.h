@@ -13,7 +13,7 @@ namespace DXEngine
 
         virtual void OnAttach() override;
         virtual void OnDetach() override;
-        virtual void OnUpdate(FrameTime dt) override;
+        virtual void OnUpdate(float dt) override;
         virtual void OnUIRender() override;
         virtual void OnEvent(Event& event) override;
 

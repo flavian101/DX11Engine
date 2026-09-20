@@ -25,12 +25,7 @@ namespace DXEngine {
         skyMaterial->SetEnvironmentTexture(skyTexture);
        // skyMaterial->SetEmissiveColor({ 0.01f, 0.01f, 0.05f, 0.4f });
 
-         // Create large sphere for skybox
-        float radius = 50.0f; // Large radius for sky dome
-        uint32_t segments = 32; // Medium detail for sky sphere
-
-        auto skyMesh = Mesh::CreateSphere(radius, segments);
-
+        auto skyMesh = Mesh::CreateCube(50.0f);
 
         // Sky sphere should not cast shadows
         setCastsShadows(false);

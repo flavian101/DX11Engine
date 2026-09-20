@@ -10,7 +10,7 @@ namespace DXEngine
         m_Text(text)
 	{
 	}
-	void UIButton::Update(FrameTime dt)
+	void UIButton::Update(float dt)
 	{
 		// Update any animations or time-based effects here
 		// For now, basic button doesn't need complex updates

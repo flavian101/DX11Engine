@@ -8,7 +8,7 @@ namespace DXEngine
         UIElement(bounds), m_BackgroundColor(backgroundColor)
     { }
 
-    void UIPanel::Update(FrameTime dt)
+    void UIPanel::Update(float dt)
     {
         //update all children
         for (auto& child : GetChildren())

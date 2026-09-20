@@ -31,7 +31,7 @@ namespace DXEngine
         OutputDebugStringA("UILayer detached\n");
     }
 
-    void UILayer::OnUpdate(FrameTime dt)
+    void UILayer::OnUpdate(float dt)
     {
         // Handle input
         HandleInput();

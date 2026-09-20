@@ -610,8 +610,8 @@ namespace DXEngine
                 uint32_t current = ring * (segments + 1) + segment;
                 uint32_t next = current + segments + 1;
 
-                indexData->AddTriangle(current, next, current + 1);
-                indexData->AddTriangle(current + 1, next, next + 1);
+                indexData->AddTriangle(current, current + 1,next);
+                indexData->AddTriangle(current + 1, next+1, next);
             }
         }
 

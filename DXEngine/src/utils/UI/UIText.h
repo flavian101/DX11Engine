@@ -17,7 +17,7 @@ namespace DXEngine
         virtual ~UIText() = default;
 
         // UIElement interface
-        void Update(FrameTime dt) override;
+        void Update(float dt) override;
         bool HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick) override;
 
         // Text specific

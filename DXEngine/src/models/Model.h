@@ -21,7 +21,7 @@ namespace DXEngine {
 		explicit Model(std::shared_ptr<Mesh> mesh);
 		virtual ~Model();
 
-		virtual void Update(FrameTime deltatime);
+		virtual void Update(float deltatime);
 		bool IsValid()const;
 		std::string GetDebugInfo()const;
 
@@ -59,8 +59,9 @@ namespace DXEngine {
 		const DirectX::XMVECTOR& GetTranslation() const;
 		void SetScale(const DirectX::XMFLOAT3& scale);
 		const DirectX::XMVECTOR& GetScale() const;
-		void SetRotation(const DirectX::XMVECTOR& rotation);
-		void SetRotation(float pitch, float yaw, float roll);
+		void SetRotationQuaternion(const DirectX::XMVECTOR& rotation);
+
+		void SetRotationDegrees(float pitch, float yaw, float roll);
 		const DirectX::XMVECTOR& GetRotation() const;
 		DirectX::XMMATRIX GetModelMatrix() const override;
 
@@ -177,7 +178,7 @@ namespace DXEngine {
 		void ComputeBounds()const;
 		void EnsureMeshMaterials(size_t meshIndex);
 		void EnsureMaterialSlots();
-		void UpdateAnimation(FrameTime deltatime);
+		void UpdateAnimation(float deltatime);
 		void UpdateInstanceBounds() const;
 		void UpdateSkinnedBounds() const;
 

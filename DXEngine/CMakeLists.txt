@@ -6,7 +6,7 @@ file(GLOB_RECURSE DXENGINE_SRC
 )
 
 
-add_library(DXEngine STATIC ${DXENGINE_SRC})
+add_library(DXEngine STATIC ${DXENGINE_SRC} "src/Board.h" "src/Board.cpp")
 
 target_compile_definitions(DXEngine PUBLIC
     UNICODE

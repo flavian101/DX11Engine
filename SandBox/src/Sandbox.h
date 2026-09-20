@@ -3,6 +3,7 @@
 #include <memory>
 #include "Ground.h"
 #include "Ball.h"
+#include "Board.h"
 #include "SkySphere.h"
 #include "LightSphere.h"
 
@@ -17,7 +18,7 @@ public:
 
 	virtual void OnAttach()override;
 	virtual void OnDetach()override;
-	void OnUpdate(DXEngine::FrameTime dt) override;
+	void OnUpdate(float deltaTime) override;
 	virtual void OnUIRender() override;
 	void OnEvent(DXEngine::Event& event) override;
 
@@ -36,21 +37,16 @@ private:
 	std::shared_ptr<DXEngine::CameraController> m_CameraController;
 	std::shared_ptr<DXEngine::Ground> m_Ground;
 	std::shared_ptr<DXEngine::SkySphere> m_Sky;
-	std::shared_ptr<DXEngine::Ball> m_Moon;
+	std::shared_ptr<DXEngine::Ball> m_Ball;
 	std::shared_ptr<DXEngine::LightSphere> m_Light;
-	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
-	std::shared_ptr<DXEngine::Model> m_Ship;
-	std::shared_ptr<DXEngine::Model> m_Table;
-	std::shared_ptr<DXEngine::Model> m_LionHead;
-	std::shared_ptr<DXEngine::Model> m_Tunnel;
-	std::shared_ptr<DXEngine::Model> m_Shark;
-	std::shared_ptr<DXEngine::Model> m_Ring;
-	std::shared_ptr<DXEngine::Model> m_Wall;
-	std::shared_ptr<DXEngine::Model> m_AnimatedSpider;
+	std::shared_ptr<DXEngine::Board> m_Board;
+	std::shared_ptr<DXEngine::BallPhysics> m_BallPhysics;
+	std::shared_ptr<DXEngine::BoardController> m_BoardController;
 
 
 	float m_Speed = 10.0f;
 	float m_CurrentRotation = 0.0f;
+	bool updatePhysics = false;
 
 	//Window wnd;
 	std::unique_ptr<DXEngine::PickingManager> m_PickingManager;
