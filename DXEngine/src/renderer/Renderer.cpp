@@ -10,6 +10,6 @@
 #include <algorithm>
 #include "utils/ConstantBufferTypes.h"
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 }

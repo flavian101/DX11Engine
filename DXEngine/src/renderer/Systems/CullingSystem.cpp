@@ -1,7 +1,7 @@
 #include "dxpch.h"
 #include "CullingSystem.h"
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 	void CullingSystem::Cull(FrameContext& ctx)
 	{

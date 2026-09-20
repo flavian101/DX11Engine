@@ -7,7 +7,7 @@
 #include <DirectXMath.h>
 #include <sstream>
 
-namespace DXEngine::Rendering
+namespace DXEngine
 { 
 	class Renderer
 	{

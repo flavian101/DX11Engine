@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 	class ShaderCache;
 	class ShaderProgram;

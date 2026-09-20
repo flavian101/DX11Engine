@@ -3,7 +3,7 @@
 #include <string>
 
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 	class FrameContext;
 	//Render Pass- Base interface. One pass, one responsibility.

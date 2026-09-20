@@ -5,7 +5,7 @@
 #include <DirectXCollision.h>
 #include <vector>
 #include <memory>
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 	//cull result 
 	//Returned per-Model so callers know exatly why a model was culled

@@ -9,7 +9,7 @@
 #include <mutex>
 #include <vector>
 
-namespace DXEngine::Rendering {
+namespace DXEngine {
 
     // ========== SHADER FEATURE FLAGS ==========
     namespace ShaderFeature {

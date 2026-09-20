@@ -17,7 +17,7 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace DXEngine::Rendering{
+namespace DXEngine{
 
 	RenderGraph& RenderGraph::AddPass(const std::string& name, std::shared_ptr<RenderPass> pass)
 	{

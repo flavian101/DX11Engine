@@ -2,7 +2,7 @@
 #include "MaterialSystem.h"
 #include "renderer/ShaderCache.h"
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 
 	MaterialSystem::MaterialSystem(std::shared_ptr<RHI::IGraphicsDevice> device, std::shared_ptr<ShaderCache> shaderCache)

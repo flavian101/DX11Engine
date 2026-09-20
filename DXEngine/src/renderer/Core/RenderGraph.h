@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <functional>
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 	class RenderPass;
 	class FrameContext;

@@ -8,7 +8,7 @@
 #include <DirectXMath.h>
 #include "FrameTime.h"
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 	class Model;
 	class Camera;

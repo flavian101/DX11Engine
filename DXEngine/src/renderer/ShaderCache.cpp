@@ -4,7 +4,7 @@
 #include <fstream>
 
 
-namespace DXEngine::Rendering
+namespace DXEngine
 {
 	std::string ShaderCacheStats::ToString() const {
 		std::ostringstream oss;
