@@ -16,7 +16,7 @@ namespace DXEngine
 		CameraController();
 		~CameraController();
 
-		//const DirectX::XMVECTOR& GetPos() const noexcept;
+		//const DirectX::XMVECTOR& GetPositionVector() const noexcept;
 		const std::shared_ptr<Camera>& GetCamera() const;
 
 		void Move();

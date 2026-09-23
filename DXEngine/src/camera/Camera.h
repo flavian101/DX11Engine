@@ -50,16 +50,16 @@ namespace DXEngine
 		void AddBehaviour(std::shared_ptr<CameraBehavior> behavior);
 		void RemoveBehaviour(std::shared_ptr<CameraBehavior> behavior);
 
-		const DirectX::XMFLOAT4X4 GetViewMatrix();
-		const DirectX::XMMATRIX& GetView() const noexcept;
-		const DirectX::XMFLOAT4X4 GetProjectionMatrix()const { return m_ProjectionMatrix; }
-		const DirectX::XMMATRIX& GetProjection() const noexcept;
+		const DirectX::XMFLOAT4X4 GetViewMatrix4X4();
+		const DirectX::XMMATRIX GetViewMatrix() const noexcept;
+		const DirectX::XMFLOAT4X4 GetProjection4X4()const { return m_ProjectionMatrix; }
+		const DirectX::XMMATRIX GetProjectionMatrix() const noexcept;
 
 		
 
-		DirectX::XMFLOAT3 GetPosition() { return m_Position; };
-		const DirectX::XMVECTOR& GetPos() const noexcept;
-		DirectX::XMFLOAT3 GetRotation() { return m_Rotation; }
+		DirectX::XMFLOAT3 GetPositionFloat3() { return m_Position; };
+		const DirectX::XMVECTOR GetPositionVector() const noexcept;
+		DirectX::XMFLOAT3 GetRotationFloat3() { return m_Rotation; }
 		void SetPosition(const DirectX::XMFLOAT3& position) { m_Position = position; m_ViewMatrixDirty = true; }
 		void SetRotation(const DirectX::XMFLOAT3& rotation) { m_Rotation= rotation; m_ViewMatrixDirty = true;}
 		

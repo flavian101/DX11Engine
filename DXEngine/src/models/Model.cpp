@@ -10,8 +10,9 @@
 namespace DXEngine {
 
 	Model::Model()
+		:
+		m_Transform()
 	{
-		m_Transform = std::make_shared<Transform>();
 	}
 
 	Model::Model(std::shared_ptr<Mesh> mesh)
@@ -140,88 +141,57 @@ namespace DXEngine {
 
 	void Model::SetTranslation(const DirectX::XMFLOAT3& translation)
 	{
-		if (m_Transform)
-		{
-			m_Transform->SetTranslation(translation);
-			InvalidateBounds();
-		}
+		m_Transform.SetTranslation(translation);
+		InvalidateBounds();
 	}
 
 	const DirectX::XMVECTOR& Model::GetTranslation() const
 	{
-		static DirectX::XMVECTOR zero = DirectX::XMVectorZero();
-		return m_Transform ? m_Transform->GetTranslation() : zero;
+		return m_Transform.GetTranslation();
 	}
 
 	void Model::SetScale(const DirectX::XMFLOAT3& scale)
 	{
-		if (m_Transform)
-		{
-			m_Transform->SetScale(scale);
-			InvalidateBounds();
-		}
+		m_Transform.SetScale(scale);
+		InvalidateBounds();
 	}
 
 	const DirectX::XMVECTOR& Model::GetScale() const
 	{
-		static DirectX::XMVECTOR one = DirectX::XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f);
-		return m_Transform ? m_Transform->GetScale() : one;
+		return m_Transform.GetScale();
 	}
 
 	void Model::SetRotation(const DirectX::XMVECTOR& rotation)
 	{
-		if (m_Transform)
-		{
-			m_Transform->SetRotation(rotation);
-			InvalidateBounds();
-		}
+		m_Transform.SetRotation(rotation);
+		InvalidateBounds();
 	}
 
 	void Model::SetRotation(float pitch, float yaw, float roll)
 	{
-		if (m_Transform)
-		{
-			m_Transform->SetRotation(pitch,yaw,roll);
-			InvalidateBounds();
-		}
+		m_Transform.SetRotation(pitch, yaw, roll);
+		InvalidateBounds();
 	}
 
 	const DirectX::XMVECTOR& Model::GetRotation() const
 	{
-		static DirectX::XMVECTOR identity = DirectX::XMQuaternionIdentity();
-		return m_Transform ? m_Transform->GetRotation() : identity;
+		return m_Transform.GetRotation();
 	}
 
 	DirectX::XMMATRIX Model::GetModelMatrix() const
 	{
-		if (!m_Transform)
-			return DirectX::XMMatrixIdentity();
-		return m_Transform->GetTransform();
+		return m_Transform.GetTransform();
 	}
 
-	void Model::SetTransform(std::shared_ptr<Transform> transform)
+	void Model::SetTransform(const Transform& transform)
 	{
-		if (m_Transform != transform)
-		{
 			m_Transform = transform;
 			InvalidateBounds();
-		}
 	}
 
-	const std::shared_ptr<Transform>& Model::GetTransform() const
+	const Transform& Model::GetTransform() const
 	{
-		static std::shared_ptr<Transform> nullTransform;
-
-		if (m_Transform)
-		{
-			return m_Transform;
-		}
-		else
-		{
-			OutputDebugStringA("Warning: No Transform was found, returning null\n");
-			return nullTransform;
-		}
-
+		return m_Transform;
 	}
 
 	//Bounding Volume operations
@@ -288,9 +258,6 @@ namespace DXEngine {
 	BoundingSphere Model::GetWorldBoundingSphere()const
 	{
 		BoundingSphere localSphere = GetLocalBoundingSphere();
-
-		if (!m_Transform)
-			return localSphere;
 
 		DirectX::XMMATRIX worldMatrix = GetModelMatrix();
 		DirectX::XMVECTOR centerVec = DirectX::XMLoadFloat3(&localSphere.center);
@@ -371,9 +338,6 @@ namespace DXEngine {
 			}
 		}
 
-		if (m_Transform) {
-			usage = +sizeof(Transform);
-		}
 		return usage;
 	}
 

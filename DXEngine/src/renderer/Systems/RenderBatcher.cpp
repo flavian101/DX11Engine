@@ -13,7 +13,7 @@ namespace DXEngine {
 		if (!ctx.camera)
 			return;
 
-		DirectX::XMFLOAT3 camPos = ctx.camera->GetPosition();
+		DirectX::XMFLOAT3 camPos = ctx.camera->GetPositionFloat3();
 		DirectX::XMVECTOR camVec = DirectX::XMLoadFloat3(&camPos);
 
 

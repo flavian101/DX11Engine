@@ -16,12 +16,12 @@ namespace DXEngine {
         DirectX::XMVECTOR rayClip = DirectX::XMVectorSet(x, y, -1.0f, 1.0f); // clip space
 
         // Transform to eye space
-        DirectX::XMMATRIX invProj = DirectX::XMMatrixInverse(nullptr, camera.GetProjection());
+        DirectX::XMMATRIX invProj = DirectX::XMMatrixInverse(nullptr, camera.GetProjectionMatrix());
         DirectX::XMVECTOR rayEye = DirectX::XMVector4Transform(rayClip, invProj);
         rayEye = DirectX::XMVectorSet(DirectX::XMVectorGetX(rayEye), DirectX::XMVectorGetY(rayEye), -1.0f, 0.0f);
 
         // Transform to world space
-        DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, camera.GetView());
+        DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, camera.GetViewMatrix());
         DirectX::XMVECTOR rayWorld = DirectX::XMVector4Transform(rayEye, invView);
         rayWorld = DirectX::XMVector3Normalize(rayWorld);
 

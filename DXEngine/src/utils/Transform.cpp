@@ -40,7 +40,7 @@ namespace DXEngine {
 		m_Rotation = DirectX::XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
 	}
 
-	const DirectX::XMVECTOR& Transform::GetRotation() const
+	const DirectX::XMVECTOR& Transform::GetRotationFloat3() const
 	{
 		return m_Rotation;
 	}

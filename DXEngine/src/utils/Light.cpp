@@ -203,14 +203,14 @@ namespace DXEngine {
         auto camera = RenderCommand::GetCamera();
         if (camera)
         {
-            DirectX::XMVECTOR cameraPos = camera->GetPos();
+            DirectX::XMVECTOR cameraPos = camera->GetPositionVector();
 
             //sort point ligts by distance
             std::sort(m_VisiblePointLights.begin(), m_VisiblePointLights.end(),
                 [&](uint32_t a, uint32_t b)
                 {
-                    DirectX::XMVECTOR posA = DirectX::XMLoadFloat3(&m_PointLights[a]->GetPosition());
-                    DirectX::XMVECTOR posB = DirectX::XMLoadFloat3(&m_PointLights[b]->GetPosition());
+                    DirectX::XMVECTOR posA = DirectX::XMLoadFloat3(&m_PointLights[a]->GetPositionFloat3());
+                    DirectX::XMVECTOR posB = DirectX::XMLoadFloat3(&m_PointLights[b]->GetPositionFloat3());
                     float distA = DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(posA, cameraPos)));
                     float distB = DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(posB, cameraPos)));
                     return distA < distB;
@@ -219,8 +219,8 @@ namespace DXEngine {
             // Sort spot lights by distance
             std::sort(m_VisibleSpotLights.begin(), m_VisibleSpotLights.end(),
                 [&](uint32_t a, uint32_t b) {
-                    DirectX::XMVECTOR posA = DirectX::XMLoadFloat3(&m_SpotLights[a]->GetPosition());
-                    DirectX::XMVECTOR posB = DirectX::XMLoadFloat3(&m_SpotLights[b]->GetPosition());
+                    DirectX::XMVECTOR posA = DirectX::XMLoadFloat3(&m_SpotLights[a]->GetPositionFloat3());
+                    DirectX::XMVECTOR posB = DirectX::XMLoadFloat3(&m_SpotLights[b]->GetPositionFloat3());
                     float distA = DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(posA, cameraPos)));
                     float distB = DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(posB, cameraPos)));
                     return distA < distB;

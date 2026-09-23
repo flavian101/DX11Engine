@@ -83,9 +83,9 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	{
 		// Position sky sphere at camera position
 		DirectX::XMFLOAT3 camPos = {
-			DirectX::XMVectorGetX(m_CameraController->GetCamera()->GetPos()),
-			DirectX::XMVectorGetY(m_CameraController->GetCamera()->GetPos()),
-			DirectX::XMVectorGetZ(m_CameraController->GetCamera()->GetPos())
+			DirectX::XMVectorGetX(m_CameraController->GetCamera()->GetPositionVector()),
+			DirectX::XMVectorGetY(m_CameraController->GetCamera()->GetPositionVector()),
+			DirectX::XMVectorGetZ(m_CameraController->GetCamera()->GetPositionVector())
 		};
 		m_Sky->SetTranslation(camPos);
 		m_Sky->SetScale({ 50.0f, 50.0f, 50.0f });

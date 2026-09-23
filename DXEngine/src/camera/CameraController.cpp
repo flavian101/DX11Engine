@@ -22,7 +22,7 @@ namespace DXEngine
 	{
 	}
 
-	//const DirectX::XMVECTOR& CameraController::GetPos() const noexcept
+	//const DirectX::XMVECTOR& CameraController::GetPositionVector() const noexcept
 	//{
 	//	return 
 	//}

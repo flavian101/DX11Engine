@@ -109,7 +109,7 @@ namespace DXEngine {
 		m_Behaviors.erase(std::remove(m_Behaviors.begin(), m_Behaviors.end(), behavior), m_Behaviors.end());
 	}
 
-	const DirectX::XMFLOAT4X4 Camera::GetViewMatrix()
+	const DirectX::XMFLOAT4X4 Camera::GetViewMatrix4X4()
 	{
 		if (m_ViewMatrixDirty)
 		{
@@ -119,22 +119,19 @@ namespace DXEngine {
 		return m_ViewMatrix;
 	}
 
-	const DirectX::XMMATRIX& Camera::GetView() const noexcept
+	const DirectX::XMMATRIX Camera::GetViewMatrix() const noexcept
 	{
-		DirectX::XMMATRIX view = DirectX::XMLoadFloat4x4(&m_ViewMatrix);
-		return view;
+		return DirectX::XMLoadFloat4x4(&m_ViewMatrix);
 	}
 
-	const DirectX::XMMATRIX& Camera::GetProjection() const noexcept
+	const DirectX::XMMATRIX Camera::GetProjectionMatrix() const noexcept
 	{
-		DirectX::XMMATRIX projection = DirectX::XMLoadFloat4x4(&m_ProjectionMatrix);
-		return projection;
+		return DirectX::XMLoadFloat4x4(&m_ProjectionMatrix);
 	}
 
-	const DirectX::XMVECTOR& Camera::GetPos() const noexcept
+	const DirectX::XMVECTOR Camera::GetPositionVector() const noexcept
 	{
-		DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&m_Position);
-		return pos;
+		return DirectX::XMLoadFloat3(&m_Position);
 	}
 
 	DirectX::XMFLOAT3 Camera::GetForwardVector() const

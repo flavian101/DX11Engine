@@ -83,7 +83,7 @@ namespace DXEngine {
 	public:
 		PointLight() : Light(Type::Point) {}
 
-		const DirectX::XMFLOAT3& GetPosition() const { return m_Position; }
+		const DirectX::XMFLOAT3& GetPositionFloat3() const { return m_Position; }
 		void SetPosition(const DirectX::XMFLOAT3& position) { m_Position = position; m_Dirty = true; }
 
 		float GetRadius() const { return m_Radius; }
@@ -110,7 +110,7 @@ namespace DXEngine {
 	public:
 		SpotLight() : Light(Type::Spot) {}
 
-		const DirectX::XMFLOAT3& GetPosition() const { return m_Position; }
+		const DirectX::XMFLOAT3& GetPositionFloat3() const { return m_Position; }
 		void SetPosition(const DirectX::XMFLOAT3& position) { m_Position = position; m_Dirty = true; }
 
 		const DirectX::XMFLOAT3& GetDirection() const { return m_Direction; }

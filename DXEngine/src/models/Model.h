@@ -65,8 +65,8 @@ namespace DXEngine {
 		DirectX::XMMATRIX GetModelMatrix() const override;
 
 		// Transform management
-		void SetTransform(std::shared_ptr<Transform> transform);
-		const std::shared_ptr<Transform>& GetTransform() const;
+		void SetTransform(const Transform& transform);
+		const Transform& GetTransform() const;
 
 		//bounding volume operations
 		BoundingBox GetLocalBoundingBox() const;
@@ -194,10 +194,9 @@ namespace DXEngine {
 		};
 
 		private:
-
+		Transform m_Transform;
 		std::vector<MeshEntry> m_Meshes;
 		std::shared_ptr<Mesh> m_PrimaryMesh;
-		std::shared_ptr<Transform> m_Transform;
 
 		//cache Bounds ( mutable for lazy computations)
 		mutable BoundingBox m_LocalBoundingBox;
