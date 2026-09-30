@@ -36,7 +36,7 @@ namespace DXEngine {
 	}
 	bool Model::IsValid() const
 	{
-		return !m_Meshes.empty() && m_PrimaryMesh && m_PrimaryMesh->IsValid() && m_Transform;
+		return !m_Meshes.empty() && m_PrimaryMesh && m_PrimaryMesh->IsValid();
 	}
 
 	//mesh management
@@ -223,9 +223,6 @@ namespace DXEngine {
 			UpdateInstanceBounds();
 			return m_LocalBoundingBox; //Already updated to world space
 		}
-
-		if (!m_Transform)
-			return localBox;
 
 		// Standard world space transform
 		DirectX::XMMATRIX wordlMatrix = GetModelMatrix();
