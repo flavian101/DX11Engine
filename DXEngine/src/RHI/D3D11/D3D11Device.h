@@ -41,6 +41,7 @@ namespace DXEngine::RHI
 
 		void Resize(uint32_t width, uint32_t height) override;
 		ITexture* GetBackBuffer() override { return m_BackBuffer.get(); }
+		ITexture* GetDepthBuffer() override { return m_DepthStencil.get(); }
 		uint32_t GetBackBufferWidth() const override { return m_Width; }
 		uint32_t GetBackBufferHeight() const override { return m_Height; }
 

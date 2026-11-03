@@ -33,6 +33,7 @@ namespace DXEngine::RHI
 		// Executes IMMEDIATELY, not recorded
 
 		m_Context->IASetInputLayout(d3d11Pipeline->GetInputLayout());
+		m_Context->IASetPrimitiveTopology(d3d11Pipeline->GetTopology()); // was never set anywhere: draws used an undefined topology
 		m_Context->RSSetState(d3d11Pipeline->GetRasterizerState());
 		m_Context->OMSetDepthStencilState(d3d11Pipeline->GetDepthStencilState(), 0);
 		m_Context->OMSetBlendState(d3d11Pipeline->GetBlendState(), nullptr, 0xffffffff);

@@ -265,6 +265,7 @@ namespace DXEngine::RHI
 		//SwapChain Management
 		virtual void Resize(uint32_t width, uint32_t height) = 0;
 		virtual ITexture* GetBackBuffer() = 0;
+		virtual ITexture* GetDepthBuffer() = 0; // owned by the device, recreated on Resize: fetch every frame, never cache
 		virtual uint32_t GetBackBufferWidth() const = 0;
 		virtual uint32_t GetBackBufferHeight() const = 0;
 		virtual uint32_t GetCurrentBackBufferIndex() const = 0; //For multi-buffering
