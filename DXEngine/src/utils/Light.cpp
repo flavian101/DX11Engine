@@ -1,7 +1,6 @@
 #include "dxpch.h"
 #include "Light.h"
 #include <algorithm>
-#include "renderer/RendererCommand.h"
 
 namespace DXEngine {
 
@@ -175,7 +174,7 @@ namespace DXEngine {
         m_SceneData.ambientIntensity = intensity;
         m_Dirty = true;
     }
-    void LightManager::CullLights(const DirectX::BoundingFrustum& frustum)
+    void LightManager::CullLights(const DirectX::BoundingFrustum& frustum, const DirectX::XMFLOAT3& cameraPosition)
     {
         ///clear previous frame's  visible lights
         m_VisiblePointLights.clear();
@@ -200,10 +199,8 @@ namespace DXEngine {
         }
 
         //sort lightd by distance 
-        auto camera = RenderCommand::GetCamera();
-        if (camera)
         {
-            DirectX::XMVECTOR cameraPos = camera->GetPositionVector();
+            DirectX::XMVECTOR cameraPos = DirectX::XMLoadFloat3(&cameraPosition);
 
             //sort point ligts by distance
             std::sort(m_VisiblePointLights.begin(), m_VisiblePointLights.end(),
@@ -292,17 +289,6 @@ namespace DXEngine {
         }
 
 
-    }
-    void LightManager::BindLightData()
-    {
-        if (!m_BufferInitialized)
-        {
-            m_LightBuffer.Initialize(&m_SceneData);
-            m_BufferInitialized = true;
-        }
-
-        m_LightBuffer.Update(m_SceneData);
-        RenderCommand::GetContext()->PSSetConstantBuffers(BindSlot::CB_Scene_Lights, 1, m_LightBuffer.GetAddressOf());
     }
     uint32_t LightManager::GetVisibleLightCount() const
     {

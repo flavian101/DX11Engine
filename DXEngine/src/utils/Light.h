@@ -1,8 +1,12 @@
 #pragma once
-#include "Buffer.h"
+#include "ConstantBufferTypes.h"   // SceneLightData
 
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
 
 
 namespace DXEngine {
@@ -167,11 +171,13 @@ namespace DXEngine {
 
 
 		// Culling and optimization
-		void CullLights(const DirectX::BoundingFrustum& frustum);
+		// cameraPosition is only used to sort the visible lights nearest-first
+		void CullLights(const DirectX::BoundingFrustum& frustum, const DirectX::XMFLOAT3& cameraPosition);
 		void UpdateLightData();
 
-		// GPU binding
-		void BindLightData();
+		// CPU-side data for the GPU light buffer. The renderer (LightSystem) uploads it;
+		// LightManager no longer owns any GPU resource.
+		const SceneLightData& GetSceneData() const { return m_SceneData; }
 
 		// Statistics
 		uint32_t GetVisibleLightCount() const;
@@ -189,9 +195,7 @@ namespace DXEngine {
 		std::vector<uint32_t> m_VisibleSpotLights;
 
 		SceneLightData m_SceneData;
-		ConstantBuffer<SceneLightData> m_LightBuffer;
 
 		bool m_Dirty = true;
-		bool m_BufferInitialized = false;
 	};
 }
