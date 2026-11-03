@@ -1,104 +1,66 @@
 #pragma once
+#include <cstdint>
 #include <memory>
-#include <vector>
 #include <string>
-#include <unordered_map>
-#include <functional>
+#include <vector>
 
 namespace DXEngine
 {
-	class RenderPass;
-	class FrameContext;
+    class RenderPass;
+    class FrameContext;
 
-	/// <summary>
-	/// RenderGraph - manages render passes and their dependencies
-	/// 
-	/// Modern frame Graph approach - declares what to render and in what order,
-	/// with automatic resource management and dependency resolution
-	/// </summary>
-	class RenderGraph
-	{
-	public:
-		struct PassNode
-		{
-			std::string name;
-			std::shared_ptr<RenderPass> pass;
-			std::vector<std::string> dependencies;  // Must execute after these
-			std::vector<std::string> outputs;  // produce these resources
-			bool enabled = true;
-			int executionOrder = 0;  // Computed during compilation
-		};
+    // ==================================================================
+    // RenderGraph: an ORDERED list of passes.
+    //
+    //  * Default order = the order you call AddPass().      (simple, predictable)
+    //  * DependsOn(a, b) forces "b runs before a".          (only needed if you add
+    //    passes out of order; ties are always broken by insertion order, so the
+    //    result is deterministic.)
+    //
+    // This is deliberately NOT a resource-tracking frame graph. For a forward
+    // renderer with ~5 passes an ordered list is easier to read and debug.
+    // ==================================================================
+    class RenderGraph
+    {
+    public:
+        // Returns the typed pass so the caller can keep a handle (e.g. to set the clear colour).
+        // Returns nullptr if a pass with that name already exists.
+        template<typename T, typename... Args>
+        std::shared_ptr<T> AddPass(const std::string& name, Args&&... args)
+        {
+            auto pass = std::make_shared<T>(std::forward<Args>(args)...);
+            return AddNode(name, pass) ? pass : nullptr;
+        }
 
-	public:
-		RenderGraph() = default;
-		~RenderGraph() = default;
+        RenderGraph& DependsOn(const std::string& passName, const std::string& mustRunBefore);
+        void RemovePass(const std::string& name);
+        void EnablePass(const std::string& name, bool enable = true);
 
-		/*
-		*  Add a render pass the graph
-		*  Example:
-		*	graph.AddPass<ShadowPass>("shadows");
-		*	graph.AddPass<gBufferPass>("gBuffer").DependsOn("shadows");
-		*/
+        bool Compile();                       // validate + compute execution order
+        bool Initialize(FrameContext& ctx);   // call after Compile(): runs every pass's Initialize
+        void Execute(FrameContext& ctx);      // Prepare -> Execute -> Finalize per enabled pass
+        void OnResize(uint32_t width, uint32_t height);
+        void Shutdown();
 
-		template<typename T, typename... Args>
-		RenderGraph&& AddPass(const std::string& name, Args&&... args)
-		{
-			auto pass = std::make_shared<T>(std::forward<Args>(args)...);
-			return AddPass(name, pass);
-		}
+        bool HasPass(const std::string& name) const;
+        std::shared_ptr<RenderPass> GetPass(const std::string& name) const;
+        size_t GetPassCount() const { return m_Nodes.size(); }
+        std::string GetDebugInfo() const;
 
-		RenderGraph& AddPass(const std::string& name, std::shared_ptr<RenderPass> pass);
+    private:
+        struct PassNode
+        {
+            std::string                 name;
+            std::shared_ptr<RenderPass> pass;
+            std::vector<std::string>    runAfter;   // names that must execute before this one
+        };
 
-		//Declare dependencies between passes
-		RenderGraph& DependsOn(const std::string& passName, const std::string& dependencyName);
-		
-		//Declare output resources
-		RenderGraph& Produces(const std::string& passName, const std::string& resourceName);
+        bool   AddNode(const std::string& name, std::shared_ptr<RenderPass> pass);
+        int    FindIndex(const std::string& name) const;
 
-		//removes Pass
-		void RemovePass(const std::string& name);
-
-		//Enable/Disable pass without removing it
-		void EnablePass(const std::string& name, bool enable = true);
-
-		///Compile the Graph - resolves dependencies, determines execution order
-		//must be called after adding passes and before execution
-		bool Compile();
-
-		//validate the graph for cycles and missing Dependencies
-		bool Validate(std::string& errorMessage)const;
-
-		//Execute all passes in the correct order
-		void Execute(FrameContext& context);
-
-		//Execute a specific pass and its dependencies
-		void ExecutePass(const std::string& name, FrameContext& context);
-
-		///////Queries
-		bool HasPass(const std::string& name)const;
-		std::shared_ptr<RenderPass> GetPass(const std::string& name)const;
-		const std::vector<PassNode>& GetExecutionOrder() const { return m_ExecutionOrder; }
-
-		/////Utilities
-		void Clear();
-		size_t GetPassCount()const { return m_Passes.size(); }
-		std::string GetDebugInfo()const;
-
-	private:
-		//Topological sort for Dependency resolution
-		bool TopologicalSort();
-		void VisitNode(const std::string& name, std::unordered_map<std::string, int>& visited, std::vector<std::string>& sorted);
-
-
-	private:
-		std::unordered_map<std::string, PassNode> m_Passes;
-		std::vector<PassNode> m_ExecutionOrder;
-		bool m_IsCompiled = false;
-
-	};
-
-
-	//Render graph Builder
-
+        std::vector<PassNode> m_Nodes;      // insertion order
+        std::vector<size_t>   m_Order;      // indices into m_Nodes, execution order
+        bool m_Compiled    = false;
+        bool m_Initialized = false;
+    };
 }
-

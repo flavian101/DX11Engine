@@ -2,306 +2,167 @@
 #include "RenderGraph.h"
 #include "RenderPass.h"
 #include "FrameContext.h"
-
-//#include "passes/ClearPass.h"
-//#include "passes/ShadowPass.h"
-//#include "passes/ForwardOpaquePass.h"
-//#include "passes/ForwardTransparentPass.h"
-//#include "passes/DepthPrepassPass.h"
-//#include "passes/GBufferPass.h"
-//#include "passes/DeferredLightingPass.h"
-//#include "passes/LightCullingPass.h"
-//#include "passes/ForwardPlusOpaquePass.h"
-//#include "passes/UIPass.h"
-
 #include <sstream>
-#include <stdexcept>
 
-namespace DXEngine{
+namespace DXEngine
+{
+    static void Log(const std::string& msg) { OutputDebugStringA((msg + "\n").c_str()); }
 
-	RenderGraph& RenderGraph::AddPass(const std::string& name, std::shared_ptr<RenderPass> pass)
-	{
-		if (m_Passes.count(name))
-		{
-			OutputDebugStringA(("WARNING: RenderGraph::AddPass - pass already exists: " + name + "\n").c_str());
-			return *this;
-		}
-		PassNode node;
-		node.name = name;
-		node.pass = pass;
-		m_Passes[name] = std::move(node);
-		m_IsCompiled = false;
+    int RenderGraph::FindIndex(const std::string& name) const
+    {
+        for (size_t i = 0; i < m_Nodes.size(); ++i)
+            if (m_Nodes[i].name == name) return static_cast<int>(i);
+        return -1;
+    }
 
-		return *this;
-	}
-	RenderGraph& RenderGraph::DependsOn(const std::string& passName, const std::string& dependencyName)
-	{
-		auto it = m_Passes.find(passName);
-		if (it == m_Passes.end())
-		{
-			OutputDebugStringA(("WARNING: RenderGraph::DependsOn - pass not found: " + passName + "\n").c_str());
-			return *this;
-		}
-		it->second.dependencies.push_back(dependencyName);
-		m_IsCompiled = false;
-		return *this;
-	}
-	RenderGraph& RenderGraph::Produces(const std::string& passName, const std::string& resourceName)
-	{
-		auto it = m_Passes.find(passName);
-		if (it == m_Passes.end())
-		{
-			OutputDebugStringA(("WARNING: RenderGraph::Produces - pass not found: " + passName + "\n").c_str());
-			return *this;
-		}
-		it->second.outputs.push_back(resourceName);
-		return *this;
-	}
-	void RenderGraph::RemovePass(const std::string& name)
-	{
-		m_Passes.erase(name);
-		m_IsCompiled = false;
-	}
-	void RenderGraph::EnablePass(const std::string& name, bool enable)
-	{
-		auto it = m_Passes.find(name);
-		if (it != m_Passes.end())
-		{
-			it->second.enabled = enable;
-		}
-	}
-	bool RenderGraph::Compile()
-	{
-		std::string error;
-		if (!Validate(error))
-		{
-			OutputDebugStringA(("ERROR: RenderGraph::Compile - " + error + "\n").c_str());
-			return false;
-		}
-		if (!TopologicalSort())
-		{
-			OutputDebugStringA("ERROR: RenderGraph::Compile - cycle detected in pass dependencies\n");
-			return false;
-		}
+    bool RenderGraph::AddNode(const std::string& name, std::shared_ptr<RenderPass> pass)
+    {
+        if (!pass || FindIndex(name) >= 0)
+        {
+            Log("WARNING: RenderGraph::AddPass - null pass or duplicate name: " + name);
+            return false;
+        }
+        m_Nodes.push_back({ name, std::move(pass), {} });
+        m_Compiled = m_Initialized = false;
+        return true;
+    }
 
-		m_IsCompiled = true;
-		OutputDebugStringA(("RenderGraph compiled: " + std::to_string(m_ExecutionOrder.size()) + " passes\n").c_str());
+    RenderGraph& RenderGraph::DependsOn(const std::string& passName, const std::string& mustRunBefore)
+    {
+        const int i = FindIndex(passName);
+        if (i < 0) { Log("WARNING: RenderGraph::DependsOn - unknown pass: " + passName); return *this; }
+        m_Nodes[i].runAfter.push_back(mustRunBefore);
+        m_Compiled = false;
+        return *this;
+    }
 
-		return true;
-	}
-	bool RenderGraph::Validate(std::string& errorMessage) const
-	{
-		//check all declared Dependencies actually exist as passes
-		for (const auto& [name, node] : m_Passes) {
-			for (const auto& dep : node.dependencies)
-			{
-				if (!m_Passes.count(dep))
-				{
-					errorMessage = "Pass '" + name + "' depends on unknown pass '" + dep + "'";
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-	void RenderGraph::Execute(FrameContext& context)
-	{
-		if (!m_IsCompiled)
-		{
-			OutputDebugStringA("Error: RenderGraph::Execute - graph not compiled\n");
-			return;
-		}
+    void RenderGraph::RemovePass(const std::string& name)
+    {
+        const int i = FindIndex(name);
+        if (i < 0) return;
+        m_Nodes[i].pass->Shutdown();
+        m_Nodes.erase(m_Nodes.begin() + i);
+        m_Compiled = false;
+    }
 
-		for (const auto& node  : m_ExecutionOrder)
-		{
-			if (!node.enabled || !node.pass)
-			{
-				continue;
-			}
+    void RenderGraph::EnablePass(const std::string& name, bool enable)
+    {
+        const int i = FindIndex(name);
+        if (i >= 0) m_Nodes[i].pass->SetEnabled(enable);   // the single source of truth
+    }
 
-			node.pass->Prepare(context);
-			node.pass->Execute(context);
-			node.pass->Finalize(context);
+    bool RenderGraph::Compile()
+    {
+        // 1) every dependency must exist
+        for (const auto& n : m_Nodes)
+            for (const auto& dep : n.runAfter)
+                if (FindIndex(dep) < 0)
+                {
+                    Log("ERROR: RenderGraph::Compile - '" + n.name + "' depends on unknown pass '" + dep + "'");
+                    return false;
+                }
 
-		}
-	}
-	void RenderGraph::ExecutePass(const std::string& name, FrameContext& context)
-	{
-		auto it = m_Passes.find(name);
-		if (it == m_Passes.end() || !it->second.pass)
-		{
-			return;
-		}
+        // 2) stable topological sort.
+        //    Repeatedly take the LOWEST-INDEX pass whose dependencies are all placed.
+        //    Lowest-index-first means: with no DependsOn calls, order == insertion order.
+        const size_t count = m_Nodes.size();
+        std::vector<bool> placed(count, false);
+        m_Order.clear();
 
-		//Execute dependencies first (recursive)
-		for (const auto& dep : it->second.dependencies)
-			ExecutePass(dep, context);
+        while (m_Order.size() < count)
+        {
+            bool progressed = false;
+            for (size_t i = 0; i < count && !progressed; ++i)
+            {
+                if (placed[i]) continue;
 
-		if (!it->second.enabled)
-		{
-			return;
-		}
+                bool ready = true;
+                for (const auto& dep : m_Nodes[i].runAfter)
+                    if (!placed[FindIndex(dep)]) { ready = false; break; }
 
-		it->second.pass->Prepare(context);
-		it->second.pass->Execute(context);
-		it->second.pass->Finalize(context);
-	}
-	bool RenderGraph::HasPass(const std::string& name) const
-	{
-		return m_Passes.count(name) > 0;
-	}
-	std::shared_ptr<RenderPass> RenderGraph::GetPass(const std::string& name) const
-	{
-		auto it = m_Passes.find(name);
-		return (it!= m_Passes.end())? it->second.pass : nullptr;
-	}
-	void RenderGraph::Clear()
-	{
-		m_Passes.clear();
-		m_ExecutionOrder.clear();
-		m_IsCompiled = false;
-	}
-	std::string RenderGraph::GetDebugInfo() const
-	{
-		std::ostringstream oss;
-		oss << "RenderGraph [" << (m_IsCompiled ? "compiled" : "NOT compiled") << "]\n";
-		oss << "  Passes (" << m_Passes.size() << "):\n";
-		for (const auto& node : m_ExecutionOrder)
-		{
-			oss << "    [" << node.executionOrder << "] "
-				<< node.name
-				<< (node.enabled ? "" : " (disabled)");
-			if (!node.dependencies.empty())
-			{
-				oss << " <- ";
-				for (size_t i = 0; i < node.dependencies.size(); ++i)
-				{
-					if (i) oss << ", ";
-					oss << node.dependencies[i];
-				}
-			}
-			oss << "\n";
-		}
-		return oss.str();
-	}
-	bool RenderGraph::TopologicalSort()
-	{
-		//kahn's algorithm: build in-degree map, process nodes with zero in-degree
-		std::unordered_map<std::string, int> inDegree;
-		for (const auto& [name, node] : m_Passes)
-		{
-			inDegree[name] = 0;
-		}
+                if (ready)
+                {
+                    placed[i] = true;
+                    m_Order.push_back(i);
+                    progressed = true;
+                }
+            }
+            if (!progressed)
+            {
+                Log("ERROR: RenderGraph::Compile - cycle in pass dependencies");
+                m_Order.clear();
+                return false;
+            }
+        }
 
-		for (const auto& [name, node] : m_Passes)
-			for (const auto& dep : node.dependencies)
-				inDegree[name]++;// this pass has one more prerequisite
+        m_Compiled = true;
+        Log("RenderGraph compiled:\n" + GetDebugInfo());
+        return true;
+    }
 
-		//start with passes that have no dependencies
-		std::vector<std::string> queue;
-		for (const auto& [name, deg] : inDegree)
-			if (deg == 0)
-				queue.push_back(name);
+    bool RenderGraph::Initialize(FrameContext& ctx)
+    {
+        if (!m_Compiled) { Log("ERROR: RenderGraph::Initialize - call Compile() first"); return false; }
 
-		m_ExecutionOrder.clear();
-		int order = 0;
-		while (!queue.empty())
-		{
-			std::string current = queue.back();
-			queue.pop_back();
+        for (size_t idx : m_Order)
+        {
+            auto& n = m_Nodes[idx];
+            if (!n.pass->Initialize(ctx))
+            {
+                Log("ERROR: pass failed to initialize: " + n.name);
+                return false;
+            }
+        }
+        m_Initialized = true;
+        return true;
+    }
 
-			auto& node = m_Passes.at(current);
-			node.executionOrder = order++;
-			m_ExecutionOrder.push_back(node);
+    void RenderGraph::Execute(FrameContext& ctx)
+    {
+        if (!m_Compiled || !m_Initialized) return;
 
-			//reduce in-degree for passes that depend on current
-			for (auto& [name, node2] : m_Passes)
-			{
-				auto& deps = node2.dependencies;
-				if (std::find(deps.begin(), deps.end(), current) != deps.end())
-				{
-					inDegree[name]--;
-					if (inDegree[name] == 0)
-					{
-						queue.push_back(name);
-					}
-				}
-			}
+        for (size_t idx : m_Order)
+        {
+            RenderPass& pass = *m_Nodes[idx].pass;
+            if (!pass.IsEnabled()) continue;
 
-		}
-		//if not all passes are in order, there's a cycle
-		return m_ExecutionOrder.size()== m_Passes.size();
-	}
-	void RenderGraph::VisitNode(const std::string& name, std::unordered_map<std::string, int>& visited, std::vector<std::string>& sorted)
-	{
-	}
-	//namespace RenderGraphPresets
-	//{
-	//	// ---- Forward: clear → shadow → opaque → transparent → ui ---------------
-	//	std::shared_ptr<RenderGraph> CreateForwardGraph()
-	//	{
-	//		auto g = std::make_shared<RenderGraph>();
-	//		g->AddPass<ClearPass>("clear");
-	//		g->AddPass<ShadowPass>("shadow");
-	//		g->AddPass<ForwardOpaquePass>("opaque");
-	//		g->AddPass<ForwardTransparentPass>("transparent");
-	//		g->AddPass<UIPass>("ui");
-	//		g->DependsOn("shadow", "clear");
-	//		g->DependsOn("opaque", "shadow");
-	//		g->DependsOn("transparent", "opaque");
-	//		g->DependsOn("ui", "transparent");
-	//		return g->Compile() ? g : nullptr;
-	//	}
+            pass.Prepare(ctx);
+            pass.Execute(ctx);
+            pass.Finalize(ctx);
+        }
+    }
 
-	//	// ---- Deferred: clear → shadow → depth → gbuffer → lighting → transparent → ui
-	//	std::shared_ptr<RenderGraph> CreateDeferredGraph()
-	//	{
-	//		auto g = std::make_shared<RenderGraph>();
-	//		g->AddPass<ClearPass>("clear");
-	//		g->AddPass<ShadowPass>("shadow");
-	//		g->AddPass<DepthPrepassPass>("depth_prepass");
-	//		g->AddPass<GBufferPass>("gbuffer");
-	//		g->AddPass<DeferredLightingPass>("lighting");
-	//		g->AddPass<ForwardTransparentPass>("transparent");
-	//		g->AddPass<UIPass>("ui");
-	//		g->DependsOn("shadow", "clear");
-	//		g->DependsOn("depth_prepass", "shadow");
-	//		g->DependsOn("gbuffer", "depth_prepass");
-	//		g->DependsOn("lighting", "gbuffer");
-	//		g->DependsOn("transparent", "lighting");
-	//		g->DependsOn("ui", "transparent");
-	//		return g->Compile() ? g : nullptr;
-	//	}
+    void RenderGraph::OnResize(uint32_t width, uint32_t height)
+    {
+        for (auto& n : m_Nodes) n.pass->OnResize(width, height);
+    }
 
-	//	// ---- Forward+: clear → shadow → depth → light_culling → fp_opaque → transparent → ui
-	//	std::shared_ptr<RenderGraph> CreateForwardPlusGraph()
-	//	{
-	//		auto g = std::make_shared<RenderGraph>();
-	//		g->AddPass<ClearPass>("clear");
-	//		g->AddPass<ShadowPass>("shadow");
-	//		g->AddPass<DepthPrepassPass>("depth_prepass");
-	//		g->AddPass<LightCullingPass>("light_culling");
-	//		g->AddPass<ForwardPlusOpaquePass>("fp_opaque");
-	//		g->AddPass<ForwardTransparentPass>("transparent");
-	//		g->AddPass<UIPass>("ui");
-	//		g->DependsOn("shadow", "clear");
-	//		g->DependsOn("depth_prepass", "shadow");
-	//		g->DependsOn("light_culling", "depth_prepass");
-	//		g->DependsOn("fp_opaque", "light_culling");
-	//		g->DependsOn("transparent", "fp_opaque");
-	//		g->DependsOn("ui", "transparent");
-	//		return g->Compile() ? g : nullptr;
-	//	}
+    void RenderGraph::Shutdown()
+    {
+        for (auto& n : m_Nodes) n.pass->Shutdown();
+        m_Nodes.clear();
+        m_Order.clear();
+        m_Compiled = m_Initialized = false;
+    }
 
-	//	// ---- Minimal: just clear + forward opaque (for unit tests) ---------------
-	//	std::shared_ptr<RenderGraph> CreateMinimalGraph()
-	//	{
-	//		auto g = std::make_shared<RenderGraph>();
-	//		g->AddPass<ClearPass>("clear");
-	//		g->AddPass<ForwardOpaquePass>("opaque");
-	//		g->DependsOn("opaque", "clear");
-	//		return g->Compile() ? g : nullptr;
-	//	}
-	//}
+    bool RenderGraph::HasPass(const std::string& name) const { return FindIndex(name) >= 0; }
 
+    std::shared_ptr<RenderPass> RenderGraph::GetPass(const std::string& name) const
+    {
+        const int i = FindIndex(name);
+        return i >= 0 ? m_Nodes[i].pass : nullptr;
+    }
+
+    std::string RenderGraph::GetDebugInfo() const
+    {
+        std::ostringstream oss;
+        oss << "RenderGraph [" << (m_Compiled ? "compiled" : "NOT compiled") << "]\n";
+        int order = 0;
+        for (size_t idx : m_Order)
+        {
+            const auto& n = m_Nodes[idx];
+            oss << "  [" << order++ << "] " << n.name << (n.pass->IsEnabled() ? "" : " (disabled)") << "\n";
+        }
+        return oss.str();
+    }
 }

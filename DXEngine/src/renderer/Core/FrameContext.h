@@ -1,195 +1,145 @@
 #pragma once
-#include <memory>
-#include <unordered_map>
-#include <string>
-#include <vector>
-#include <any>
+#include "RenderTypes.h"
 #include <DirectXCollision.h>
 #include <DirectXMath.h>
-#include "FrameTime.h"
+#include <any>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace DXEngine
 {
-	class Model;
-	class Camera;
-	class UIElement;
-
-	namespace RHI
-	{
-		class IGraphicsDevice;
-		class ICommandBuffer;
-		class ITexture;
-	}
-	class CullingSystem;
-	class RenderBatcher;
-	class ShaderCache;
+    class Model;
+    class Material;
+    class Camera;
+    class UIElement;
+    class LightManager;
     class ResourceCache;
+    class ShaderCache;
+    class MaterialSystem;
 
-	/// <summary>
-	/// Frame Context - Blackboard passed through every system and pass each frame 
-	/// 
-	/// Rules:
-	/// -Renderer populates core fields in Begin Frame 
-	/// -Culling System reads scene, writes visibility
-	/// -Render Batcher reads Visibility, writes "BatchQueue" via Set<>()
-	/// -Passes read "BatchQueue" and write renderTargets / statistics.
-	/// -No pass stores pointer to FrameContext across frames
-	/// </summary>
+    namespace RHI
+    {
+        class IGraphicsDevice;
+        class ICommandBuffer;
+        class ITexture;
+        class IBuffer;
+    }
 
+    // ==================================================================
+    // RenderServices: LONG-LIVED things. Owned by Renderer, created once.
+    // FrameContext only POINTS at this. (Before, these shared_ptrs lived
+    // inside FrameContext, mixing "per-frame data" with "engine services".)
+    // ==================================================================
+    struct RenderServices
+    {
+        std::shared_ptr<RHI::IGraphicsDevice> device;
+        std::shared_ptr<ResourceCache>        resources;
+        std::shared_ptr<ShaderCache>          shaders;
+        std::shared_ptr<MaterialSystem>       materials;
+        std::shared_ptr<LightManager>         lights;     // may be null (no lighting set up)
+    };
+
+    // A model plus the (optional) material override it was submitted with.
+    // Keeping the override HERE removes the batcher's hidden "global override" state.
+    struct SceneModel
+    {
+        std::shared_ptr<Model>    model;
+        std::shared_ptr<Material> materialOverride;
+    };
+
+    // ==================================================================
+    // FrameContext: the blackboard for ONE frame.
+    //
+    //  WHO WRITES WHAT (this table is the contract):
+    //   Renderer::BeginScene/Submit -> camera, cmd, targets, scene
+    //   CullingSystem               -> visibility
+    //   RenderBatcher               -> batches
+    //   LightSystem                 -> lightBuffer
+    //   Passes                      -> stats (and the GPU targets, as side effects)
+    //
+    //  RULES
+    //   1. Systems (CPU) fill the blackboard. Passes (GPU) read it.
+    //   2. A field is added ONLY when something writes it. No "future" fields.
+    //   3. Nothing keeps a pointer to the FrameContext or its raw pointers
+    //      past the end of the frame.
+    // ==================================================================
     class FrameContext
     {
     public:
-        // CORE FRAME DATA
-        uint32_t frameNumber = 0;
-        FrameTime deltaTime;
+        // ---- identity / time ----
+        uint32_t frameIndex = 0;
+        float    deltaTime  = 0.0f;   // seconds since previous frame
+        float    totalTime  = 0.0f;   // seconds since application start
 
+        // ---- long-lived services (non-owning) ----
+        RenderServices* services = nullptr;
+
+        // ---- inputs (written by Renderer) ----
         std::shared_ptr<Camera> camera;
-        std::shared_ptr<RHI::IGraphicsDevice> device;
-        std::shared_ptr<RHI::ICommandBuffer> commandBuffer;
+        RHI::ICommandBuffer*    cmd = nullptr;
 
-        // SYSTEMS (Shared between passes)
-        std::shared_ptr<CullingSystem> cullingSystem;
-        std::shared_ptr<RenderBatcher> renderBatcher;
-        std::shared_ptr<ResourceCache> resourceCache;
-
-        // SCENE DATA (Submitted by application)
-        struct SceneData
+        struct SceneInput
         {
-            std::vector<std::shared_ptr<Model>> models;
+            std::vector<SceneModel>                 models;
             std::vector<std::shared_ptr<UIElement>> uiElements;
-
-            void Clear()
-            {
-                models.clear();
-                uiElements.clear();
-            }
+            void Clear() { models.clear(); uiElements.clear(); }
         } scene;
 
-        // RENDER TARGETS (Produced by passes)
-
+        // ---- render targets: raw, NON-owning, re-fetched from the device EVERY frame ----
+        // (the device recreates them on resize, so caching them is a dangling-pointer bug)
         struct RenderTargets
         {
-            // GBuffer outputs (for deferred)
-            std::shared_ptr<RHI::ITexture> gbufferAlbedo;
-            std::shared_ptr<RHI::ITexture> gbufferNormal;
-            std::shared_ptr<RHI::ITexture> gbufferDepth;
-            std::shared_ptr<RHI::ITexture> gbufferRoughness;
-            std::shared_ptr<RHI::ITexture> gbufferMetallic;
+            RHI::ITexture* backBuffer  = nullptr;
+            RHI::ITexture* depthBuffer = nullptr;
+        } targets;
 
-            // Shadow maps
-            std::shared_ptr<RHI::ITexture> shadowMap;
-            std::shared_ptr<RHI::ITexture> shadowCascades[4];
-
-            // Lighting
-            std::shared_ptr<RHI::ITexture> lightAccumulation;
-
-            // Final output
-            std::shared_ptr<RHI::ITexture> backBuffer;
-            std::shared_ptr<RHI::ITexture> depthBuffer;
-
-            // Post-process ping-pong buffers
-            std::shared_ptr<RHI::ITexture> pingBuffer;
-            std::shared_ptr<RHI::ITexture> pongBuffer;
-        } renderTargets;
-
-        // VISIBILITY DATA (Produced by culling)
+        // ---- produced by CullingSystem ----
         struct VisibilityData
         {
-            std::vector<const Model*> visibleModels;
-            std::vector<const Model*> shadowCasters;
-            DirectX::BoundingFrustum viewFrustum;
-            uint32_t objectsCulled = 0;
-
-            void Clear()
-            {
-                visibleModels.clear();
-                shadowCasters.clear();
-                objectsCulled = 0;
-            }
+            std::vector<const SceneModel*> visibleModels;   // points into scene.models
+            DirectX::BoundingFrustum       viewFrustum;
+            void Clear() { visibleModels.clear(); }
         } visibility;
 
-        struct Statistics
-        {
-            uint32_t drawCalls = 0;
-            uint32_t instanceDrawCalls = 0;
-            uint32_t trianglesRendered = 0;
-            uint32_t instancesRendered = 0;
-            uint32_t pipelineChanges = 0;
+        // ---- produced by RenderBatcher ----
+        BatchQueue batches;
 
-            void Reset()
-            {
-                drawCalls = 0;
-                instanceDrawCalls = 0;
-                trianglesRendered = 0;
-                instancesRendered = 0;
-                pipelineChanges = 0;
-            }
+        // ---- produced by LightSystem ----
+        RHI::IBuffer* lightBuffer = nullptr;   // null when there are no lights
 
-            void Accumulate(const Statistics& other)
-            {
-                drawCalls += other.drawCalls;
-                instanceDrawCalls += other.instanceDrawCalls;
-                trianglesRendered += other.trianglesRendered;
-                instancesRendered += other.instancesRendered;
-                pipelineChanges += other.pipelineChanges;
-            }
-        } statistics;
+        // ---- produced by passes ----
+        RenderStatistics stats;
 
-        // GENERIC DATA STORAGE (Blackboard pattern)
-
-        /**
-         * Store arbitrary data that passes can share
-         *
-         * Example:
-         *   ctx.Set("ClusteredLightGrid", lightGrid);
-         *   auto grid = ctx.Get<LightGrid>("ClusteredLightGrid");
-         */
+        // ---- escape hatch for experiments ----
+        // Typed fields above are preferred. Use this only for data that exactly one
+        // pass writes and one pass reads (e.g. a future cluster grid).
         template<typename T>
-        void Set(const std::string& key, const T& value)
-        {
-            m_Data[key] = value;
-        }
+        void Set(const std::string& key, T value) { m_Extra[key] = std::move(value); }
 
+        // Returns nullptr when missing or of a different type. NEVER copies the data.
         template<typename T>
-        T Get(const std::string& key, const T& defaultValue = T()) const
+        const T* TryGet(const std::string& key) const
         {
-            auto it = m_Data.find(key);
-            if (it != m_Data.end())
-            {
-                try
-                {
-                    return std::any_cast<T>(it->second);
-                }
-                catch (const std::bad_any_cast&)
-                {
-                    return defaultValue;
-                }
-            }
-            return defaultValue;
+            auto it = m_Extra.find(key);
+            return it == m_Extra.end() ? nullptr : std::any_cast<T>(&it->second);
         }
 
-        bool Has(const std::string& key) const
+        void BeginFrame(float dt, float total)
         {
-            return m_Data.find(key) != m_Data.end();
-        }
-
- 
-        void BeginFrame()
-        {
-            frameNumber++;
+            ++frameIndex;
+            deltaTime = dt;
+            totalTime = total;
             scene.Clear();
             visibility.Clear();
-            statistics.Reset();
-        }
-
-        void EndFrame()
-        {
-            // Cleanup temporary data if needed
+            batches.Clear();
+            lightBuffer = nullptr;
+            stats.Reset();
+            m_Extra.clear();
         }
 
     private:
-        std::unordered_map<std::string, std::any> m_Data;
+        std::unordered_map<std::string, std::any> m_Extra;
     };
 }
-
-
