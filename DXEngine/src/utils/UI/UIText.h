@@ -10,7 +10,7 @@ namespace DXEngine
 		Right
 	};
 
-	class UIText : UIElement
+	class UIText : public UIElement   // was private inheritance: UIText could not convert to shared_ptr<UIElement>
 	{
 	public:
         UIText(const std::string& text, const UIRect& bounds);
@@ -26,6 +26,7 @@ namespace DXEngine
 
         void SetColor(const UIColor& color) { m_Color = color; }
         const UIColor& GetColor() const { return m_Color; }
+        UIColor GetRenderColor() const override { return m_Color; }
 
         void SetFontSize(float size) { m_FontSize = size; }
         float GetFontSize() const { return m_FontSize; }

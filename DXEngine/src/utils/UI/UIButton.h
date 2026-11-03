@@ -42,6 +42,7 @@ namespace DXEngine
 		UIColor GetNormalColor() { return m_NormalColor; }
 		UIColor GetPressedColor(){ return m_PressedColor; }
 		UIColor GetTextColor() { return m_TextColor; }
+		UIColor GetRenderColor() const override { return GetCurrentColor(); }
 
 
 		//state of the button

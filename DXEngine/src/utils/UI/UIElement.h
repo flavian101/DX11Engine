@@ -3,7 +3,7 @@
 #include <string>
 #include <memory>
 #include <vector>
-#include "renderer/RendererCommand.h"
+#include <algorithm>
 #include <FrameTime.h>
 
 namespace DXEngine
@@ -38,6 +38,11 @@ namespace DXEngine
 
 		virtual void Update(FrameTime dt){}
 		virtual bool HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick) { return false; }
+
+		// Colour the renderer draws this element with. The element owns its state
+		// (hovered, pressed, ...), so it decides; the renderer no longer needs
+		// dynamic_pointer_casts to ask "is this a button?".
+		virtual UIColor GetRenderColor() const { return UIColor(); }
 
 
 		void setBounds(const UIRect& bounds) { m_Bounds = bounds; }
