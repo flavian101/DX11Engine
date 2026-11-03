@@ -30,16 +30,12 @@ namespace DXEngine
 		void UpdateMaterials();  // Update dirty material constant buffers
 		void RemoveMaterial(const std::string& name);
 
-		// ========== Shader Resolution ==========
-		std::shared_ptr<ShaderProgram> GetShaderForMaterial(Material* material, const VertexLayout& layout);
-
 		// ========== Statistics ==========
 		size_t GetMaterialCount() const;
 
 
 	private:
 		void CreateDefaultMaterials();
-		ShaderVariantKey CreateVariantKey(Material* material, const VertexLayout& layout);
 
 
 	private:

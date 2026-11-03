@@ -68,32 +68,6 @@ namespace DXEngine
 	{
 		m_Materials.erase(name);
 	}
-	std::shared_ptr<ShaderProgram> MaterialSystem::GetShaderForMaterial(Material* material, const VertexLayout& layout)
-	{
-		if (!material) return nullptr;
-
-		// Create shader variant key based on material properties
-		ShaderVariantKey key = CreateVariantKey(material, layout);
-
-		// Get shader variant from cache
-		return m_ShaderCache->GetShaderVariant(key);
-	}
-
-	ShaderVariantKey MaterialSystem::CreateVariantKey(Material* material, const VertexLayout& layout)
-	{
-		ShaderVariantKey key;
-		key.baseName = material->GetShaderName();
-		key.featureFlags = material->GetFeatureFlags();
-		key.actualLayout = layout;
-
-		// Add lighting features based on material type
-		if (material->GetType() == MaterialType::Lit ||
-			material->GetType() == MaterialType::PBR) {
-			key.featureFlags |= ShaderFeature::Lighting;
-		}
-
-		return key;
-	}
 	void MaterialSystem::CreateDefaultMaterials() {
 		// Unlit default
 		auto unlit = CreateMaterial("DefaultUnlit", MaterialType::Unlit);
@@ -124,6 +98,7 @@ namespace DXEngine
 		auto ui = CreateMaterial("DefaultUI", MaterialType::UI);
 		ui->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
 		ui->SetCullMode(RHI::CullMode::None);
+		ui->SetBlendMode(RHI::BlendMode::AlphaBlend);
 		ui->SetDepthTest(RHI::DepthTestMode::None);
 		m_DefaultMaterials[MaterialType::UI] = ui;
 
