@@ -1,76 +1,47 @@
 #pragma once
-#include "../Core/RenderPass.h"
 #include "../Core/FrameContext.h"
-#include "../../RHI/GraphicsDevice.h"
+#include "../Core/RenderPass.h"
+#include "RHI/GraphicsDevice.h"
 
+namespace DXEngine
+{
+    // Clears colour + depth. First pass in the graph.
+    // Reads:  ctx.targets.backBuffer / depthBuffer.     Writes: the GPU targets (cleared).
+    class ClearPass final : public RenderPass
+    {
+    public:
+        struct Config
+        {
+            float   color[4]      = { 0.1f, 0.1f, 0.1f, 1.0f };
+            float   depth         = 1.0f;
+            uint8_t stencil       = 0;
+            bool    clearColor    = true;     // (old struct had TWO members named clearColor: did not compile)
+            bool    clearDepth    = true;
+        };
 
-namespace DXEngine {
+        explicit ClearPass(const Config& cfg = {}) : m_Config(cfg) {}
 
-	///Clear pass
-	//responsibility: clear color and depth before any geometry renders.
-	//always the first pass in any forward graph
+        void Execute(FrameContext& ctx) override
+        {
+            RHI::ICommandBuffer* cmd = ctx.cmd;
+            if (!cmd || !ctx.targets.backBuffer) return;
 
-	//reads: ctx.renderTargets.backBuffer / depthBuffer
-	//Writes: nothing (side-effect: clears GPU buffers
+            if (m_Config.clearColor)
+                cmd->ClearRenderTarget(ctx.targets.backBuffer,
+                                       m_Config.color[0], m_Config.color[1], m_Config.color[2], m_Config.color[3]);
 
+            if (m_Config.clearDepth && ctx.targets.depthBuffer)
+                cmd->ClearDepthStencil(ctx.targets.depthBuffer, m_Config.depth, m_Config.stencil);
+        }
 
-	class ClearPass final : public RenderPass
-	{
-	public:
-		struct Config
-		{
-			float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
-			float clearDepth = 1.0f;
-			uint8_t clearStencil = 0;
-			bool clearColor = true;
-			bool clearDepth_ = true;
-		};
+        std::string GetName() const override { return "ClearPass"; }
 
-		explicit ClearPass(const Config& cfg={}): m_Config(cfg){}
+        void SetColor(float r, float g, float b, float a = 1.0f)
+        {
+            m_Config.color[0] = r; m_Config.color[1] = g; m_Config.color[2] = b; m_Config.color[3] = a;
+        }
 
-		void Execute(FrameContext& ctx)
-		{
-			auto* cmd = ctx.commandBuffer.get();
-			auto& rt = ctx.renderTargets;
-
-			if (!cmd || !rt.backBuffer)
-			{
-				return;
-			}
-
-			cmd->SetRenderTarget(rt.backBuffer.get(),
-				rt.depthBuffer ? rt.depthBuffer.get() : nullptr);
-
-			if (m_Config.clearColor)
-			{
-				cmd->ClearRenderTarget(rt.backBuffer.get(),
-					m_Config.clearColor[0],
-					m_Config.clearColor[1],
-					m_Config.clearColor[2],
-					m_Config.clearColor[3]
-				);
-			}
-			if (m_Config.clearDepth_ && rt.depthBuffer)
-			{
-				cmd->ClearDepthStencil(rt.depthBuffer.get(),
-					m_Config.clearDepth,
-					m_Config.clearStencil);
-			}
-		}
-
-		std::string GetName()const override { return "Clear pass"; }
-
-		//expose config so Renderer can forward setClearColor
-		void SetColor(float r, float g, float b, float a)
-		{
-			m_Config.clearColor[0] = r;
-			m_Config.clearColor[1] = g;
-			m_Config.clearColor[2] = b;
-			m_Config.clearColor[3] = a;
-		}
-
-	private:
-		Config m_Config;
-
-	};
+    private:
+        Config m_Config;
+    };
 }
