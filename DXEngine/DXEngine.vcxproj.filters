@@ -212,28 +212,17 @@
     <ClInclude Include="src\renderer\ShaderCache.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Sampler.h" />
     <ClInclude Include="src\renderer\Renderer.h" />
-    <ClInclude Include="src\renderer\Core\RendererUtils.h" />
     <ClInclude Include="src\renderer\Core\RenderGraph.h" />
+    <ClInclude Include="src\renderer\Core\RenderTypes.h" />
     <ClInclude Include="src\renderer\Core\RenderPass.h" />
-    <ClInclude Include="src\renderer\Core\CommandQueue.h" />
     <ClInclude Include="src\renderer\Core\FrameContext.h" />
-    <ClInclude Include="src\renderer\Passes\shadowPass.h" />
-    <ClInclude Include="src\renderer\Passes\GBufferPass.h" />
     <ClInclude Include="src\renderer\Passes\ForwardPass.h" />
-    <ClInclude Include="src\renderer\Passes\TransparentPass.h" />
-    <ClInclude Include="src\renderer\Passes\SkyboxPass.h" />
+    <ClInclude Include="src\renderer\Passes\MeshDrawer.h" />
+    <ClInclude Include="src\renderer\Passes\ClearPass.h" />
     <ClInclude Include="src\renderer\Passes\UIPass.h" />
-    <ClInclude Include="src\renderer\Passes\PostProcessPass.h" />
-    <ClInclude Include="src\renderer\Cache\PipelineCache.h" />
-    <ClInclude Include="src\renderer\Cache\BufferPool.h" />
-    <ClInclude Include="src\renderer\Cache\ResourceManager.h" />
-    <ClInclude Include="src\renderer\Scene\SceneRenderer.h" />
-    <ClInclude Include="src\renderer\Scene\ForwardRenderer.h" />
-    <ClInclude Include="src\renderer\Scene\DeferredRenderer.h" />
     <ClInclude Include="src\renderer\Systems\RenderBatcher.h" />
     <ClInclude Include="src\renderer\Systems\CullingSystem.h" />
-    <ClInclude Include="src\renderer\Systems\LightCuller.h" />
-    <ClInclude Include="src\renderer\Systems\SortingStrategy.h" />
+    <ClInclude Include="src\renderer\Systems\LightSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -349,31 +338,16 @@
     <ClCompile Include="src\renderer\ShaderCache.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
-    <ClCompile Include="src\renderer\Core\RendererUtils.cpp" />
     <ClCompile Include="src\renderer\Core\RenderGraph.cpp" />
-    <ClCompile Include="src\renderer\Core\RenderPass.cpp" />
-    <ClCompile Include="src\renderer\Core\CommandQueue.cpp" />
-    <ClCompile Include="src\renderer\Core\FrameContext.cpp" />
-    <ClCompile Include="src\renderer\Passes\shadowPass.cpp" />
-    <ClCompile Include="src\renderer\Passes\GBufferPass.cpp" />
     <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
-    <ClCompile Include="src\renderer\Passes\TransparentPass.cpp" />
-    <ClCompile Include="src\renderer\Passes\SkyboxPass.cpp" />
+    <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />
     <ClCompile Include="src\renderer\Passes\UIPass.cpp" />
-    <ClCompile Include="src\renderer\Passes\PostProcessPass.cpp" />
-    <ClCompile Include="src\renderer\Cache\PipelineCache.cpp" />
-    <ClCompile Include="src\renderer\Cache\BufferPool.cpp" />
-    <ClCompile Include="src\renderer\Cache\ResourceManager.cpp" />
-    <ClCompile Include="src\renderer\Scene\SceneRenderer.cpp" />
-    <ClCompile Include="src\renderer\Scene\ForwardRenderer.cpp" />
-    <ClCompile Include="src\renderer\Scene\DeferredRenderer.cpp" />
     <ClCompile Include="src\renderer\Systems\RenderBatcher.cpp" />
     <ClCompile Include="src\renderer\Systems\CullingSystem.cpp" />
-    <ClCompile Include="src\renderer\Systems\LightCuller.cpp" />
-    <ClCompile Include="src\renderer\Systems\SortingStrategy.cpp" />
+    <ClCompile Include="src\renderer\Systems\LightSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\RHI\Readme_OwnerShip.md" />
-    <None Include="src\renderer\Readme.md" />
+    <None Include="src\renderer\ARCHITECTURE.md" />
   </ItemGroup>
 </Project>
