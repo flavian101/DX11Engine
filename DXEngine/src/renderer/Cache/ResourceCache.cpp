@@ -2,219 +2,143 @@
 #include "ResourceCache.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
+#include "shaders/ShaderProgram.h"
 #include <sstream>
 
-namespace DXEngine {
-	ResourceCache::ResourceCache(std::shared_ptr<RHI::IGraphicsDevice> device)
-		:
-		m_Device(device)
-	{}
+namespace DXEngine
+{
+    static size_t HashLayout(const VertexLayout& layout)
+    {
+        size_t h = 0;
+        auto mix = [&](size_t v) { h ^= v + 0x9e3779b9 + (h << 6) + (h >> 2); };
+        for (const auto& a : layout.GetAttributes())
+        {
+            mix(static_cast<size_t>(a.Type));
+            mix(static_cast<size_t>(a.SemanticIndex));
+            mix(static_cast<size_t>(a.Format));
+            mix(a.Offset);
+            mix(a.Slot);
+            mix(a.PerInstance ? 1u : 0u);
+        }
+        return h;
+    }
 
-	bool ResourceCache::Initialize()
-	{
-		if (!m_Device)
-		{
-			OutputDebugStringA("ERROR: ResourceCache::Initialize - null device\n");
-			return false;
-		}
+    ResourceCache::ResourceCache(std::shared_ptr<RHI::IGraphicsDevice> device) : m_Device(std::move(device)) {}
 
-		//pre-warm with reasonable capacity estimates
-		m_Pipelines.reserve(64);
-		m_ConstantBuffers.reserve(16);
-		m_TransientPool.reserve(32);
+    bool ResourceCache::Initialize()
+    {
+        if (!m_Device) { OutputDebugStringA("ERROR: ResourceCache::Initialize - null device\n"); return false; }
+        m_Pipelines.reserve(64);
+        m_ConstantBuffers.reserve(16);
+        return true;
+    }
 
-		OutputDebugStringA("ResourceCache initialized\n");
+    void ResourceCache::Clear()
+    {
+        m_Pipelines.clear();
+        m_ConstantBuffers.clear();
+        m_DefaultSampler.reset();
+    }
 
+    std::shared_ptr<RHI::IPipeline> ResourceCache::GetPipeline(const Material& material,
+                                                               const Mesh& mesh,
+                                                               const std::shared_ptr<ShaderProgram>& program)
+    {
+        const auto& resource = mesh.GetResource();
+        if (!program || !program->IsValid() || !resource || !resource->GetVertexData())
+            return nullptr;
 
-		return true;
-	}
+        const VertexLayout& layout = resource->GetVertexData()->GetLayout();
 
-	void ResourceCache::Clear()
-	{
-		m_Pipelines.clear();
-		m_ConstantBuffers.clear();
-		m_TransientPool.clear();
-		OutputDebugStringA("ResourceCache cleared\n");
-	}
+        PipelineKey key;
+        key.program          = program.get();
+        key.vertexLayoutHash = HashLayout(layout);
+        key.cullMode         = material.GetCullMode();
+        key.blendMode        = material.GetBlendMode();
+        key.depthTest        = material.GetDepthTest();
+        key.topology         = resource->GetTopology();
+        key.wireframe        = m_Wireframe;
+        // Blended geometry must not write depth, otherwise whatever is drawn behind it
+        // (back-to-front order) gets rejected by the depth test.
+        key.depthWrite       = key.blendMode == RHI::BlendMode::Opaque &&
+                               key.depthTest != RHI::DepthTestMode::None;
 
-	std::shared_ptr<RHI::IPipeline> ResourceCache::GetOrCreatePipeline(const PipelineKey& key, std::function<std::shared_ptr<RHI::IPipeline>()> factory)
-	{
-		auto it = m_Pipelines.find(key);
-		if (it != m_Pipelines.end())
-		{
-			return it->second; ///cache hit - zero cost
-		}
-		//cache miss - create and store
-		auto pipeline = factory();
-		if (!pipeline)
-		{
-			OutputDebugStringA("ERROR: ResourceCache::GetOrCreatePipeline - factory returned null\n");
-			return nullptr;
-		}
-		m_Pipelines.emplace(key, pipeline);
+        if (auto it = m_Pipelines.find(key); it != m_Pipelines.end())
+            return it->second.pipeline;                       // cache hit
 
-		return pipeline;
-	}
+        // ---- cache miss: describe and create ----
+        RHI::PipelineDesc desc;
+        desc.vertexShader        = program->GetVertexShader();
+        desc.pixelShader         = program->GetPixelShader();
+        desc.inputLayout         = layout.GetAttributes();
+        desc.rasterizer.cullMode = key.cullMode;
+        desc.rasterizer.wireframe = key.wireframe;
+        desc.depthTest           = key.depthTest;
+        desc.depthWrite          = key.depthWrite;
+        desc.blendMode           = key.blendMode;
+        desc.topology            = key.topology;
+        desc.debugName           = "Pipeline_" + material.GetName();
 
-	PipelineKey ResourceCache::BuildPipelineKey(const Material* material, const Mesh* mesh, bool wireframe)
-	{
-		PipelineKey key;
+        auto pipeline = m_Device->CreatePipeline(desc);
+        if (!pipeline || !pipeline->IsValid())
+        {
+            OutputDebugStringA(("ERROR: ResourceCache: pipeline creation failed for " + material.GetName() + "\n").c_str());
+            return nullptr;
+        }
 
-		if (mesh)
-		{
-			auto resource = mesh->GetResource();
-			if (resource)
-			{
-				auto vertexData = resource->GetVertexData();
-				if (vertexData)
-					key.vertexLayoutHash = HashVertexLayout(vertexData->GetLayout());
-			}
-		}
+        m_Pipelines.emplace(key, PipelineEntry{ pipeline, program });
+        return pipeline;
+    }
 
-		if (material)
-		{
-			key.materialType = material->GetType();
-			key.cullMode = material->GetCullMode();
-			key.blendMode = material->GetBlendMode();
-			key.depthTest = material->GetDepthTest();
-			key.depthWrite = (material->GetDepthTest() != RHI::DepthTestMode::None);
-		}
+    std::shared_ptr<RHI::IBuffer> ResourceCache::GetOrCreateConstantBuffer(const std::string& name, uint32_t sizeBytes)
+    {
+        const uint32_t aligned = (sizeBytes + 15u) & ~15u;
 
-		key.wireframe = m_Wireframe || wireframe;
+        auto it = m_ConstantBuffers.find(name);
+        if (it != m_ConstantBuffers.end() && it->second.sizeBytes == aligned)
+            return it->second.buffer;
 
+        RHI::BufferDesc desc;
+        desc.type      = RHI::BufferType::Uniform;
+        desc.usage     = RHI::BufferUsage::Dynamic;
+        desc.size      = aligned;
+        desc.stride    = 0;
+        desc.debugName = name;
 
-		if (mesh)
-		{
-			// Detect skinned meshes by vertex layout
-			auto resource = mesh->GetResource();
-			if (resource)
-			{
-				auto vd = resource->GetVertexData();
-				if (vd)
-					key.skinned = vd->GetLayout().HasAttribute(RHI::VertexAttributeType::BlendIndices);
-			}
-		}
+        auto buffer = m_Device->CreateBuffer(desc);
+        if (!buffer || !buffer->IsValid())
+        {
+            OutputDebugStringA(("ERROR: ResourceCache: failed to create constant buffer " + name + "\n").c_str());
+            return nullptr;
+        }
+        m_ConstantBuffers[name] = { buffer, aligned };
+        return buffer;
+    }
 
-		return key;
-	}
+    RHI::ISampler* ResourceCache::GetDefaultSampler()
+    {
+        if (!m_DefaultSampler)
+        {
+            RHI::SamplerDesc desc;                 // defaults: linear filtering, wrap addressing
+            desc.debugName = "DefaultLinearWrap";
+            m_DefaultSampler = m_Device->CreateSampler(desc);
+        }
+        return m_DefaultSampler.get();
+    }
 
-	void ResourceCache::InvalidatePipelines()
-	{
-		m_Pipelines.clear();
-		OutputDebugStringA("ResourceCache: All pipelines invalidated\n");
-	}
+    void ResourceCache::SetWireframeMode(bool enable)
+    {
+        if (m_Wireframe == enable) return;
+        m_Wireframe = enable;
+        m_Pipelines.clear();   // wireframe is part of the key; old entries would just waste memory
+    }
 
-	void ResourceCache::SetWireframeMode(bool enable)
-	{
-		if (m_Wireframe != enable)
-		{
-			m_Wireframe = enable;
-			InvalidatePipelines();  // Existing pipelines are now stale
-		}
-	}
-
-	std::shared_ptr<RHI::IBuffer> ResourceCache::GetOrCreateConstantBuffer(const std::string& name, uint32_t sizeBytes)
-	{
-		//align to 16 bytes
-		uint32_t alignedSize = (sizeBytes + 15u) & ~15u;
-
-
-
-		auto it = m_ConstantBuffers.find(name);
-
-		if (it != m_ConstantBuffers.end())
-		{
-			if (it->second.sizeBytes == alignedSize)
-				return it->second.buffer;
-
-			m_ConstantBuffers.erase(it);
-		}
-		RHI::BufferDesc desc;
-		desc.type = RHI::BufferType::Uniform;
-		desc.usage = RHI::BufferUsage::Dynamic;
-		desc.size = alignedSize;
-		desc.stride = 0;
-		desc.debugName = name;
-
-		auto buffer = m_Device->CreateBuffer(desc);
-		if (!buffer || !buffer->IsValid())
-		{
-			OutputDebugStringA(("ERROR: ResourceCache failed to create CB: " + name + "\n").c_str());
-			return nullptr;
-		}
-
-		m_ConstantBuffers[name] = { buffer, alignedSize };
-		return buffer;
-	}
-
-	std::shared_ptr<RHI::IBuffer> ResourceCache::AcquireTransientBuffer(uint32_t sizeBytes, uint32_t stride, RHI::BufferType type)
-	{
-		//find a free compatible buffer
-		for (auto& entry : m_TransientPool)
-		{
-			if (!entry.inUse
-				&& entry.type == type
-				&& entry.stride == stride
-				&& entry.sizeBytes >= sizeBytes)
-			{
-				entry.inUse = true;
-				return entry.buffer;
-			}
-		}
-
-
-		RHI::BufferDesc desc;
-		desc.type = type;
-		desc.usage = RHI::BufferUsage::Dynamic;
-		desc.size = sizeBytes;
-		desc.stride = stride;
-		desc.debugName = "TransientBuffer";
-
-		auto buffer = m_Device->CreateBuffer(desc);
-		if (!buffer || !buffer->IsValid())
-		{
-			OutputDebugStringA("ERROR: ResourceCache failed to create transient buffer\n");
-			return nullptr;
-		}
-
-		m_TransientPool.push_back({ buffer, sizeBytes, stride, type, true });
-		return buffer;
-	}
-
-	void ResourceCache::ReturnTransientBuffers()
-	{
-		for (auto& entry : m_TransientPool)
-		{
-			entry.inUse = false;
-		}
-	}
-
-	size_t ResourceCache::HashVertexLayout(const VertexLayout& layout) const
-	{
-		size_t h = 0;
-		auto combine = [&](size_t v) {h ^= v + 0x9e3779b9 + (h << 6) + (h >> 2); };
-
-		for (const auto& attr : layout.GetAttributes())
-		{
-			combine(std::hash<int>{}(static_cast<int>(attr.SemanticIndex)));
-			combine(std::hash<int>{}(static_cast<int>(attr.Format)));
-			combine(std::hash<uint32_t>{}(attr.Offset));
-			combine(std::hash<uint32_t>{}(attr.Slot));
-		}
-		return h;
-	}
-
-	std::string ResourceCache::GetDebugInfo() const
-	{
-		std::ostringstream oss;
-		oss << "ResourceCache:\n";
-		oss << "  Pipelines:        " << m_Pipelines.size() << "\n";
-		oss << "  Constant Buffers: " << m_ConstantBuffers.size() << "\n";
-		oss << "  Transient Pool:   " << m_TransientPool.size() << "\n";
-		oss << "  Wireframe:        " << (m_Wireframe ? "ON" : "OFF") << "\n";
-		return oss.str();
-	}
-
-
-
+    std::string ResourceCache::GetDebugInfo() const
+    {
+        std::ostringstream oss;
+        oss << "ResourceCache: " << m_Pipelines.size() << " pipelines, "
+            << m_ConstantBuffers.size() << " constant buffers, wireframe "
+            << (m_Wireframe ? "ON" : "OFF") << "\n";
+        return oss.str();
+    }
 }
