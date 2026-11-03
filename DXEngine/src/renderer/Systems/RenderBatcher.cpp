@@ -1,169 +1,105 @@
 #include "dxpch.h"
 #include "RenderBatcher.h"
+#include "camera/Camera.h"
+#include "models/Model.h"
+#include "models/ModelFeatures.h"
+#include "utils/Mesh/Mesh.h"
+#include "utils/material/Material.h"
 #include <algorithm>
-#include "../../camera/Camera.h"
+#include <cmath>
+#include <functional>
 
+namespace DXEngine
+{
+    // ---- sort policies: ONE place to change the batching strategy ----
 
-namespace DXEngine {
-	void RenderBatcher::BuildBatches(FrameContext& ctx)
-	{
-		//start with a fresh queue each frame
-		BatchQueue queue;
+    // Opaque: group by material, then mesh (fewer state changes), then near-to-far inside a group.
+    // Trade-off: exact front-to-back would cut overdraw more, but costs more state changes.
+    // Swap the first two comparisons to try it.
+    static bool OpaqueLess(const DrawItem& a, const DrawItem& b)
+    {
+        if (a.material != b.material)
+            return std::less<const Material*>{}(a.material.get(), b.material.get());
+        if (a.mesh != b.mesh)
+            return std::less<const Mesh*>{}(a.mesh.get(), b.mesh.get());
+        return a.distanceToCamera < b.distanceToCamera;
+    }
 
-		if (!ctx.camera)
-			return;
+    // Transparent: strictly far-to-near, otherwise blending looks wrong.
+    static bool TransparentLess(const DrawItem& a, const DrawItem& b)
+    {
+        return a.distanceToCamera > b.distanceToCamera;
+    }
 
-		DirectX::XMFLOAT3 camPos = ctx.camera->GetPositionFloat3();
-		DirectX::XMVECTOR camVec = DirectX::XMLoadFloat3(&camPos);
+    void RenderBatcher::BuildBatches(FrameContext& ctx)
+    {
+        ctx.batches.Clear();                       // keeps capacity
+        if (!ctx.camera) return;
 
+        const DirectX::XMFLOAT3 camPos = ctx.camera->GetPositionFloat3();
 
-		//visible Opaque/ transparent geometry
-		for (const Model* model : ctx.visibility.visibleModels)
-		{
-			if (!model)
-				return;
+        for (const SceneModel* entry : ctx.visibility.visibleModels)
+        {
+            if (!entry || !entry->model) continue;   // was `return` before: one null model dropped the WHOLE frame
+            AppendModel(*entry, camPos, ctx.batches);
+        }
 
-			//Distance to the camera(Sphere center)
+        std::sort(ctx.batches.opaque.begin(), ctx.batches.opaque.end(), OpaqueLess);
+        std::sort(ctx.batches.transparent.begin(), ctx.batches.transparent.end(), TransparentLess);
+    }
 
-			BoundingSphere sphere = model->GetWorldBoundingSphere();
-			DirectX::XMVECTOR center = DirectX::XMLoadFloat3(&sphere.center);
-			float dist =DirectX::XMVectorGetX(
-				DirectX::XMVector3Length(DirectX::XMVectorSubtract(center, camVec)));
+    bool RenderBatcher::IsTransparent(const Material& m)
+    {
+        return m.GetType() == MaterialType::Transparent || m.GetBlendMode() != RHI::BlendMode::Opaque;
+    }
 
+    void RenderBatcher::AppendModel(const SceneModel& entry, const DirectX::XMFLOAT3& camPos, BatchQueue& out) const
+    {
+        const Model* model = entry.model.get();
 
-			BuildDrawItems(model, m_GlobalOverride, dist, queue.opaque, queue.transparent);
-		}
+        DirectX::XMFLOAT4X4 world;
+        DirectX::XMStoreFloat4x4(&world, model->GetModelMatrix());   // computed ONCE per model
 
+        const BoundingSphere s = model->GetWorldBoundingSphere();
+        const float dx = s.center.x - camPos.x, dy = s.center.y - camPos.y, dz = s.center.z - camPos.z;
+        const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-		///shadow casters (separate List, unsorted)
-		for (const Model* model : ctx.visibility.shadowCasters)
-		{
-			if (!model)
-				return;
+        const InstanceData* instances = model->IsInstanced() ? model->GetInstanceData() : nullptr;
+        const SkinningData* skin      = model->IsSkinned()   ? model->GetSkinningData() : nullptr;
 
-			BuildDrawItems(model, nullptr, 0.0f, queue.shadowCasters, queue.shadowCasters);
-		}
+        for (size_t mi = 0; mi < model->GetMeshCount(); ++mi)
+        {
+            std::shared_ptr<Mesh> mesh = model->GetMesh(mi);
+            if (!mesh || !mesh->IsValid()) continue;
 
+            const size_t submeshCount = std::max<size_t>(1, mesh->GetSubmeshCount());
+            for (size_t si = 0; si < submeshCount; ++si)
+            {
+                // material resolution happens HERE, so passes never see overrides or defaults
+                std::shared_ptr<Material> material = entry.materialOverride ? entry.materialOverride
+                                                                            : model->GetMaterial(mi, si);
+                if (!material) continue;
 
-		//sort
-		SortFrontToBack(queue.opaque); //early-Z
-		SortBackToFront(queue.transparent); // painter's algo
+                DrawItem item;
+                item.mesh             = mesh;
+                item.material        = material;
+                item.submeshIndex    = static_cast<uint32_t>(si);
+                item.world           = world;
+                item.distanceToCamera = distance;
+                if (instances && instances->GetInstanceCount() > 0) item.instanceTransforms = &instances->transforms;
+                if (skin && !skin->boneMatrices.empty())            item.boneMatrices       = &skin->boneMatrices;
 
-		//clear global override next frame
-		m_GlobalOverride.reset();
-
-
-		//store in context blackboard for passes to consume
-		ctx.Set("BatchQueue", queue);
-	}
-
-	void RenderBatcher::BuildDrawItems(const Model* model, std::shared_ptr<Material> matOverride, float distanceToCamera, std::vector<DrawItem>& outOpaque, std::vector<DrawItem>& outTransparent)
-	{
-
-		//pre compute transform once per model
-		DirectX::XMMATRIX worldMatrix = model->GetModelMatrix();
-		DirectX::XMMATRIX normalMatrix = DirectX::XMMatrixTranspose(
-			DirectX::XMMatrixInverse(nullptr, worldMatrix));
-
-
-		//Resolve instancing data once per model
-		const InstanceData* instanceData = model->IsInstanced() ? model->GetInstanceData() : nullptr;
-		const SkinningData* skinData = model->IsSkinned() ? model->GetSkinningData() : nullptr;
-
-
-		for (size_t mi = 0; mi < model->GetMeshCount(); ++mi)
-		{
-			std::shared_ptr<Mesh> mesh = model->GetMesh(mi);
-			if (!mesh || !mesh->IsValid())
-				continue;
-
-
-			size_t submeshCount = std::max(size_t(1), mesh->GetSubmeshCount());
-
-			for (size_t si = 0; si < submeshCount; ++si)
-			{
-				//resolve material: override > mesh material > skip
-				std::shared_ptr<Material> mat = matOverride ? matOverride : model->GetMaterial(mi, si);
-
-				if (!mat)
-					continue;
-
-				DrawItem item;
-				DrawItem item;
-				item.mesh = mesh;
-				item.meshIndex = mi;
-				item.submeshIndex = si;
-				item.material = mat;
-				item.distanceToCamera = distanceToCamera;
-				item.stateKey = BuildStateKey(mat.get(), mesh.get());
-
-				// Store transform as XMFLOAT4X4 for later upload
-				DirectX::XMStoreFloat4x4(&item.modelMatrix, worldMatrix);
-				DirectX::XMStoreFloat4x4(&item.normalMatrix, normalMatrix);
-
-				// Instancing
-				if (instanceData && instanceData->GetInstanceCount() > 0)
-				{
-					item.instanceTransforms = &instanceData->transforms;
-					item.instanceCount = static_cast<uint32_t>(instanceData->GetInstanceCount());
-				}
-
-				// Skinning
-				if (skinData && !skinData->boneMatrices.empty())
-					item.boneMatrices = &skinData->boneMatrices;
-
-				// Shadow flags from model
-				item.castsShadow = model->CastsShadows();
-				item.receivesShadows = model->ReceivesShadows();
-
-				// Route to correct queue
-				if (IsTransparent(mat.get()))
-					outTransparent.push_back(item);
-				else
-					outOpaque.push_back(item);
-
-			}
-		}
-	
-	}
-
-	void RenderBatcher::SortFrontToBack(std::vector<DrawItem>& items) const
-	{
-		// Primary: front-to-back (early Z rejection)
-	// Secondary: by state key (minimise GPU state changes within same depth)
-		std::sort(items.begin(), items.end(),
-			[](const DrawItem& a, const DrawItem& b)
-			{
-				if (a.distanceToCamera != b.distanceToCamera)
-					return a.distanceToCamera < b.distanceToCamera;
-				return a.stateKey < b.stateKey;
-			});
-	}
-
-	void RenderBatcher::SortBackToFront(std::vector<DrawItem>&items) const
-	{
-		std::sort(items.begin(), items.end(),
-			[](const DrawItem& a, const DrawItem& b)
-			{
-				return a.distanceToCamera > b.distanceToCamera;
-			});
-	}
-
-	uint64_t RenderBatcher::BuildStateKey(const Material * mat, const Mesh * mesh) const
-	{
-		// Pack two 32-bit halves of the pointers together.
-		   // This gives consistent ordering that minimises material/pipeline changes.
-		uintptr_t matPart = reinterpret_cast<uintptr_t>(mat) & 0xFFFFFFFF;
-		uintptr_t meshPart = reinterpret_cast<uintptr_t>(mesh) & 0xFFFFFFFF;
-		return (static_cast<uint64_t>(matPart) << 32) | meshPart;
-	}
-
-	bool RenderBatcher::IsTransparent(const Material* mat) const
-	{
-		if (!mat) return false;
-		return mat->GetType() == MaterialType::Transparent;
-	}
-
-
-	
+                if (material->GetType() == MaterialType::Skybox)
+                {
+                    // A skybox follows the camera. Doing it here keeps every pass generic.
+                    item.world._41 = camPos.x; item.world._42 = camPos.y; item.world._43 = camPos.z;
+                    out.background.push_back(std::move(item));
+                }
+                else if (IsTransparent(*material))
+                    out.transparent.push_back(std::move(item));
+                else
+                    out.opaque.push_back(std::move(item));
+            }
+        }
+    }
 }
