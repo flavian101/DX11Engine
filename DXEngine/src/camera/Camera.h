@@ -70,6 +70,9 @@ namespace DXEngine
 		void SetPitchLimit(float limitRadians) { m_PitchLimit = limitRadians; }
 		float GetPithLimit() { return m_PitchLimit; }
 
+		float GetNearPlane() { return m_NearPlane; }
+		float GetFarPlane() { return m_FarPlane; }
+
 	private:
 		CameraContribution BlendRotationContribution(const std::vector<CameraContribution>& contribution);
 	private:
