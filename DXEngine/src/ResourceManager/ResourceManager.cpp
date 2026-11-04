@@ -135,9 +135,9 @@ namespace DXEngine
 		return it != m_PathToHandle.end() ? it->second : INVALID_RESOURCE_HANDLE;
 	}
 	template<typename T>
-	void ResourceManager<T>::AddRef(ResourceHandle Handle)
+	void ResourceManager<T>::AddRef(ResourceHandle handle)
 	{
-		td::lock_guard<std::mutex> lock(m_Mutex);
+		std::lock_guard<std::mutex> lock(m_Mutex);
 		auto it = m_Resources.find(handle);
 		if (it != m_Resources.end()) {
 			it->second.refCount++;
@@ -151,7 +151,7 @@ namespace DXEngine
 		if (it != m_Resources.end()) {
 			it->second.refCount--;
 			if (it->second.refCount <= 0) {
-				Unload(handle);
+				UnLoad(handle);
 			}
 		}
 	}
