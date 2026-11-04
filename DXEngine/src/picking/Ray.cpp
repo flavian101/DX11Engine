@@ -119,7 +119,7 @@ namespace DXEngine {
 
         // Check if vertex data has position attribute
         const VertexLayout& layout = vertexData->GetLayout();
-        if (!layout.HasAttribute(VertexAttributeType::Position))
+        if (!layout.HasAttribute(RHI::VertexAttributeType::Position))
             return HitInfo();
 
         HitInfo closestHit;
@@ -155,9 +155,9 @@ namespace DXEngine {
                     continue;
 
                 // Get vertex positions
-                auto pos0 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i0, VertexAttributeType::Position);
-                auto pos1 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i1, VertexAttributeType::Position);
-                auto pos2 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i2, VertexAttributeType::Position);
+                auto pos0 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i0, RHI::VertexAttributeType::Position);
+                auto pos1 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i1, RHI::VertexAttributeType::Position);
+                auto pos2 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i2, RHI::VertexAttributeType::Position);
 
                 DirectX::XMVECTOR v0 = DirectX::XMLoadFloat3(&pos0);
                 DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&pos1);
@@ -182,9 +182,9 @@ namespace DXEngine {
                 if (i + 2 >= vertexCount) break;
 
                 // Get vertex positions
-                auto pos0 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i, VertexAttributeType::Position);
-                auto pos1 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i + 1, VertexAttributeType::Position);
-                auto pos2 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i + 2, VertexAttributeType::Position);
+                auto pos0 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i, RHI::VertexAttributeType::Position);
+                auto pos1 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i + 1, RHI::VertexAttributeType::Position);
+                auto pos2 = vertexData->GetAttribute<DirectX::XMFLOAT3>(i + 2, RHI::VertexAttributeType::Position);
 
                 DirectX::XMVECTOR v0 = DirectX::XMLoadFloat3(&pos0);
                 DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&pos1);
