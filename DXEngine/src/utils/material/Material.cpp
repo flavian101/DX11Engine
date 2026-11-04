@@ -1,7 +1,5 @@
 #include "dxpch.h"
 #include "Material.h"
-#include "utils/Texture.h"
-#include "utils/CubeMapTexture.h"
 #include "renderer/ShaderCache.h"
 #include <algorithm>
 
@@ -28,25 +26,28 @@ namespace DXEngine {
 
 			//auto enable feature flags based on texture slot
 			if (texture) {
-				switch (textureSlot) {
-				case 0: EnableFeature(Rendering::ShaderFeature::DiffuseMap);        break;
-				case 1: EnableFeature(Rendering::ShaderFeature::NormalMap);         break;
-				case 2: EnableFeature(Rendering::ShaderFeature::SpecularMap);       break;
-				case 3: EnableFeature(Rendering::ShaderFeature::EmissiveMap);       break;
-				case 4: EnableFeature(Rendering::ShaderFeature::EnvironmentMap);    break; //TO-DO add irradiance and BRDF_LUT features for IBL
-				case 5: EnableFeature(Rendering::ShaderFeature::RoughnessMap);      break;
-				case 6: EnableFeature(Rendering::ShaderFeature::MetallicMap);       break;
-				case 7: EnableFeature(Rendering::ShaderFeature::AOMap);             break;
-				case 8: EnableFeature(Rendering::ShaderFeature::HeightMap);         break;
-				case 9: EnableFeature(Rendering::ShaderFeature::OpacityMap);        break;
-				case 10:
-					EnableFeature(Rendering::ShaderFeature::DetailDiffuseMap);
-					EnableFeature(Rendering::ShaderFeature::UseDetailsTextures);
+				// Switch on the enum, not on raw integers: the old numeric cases were shifted by one from
+				// slot 4 on (a roughness texture enabled EnvironmentMap), so materials picked the wrong
+				// shader variant. The names match the register comments in common.hlsli.
+				switch (slot) {
+				case TextureSlot::Diffuse:          EnableFeature(ShaderFeature::DiffuseMap);     break;
+				case TextureSlot::Normal:           EnableFeature(ShaderFeature::NormalMap);      break;
+				case TextureSlot::Specular:         EnableFeature(ShaderFeature::SpecularMap);    break;
+				case TextureSlot::Emissive:         EnableFeature(ShaderFeature::EmissiveMap);    break;
+				case TextureSlot::Roughness:        EnableFeature(ShaderFeature::RoughnessMap);   break;
+				case TextureSlot::Metallic:         EnableFeature(ShaderFeature::MetallicMap);    break;
+				case TextureSlot::AmbientOcclusion: EnableFeature(ShaderFeature::AOMap);          break;
+				case TextureSlot::Height:           EnableFeature(ShaderFeature::HeightMap);      break;
+				case TextureSlot::Opacity:          EnableFeature(ShaderFeature::OpacityMap);     break;
+				case TextureSlot::DetailDiffuse:
+					EnableFeature(ShaderFeature::DetailDiffuseMap);
+					EnableFeature(ShaderFeature::UseDetailsTextures);
 					break;
-				case 11:
-					EnableFeature(Rendering::ShaderFeature::DetailNormalMap);
-					EnableFeature(Rendering::ShaderFeature::UseDetailsTextures);
+				case TextureSlot::DetailNormal:
+					EnableFeature(ShaderFeature::DetailNormalMap);
+					EnableFeature(ShaderFeature::UseDetailsTextures);
 					break;
+				case TextureSlot::Environment:      EnableFeature(ShaderFeature::EnvironmentMap); break; // TODO: irradiance + BRDF LUT features for IBL
 				default: break; // no feature for this slot
 				}
 			}
