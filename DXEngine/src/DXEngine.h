@@ -1,11 +1,11 @@
 #pragma once
 #include "Application.h"
-#include "shaders/ShaderManager.h"
+#include "renderer/ShaderCache.h"
 #include "picking/PickingManager.h"
 #include "picking/InterfacePickable.h"
 #include "picking/Ray.h"
 #include "models/ModelLoader.h"
-#include "utils/mesh\Mesh.h"
+#include "utils/Mesh/Mesh.h"
 #include "camera/Camera.h"
 #include "camera/CameraController.h"
 #include "Event/MouseEvent.h"
