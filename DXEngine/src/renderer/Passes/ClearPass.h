@@ -19,7 +19,10 @@ namespace DXEngine
             bool    clearDepth    = true;
         };
 
-        explicit ClearPass(const Config& cfg = {}) : m_Config(cfg) {}
+        // Two constructors instead of '= {}': a nested struct's default member initializers cannot be
+        // used in a default argument of the enclosing class (GCC/Clang reject it).
+        ClearPass() = default;
+        explicit ClearPass(const Config& cfg) : m_Config(cfg) {}
 
         void Execute(FrameContext& ctx) override
         {
