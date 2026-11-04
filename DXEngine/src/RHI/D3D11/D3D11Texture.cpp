@@ -126,8 +126,13 @@ namespace DXEngine::RHI
         if (desc.isDepthStencil) {
             texDesc.BindFlags |= D3D11_BIND_DEPTH_STENCIL;
         }
-        if (desc.mipLevels > 1) {
+        // GENERATE_MIPS is for textures the GPU fills with ITexture::GenerateMips(), and D3D11 only
+        // accepts it together with RENDER_TARGET. It used to be set whenever mipLevels > 1, so a
+        // texture created with a complete mip chain in initialData (or any mipped texture without
+        // RENDER_TARGET) failed to create. Follow desc.generateMips instead.
+        if (desc.generateMips) {
             texDesc.MiscFlags |= D3D11_RESOURCE_MISC_GENERATE_MIPS;
+            texDesc.BindFlags |= D3D11_BIND_RENDER_TARGET;
         }
 
         // Handle texture arrays and cubemaps
