@@ -2,7 +2,6 @@
 #include "DXEngine.h"
 #include "camera/Camera.h"
 #include "CameraController.h"
-#include "renderer/RendererCommand.h"
 
 namespace DXEngine
 {
