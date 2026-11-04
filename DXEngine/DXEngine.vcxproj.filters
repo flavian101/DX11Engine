@@ -155,6 +155,9 @@
     <ClInclude Include="src\utils\PerfomanceProfiller.h">
       <Filter>utils</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\ImageLoader.h">
+      <Filter>utils</Filter>
+    </ClInclude>
     <ClInclude Include="src\utils\Texture.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -289,6 +292,9 @@
     </ClCompile>
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp">
       <Filter>utils\Mesh\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\ImageLoader.cpp">
+      <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Texture.cpp">
       <Filter>utils</Filter>
