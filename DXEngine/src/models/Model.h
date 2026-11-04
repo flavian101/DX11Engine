@@ -9,6 +9,8 @@
 
 namespace DXEngine {
 
+	namespace RHI { class IGraphicsDevice; }
+
 	class Mesh;
 	class Material;
 	class FrameTime;
@@ -153,10 +155,11 @@ namespace DXEngine {
 		const MorphData* GetMorphData() const { return m_MorphData.get(); }
 
 		//factory Methods
-		static std::shared_ptr<Model> CreateQuad(float width = 1.0f, float height = 1.0f);
-		static std::shared_ptr<Model> CreateCube(float size = 1.0f);
-		static std::shared_ptr<Model> CreateSphere(float radius = 1.0f, uint32_t segments = 32);
-		static std::shared_ptr<Model> CreatePlane(float width = 10.0f, float depth = 10.0f,
+		// Meshes now need the device to create their GPU buffers (same as the Mesh factories).
+		static std::shared_ptr<Model> CreateQuad(std::shared_ptr<RHI::IGraphicsDevice> device, float width = 1.0f, float height = 1.0f);
+		static std::shared_ptr<Model> CreateCube(std::shared_ptr<RHI::IGraphicsDevice> device, float size = 1.0f);
+		static std::shared_ptr<Model> CreateSphere(std::shared_ptr<RHI::IGraphicsDevice> device, float radius = 1.0f, uint32_t segments = 32);
+		static std::shared_ptr<Model> CreatePlane(std::shared_ptr<RHI::IGraphicsDevice> device, float width = 10.0f, float depth = 10.0f,
 			uint32_t widthSegments = 10, uint32_t depthSegments = 10);
 
 		// Factory methods for specialized models
@@ -222,7 +225,7 @@ namespace DXEngine {
 	namespace ModelUtils
 	{
 		std::shared_ptr<Model> CombineModels(const std::vector<std::shared_ptr<Model>>& models);
-		std::shared_ptr<Model> CreateFromMeshResource(std::shared_ptr<MeshResource> resource);
+		std::shared_ptr<Model> CreateFromMeshResource(std::shared_ptr<MeshResource> resource, std::shared_ptr<RHI::IGraphicsDevice> device);
 		std::shared_ptr<Model> CreateLODModel(const std::vector<std::shared_ptr<Mesh>>& lodMeshes);
 
 	}

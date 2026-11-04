@@ -3,7 +3,6 @@
 #include "utils/mesh/Mesh.h"
 #include "shaders/ShaderProgram.h"
 #include "utils/material/Material.h"
-#include <utils/Mesh/Utils/InputManager.h>
 #include <algorithm>
 #include "FrameTime.h"
 
@@ -771,33 +770,33 @@ namespace DXEngine {
 	}
 
 	//factory methods 
-	std::shared_ptr<Model> Model::CreateQuad(float width, float height)
+	std::shared_ptr<Model> Model::CreateQuad(std::shared_ptr<RHI::IGraphicsDevice> device, float width, float height)
 	{
-		auto mesh = Mesh::CreateQuad(width, height);
+		auto mesh = Mesh::CreateQuad(device, width, height);
 		auto model = std::make_shared<Model>(mesh);
 		model->EnsureDefaultMaterials();
 		return model;
 	}
 
-	std::shared_ptr<Model> Model::CreateCube(float size)
+	std::shared_ptr<Model> Model::CreateCube(std::shared_ptr<RHI::IGraphicsDevice> device, float size)
 	{
-		auto mesh = Mesh::CreateCube(size);
+		auto mesh = Mesh::CreateCube(device, size);
 		auto model = std::make_shared<Model>(mesh);
 		model->EnsureDefaultMaterials();
 		return model;
 	}
 
-	std::shared_ptr<Model> Model::CreateSphere(float radius, uint32_t segments)
+	std::shared_ptr<Model> Model::CreateSphere(std::shared_ptr<RHI::IGraphicsDevice> device, float radius, uint32_t segments)
 	{
-		auto mesh = Mesh::CreateSphere(radius, segments);
+		auto mesh = Mesh::CreateSphere(device, radius, segments);
 		auto model = std::make_shared<Model>(mesh);
 		model->EnsureDefaultMaterials();
 		return model;
 	}
 
-	std::shared_ptr<Model> Model::CreatePlane(float width, float depth, uint32_t widthSegments, uint32_t depthSegments)
+	std::shared_ptr<Model> Model::CreatePlane(std::shared_ptr<RHI::IGraphicsDevice> device, float width, float depth, uint32_t widthSegments, uint32_t depthSegments)
 	{
-		auto mesh = Mesh::CreatePlane(width, depth, widthSegments, depthSegments);
+		auto mesh = Mesh::CreatePlane(device, width, depth, widthSegments, depthSegments);
 		auto model = std::make_shared<Model>(mesh);
 		model->EnsureDefaultMaterials();
 		return model;
@@ -886,12 +885,12 @@ namespace DXEngine {
 			combinedModel->EnsureDefaultMaterials();
 			return combinedModel;
 		}
-		std::shared_ptr<Model> CreateFromMeshResource(std::shared_ptr<MeshResource> resource)
+		std::shared_ptr<Model> CreateFromMeshResource(std::shared_ptr<MeshResource> resource, std::shared_ptr<RHI::IGraphicsDevice> device)
 		{
 			if (!resource || !resource->IsValid())
 				return nullptr;
 
-			auto mesh = std::make_shared<Mesh>(resource);
+			auto mesh = std::make_shared<Mesh>(resource, device);
 			auto model = std::make_shared<Model>(mesh);
 			model->EnsureDefaultMaterials();
 
