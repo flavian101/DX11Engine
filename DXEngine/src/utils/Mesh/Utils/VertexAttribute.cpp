@@ -1,6 +1,7 @@
 #include "dxpch.h"
 #include "VertexAttribute.h"
 #include <cassert>
+#include <cstring>
 #include <sstream>
 #include <algorithm>
 #include "utils/Mesh/Resource/MeshResource.h"
