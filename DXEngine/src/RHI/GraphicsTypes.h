@@ -7,6 +7,224 @@
 namespace DXEngine::RHI
 {
     // ============================================================================
+    // Foundation types: declared FIRST because PipelineDesc, AttachmentDesc, ... use them
+    // (they used to be defined hundreds of lines below their first use)
+    // ============================================================================
+
+    enum class TextureFormat {
+        // Your existing formats
+        RGBA8_UNORM,
+        RGBA16_FLOAT,
+        RGBA32_FLOAT,
+        R8_UNORM,
+        RG8_UNORM,
+        D24_UNORM_S8_UINT,
+        BC1_UNORM,
+        BC3_UNORM,
+        BC5_UNORM,
+
+        //: Additional common formats
+        RGBA8_SRGB,           // sRGB color space
+        BGRA8_UNORM,          // Common swapchain format
+        R16_FLOAT,
+        RG16_FLOAT,
+        R32_FLOAT,
+        RG32_FLOAT,
+        RGB32_FLOAT,
+        D32_FLOAT,            // High precision depth
+        D16_UNORM,            // Low precision depth
+        BC6H_UFLOAT,          // HDR compressed
+        BC7_UNORM,            // High quality compressed
+        R11G11B10_FLOAT       // HDR format
+    };
+
+    enum class ShaderStage {
+        Vertex,
+        Pixel,
+        Geometry,
+        Hull,
+        Domain,
+        Compute
+    };
+
+    // ============================================================================
+    // Vertex Attributes (Enhanced)
+    // ============================================================================
+
+    enum class VertexAttributeType
+    {
+        Position,
+        Normal,
+        Tangent,
+        Bitangent,
+        TexCoord0,
+        TexCoord1,
+        TexCoord2,
+        TexCoord3,
+        Color0,
+        Color1,
+        BlendIndices,
+        BlendWeights,
+        Custom
+    };
+
+    enum class DataFormat
+    {
+        Float,
+        Float2,
+        Float3,
+        Float4,
+        Int,
+        Int2,
+        Int3,
+        Int4,
+        UInt,     
+        UInt2,    
+        UInt3,    
+        UInt4,    
+        UByte4,
+        UByte4N,
+        Short2,
+        Short2N,
+        Short4,
+        Short4N,
+        Half2,
+        Half4
+    };
+
+    struct VertexAttribute
+    {
+        VertexAttributeType Type;
+        DataFormat Format;
+        std::string SemanticName;
+        uint32_t SemanticIndex;
+        uint32_t Offset;
+        uint32_t Slot;
+        bool PerInstance;
+
+        VertexAttribute() = default;
+        VertexAttribute(VertexAttributeType attrType,
+            DataFormat dataFormat,
+            const std::string& semantic = "",
+            uint32_t semIndex = 0,
+            uint32_t inputSlot = 0,
+            bool instanceData = false)
+            : Type(attrType)
+            , Format(dataFormat)
+            , SemanticName(semantic.empty() ? GetDefaultSemanticName(attrType) : semantic)
+            , SemanticIndex(semIndex)
+            , Offset(0) // Will be calculated by layout
+            , Slot(inputSlot)
+            , PerInstance(instanceData)
+        {
+        }
+
+        uint32_t GetSize() const
+        {
+            switch (Format)
+            {
+            case DataFormat::Float:     return sizeof(float);
+            case DataFormat::Float2:    return sizeof(float) * 2;
+            case DataFormat::Float3:    return sizeof(float) * 3;
+            case DataFormat::Float4:    return sizeof(float) * 4;
+            case DataFormat::Int:       return sizeof(int32_t);
+            case DataFormat::Int2:      return sizeof(int32_t) * 2;
+            case DataFormat::Int3:      return sizeof(int32_t) * 3;
+            case DataFormat::Int4:      return sizeof(int32_t) * 4;
+            case DataFormat::UInt:      return sizeof(uint32_t);
+            case DataFormat::UInt2:     return sizeof(uint32_t) * 2;
+            case DataFormat::UInt3:     return sizeof(uint32_t) * 3;
+            case DataFormat::UInt4:     return sizeof(uint32_t) * 4;
+            case DataFormat::UByte4:    return sizeof(uint8_t) * 4;
+            case DataFormat::UByte4N:   return sizeof(uint8_t) * 4;
+            case DataFormat::Short2:    return sizeof(int16_t) * 2;
+            case DataFormat::Short2N:   return sizeof(int16_t) * 2;
+            case DataFormat::Short4:    return sizeof(int16_t) * 4;
+            case DataFormat::Short4N:   return sizeof(int16_t) * 4;
+            case DataFormat::Half2:     return sizeof(uint16_t) * 2;
+            case DataFormat::Half4:     return sizeof(uint16_t) * 4;
+            default:                    return 0;
+            }
+        }
+
+        static std::string GetDefaultSemanticName(VertexAttributeType type)
+        {
+            switch (type)
+            {
+            case VertexAttributeType::Position:     return "POSITION";
+            case VertexAttributeType::Normal:       return "NORMAL";
+            case VertexAttributeType::Tangent:      return "TANGENT";
+            case VertexAttributeType::Bitangent:    return "BITANGENT";
+            case VertexAttributeType::TexCoord0:    return "TEXCOORD";
+            case VertexAttributeType::TexCoord1:    return "TEXCOORD";
+            case VertexAttributeType::TexCoord2:    return "TEXCOORD";
+            case VertexAttributeType::TexCoord3:    return "TEXCOORD";
+            case VertexAttributeType::Color0:       return "COLOR";
+            case VertexAttributeType::Color1:       return "COLOR";
+            case VertexAttributeType::BlendIndices: return "BLENDINDICES";
+            case VertexAttributeType::BlendWeights: return "BLENDWEIGHT";
+            case VertexAttributeType::Custom:       return "CUSTOM";
+            default:                                return "UNKNOWN";
+            }
+        }
+    };
+
+
+    enum class PrimitiveTopology {
+        TriangleList,
+        TriangleStrip,
+        LineList,
+        LineStrip,
+        PointList,
+        TriangleListAdj,
+        TriangleStripAdj,
+        LineListAdj,
+        LineStripAdj,
+        PatchList      //: For tessellation
+    };
+
+    enum class BlendMode {
+        Opaque,
+        AlphaBlend,
+        Additive,
+        Multiply,
+        Premultiplied  //Premultiplied alpha
+    };
+
+    enum class DepthTestMode {
+        None,
+        Less,
+        LessEqual,
+        Greater,
+        GreaterEqual,  
+        Equal,
+        NotEqual,      
+        Always         
+    };
+
+    enum class CullMode {
+        None,
+        Front,
+        Back
+    };
+
+    struct RasterizerState
+    {
+        CullMode cullMode = CullMode::Back;
+        bool wireframe = false;
+        bool frontCounterClockwise = false;
+
+        //: Advanced rasterizer state
+        int32_t depthBias = 0;
+        float depthBiasClamp = 0.0f;
+        float slopeScaledDepthBias = 0.0f;
+        bool depthClipEnable = true;
+        bool scissorEnable = false;
+        bool multisampleEnable = false;
+        bool antialiasedLineEnable = false;
+    };
+
+    // ============================================================================
     // Core Enums (your existing ones, kept as-is)
     // ============================================================================
 
@@ -276,32 +494,6 @@ namespace DXEngine::RHI
     // Enhanced Texture Description
     // ============================================================================
 
-    enum class TextureFormat {
-        // Your existing formats
-        RGBA8_UNORM,
-        RGBA16_FLOAT,
-        RGBA32_FLOAT,
-        R8_UNORM,
-        RG8_UNORM,
-        D24_UNORM_S8_UINT,
-        BC1_UNORM,
-        BC3_UNORM,
-        BC5_UNORM,
-
-        //: Additional common formats
-        RGBA8_SRGB,           // sRGB color space
-        BGRA8_UNORM,          // Common swapchain format
-        R16_FLOAT,
-        RG16_FLOAT,
-        R32_FLOAT,
-        RG32_FLOAT,
-        RGB32_FLOAT,
-        D32_FLOAT,            // High precision depth
-        D16_UNORM,            // Low precision depth
-        BC6H_UFLOAT,          // HDR compressed
-        BC7_UNORM,            // High quality compressed
-        R11G11B10_FLOAT       // HDR format
-    };
 
     enum class TextureType {
         Texture2D,
@@ -333,14 +525,6 @@ namespace DXEngine::RHI
     // Enhanced Shader Description
     // ============================================================================
 
-    enum class ShaderStage {
-        Vertex,
-        Pixel,
-        Geometry,
-        Hull,
-        Domain,
-        Compute
-    };
 
     enum class OptimizationLevel {
         None,
@@ -389,184 +573,9 @@ namespace DXEngine::RHI
     };
 
     // ============================================================================
-    // Vertex Attributes (Enhanced)
-    // ============================================================================
-
-    enum class VertexAttributeType
-    {
-        Position,
-        Normal,
-        Tangent,
-        Bitangent,
-        TexCoord0,
-        TexCoord1,
-        TexCoord2,
-        TexCoord3,
-        Color0,
-        Color1,
-        BlendIndices,
-        BlendWeights,
-        Custom
-    };
-
-    enum class DataFormat
-    {
-        Float,
-        Float2,
-        Float3,
-        Float4,
-        Int,
-        Int2,
-        Int3,
-        Int4,
-        UInt,     
-        UInt2,    
-        UInt3,    
-        UInt4,    
-        UByte4,
-        UByte4N,
-        Short2,
-        Short2N,
-        Short4,
-        Short4N,
-        Half2,
-        Half4
-    };
-
-    struct VertexAttribute
-    {
-        VertexAttributeType Type;
-        DataFormat Format;
-        std::string SemanticName;
-        uint32_t SemanticIndex;
-        uint32_t Offset;
-        uint32_t Slot;
-        bool PerInstance;
-
-        VertexAttribute() = default;
-        VertexAttribute(VertexAttributeType attrType,
-            DataFormat dataFormat,
-            const std::string& semantic = "",
-            uint32_t semIndex = 0,
-            uint32_t inputSlot = 0,
-            bool instanceData = false)
-            : Type(attrType)
-            , Format(dataFormat)
-            , SemanticName(semantic.empty() ? GetDefaultSemanticName(attrType) : semantic)
-            , SemanticIndex(semIndex)
-            , Offset(0) // Will be calculated by layout
-            , Slot(inputSlot)
-            , PerInstance(instanceData)
-        {
-        }
-
-        uint32_t GetSize() const
-        {
-            switch (Format)
-            {
-            case DataFormat::Float:     return sizeof(float);
-            case DataFormat::Float2:    return sizeof(float) * 2;
-            case DataFormat::Float3:    return sizeof(float) * 3;
-            case DataFormat::Float4:    return sizeof(float) * 4;
-            case DataFormat::Int:       return sizeof(int32_t);
-            case DataFormat::Int2:      return sizeof(int32_t) * 2;
-            case DataFormat::Int3:      return sizeof(int32_t) * 3;
-            case DataFormat::Int4:      return sizeof(int32_t) * 4;
-            case DataFormat::UInt:      return sizeof(uint32_t);
-            case DataFormat::UInt2:     return sizeof(uint32_t) * 2;
-            case DataFormat::UInt3:     return sizeof(uint32_t) * 3;
-            case DataFormat::UInt4:     return sizeof(uint32_t) * 4;
-            case DataFormat::UByte4:    return sizeof(uint8_t) * 4;
-            case DataFormat::UByte4N:   return sizeof(uint8_t) * 4;
-            case DataFormat::Short2:    return sizeof(int16_t) * 2;
-            case DataFormat::Short2N:   return sizeof(int16_t) * 2;
-            case DataFormat::Short4:    return sizeof(int16_t) * 4;
-            case DataFormat::Short4N:   return sizeof(int16_t) * 4;
-            case DataFormat::Half2:     return sizeof(uint16_t) * 2;
-            case DataFormat::Half4:     return sizeof(uint16_t) * 4;
-            default:                    return 0;
-            }
-        }
-
-        static std::string GetDefaultSemanticName(VertexAttributeType type)
-        {
-            switch (type)
-            {
-            case VertexAttributeType::Position:     return "POSITION";
-            case VertexAttributeType::Normal:       return "NORMAL";
-            case VertexAttributeType::Tangent:      return "TANGENT";
-            case VertexAttributeType::Bitangent:    return "BITANGENT";
-            case VertexAttributeType::TexCoord0:    return "TEXCOORD";
-            case VertexAttributeType::TexCoord1:    return "TEXCOORD";
-            case VertexAttributeType::TexCoord2:    return "TEXCOORD";
-            case VertexAttributeType::TexCoord3:    return "TEXCOORD";
-            case VertexAttributeType::Color0:       return "COLOR";
-            case VertexAttributeType::Color1:       return "COLOR";
-            case VertexAttributeType::BlendIndices: return "BLENDINDICES";
-            case VertexAttributeType::BlendWeights: return "BLENDWEIGHT";
-            case VertexAttributeType::Custom:       return "CUSTOM";
-            default:                                return "UNKNOWN";
-            }
-        }
-    };
-
-    // ============================================================================
     // Other Existing Types
     // ============================================================================
 
-    enum class PrimitiveTopology {
-        TriangleList,
-        TriangleStrip,
-        LineList,
-        LineStrip,
-        PointList,
-        TriangleListAdj,
-        TriangleStripAdj,
-        LineListAdj,
-        LineStripAdj,
-        PatchList      //: For tessellation
-    };
-
-    enum class BlendMode {
-        Opaque,
-        AlphaBlend,
-        Additive,
-        Multiply,
-        Premultiplied  //Premultiplied alpha
-    };
-
-    enum class DepthTestMode {
-        None,
-        Less,
-        LessEqual,
-        Greater,
-        GreaterEqual,  
-        Equal,
-        NotEqual,      
-        Always         
-    };
-
-    enum class CullMode {
-        None,
-        Front,
-        Back
-    };
-
-    struct RasterizerState
-    {
-        CullMode cullMode = CullMode::Back;
-        bool wireframe = false;
-        bool frontCounterClockwise = false;
-
-        //: Advanced rasterizer state
-        int32_t depthBias = 0;
-        float depthBiasClamp = 0.0f;
-        float slopeScaledDepthBias = 0.0f;
-        bool depthClipEnable = true;
-        bool scissorEnable = false;
-        bool multisampleEnable = false;
-        bool antialiasedLineEnable = false;
-    };
 
     struct ViewportDesc {
         float x = 0.0f;
