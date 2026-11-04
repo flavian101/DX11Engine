@@ -1,7 +1,8 @@
 #include "dxpch.h"
 #include "SkySphere.h"
 #include <utils/material/Material.h>
-#include "utils/CubeMapTexture.h"
+#include "utils/ImageLoader.h"
+#include "renderer/Renderer.h"
 
 namespace DXEngine {
 
@@ -12,7 +13,7 @@ namespace DXEngine {
 
         auto skyMaterial = DXEngine::MaterialFactory::CreateSkyboxMaterial("SkyMaterial");
 
-        const char* skyFilenames[6] = {
+        const std::array<std::string, 6> skyFilenames = {
             "assets/textures/NightSky/nightBack.png",
             "assets/textures/NightSky/nightBottom.png",
             "assets/textures/NightSky/nightFront.png",
@@ -21,15 +22,16 @@ namespace DXEngine {
             "assets/textures/NightSky/nightTop.png"
         };
 
-        auto skyTexture = std::make_shared<CubeMapTexture>(skyFilenames);
-        skyMaterial->SetEnvironmentTexture(skyTexture);
+        auto device = Renderer::GetDevice();
+        if (device)
+            skyMaterial->SetTexture(TextureSlot::Environment, ImageLoader::LoadCubeMap(*device, skyFilenames));
        // skyMaterial->SetEmissiveColor({ 0.01f, 0.01f, 0.05f, 0.4f });
 
          // Create large sphere for skybox
         float radius = 50.0f; // Large radius for sky dome
         uint32_t segments = 32; // Medium detail for sky sphere
 
-        auto skyMesh = Mesh::CreateSphere(radius, segments);
+        auto skyMesh = Mesh::CreateSphere(device, radius, segments);
 
 
         // Sky sphere should not cast shadows

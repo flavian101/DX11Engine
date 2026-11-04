@@ -1,6 +1,8 @@
 #include "dxpch.h"
 #include "Ball.h"
 #include <utils/material/Material.h>
+#include "utils/ImageLoader.h"
+#include "renderer/Renderer.h"
 
 namespace DXEngine {
 
@@ -10,8 +12,8 @@ namespace DXEngine {
         Initialize();
 
         auto moonMaterial = DXEngine::MaterialFactory::CreateLitMaterial("MoonMaterial");
-        auto moonTexture = std::make_shared<Texture>("assets/textures/8k_moon.jpg");
-        moonMaterial->SetDiffuseTexture(moonTexture);
+        if (auto device = Renderer::GetDevice())
+            moonMaterial->SetTexture(TextureSlot::Diffuse, ImageLoader::LoadTexture2D(*device, "assets/textures/8k_moon.jpg"));
         moonMaterial->SetSpecularColor({ 0.2f, 0.2f, 0.2f, 1.0f });
         moonMaterial->SetShininess(100.0f);
 
@@ -24,7 +26,7 @@ namespace DXEngine {
         float radius = 1.0f;
         uint32_t segments = 64;
 
-        auto sphereMesh = Mesh::CreateSphere(radius, segments);
+        auto sphereMesh = Mesh::CreateSphere(Renderer::GetDevice(), radius, segments);
         SetMesh(sphereMesh);
     }
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include "utils/Light.h"
-#include "utils/mesh/Mesh.h"
+#include "utils/Mesh/Mesh.h"
 #include "models/Model.h"
 #include <memory>
 

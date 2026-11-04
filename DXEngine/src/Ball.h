@@ -1,7 +1,5 @@
 #pragma once
-#include "renderer/RendererCommand.h"
-#include "utils/Texture.h"
-#include <utils/mesh/Mesh.h>
+#include <utils/Mesh/Mesh.h>
 #include "models/Model.h"
 
 

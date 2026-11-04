@@ -1,5 +1,4 @@
 #pragma once
-#include "renderer/RendererCommand.h"
 #include "models/Model.h"
 
 namespace DXEngine {

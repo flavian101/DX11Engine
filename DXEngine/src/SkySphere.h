@@ -1,5 +1,5 @@
 #pragma once
-#include "utils/mesh\Mesh.h"
+#include "utils/Mesh/Mesh.h"
 #include "dxpch.h"
 #include <memory>
 #include <models/Model.h>

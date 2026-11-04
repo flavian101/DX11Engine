@@ -1,6 +1,6 @@
 #include "dxpch.h"
 #include "LightSphere.h"
-#include "utils/Texture.h"
+#include "renderer/Renderer.h"
 #include "utils/material/Material.h"
 
 
@@ -27,7 +27,7 @@ namespace DXEngine {
         float radius = 1.5f; 
         uint32_t segments = 16; // Lower detail for light sphere
 
-        auto lightMesh = Mesh::CreateSphere(radius, segments);
+        auto lightMesh = Mesh::CreateSphere(Renderer::GetDevice(), radius, segments);
         SetMesh(lightMesh);
     }
 
