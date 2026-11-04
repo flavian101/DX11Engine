@@ -791,18 +791,6 @@ namespace DXEngine
 		OutputDebugStringA(("[ShaderCache INFO] " + message + "\n").c_str());
 	}
 
-	std::string ShaderCache::GenerateVertexLayoutHash(const VertexLayout& layout)
-	{
-		std::string hash;
-		for (const auto& attr : layout.GetAttributes()) {
-			hash += std::to_string(static_cast<int>(attr.Type));
-			hash += std::to_string(static_cast<int>(attr.Format));
-			hash += std::to_string(attr.Slot);
-			hash += "_";
-		}
-		return hash;
-	}
-
 	namespace ShaderUtils {
 
 		bool HasFeature(uint32_t flags, uint32_t feature) {
