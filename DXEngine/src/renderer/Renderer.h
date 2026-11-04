@@ -10,6 +10,7 @@ namespace DXEngine
     class Material;
     class UIElement;
     class LightManager;
+    namespace RHI { class IGraphicsDevice; }
 
     // ==================================================================
     // Renderer: the FACADE. Static API kept identical to the legacy renderer so Application,
@@ -29,6 +30,10 @@ namespace DXEngine
 
         static void InitLightManager();
         static std::shared_ptr<LightManager> GetLightManager();
+
+        // The GPU device, for code that creates GPU resources (meshes, textures) outside the renderer.
+        // Null before Init / after Shutdown.
+        static std::shared_ptr<RHI::IGraphicsDevice> GetDevice();
 
         static void SetTime(float totalSeconds);          // Application passes time since start
         static void SetClearColor(float r, float g, float b, float a = 1.0f);

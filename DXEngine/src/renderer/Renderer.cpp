@@ -134,6 +134,11 @@ namespace DXEngine
         g->services.lights = lm;
     }
 
+    std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice()
+    {
+        return g ? g->services.device : nullptr;
+    }
+
     std::shared_ptr<LightManager> Renderer::GetLightManager()
     {
         return g ? g->services.lights : nullptr;
