@@ -151,4 +151,37 @@ namespace DXEngine::RHI
 	{
 		m_Context->Unmap(m_Buffer.Get(), 0);
 	}
+
+	void* D3D11Buffer::MapRange(uint32_t offset, uint32_t size)
+	{
+		if (!m_Buffer || !m_Context)
+			return nullptr;
+
+		// only CPU-writable (dynamic / stream) buffers can be mapped
+		if (m_Desc.usage == BufferUsage::Static)
+		{
+			OutputDebugStringA("D3D11Buffer::MapRange: static buffers cannot be mapped\n");
+			return nullptr;
+		}
+
+		if (size == 0 || offset > m_Desc.size || size > m_Desc.size - offset)
+		{
+			OutputDebugStringA("D3D11Buffer::MapRange: range is outside the buffer\n");
+			return nullptr;
+		}
+
+		// D3D11 can only map a WHOLE buffer, so the "range" is a pointer offset into that mapping.
+		// NO_OVERWRITE keeps the rest of the data intact (you promise not to touch what the GPU may still
+		// read) but D3D11 allows it only on vertex/index buffers; other buffers (constant buffers) must use
+		// DISCARD, which invalidates everything outside the range.
+		const bool keepRest = m_Desc.type == BufferType::Vertex || m_Desc.type == BufferType::Index;
+
+		D3D11_MAPPED_SUBRESOURCE mapped = {};
+		const HRESULT hr = m_Context->Map(m_Buffer.Get(), 0,
+			keepRest ? D3D11_MAP_WRITE_NO_OVERWRITE : D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		if (FAILED(hr))
+			return nullptr;
+
+		return static_cast<char*>(mapped.pData) + offset;
+	}
 }

@@ -31,6 +31,7 @@ namespace DXEngine::RHI
 		bool Read(void* outData, uint32_t size, uint32_t offset) override;
 		void* Map() override;
 		void UnMap() override;
+		void* MapRange(uint32_t offset, uint32_t size) override;   // pair with UnMap()
 
 
 		//D3D11-Specific
