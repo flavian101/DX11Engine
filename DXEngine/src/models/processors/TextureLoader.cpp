@@ -21,8 +21,15 @@ namespace DXEngine
         // Check if texture is embedded (starts with '*')
         if (filepath[0] == '*')
         {
-            OutputDebugStringA("TextureLoader: Embedded texture detected but no scene provided\n");
-            return CreateFallbackTexture(type);
+            if (!m_CurrentScene)
+            {
+                OutputDebugStringA("TextureLoader: Embedded texture detected but no scene provided\n");
+                return CreateFallbackTexture(type);
+            }
+
+            // Not cached by name: "*0" means a different image in every model.
+            auto embedded = LoadEmbeddedTexture(m_CurrentScene, filepath);
+            return embedded ? embedded : CreateFallbackTexture(type);
         }
 
         // Check cache first

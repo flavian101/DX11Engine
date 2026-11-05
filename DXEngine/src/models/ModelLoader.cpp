@@ -104,7 +104,10 @@ namespace DXEngine
 
 
         //process The scene
+        // let the texture loader resolve embedded textures ("*0") of THIS scene, only while processing it
+        m_TextureLoader->SetCurrentScene(scene);
         auto model = ProcessScene(scene, m_CurrentDirectory, options);
+        m_TextureLoader->SetCurrentScene(nullptr);
 
         if (model)
         {
