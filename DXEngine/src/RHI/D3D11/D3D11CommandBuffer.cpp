@@ -64,7 +64,13 @@ namespace DXEngine::RHI
 	void D3D11CommandBuffer::SetIndexBuffer(IBuffer* buffer, uint32_t slot, uint32_t offset)
 	{
 		auto* d3d11Buffer = static_cast<D3D11Buffer*>(buffer);
-		m_Context->IASetIndexBuffer(d3d11Buffer->GetD3D11Buffer(), DXGI_FORMAT_R32_UINT, offset);
+
+		// The format must match how the buffer was filled. MeshBuffers creates 16-bit index buffers
+		// (stride 2) for IndexType::UInt16 and 32-bit ones (stride 4) otherwise. The format used to be
+		// hard-coded to R32_UINT, so every 16-bit mesh was read as 32-bit: the draw saw half as many
+		// indices as it asked for ("Index buffer has not enough space") and drew garbage.
+		const DXGI_FORMAT format = (buffer->GetStride() == 2) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+		m_Context->IASetIndexBuffer(d3d11Buffer->GetD3D11Buffer(), format, offset);
 	}
 	void D3D11CommandBuffer::SetConstantBuffer(IBuffer* buffer, uint32_t slot, ShaderStage stage)
 	{
