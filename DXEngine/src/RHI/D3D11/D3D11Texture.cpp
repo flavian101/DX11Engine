@@ -4,18 +4,67 @@
 
 namespace DXEngine::RHI
 {
+	static bool IsDepthFormat(TextureFormat format) {
+		return format == TextureFormat::D24_UNORM_S8_UINT ||
+			format == TextureFormat::D32_FLOAT ||
+			format == TextureFormat::D16_UNORM;
+	}
+
+	// The DXGI format of a COLOUR view (and of colour resources). Every TextureFormat is mapped here:
+	// the old table silently turned anything it did not know into RGBA8_UNORM.
 	static DXGI_FORMAT GetDXGIFormat(TextureFormat format) {
 		switch (format) {
 		case TextureFormat::RGBA8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
+		case TextureFormat::RGBA8_SRGB: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		case TextureFormat::BGRA8_UNORM: return DXGI_FORMAT_B8G8R8A8_UNORM;
 		case TextureFormat::RGBA16_FLOAT: return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		case TextureFormat::RGBA32_FLOAT: return DXGI_FORMAT_R32G32B32A32_FLOAT;
 		case TextureFormat::R8_UNORM: return DXGI_FORMAT_R8_UNORM;
 		case TextureFormat::RG8_UNORM: return DXGI_FORMAT_R8G8_UNORM;
+		case TextureFormat::R16_FLOAT: return DXGI_FORMAT_R16_FLOAT;
+		case TextureFormat::RG16_FLOAT: return DXGI_FORMAT_R16G16_FLOAT;
+		case TextureFormat::R32_FLOAT: return DXGI_FORMAT_R32_FLOAT;
+		case TextureFormat::RG32_FLOAT: return DXGI_FORMAT_R32G32_FLOAT;
+		case TextureFormat::RGB32_FLOAT: return DXGI_FORMAT_R32G32B32_FLOAT;
+		case TextureFormat::R11G11B10_FLOAT: return DXGI_FORMAT_R11G11B10_FLOAT;
 		case TextureFormat::D24_UNORM_S8_UINT: return DXGI_FORMAT_D24_UNORM_S8_UINT;
+		case TextureFormat::D32_FLOAT: return DXGI_FORMAT_D32_FLOAT;
+		case TextureFormat::D16_UNORM: return DXGI_FORMAT_D16_UNORM;
 		case TextureFormat::BC1_UNORM: return DXGI_FORMAT_BC1_UNORM;
 		case TextureFormat::BC3_UNORM: return DXGI_FORMAT_BC3_UNORM;
 		case TextureFormat::BC5_UNORM: return DXGI_FORMAT_BC5_UNORM;
+		case TextureFormat::BC6H_UFLOAT: return DXGI_FORMAT_BC6H_UF16;
+		case TextureFormat::BC7_UNORM: return DXGI_FORMAT_BC7_UNORM;
 		default: return DXGI_FORMAT_R8G8B8A8_UNORM;
+		}
+	}
+
+	// ---- Depth textures need THREE different DXGI formats -------------------------------------------
+	// A depth format such as D24_UNORM_S8_UINT cannot carry D3D11_BIND_SHADER_RESOURCE, and
+	// CreateTexture2D rejects it ("cannot be bound as a ShaderResource"). The D3D11 recipe:
+	//   resource : TYPELESS            (so it can be viewed as depth AND as a readable colour)
+	//   DSV      : the real depth format
+	//   SRV      : the matching "read the depth / stencil bits" format
+	// For non-depth formats all three are the same as GetDXGIFormat().
+	static DXGI_FORMAT GetResourceFormat(TextureFormat format) {
+		switch (format) {
+		case TextureFormat::D24_UNORM_S8_UINT: return DXGI_FORMAT_R24G8_TYPELESS;
+		case TextureFormat::D32_FLOAT:         return DXGI_FORMAT_R32_TYPELESS;
+		case TextureFormat::D16_UNORM:         return DXGI_FORMAT_R16_TYPELESS;
+		default:                               return GetDXGIFormat(format);
+		}
+	}
+
+	static DXGI_FORMAT GetDSVFormat(TextureFormat format) {
+		return GetDXGIFormat(format);   // D24_UNORM_S8_UINT / D32_FLOAT / D16_UNORM
+	}
+
+	static DXGI_FORMAT GetSRVFormat(TextureFormat format) {
+		switch (format) {
+		case TextureFormat::D24_UNORM_S8_UINT: return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;   // depth bits
+		case TextureFormat::D32_FLOAT:         return DXGI_FORMAT_R32_FLOAT;
+		case TextureFormat::D16_UNORM:         return DXGI_FORMAT_R16_UNORM;
+		default:                               return GetDXGIFormat(format);
 		}
 	}
 
@@ -27,6 +76,18 @@ namespace DXEngine::RHI
 		case TextureFormat::R8_UNORM:           return 1;
 		case TextureFormat::RG8_UNORM:          return 2;
 		case TextureFormat::D24_UNORM_S8_UINT:  return 4;  // 3 bytes depth + 1 byte stencil
+		case TextureFormat::D32_FLOAT:          return 4;
+		case TextureFormat::D16_UNORM:          return 2;
+		case TextureFormat::RGBA8_SRGB:         return 4;
+		case TextureFormat::BGRA8_UNORM:        return 4;
+		case TextureFormat::R16_FLOAT:          return 2;
+		case TextureFormat::RG16_FLOAT:         return 4;
+		case TextureFormat::R32_FLOAT:          return 4;
+		case TextureFormat::RG32_FLOAT:         return 8;
+		case TextureFormat::RGB32_FLOAT:        return 12;
+		case TextureFormat::R11G11B10_FLOAT:    return 4;
+		case TextureFormat::BC6H_UFLOAT:        return 16; // Compressed: 16 bytes per 4x4 block
+		case TextureFormat::BC7_UNORM:          return 16; // Compressed: 16 bytes per 4x4 block
 		case TextureFormat::BC1_UNORM:          return 8;  // Compressed: 8 bytes per 4x4 block
 		case TextureFormat::BC3_UNORM:          return 16;  // Compressed: 16 bytes per 4x4 block
 		case TextureFormat::BC5_UNORM:          return 16;  // Compressed: 16 bytes per 4x4 block
@@ -90,15 +151,19 @@ namespace DXEngine::RHI
         m_Texture2D = existingTexture;
         m_RTV = existingRTV;
 
-        // Create SRV if needed
-        DXGI_FORMAT format = GetDXGIFormat(desc.format);
-        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Format = format;
-        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = 1;
-        srvDesc.Texture2D.MostDetailedMip = 0;
+        // Create an SRV only if the wrapped texture allows it. A swap chain buffer is created with
+        // RENDER_TARGET_OUTPUT only, and asking for an SRV on it makes the debug layer report an error.
+        D3D11_TEXTURE2D_DESC existingDesc = {};
+        m_Texture2D->GetDesc(&existingDesc);
+        if (existingDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Format = GetSRVFormat(desc.format);
+            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = 1;
+            srvDesc.Texture2D.MostDetailedMip = 0;
 
-        m_Device->CreateShaderResourceView(m_Texture2D.Get(), &srvDesc, m_SRV.GetAddressOf());
+            m_Device->CreateShaderResourceView(m_Texture2D.Get(), &srvDesc, m_SRV.GetAddressOf());
+        }
 
         if (!m_DebugName.empty()) {
             SetDebugName(m_DebugName);
@@ -107,7 +172,7 @@ namespace DXEngine::RHI
     }
 
     bool D3D11Texture::CreateTexture2D(const TextureDesc& desc) {
-        DXGI_FORMAT format = GetDXGIFormat(desc.format);
+        DXGI_FORMAT format = GetResourceFormat(desc.format);   // TYPELESS for depth formats, see above
 
         D3D11_TEXTURE2D_DESC texDesc = {};
         texDesc.Width = desc.width;
@@ -219,7 +284,7 @@ namespace DXEngine::RHI
 
         // Create Shader Resource View (SRV)
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Format = format;
+        srvDesc.Format = GetSRVFormat(desc.format);   // for depth: the "read the depth bits" format
 
         if (desc.type == TextureType::Texture3D) {
             srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
@@ -294,7 +359,7 @@ namespace DXEngine::RHI
         // Create Depth Stencil View (DSV) if needed
         if (desc.isDepthStencil && m_Texture2D) {
             D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-            dsvDesc.Format = format;
+            dsvDesc.Format = GetDSVFormat(desc.format);
 
             if (desc.arraySize > 1) {
                 dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
