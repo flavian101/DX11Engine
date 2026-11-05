@@ -58,7 +58,13 @@ namespace DXEngine
         // Create index buffer if available
         if (indexData && indexData->GetIndexCount() > 0)
         {
-            if (!CreateIndexBuffer(device, indexData, resource.GetName()));
+            // (a stray ';' after this 'if' used to make a failed index buffer go unnoticed, and the
+            // mesh was then drawn with DrawIndexed and no index buffer)
+            if (!CreateIndexBuffer(device, indexData, resource.GetName()))
+            {
+                OutputDebugStringA(("ERROR: MeshBuffers: index buffer creation failed for " + resource.GetName() + "\n").c_str());
+                return false;
+            }
         }
 
         m_Topology = resource.GetTopology();
