@@ -40,6 +40,13 @@ namespace DXEngine
 				return;
 			}
 
+			// before the first keyframe: hold the first pose (this used to fall through to the LAST frame)
+			if (time < Keyframes.front().TimeStamp)
+			{
+				frame0 = frame1 = 0;
+				interpolation = 0.0f;
+				return;
+			}
 			//find the two keyframes to interpolate between 
 			for (size_t i = 0; i < Keyframes.size() - 1; i++)
 			{
