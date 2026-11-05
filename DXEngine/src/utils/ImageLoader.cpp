@@ -74,6 +74,26 @@ namespace DXEngine
         }
     }
 
+    namespace
+    {
+        // `pixels` holds level 0 (RGBA8). Builds the mip chain in place and creates the texture.
+        std::shared_ptr<RHI::ITexture> CreateFromRGBA8(RHI::IGraphicsDevice& device,
+                                                       std::vector<uint8_t>& pixels,
+                                                       uint32_t width, uint32_t height,
+                                                       const std::string& debugName, bool generateMipChain)
+        {
+            RHI::TextureDesc desc;
+            desc.type      = RHI::TextureType::Texture2D;
+            desc.format    = RHI::TextureFormat::RGBA8_UNORM;
+            desc.width     = width;
+            desc.height    = height;
+            desc.mipLevels = generateMipChain ? AppendMipChain(pixels, width, height) : 1;
+            desc.initialData = pixels.data();    // complete chain, contiguous: exactly what D3D11Texture expects
+            desc.debugName = debugName;
+            return CreateTexture(device, desc);
+        }
+    }
+
     std::shared_ptr<RHI::ITexture> ImageLoader::LoadTexture2D(RHI::IGraphicsDevice& device,
                                                               const std::string& path,
                                                               bool generateMipChain)
@@ -88,17 +108,40 @@ namespace DXEngine
 
         std::vector<uint8_t> pixels(decoded, decoded + static_cast<size_t>(width) * height * 4);
         stbi_image_free(decoded);
+        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), path, generateMipChain);
+    }
 
-        RHI::TextureDesc desc;
-        desc.type      = RHI::TextureType::Texture2D;
-        desc.format    = RHI::TextureFormat::RGBA8_UNORM;
-        desc.width     = static_cast<uint32_t>(width);
-        desc.height    = static_cast<uint32_t>(height);
-        desc.mipLevels = generateMipChain ? AppendMipChain(pixels, desc.width, desc.height) : 1;
-        desc.initialData = pixels.data();    // complete chain, contiguous: exactly what D3D11Texture expects
-        desc.debugName = path;
+    std::shared_ptr<RHI::ITexture> ImageLoader::LoadTexture2DFromMemory(RHI::IGraphicsDevice& device,
+                                                                        const uint8_t* data, size_t sizeBytes,
+                                                                        const std::string& debugName,
+                                                                        bool generateMipChain)
+    {
+        int width = 0, height = 0, channels = 0;
+        stbi_uc* decoded = stbi_load_from_memory(data, static_cast<int>(sizeBytes), &width, &height, &channels, STBI_rgb_alpha);
+        if (!decoded)
+        {
+            Log("could not decode '" + debugName + "': " + stbi_failure_reason());
+            return nullptr;
+        }
 
-        return CreateTexture(device, desc);
+        std::vector<uint8_t> pixels(decoded, decoded + static_cast<size_t>(width) * height * 4);
+        stbi_image_free(decoded);
+        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), debugName, generateMipChain);
+    }
+
+    std::shared_ptr<RHI::ITexture> ImageLoader::CreateTexture2DFromRGBA8(RHI::IGraphicsDevice& device,
+                                                                         const uint8_t* rgba,
+                                                                         uint32_t width, uint32_t height,
+                                                                         const std::string& debugName,
+                                                                         bool generateMipChain)
+    {
+        if (!rgba || width == 0 || height == 0)
+        {
+            Log("invalid pixel data for '" + debugName + "'");
+            return nullptr;
+        }
+        std::vector<uint8_t> pixels(rgba, rgba + static_cast<size_t>(width) * height * 4);
+        return CreateFromRGBA8(device, pixels, width, height, debugName, generateMipChain);
     }
 
     std::shared_ptr<RHI::ITexture> ImageLoader::LoadCubeMap(RHI::IGraphicsDevice& device,

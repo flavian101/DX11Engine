@@ -26,6 +26,19 @@ namespace DXEngine
                                                             const std::string& path,
                                                             bool generateMipChain = true);
 
+        // Decode an image that is already in memory (for example a PNG/JPG embedded in a glTF/FBX).
+        static std::shared_ptr<RHI::ITexture> LoadTexture2DFromMemory(RHI::IGraphicsDevice& device,
+                                                                      const uint8_t* data, size_t sizeBytes,
+                                                                      const std::string& debugName,
+                                                                      bool generateMipChain = true);
+
+        // Raw RGBA8 pixels (width * height * 4 bytes), for example an uncompressed embedded texture.
+        static std::shared_ptr<RHI::ITexture> CreateTexture2DFromRGBA8(RHI::IGraphicsDevice& device,
+                                                                       const uint8_t* rgba,
+                                                                       uint32_t width, uint32_t height,
+                                                                       const std::string& debugName,
+                                                                       bool generateMipChain = true);
+
         // Face i of the array comes from facePaths[i] (same order as the legacy CubeMapTexture).
         // All six images must have the same size.
         static std::shared_ptr<RHI::ITexture> LoadCubeMap(RHI::IGraphicsDevice& device,
