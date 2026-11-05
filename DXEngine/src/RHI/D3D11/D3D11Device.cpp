@@ -160,14 +160,30 @@ namespace DXEngine::RHI
 
 	void D3D11Device::Resize(uint32_t width, uint32_t height)
 	{
+		// a minimised window reports 0x0: there is nothing to resize to
+		if (width == 0 || height == 0)
+			return;
+
 		m_Width = width;
 		m_Height = height;
 
+		// ResizeBuffers fails (DXGI_ERROR_INVALID_CALL) while anything still references the old buffers:
+		// unbind the targets, drop our wrappers, then flush so the GPU really lets go of them.
+		m_Context->OMSetRenderTargets(0, nullptr, nullptr);
 		m_BackBuffer.reset();
 		m_DepthStencil.reset();
+		m_Context->ClearState();
+		m_Context->Flush();
 
-		m_SwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
-		CreateBackBuffer();
+		const HRESULT hr = m_SwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+		if (FAILED(hr))
+		{
+			OutputDebugStringA("D3D11Device::Resize: ResizeBuffers failed\n");
+			return;
+		}
+
+		if (!CreateBackBuffer())
+			OutputDebugStringA("D3D11Device::Resize: could not recreate the back buffer\n");
 	}
 
 	IGraphicsDevice::MemoryStats D3D11Device::GetMemoryStats() const
@@ -255,8 +271,14 @@ namespace DXEngine::RHI
 
 	bool D3D11Device::CreateBackBuffer()
 	{
-		ComPtr<ID3D11Texture2D> backBuffer;
-		HRESULT hr = m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &backBuffer);
+		// Wrap the swap chain's OWN buffer. The old code fetched it and then created an unrelated offscreen
+		// texture, so everything the renderer drew went to a texture that was never presented.
+		ComPtr<ID3D11Texture2D> swapChainBuffer;
+		HRESULT hr = m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &swapChainBuffer);
+		if (FAILED(hr)) return false;
+
+		ComPtr<ID3D11RenderTargetView> backBufferRTV;
+		hr = m_Device->CreateRenderTargetView(swapChainBuffer.Get(), nullptr, backBufferRTV.GetAddressOf());
 		if (FAILED(hr)) return false;
 
 		TextureDesc desc;
@@ -266,14 +288,26 @@ namespace DXEngine::RHI
 		desc.isRenderTarget = true;
 		desc.debugName = "BackBuffer";
 
-		m_BackBuffer = std::make_shared<D3D11Texture>(m_Device.Get(), desc);
+		try
+		{
+			m_BackBuffer = std::make_shared<D3D11Texture>(m_Device.Get(), swapChainBuffer.Get(), backBufferRTV.Get(), desc);
 
-		// Create depth buffer
-		desc.format = TextureFormat::D24_UNORM_S8_UINT;
-		desc.isRenderTarget = false;
-		desc.isDepthStencil = true;
-		desc.debugName = "DepthStencil";
-		m_DepthStencil = std::make_shared<D3D11Texture>(m_Device.Get(), desc);
+			// Create depth buffer
+			desc.format = TextureFormat::D24_UNORM_S8_UINT;
+			desc.isRenderTarget = false;
+			desc.isDepthStencil = true;
+			desc.debugName = "DepthStencil";
+			m_DepthStencil = std::make_shared<D3D11Texture>(m_Device.Get(), desc);
+		}
+		catch (const std::exception& e)
+		{
+			// D3D11Texture reports failure by throwing. Turn it into the documented "return false" so
+			// Initialize() fails cleanly instead of crashing with an unhandled exception.
+			OutputDebugStringA((std::string("D3D11Device::CreateBackBuffer failed: ") + e.what() + "\n").c_str());
+			m_BackBuffer.reset();
+			m_DepthStencil.reset();
+			return false;
+		}
 
 		return true;
 	}
