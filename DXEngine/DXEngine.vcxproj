@@ -169,7 +169,6 @@
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\shaders\ShaderProgram.h" />
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
-    <ClInclude Include="src\utils\CubeMapTexture.h" />
     <ClInclude Include="src\utils\Light.h" />
     <ClInclude Include="src\utils\Mesh\Mesh.h" />
     <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
@@ -178,7 +177,7 @@
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
     <ClInclude Include="src\utils\PerfomanceProfiller.h" />
     <ClInclude Include="src\utils\ImageLoader.h" />
-    <ClInclude Include="src\utils\Texture.h" />
+    <ClInclude Include="src\utils\TextureNaming.h" />
     <ClInclude Include="src\utils\Transform.h" />
     <ClInclude Include="src\utils\UI\UIButton.h" />
     <ClInclude Include="src\utils\UI\UIElement.h" />
@@ -240,7 +239,6 @@
     <ClCompile Include="src\picking\PickingManager.cpp" />
     <ClCompile Include="src\picking\Ray.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
-    <ClCompile Include="src\utils\CubeMapTexture.cpp" />
     <ClCompile Include="src\utils\Light.cpp" />
     <ClCompile Include="src\utils\Mesh\Mesh.cpp" />
     <ClCompile Include="src\utils\Mesh\Resource\MeshResource.cpp" />
@@ -248,7 +246,7 @@
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
     <ClCompile Include="src\utils\ImageLoader.cpp" />
-    <ClCompile Include="src\utils\Texture.cpp" />
+    <ClCompile Include="src\utils\TextureNaming.cpp" />
     <ClCompile Include="src\utils\Transform.cpp" />
     <ClCompile Include="src\utils\UI\UIButton.cpp" />
     <ClCompile Include="src\utils\UI\UIElement.cpp" />

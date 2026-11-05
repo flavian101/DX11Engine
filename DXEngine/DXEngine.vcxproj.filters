@@ -131,9 +131,6 @@
     <ClInclude Include="src\utils\ConstantBufferTypes.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\CubeMapTexture.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\Light.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -158,7 +155,7 @@
     <ClInclude Include="src\utils\ImageLoader.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Texture.h">
+    <ClInclude Include="src\utils\TextureNaming.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Transform.h">
@@ -272,9 +269,6 @@
     <ClCompile Include="src\shaders\ShaderProgram.cpp">
       <Filter>shaders</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\CubeMapTexture.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
     <ClCompile Include="src\utils\Light.cpp">
       <Filter>utils</Filter>
     </ClCompile>
@@ -296,7 +290,7 @@
     <ClCompile Include="src\utils\ImageLoader.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\Texture.cpp">
+    <ClCompile Include="src\utils\TextureNaming.cpp">
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Transform.cpp">
