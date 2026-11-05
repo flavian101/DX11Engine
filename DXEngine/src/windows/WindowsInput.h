@@ -1,6 +1,6 @@
 #pragma once
 #include "dxpch.h"
-#include "..\Core\Input.h"
+#include "../Core/Input.h"
 
 
 namespace DXEngine {
