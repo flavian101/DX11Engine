@@ -389,30 +389,12 @@ namespace DXEngine
 	uint32_t ShaderCache::AnalyzeMaterial(const Material* material) {
 		if (!material) return 0;
 
-		uint32_t features = 0;
-		uint32_t matFlags = material->GetFeatureFlags();
-
-		// Texture features
-		if (matFlags & (1 << 0)) features |= ShaderFeature::DiffuseMap;
-		if (matFlags & (1 << 1)) features |= ShaderFeature::NormalMap;
-		if (matFlags & (1 << 2)) features |= ShaderFeature::SpecularMap;
-		if (matFlags & (1 << 3)) features |= ShaderFeature::EmissiveMap;
-		if (matFlags & (1 << 4)) features |= ShaderFeature::EnvironmentMap;
-		if (matFlags & (1 << 5)) features |= ShaderFeature::RoughnessMap;
-		if (matFlags & (1 << 6)) features |= ShaderFeature::MetallicMap;
-		if (matFlags & (1 << 7)) features |= ShaderFeature::AOMap;
-		if (matFlags & (1 << 8)) features |= ShaderFeature::HeightMap;
-		if (matFlags & (1 << 9)) features |= ShaderFeature::OpacityMap;
-		if (matFlags & (1 << 10)) features |= ShaderFeature::DetailDiffuseMap;
-		if (matFlags & (1 << 11)) features |= ShaderFeature::DetailNormalMap;
-		if (matFlags & (1 << 18)) features |= ShaderFeature::UseDetailsTextures;
-
-		// Rendering features
-		if (features & ShaderFeature::HeightMap) {
-			features |= ShaderFeature::ParallaxMapping;
-		}
-
-		return features;
+		// Material::GetFeatureFlags() already holds ShaderFeature bits, so they are masked, not translated.
+		// This function used to re-map them with raw bit numbers ((1 << 0) -> DiffuseMap, (1 << 1) ->
+		// NormalMap, ...) from an older numbering, which scrambled every texture feature: a diffuse map
+		// became MetallicMap, a normal map AOMap, a roughness map DetailNormalMap, and a skybox
+		// EnvironmentMap DetailDiffuseMap. Shaders then sampled textures that were never bound.
+		return ShaderFeature::FromMaterialFlags(material->GetFeatureFlags());
 	}
 
 	uint32_t ShaderCache::CombineFeatures(uint32_t layoutFeatures,

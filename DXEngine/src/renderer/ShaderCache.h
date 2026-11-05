@@ -45,6 +45,24 @@ namespace DXEngine {
         constexpr uint32_t AlphaTest = 1 << 22;
         constexpr uint32_t Lighting = 1 << 23;
         constexpr uint32_t Shadows = 1 << 24;
+
+        // The bits of a Material's feature flags that are forwarded to the shader variant: every
+        // texture map plus the combined "details" switch. A Material stores ShaderFeature bits
+        // directly (Material::SetTexture calls EnableFeature(ShaderFeature::...)), so they are
+        // masked, never re-mapped.
+        constexpr uint32_t MaterialTextureMask =
+            DiffuseMap | NormalMap | SpecularMap | EmissiveMap | EnvironmentMap | RoughnessMap |
+            MetallicMap | AOMap | HeightMap | OpacityMap | DetailDiffuseMap | DetailNormalMap |
+            UseDetailsTextures;
+
+        // The shader features a material asks for (parallax mapping follows the height map).
+        constexpr uint32_t FromMaterialFlags(uint32_t materialFlags)
+        {
+            uint32_t features = materialFlags & MaterialTextureMask;
+            if (features & HeightMap)
+                features |= ParallaxMapping;
+            return features;
+        }
     }
 
     // ========== SHADER VARIANT KEY ==========
