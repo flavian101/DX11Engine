@@ -24,32 +24,39 @@ namespace DXEngine {
 		{
 			m_Textures[textureSlot] = texture;
 
-			//auto enable feature flags based on texture slot
-			if (texture) {
-				// Switch on the enum, not on raw integers: the old numeric cases were shifted by one from
-				// slot 4 on (a roughness texture enabled EnvironmentMap), so materials picked the wrong
-				// shader variant. The names match the register comments in common.hlsli.
-				switch (slot) {
-				case TextureSlot::Diffuse:          EnableFeature(ShaderFeature::DiffuseMap);     break;
-				case TextureSlot::Normal:           EnableFeature(ShaderFeature::NormalMap);      break;
-				case TextureSlot::Specular:         EnableFeature(ShaderFeature::SpecularMap);    break;
-				case TextureSlot::Emissive:         EnableFeature(ShaderFeature::EmissiveMap);    break;
-				case TextureSlot::Roughness:        EnableFeature(ShaderFeature::RoughnessMap);   break;
-				case TextureSlot::Metallic:         EnableFeature(ShaderFeature::MetallicMap);    break;
-				case TextureSlot::AmbientOcclusion: EnableFeature(ShaderFeature::AOMap);          break;
-				case TextureSlot::Height:           EnableFeature(ShaderFeature::HeightMap);      break;
-				case TextureSlot::Opacity:          EnableFeature(ShaderFeature::OpacityMap);     break;
-				case TextureSlot::DetailDiffuse:
-					EnableFeature(ShaderFeature::DetailDiffuseMap);
-					EnableFeature(ShaderFeature::UseDetailsTextures);
-					break;
-				case TextureSlot::DetailNormal:
-					EnableFeature(ShaderFeature::DetailNormalMap);
-					EnableFeature(ShaderFeature::UseDetailsTextures);
-					break;
-				case TextureSlot::Environment:      EnableFeature(ShaderFeature::EnvironmentMap); break; // TODO: irradiance + BRDF LUT features for IBL
-				default: break; // no feature for this slot
-				}
+			// Keep the shader-feature flags in sync with what is bound. Setting nullptr must also
+			// switch the feature OFF, otherwise the shader variant still expects a texture that is gone.
+			// Switch on the enum, not on raw integers: the old numeric cases were shifted by one from
+			// slot 4 on (a roughness texture enabled EnvironmentMap), so materials picked the wrong
+			// shader variant. The names match the register comments in common.hlsli.
+			uint32_t feature = 0;
+			switch (slot) {
+			case TextureSlot::Diffuse:          feature = ShaderFeature::DiffuseMap;       break;
+			case TextureSlot::Normal:           feature = ShaderFeature::NormalMap;        break;
+			case TextureSlot::Specular:         feature = ShaderFeature::SpecularMap;      break;
+			case TextureSlot::Emissive:         feature = ShaderFeature::EmissiveMap;      break;
+			case TextureSlot::Roughness:        feature = ShaderFeature::RoughnessMap;     break;
+			case TextureSlot::Metallic:         feature = ShaderFeature::MetallicMap;      break;
+			case TextureSlot::AmbientOcclusion: feature = ShaderFeature::AOMap;            break;
+			case TextureSlot::Height:           feature = ShaderFeature::HeightMap;        break;
+			case TextureSlot::Opacity:          feature = ShaderFeature::OpacityMap;       break;
+			case TextureSlot::DetailDiffuse:    feature = ShaderFeature::DetailDiffuseMap; break;
+			case TextureSlot::DetailNormal:     feature = ShaderFeature::DetailNormalMap;  break;
+			case TextureSlot::Environment:      feature = ShaderFeature::EnvironmentMap;   break; // TODO: irradiance + BRDF LUT features for IBL
+			default: break; // no feature for this slot
+			}
+			if (feature != 0)
+			{
+				if (texture) EnableFeature(feature); else DisableFeature(feature);
+			}
+
+			// the combined "details" switch is on while at least one detail texture is bound
+			if (slot == TextureSlot::DetailDiffuse || slot == TextureSlot::DetailNormal)
+			{
+				const bool anyDetail = m_Textures[static_cast<int>(TextureSlot::DetailDiffuse)] ||
+				                       m_Textures[static_cast<int>(TextureSlot::DetailNormal)];
+				if (anyDetail) EnableFeature(ShaderFeature::UseDetailsTextures);
+				else           DisableFeature(ShaderFeature::UseDetailsTextures);
 			}
 		}
 		m_Dirty = true;
