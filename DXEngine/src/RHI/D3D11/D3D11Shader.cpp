@@ -1,5 +1,8 @@
 #include "dxpch.h"
 #include "D3D11Shader.h"
+#include <d3d11shader.h>   // ID3D11ShaderReflection
+#include <d3dcompiler.h>   // D3DReflect
+#include <stdexcept>
 
 
 namespace DXEngine::RHI
@@ -92,10 +95,78 @@ namespace DXEngine::RHI
             m_ShaderObject = ps;
             break;
         }
-                               
+        default:
+            // Geometry / hull / domain / compute shaders are not created by this backend yet. This used to
+            // fall through and report SUCCESS with a null shader object.
+            OutputDebugStringA(("D3D11Shader: stage not supported by the D3D11 backend yet: " + desc.debugName + "\n").c_str());
+            return false;
         }
 
-        return SUCCEEDED(hr);
+        if (FAILED(hr))
+            return false;
+
+        BuildReflection(desc);
+        return true;
+    }
+
+    void D3D11Shader::BuildReflection(const ShaderDesc& desc)
+    {
+        m_Reflection = ReflectionData{};
+        m_Reflection.entryPoint = desc.entryPoint;
+
+        ComPtr<ID3D11ShaderReflection> reflector;
+        if (FAILED(D3DReflect(m_Bytecode->GetBufferPointer(), m_Bytecode->GetBufferSize(),
+                              IID_ID3D11ShaderReflection, reinterpret_cast<void**>(reflector.GetAddressOf()))))
+        {
+            OutputDebugStringA(("D3D11Shader: reflection unavailable for " + desc.debugName + "\n").c_str());
+            return;   // not fatal: the shader itself works, the reflection data is just empty
+        }
+
+        D3D11_SHADER_DESC shaderDesc = {};
+        if (FAILED(reflector->GetDesc(&shaderDesc)))
+            return;
+
+        // bound resources -> bindings
+        for (UINT i = 0; i < shaderDesc.BoundResources; ++i)
+        {
+            D3D11_SHADER_INPUT_BIND_DESC bind = {};
+            if (FAILED(reflector->GetResourceBindingDesc(i, &bind)))
+                continue;
+
+            DescriptorBinding binding;
+            binding.stage = m_Stage;
+            binding.slot  = bind.BindPoint;
+            binding.count = bind.BindCount;
+            binding.name  = bind.Name ? bind.Name : "";
+
+            switch (bind.Type)
+            {
+            case D3D_SIT_CBUFFER:                 binding.type = DescriptorType::ConstantBuffer; break;
+            case D3D_SIT_TEXTURE:                 binding.type = DescriptorType::Texture;        break;
+            case D3D_SIT_SAMPLER:                 binding.type = DescriptorType::Sampler;        break;
+            case D3D_SIT_UAV_RWTYPED:             binding.type = DescriptorType::StorageTexture; break;
+            case D3D_SIT_TBUFFER:
+            case D3D_SIT_STRUCTURED:
+            case D3D_SIT_BYTEADDRESS:
+            case D3D_SIT_UAV_RWSTRUCTURED:
+            case D3D_SIT_UAV_RWBYTEADDRESS:
+            case D3D_SIT_UAV_APPEND_STRUCTURED:
+            case D3D_SIT_UAV_CONSUME_STRUCTURED:
+            case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+                                                  binding.type = DescriptorType::StorageBuffer;  break;
+            default:                              continue;   // resource kinds the RHI has no descriptor type for
+            }
+            m_Reflection.bindings.push_back(std::move(binding));
+        }
+
+        // constantBufferSize = total bytes of all constant buffers the shader declares
+        for (UINT i = 0; i < shaderDesc.ConstantBuffers; ++i)
+        {
+            ID3D11ShaderReflectionConstantBuffer* cb = reflector->GetConstantBufferByIndex(i);
+            D3D11_SHADER_BUFFER_DESC cbDesc = {};
+            if (cb && SUCCEEDED(cb->GetDesc(&cbDesc)))
+                m_Reflection.constantBufferSize += cbDesc.Size;
+        }
     }
 
 }

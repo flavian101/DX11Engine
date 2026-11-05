@@ -33,6 +33,10 @@ namespace DXEngine::RHI
             return m_Bytecode ? m_Bytecode->GetBufferSize() : 0;
         }
         bool IsCompiled() const override { return m_ShaderObject != nullptr; }
+        // Filled once, right after compilation, with D3DReflect: every bound constant buffer / texture /
+        // sampler / buffer (slot, count, name) and the total size of the constant buffers. Empty (but valid)
+        // if reflection is unavailable.
+        const ReflectionData& GetReflection() const override { return m_Reflection; }
 
         // D3D11-specific
         ID3D11DeviceChild* GetD3D11Shader() const { return m_ShaderObject.Get(); }
@@ -42,7 +46,9 @@ namespace DXEngine::RHI
         ComPtr<ID3DBlob> m_Bytecode;
         ShaderStage m_Stage;
         std::string m_DebugName;
+        ReflectionData m_Reflection;
 
         bool CompileFromSource(ID3D11Device* device, const ShaderDesc& desc);
+        void BuildReflection(const ShaderDesc& desc);
 	};
 }
