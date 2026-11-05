@@ -233,7 +233,7 @@ namespace DXEngine
 		auto vsShader = CompileShaderFromFile(fullVsPath, RHI::ShaderStage::Vertex);
 		auto psShader = CompileShaderFromFile(fullPsPath, RHI::ShaderStage::Pixel);
 
-		if (!vsShader || psShader)
+		if (!vsShader || !psShader)
 		{
 			LogError("Failed to load base shader: " + name);
 			return false;
