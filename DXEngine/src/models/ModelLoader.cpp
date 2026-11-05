@@ -5,7 +5,7 @@
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
 #include "utils/material/Material.h"
-#include "utils/Texture.h"
+#include "renderer/Renderer.h"
 #include <chrono>
 #include <algorithm>
 #include "Animation/AnimationClip.h"
@@ -28,10 +28,19 @@ namespace DXEngine
     };
 
     ModelLoader::ModelLoader()
-        :m_Importer(new AssimpImporter())
+        : ModelLoader(Renderer::GetDevice())
     {
+    }
+
+    ModelLoader::ModelLoader(std::shared_ptr<RHI::IGraphicsDevice> device)
+        : m_Device(std::move(device))   // declaration order in ModelLoader.h
+        , m_Importer(new AssimpImporter())
+    {
+        if (!m_Device)
+            OutputDebugStringA("WARNING: ModelLoader created without a GPU device (call Renderer::Init first)\n");
+
         // Initialize processing components
-        m_TextureLoader = std::make_shared<TextureLoader>();
+        m_TextureLoader = std::make_shared<TextureLoader>(m_Device);
         m_MaterialProcessor = std::make_shared<MaterialProcessor>(m_TextureLoader);
         m_MeshProcessor = std::make_shared<MeshProcessor>();
         m_SkeletonProcessor = std::make_shared<SkeletonProcessor>();
@@ -293,7 +302,7 @@ namespace DXEngine
                 m_MeshProcessor->ProcessMesh(aiMesh, scene, m_CurrentSkeleton, options);
 
             if (meshResource) {
-                auto meshObject = std::make_shared<Mesh>(meshResource);
+                auto meshObject = std::make_shared<Mesh>(meshResource, m_Device);
 
                 // Process material using MaterialProcessor
                 if (options.loadMaterials && aiMesh->mMaterialIndex >= 0) {

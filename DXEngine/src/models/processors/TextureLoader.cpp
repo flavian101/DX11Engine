@@ -1,12 +1,16 @@
 #include "dxpch.h"
 #include "TextureLoader.h"
-#include "utils/Texture.h"
+#include "RHI/GraphicsDevice.h"
+#include "utils/ImageLoader.h"
+#include "utils/TextureNaming.h"
 #include "ModelLoaderUtils.h"
 #include <filesystem>
 
 namespace DXEngine
 {
-    std::shared_ptr<Texture> TextureLoader::LoadTexture(const std::string& filepath, aiTextureType type)
+    TextureLoader::TextureLoader(std::shared_ptr<RHI::IGraphicsDevice> device) : m_Device(std::move(device)) {}
+
+    std::shared_ptr<RHI::ITexture> TextureLoader::LoadTexture(const std::string& filepath, aiTextureType type)
     {
         if (filepath.empty())
         {
@@ -45,32 +49,24 @@ namespace DXEngine
             return CreateFallbackTexture(type);
         }
 
-        // Load from file
-        try
+        // Load from file (ImageLoader logs the reason and returns nullptr on failure)
+        if (m_Device)
         {
-            auto texture = Texture::CreateFromFile(filepath);
-            if (texture && texture->IsValid())
+            if (auto texture = ImageLoader::LoadTexture2D(*m_Device, filepath))
             {
-                // Cache the texture
                 if (m_CachingEnabled)
                 {
                     m_TextureCache[filepath] = texture;
                 }
                 m_TexturesLoaded++;
-
                 return texture;
             }
-        }
-        catch (const std::exception& e)
-        {
-            OutputDebugStringA(("TextureLoader: Exception loading texture: " +
-                std::string(e.what()) + "\n").c_str());
         }
 
         return CreateFallbackTexture(type);
     }
 
-    std::shared_ptr<Texture> TextureLoader::LoadEmbeddedTexture(const aiScene* scene, const std::string& filepath)
+    std::shared_ptr<RHI::ITexture> TextureLoader::LoadEmbeddedTexture(const aiScene* scene, const std::string& filepath)
     {
         if (!scene || filepath.empty() || filepath[0] != '*')
         {
@@ -90,8 +86,8 @@ namespace DXEngine
                 const unsigned char* data = reinterpret_cast<const unsigned char*>(texture->pcData);
                 size_t dataSize = texture->mWidth;
 
-                auto loadedTexture = Texture::CreateFromMemory(data, dataSize);
-                if (loadedTexture && loadedTexture->IsValid())
+                auto loadedTexture = m_Device ? ImageLoader::LoadTexture2DFromMemory(*m_Device, data, dataSize, filepath) : nullptr;
+                if (loadedTexture)
                 {
                     m_TexturesLoaded++;
 #ifdef DX_DEBUG
@@ -116,10 +112,10 @@ namespace DXEngine
                     pixels[i * 4 + 3] = texels[i].a;
                 }
 
-                auto loadedTexture = Texture::CreateFromPixels(pixels.data(),
-                    static_cast<int>(width), static_cast<int>(height), 4);
+                auto loadedTexture = m_Device ? ImageLoader::CreateTexture2DFromRGBA8(*m_Device, pixels.data(),
+                    static_cast<uint32_t>(width), static_cast<uint32_t>(height), filepath) : nullptr;
 
-                if (loadedTexture && loadedTexture->IsValid())
+                if (loadedTexture)
                 {
                     m_TexturesLoaded++;
 #ifdef DX_DEBUG
@@ -135,7 +131,7 @@ namespace DXEngine
         return CreateSolidColorTexture(255, 255, 255, 255);
     }
 
-    std::shared_ptr<Texture> TextureLoader::CreateFallbackTexture(aiTextureType type)
+    std::shared_ptr<RHI::ITexture> TextureLoader::CreateFallbackTexture(aiTextureType type)
     {
 #ifdef DX_DEBUG
         OutputDebugStringA(("TextureLoader: Creating fallback texture for type: " +
@@ -176,10 +172,17 @@ namespace DXEngine
         }
     }
 
-    std::shared_ptr<Texture> TextureLoader::CreateSolidColorTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+    std::shared_ptr<RHI::ITexture> TextureLoader::CreateSolidColorTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     {
-        uint8_t pixels[4] = { r, g, b, a };
-        return Texture::CreateFromPixels(pixels, 1, 1, 4);
+        if (!m_Device) return nullptr;
+
+        const uint32_t key = (uint32_t(r) << 24) | (uint32_t(g) << 16) | (uint32_t(b) << 8) | uint32_t(a);
+        auto it = m_SolidColorCache.find(key);
+        if (it != m_SolidColorCache.end()) return it->second;
+
+        auto texture = ImageLoader::CreateSolidColor(*m_Device, r, g, b, a);
+        if (texture) m_SolidColorCache[key] = texture;
+        return texture;
     }
 
     std::string TextureLoader::GetTextureTypeName(aiTextureType type) const
@@ -200,18 +203,11 @@ namespace DXEngine
         }
     }
 
-    bool TextureLoader::IsHeightMap(std::shared_ptr<Texture> texture) const
+    bool TextureLoader::IsHeightMap(const std::string& filepath) const
     {
-        if (!texture)
-        {
-            return false;
-        }
-
-        const std::string& filename = texture->GetFilePath();
-        if (filename.empty())
+        if (filepath.empty())
             return false;
 
-        TextureType type = TextureUtils::DetectTextureType(filename);
-        return (type == TextureType::Height);
+        return TextureUtils::DetectTextureType(filepath) == TextureType::Height;
     }
 }

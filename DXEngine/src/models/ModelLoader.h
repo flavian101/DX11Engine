@@ -25,7 +25,7 @@ namespace DXEngine {
     class Mesh;
     class Material;
     class MeshResource;
-    class Texture;
+    namespace RHI { class IGraphicsDevice; }
     class Skeleton;
     class AnimationClip;
     struct Keyframe;
@@ -40,7 +40,10 @@ namespace DXEngine {
     class ModelLoader
     {
     public:
+        // Uses Renderer::GetDevice(): the loader creates GPU meshes and textures, so the renderer must be
+        // initialised first. Pass a device explicitly to load models without the global renderer.
         ModelLoader();
+        explicit ModelLoader(std::shared_ptr<RHI::IGraphicsDevice> device);
         ~ModelLoader();
 
         // Main loading methods
@@ -114,6 +117,7 @@ namespace DXEngine {
 
     private:
         // Processing components
+        std::shared_ptr<RHI::IGraphicsDevice> m_Device;
         std::shared_ptr<TextureLoader> m_TextureLoader;
         std::shared_ptr<MaterialProcessor> m_MaterialProcessor;
         std::shared_ptr<MeshProcessor> m_MeshProcessor;

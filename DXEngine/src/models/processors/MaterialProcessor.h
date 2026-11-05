@@ -3,6 +3,7 @@
 #include <assimp/scene.h>
 #include <assimp/material.h>
 #include "ModelLoaderUtils.h"
+#include "utils/material/MaterialTypes.h"   // TextureSlot (its underlying type must match: no forward declaration)
 #include <functional>
 
 namespace DXEngine
@@ -10,7 +11,6 @@ namespace DXEngine
 	class Material;
 	enum class MaterialType;
 	class TextureLoader;
-	class Texture;
 
 	class MaterialProcessor
 	{
@@ -34,9 +34,10 @@ namespace DXEngine
 			const aiMaterial* aiMat, 
 			const std::string& directory, 
 			const ModelLoadOptions& options);
-		void LoadTextureOfType(std::shared_ptr<Material> mat, const aiMaterial* aiMat,
-			const std::string& directory, aiTextureType type,
-			std::function<void(std::shared_ptr<Texture>)> setter);
+		// Loads the texture of `type` (if the model has one) into `slot`.
+		// Returns the resolved file path, or "" when nothing was loaded.
+		std::string LoadTextureOfType(std::shared_ptr<Material> mat, const aiMaterial* aiMat,
+			const std::string& directory, aiTextureType type, TextureSlot slot);
 
 		void ConfigureMaterialFromTextures(std::shared_ptr<Material> mat);
 

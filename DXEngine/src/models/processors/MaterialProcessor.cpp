@@ -2,7 +2,10 @@
 #include "MaterialProcessor.h"
 #include "utils/material/Material.h"
 #include "TextureLoader.h"
-#include "utils/Texture.h"
+#include "RHI/GraphicsDevice.h"
+#include "renderer/ShaderCache.h"   // ShaderFeature flags
+#include "renderer/Renderer.h"
+#include <algorithm>
 #include <filesystem>
 
 namespace DXEngine
@@ -12,7 +15,7 @@ namespace DXEngine
 	{
 		if (!m_TextureLoader)
 		{
-			m_TextureLoader = std::make_shared<TextureLoader>();
+			m_TextureLoader = std::make_shared<TextureLoader>(Renderer::GetDevice());
 		}
 	}
 
@@ -127,104 +130,87 @@ namespace DXEngine
 		const ModelLoadOptions& options)
 	{
 		// Core textures
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_DIFFUSE,
-			[mat](auto tex) { mat->SetDiffuseTexture(tex); });
-
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_NORMALS,
-			[mat](auto tex) { mat->SetNormalTexture(tex); });
-
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_SPECULAR,
-			[mat](auto tex) { mat->SetSpecularTexture(tex); });
-
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_EMISSIVE,
-			[mat](auto tex) { mat->SetEmissiveTexture(tex); });
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_DIFFUSE,  TextureSlot::Diffuse);
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_NORMALS,  TextureSlot::Normal);
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_SPECULAR, TextureSlot::Specular);
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_EMISSIVE, TextureSlot::Emissive);
 
 		// PBR textures
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_METALNESS,
-			[mat](auto tex) { mat->SetMetallicTexture(tex); });
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_METALNESS,         TextureSlot::Metallic);
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_DIFFUSE_ROUGHNESS, TextureSlot::Roughness);
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_AMBIENT_OCCLUSION, TextureSlot::AmbientOcclusion);
 
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_DIFFUSE_ROUGHNESS,
-			[mat](auto tex) { mat->SetRoughnessTexture(tex); });
+		const std::string heightPath =
+			LoadTextureOfType(mat, aiMat, directory, aiTextureType_HEIGHT, TextureSlot::Height);
+		LoadTextureOfType(mat, aiMat, directory, aiTextureType_OPACITY, TextureSlot::Opacity);
 
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_AMBIENT_OCCLUSION,
-			[mat](auto tex) { mat->SetAOTexture(tex); });
-
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_HEIGHT,
-			[mat](auto tex) { mat->SetHeightTexture(tex); });
-
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_OPACITY,
-			[mat](auto tex) { mat->SetOpacityTexture(tex); });
-
-		// Validate height map assignment
-		if (mat->HasHeightTexture() && !m_TextureLoader->IsHeightMap(mat->GetHeightTexture())) {
+		// Validate height map assignment. Many exporters (OBJ "bump") put a normal map in the HEIGHT slot;
+		// the file name tells them apart. (An RHI texture does not remember its path, so the path that
+		// LoadTextureOfType returned is used.)
+		if (mat->GetTexture(TextureSlot::Height) && !m_TextureLoader->IsHeightMap(heightPath)) {
 			// Likely misassigned normal map
-			if (!mat->HasNormalTexture()) {
-				mat->SetNormalTexture(mat->GetHeightTexture());
+			if (!mat->GetTexture(TextureSlot::Normal)) {
+				mat->SetTexture(TextureSlot::Normal, mat->GetTexture(TextureSlot::Height));
 #ifdef DX_DEBUG
 				OutputDebugStringA("MaterialProcessor: Reassigned height texture to normal map\n");
 #endif
 			}
-			mat->SetHeightTexture(nullptr);
+			mat->SetTexture(TextureSlot::Height, nullptr);   // also switches the HeightMap shader feature off
 		}
 	}
 
-	void MaterialProcessor::LoadTextureOfType(
+	std::string MaterialProcessor::LoadTextureOfType(
 		std::shared_ptr<Material> mat,
 		const aiMaterial* aiMat,
 		const std::string& directory,
 		aiTextureType type,
-		std::function<void(std::shared_ptr<Texture>)> setter)
+		TextureSlot slot)
 	{
 		std::string relativePath = GetTextureFilename(aiMat, type, directory);
 
 		if (relativePath.empty())
-			return;
+			return "";
 
-		// FIX: Resolve the full path
+		// Resolve the full path
 		std::string fullPath = ResolveTexturePath(relativePath, directory);
 
 		if (fullPath.empty()) {
 			OutputDebugStringA(("MaterialProcessor: Could not resolve texture path: " +
 				relativePath + "\n").c_str());
-			return;
+			return "";
 		}
 
 		auto texture = m_TextureLoader->LoadTexture(fullPath, type);
 
 		if (texture && texture->IsValid()) {
-			setter(texture);
+			mat->SetTexture(slot, texture);
 #ifdef DX_DEBUG
 			OutputDebugStringA(("MaterialProcessor: Loaded " +
 				m_TextureLoader->GetTextureTypeName(type) +
 				" texture: " + fullPath + "\n").c_str());
 #endif
+			return fullPath;
 		}
-		else {
-			OutputDebugStringA(("MaterialProcessor: Failed to load " +
-				m_TextureLoader->GetTextureTypeName(type) +
-				" texture: " + fullPath + "\n").c_str());
-		}
+
+		OutputDebugStringA(("MaterialProcessor: Failed to load " +
+			m_TextureLoader->GetTextureTypeName(type) +
+			" texture: " + fullPath + "\n").c_str());
+		return "";
 	}
 
 	void MaterialProcessor::ConfigureMaterialFromTextures(std::shared_ptr<Material> mat)
 	{
-		// Update material type based on loaded textures
-		if (mat->HasRoughnessTexture() || mat->HasMetallicTexture()) {
-			if (mat->GetType() == MaterialType::Lit) {
-				mat->SetType(MaterialType::PBR);
-			}
-		}
+		// (The old Lit -> PBR promotion is gone: a material's type is fixed at construction now and
+		// DetermineMaterialType() already picks PBR when the model has metalness/roughness textures.)
 
 		// Configure parallax mapping
-		if (mat->HasHeightTexture()) {
-			mat->SetFlag(MaterialFlags::UseParallaxMapping, true);
+		if (mat->GetTexture(TextureSlot::Height)) {
+			mat->EnableFeature(ShaderFeature::ParallaxMapping);
 			mat->SetHeightScale(0.05f);
 		}
 
-		// Configure detail textures
-		if (mat->IsTextureSlotUsed(TextureSlot::DetailDiffuse) ||
-			mat->IsTextureSlotUsed(TextureSlot::DetailNormal)) {
-			mat->SetFlag(MaterialFlags::UseDetailTextures, true);
+		// Configure detail textures (the "details" shader switch itself is kept in sync by SetTexture)
+		if (mat->GetTexture(TextureSlot::DetailDiffuse) || mat->GetTexture(TextureSlot::DetailNormal)) {
 			mat->SetDetailTextureScale({ 8.0f, 8.0f });
 		}
 	}

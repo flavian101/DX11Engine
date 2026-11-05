@@ -51,7 +51,7 @@ namespace DXEngine
 		auto meshResource = std::make_unique<MeshResource>(meshName);
 		meshResource->SetVertexData(std::move(vertexData));
 		meshResource->SetIndexData(std::move(indexData));
-		meshResource->SetTopology(PrimitiveTopology::TriangleList);
+		meshResource->SetTopology(RHI::PrimitiveTopology::TriangleList);
 
 		// Generate missing data if requested
 		if (options.generateNormals && !aiMesh->HasNormals()) {
@@ -87,7 +87,7 @@ namespace DXEngine
 					aiMesh->mVertices[i].x,
 					aiMesh->mVertices[i].y,
 					aiMesh->mVertices[i].z);
-				vertexData->SetAttribute(i, VertexAttributeType::Position, pos);
+				vertexData->SetAttribute(i, RHI::VertexAttributeType::Position, pos);
 			}
 
 			// Normal
@@ -96,7 +96,7 @@ namespace DXEngine
 					aiMesh->mNormals[i].x,
 					aiMesh->mNormals[i].y,
 					aiMesh->mNormals[i].z);
-				vertexData->SetAttribute(i, VertexAttributeType::Normal, normal);
+				vertexData->SetAttribute(i, RHI::VertexAttributeType::Normal, normal);
 			}
 
 			// Texture coordinates
@@ -104,7 +104,7 @@ namespace DXEngine
 				DirectX::XMFLOAT2 uv(
 					aiMesh->mTextureCoords[0][i].x,
 					aiMesh->mTextureCoords[0][i].y);
-				vertexData->SetAttribute(i, VertexAttributeType::TexCoord0, uv);
+				vertexData->SetAttribute(i, RHI::VertexAttributeType::TexCoord0, uv);
 			}
 
 			// Tangents
@@ -114,7 +114,7 @@ namespace DXEngine
 					aiMesh->mTangents[i].y,
 					aiMesh->mTangents[i].z,
 					1.0f); // Handedness
-				vertexData->SetAttribute(i, VertexAttributeType::Tangent, tangent);
+				vertexData->SetAttribute(i, RHI::VertexAttributeType::Tangent, tangent);
 			}
 
 			// Additional UV sets
@@ -124,8 +124,8 @@ namespace DXEngine
 						aiMesh->mTextureCoords[uvSet][i].x,
 						aiMesh->mTextureCoords[uvSet][i].y);
 
-					VertexAttributeType uvType = static_cast<VertexAttributeType>(
-						static_cast<int>(VertexAttributeType::TexCoord0) + uvSet);
+					RHI::VertexAttributeType uvType = static_cast<RHI::VertexAttributeType>(
+						static_cast<int>(RHI::VertexAttributeType::TexCoord0) + uvSet);
 
 					vertexData->SetAttribute(i, uvType, uv);
 				}
@@ -211,8 +211,8 @@ namespace DXEngine
 				weights.w /= totalWeight;
 			}
 
-			vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, indices);
-			vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, weights);
+			vertexData->SetAttribute(i, RHI::VertexAttributeType::BlendIndices, indices);
+			vertexData->SetAttribute(i, RHI::VertexAttributeType::BlendWeights, weights);
 		}
 
 		if (verticesWithoutWeights > 0) {
@@ -229,8 +229,8 @@ namespace DXEngine
 		DirectX::XMINT4 zeroIndices(0, 0, 0, 0);
 
 		for (size_t i = 0; i < vertexCount; i++) {
-			vertexData->SetAttribute(i, VertexAttributeType::BlendWeights, zeroWeights);
-			vertexData->SetAttribute(i, VertexAttributeType::BlendIndices, zeroIndices);
+			vertexData->SetAttribute(i, RHI::VertexAttributeType::BlendWeights, zeroWeights);
+			vertexData->SetAttribute(i, RHI::VertexAttributeType::BlendIndices, zeroIndices);
 		}
 	}
 
