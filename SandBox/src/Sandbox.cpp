@@ -152,6 +152,7 @@ void Sandbox::OnUpdate(DXEngine::FrameTime dt)
 	{
 		m_Light->SetTranslation({ 10.0f, 15.0f, 0.0f });
 		m_Light->SetScale({ 2.0f, 2.0f, 2.0f });
+		m_Light->Update(dt);   // moves the point light to the sphere
 		DXEngine::Renderer::Submit(m_Light);
 	}
 

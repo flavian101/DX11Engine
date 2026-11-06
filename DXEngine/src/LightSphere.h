@@ -18,6 +18,10 @@ namespace DXEngine {
         void Initialize();
 
     private:
+        // The sphere is the light's visible marker AND its owner: it creates a point light and carries it to
+        // wherever the sphere is (see Update). Before, nothing connected the sphere to the scene's only point
+        // light, which sat at a different fixed position.
+        std::shared_ptr<PointLight> m_Light;
     };
 
 }

@@ -122,15 +122,8 @@ namespace DXEngine
         lm->SetGamma(2.2f);
         lm->SetIBLIntensity(0.8f);
 
-        if (auto point = lm->CreatePointLight())
-        {
-            point->SetColor({ 1.0f, 1.0f, 1.0f });
-            point->SetIntensity(30000.0f);
-            point->SetRadius(20.f);
-            point->SetPosition({ 0.0f, 20.0f, 4.0f });
-            point->SetAttenuation({ 700.0f, 400.0f, 100.0f });
-            point->SetCastShadows(false);
-        }
+        // No default point light: lights belong to the scene (the Sandbox's LightSphere creates and moves its
+        // own). The old default sat at a fixed (0, 20, 4) with radius 20, so nothing at floor level was lit.
         g->services.lights = lm;
     }
 
