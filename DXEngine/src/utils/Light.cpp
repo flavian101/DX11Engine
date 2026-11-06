@@ -176,6 +176,10 @@ namespace DXEngine {
     }
     void LightManager::CullLights(const DirectX::BoundingFrustum& frustum, const DirectX::XMFLOAT3& cameraPosition)
     {
+        // remember last frame's result: the GPU data must be rebuilt when the visible set (or its order) changes
+        const std::vector<uint32_t> previousPoint = m_VisiblePointLights;
+        const std::vector<uint32_t> previousSpot  = m_VisibleSpotLights;
+
         ///clear previous frame's  visible lights
         m_VisiblePointLights.clear();
         m_VisibleSpotLights.clear();
@@ -224,6 +228,12 @@ namespace DXEngine {
                 });
         }
 
+        // UpdateLightData() only rebuilds the GPU data when something is dirty. Culling changes WHICH lights are
+        // in the buffer (and their order) without touching any light, so it must say so. Before, a point light
+        // that happened to be outside the view on the first frame left pointLightCount at 0 forever, and a light
+        // that left the view stayed in the buffer.
+        if (previousPoint != m_VisiblePointLights || previousSpot != m_VisibleSpotLights)
+            m_Dirty = true;
     }
     void LightManager::UpdateLightData()
     {
