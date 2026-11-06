@@ -610,8 +610,12 @@ namespace DXEngine
                 uint32_t current = ring * (segments + 1) + segment;
                 uint32_t next = current + segments + 1;
 
-                indexData->AddTriangle(current, next, current + 1);
-                indexData->AddTriangle(current + 1, next, next + 1);
+                // Clockwise seen from OUTSIDE the sphere, like every other mesh (cube, plane, imported
+                // models after ConvertToLeftHanded) and like D3D's default FrontCounterClockwise = FALSE.
+                // The order used to be the opposite, so a sphere showed its far inner wall with Cull::Back
+                // and the sky sphere (Cull::Front) had all its visible inside faces culled.
+                indexData->AddTriangle(current, current + 1, next);
+                indexData->AddTriangle(current + 1, next + 1, next);
             }
         }
 
