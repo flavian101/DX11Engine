@@ -91,7 +91,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     // ========================================================================
     
     // Initialize color with ambient contribution
-    float3 color = ambientColor * ambientIntensity * albedo;
+    float3 color = ambientColor * ambientIntensity * albedo * occlusionValue; // AO darkens the ambient term
     
     // Add emissive contribution if available
 #if (HAS_EMISSIVE_MAP && HAS_TEXCOORDS_ATTRIBUTE) || ENABLE_EMISSIVE

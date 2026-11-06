@@ -701,9 +701,9 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
     
-    float NdotV = max(dot(N, V), 0.0);
-    if (NdotV <= 0.0)
-        return float3(0, 0, 0);
+    // Clamp instead of returning black: interpolated or normal-mapped normals often face slightly away
+    // from the viewer near silhouettes, and an early-out there paints dark speckles.
+    float NdotV = max(dot(N, V), 0.001);
     
     float shadow = 1.0;
 #if ENABLE_SHADOWS
@@ -744,7 +744,7 @@ float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float
         return float3(0, 0, 0);
     
     float3 L = light.position - worldPos;
-    float distance = length(L);
+    float distance = max(length(L), 0.0001); // avoid L / 0 when the surface is at the light
     
     L /= distance;
     float3 H = normalize(V + L);
@@ -756,9 +756,9 @@ float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
     
-    float NdotV = max(dot(N, V), 0.0);
-    if (NdotV <= 0.0)
-        return float3(0, 0, 0);
+    // Clamp instead of returning black: interpolated or normal-mapped normals often face slightly away
+    // from the viewer near silhouettes, and an early-out there paints dark speckles.
+    float NdotV = max(dot(N, V), 0.001);
     
     //physical attenuation with smooth falloff
     float attenuation = 1.0 / (light.attenuation.x +
@@ -799,7 +799,7 @@ float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 
         return float3(0, 0, 0);
     
     float3 L = light.position - worldPos;
-    float distance = length(L);
+    float distance = max(length(L), 0.0001); // avoid L / 0 when the surface is at the light
     
     if (distance > light.range)
         return float3(0, 0, 0);
@@ -811,9 +811,9 @@ float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
     
-    float NdotV = max(dot(N, V), 0.0);
-    if (NdotV <= 0.0)
-        return float3(0, 0, 0);
+    // Clamp instead of returning black: interpolated or normal-mapped normals often face slightly away
+    // from the viewer near silhouettes, and an early-out there paints dark speckles.
+    float NdotV = max(dot(N, V), 0.001);
     
     //spotLight cone calculation
     float3 spotDirection = normalize(light.direction);

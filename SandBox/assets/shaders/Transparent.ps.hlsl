@@ -2,9 +2,10 @@
 
 float4 main(StandardVertexOutput input) : SV_Target
 {
+    float3 V = normalize(input.viewDir);
+
         // ========== APPLY PARALLAX MAPPING ==========
 #if ENABLE_PARALLAX_MAPPING && HAS_HEIGHT_MAP && HAS_TANGENT_ATTRIBUTE
-    float3 V = normalize(input.viewDir);
     input.texCoord = ParallaxOcclusionMapping(input.texCoord, V, 
                                               input.normal, input.tangent);
 #endif
@@ -15,7 +16,6 @@ float4 main(StandardVertexOutput input) : SV_Target
 #else
     float3 N = float3(0.0, 0.0, 1.0); // Safe default
 #endif
-    float3 V = normalize(input.viewDir);
     
     // ========================================================================
     // TEXTURE SAMPLING
@@ -79,7 +79,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     // ========================================================================
     
     // Reduced ambient for transparent materials
-    float3 color = ambientColor * ambientIntensity * albedo * 0.6;
+    float3 color = ambientColor * ambientIntensity * albedo * occlusionValue * 0.6;
     
     // Add emissive contribution
 #if (HAS_EMISSIVE_MAP && HAS_TEXCOORDS_ATTRIBUTE) || ENABLE_EMISSIVE

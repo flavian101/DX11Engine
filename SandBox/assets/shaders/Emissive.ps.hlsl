@@ -40,7 +40,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     // Allow vertex colors to modulate emissive intensity
-    emissiveBoost *= (1.0 + input.color.a);
+    finalEmissive *= (1.0 + input.color.a);
 #endif
     
     finalEmissive *= emissiveIntensity;
