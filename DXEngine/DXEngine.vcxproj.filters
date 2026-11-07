@@ -28,6 +28,9 @@
     <Filter Include="utils">
       <UniqueIdentifier>{169C8510-82B0-ADC1-4B32-5121B705AAF2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="scene">
+      <UniqueIdentifier>{6E1F7A52-9B34-4C0D-8A21-3D5C9F0B7E14}</UniqueIdentifier>
+    </Filter>
     <Filter Include="utils\Mesh">
       <UniqueIdentifier>{920F3747-7EC7-7894-E7CE-51F0D3A51385}</UniqueIdentifier>
     </Filter>
@@ -151,6 +154,15 @@
     </ClInclude>
     <ClInclude Include="src\utils\PerfomanceProfiller.h">
       <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\Components.h">
+      <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\Scene.h">
+      <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\TransformSystem.h">
+      <Filter>scene</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\ImageLoader.h">
       <Filter>utils</Filter>
@@ -286,6 +298,12 @@
     </ClCompile>
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp">
       <Filter>utils\Mesh\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene\Scene.cpp">
+      <Filter>scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene\TransformSystem.cpp">
+      <Filter>scene</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\ImageLoader.cpp">
       <Filter>utils</Filter>

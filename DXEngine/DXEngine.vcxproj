@@ -176,6 +176,9 @@
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
     <ClInclude Include="src\utils\PerfomanceProfiller.h" />
+    <ClInclude Include="src\scene\Components.h" />
+    <ClInclude Include="src\scene\Scene.h" />
+    <ClInclude Include="src\scene\TransformSystem.h" />
     <ClInclude Include="src\utils\ImageLoader.h" />
     <ClInclude Include="src\utils\TextureNaming.h" />
     <ClInclude Include="src\utils\Transform.h" />
@@ -245,6 +248,8 @@
     <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
+    <ClCompile Include="src\scene\Scene.cpp" />
+    <ClCompile Include="src\scene\TransformSystem.cpp" />
     <ClCompile Include="src\utils\ImageLoader.cpp" />
     <ClCompile Include="src\utils\TextureNaming.cpp" />
     <ClCompile Include="src\utils\Transform.cpp" />

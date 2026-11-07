@@ -21,6 +21,13 @@ add_subdirectory(DXEngine/vendor/imgui)
 add_subdirectory(DXEngine)
 add_subdirectory(Sandbox)
 
+# Engine tests (no GPU needed):  cmake -DDXENGINE_BUILD_TESTS=ON ..  then  ctest --output-on-failure
+option(DXENGINE_BUILD_TESTS "Build the engine tests" OFF)
+if(DXENGINE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(DXEngine/tests)
+endif()
+
 
 
 
