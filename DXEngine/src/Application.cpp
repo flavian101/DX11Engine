@@ -61,14 +61,16 @@ namespace DXEngine {
 
 	void Application::Render()
 	{
-		m_Deltatime.Mark();
+		// ONE Mark() per frame; layers get plain seconds. (They used to receive the FrameTime object and every
+		// implicit conversion to float called Mark() again, so the value depended on how often it was read.)
+		const float deltaSeconds = m_Deltatime.Mark();
 
 		Renderer::SetTime(m_Deltatime.Duration());
 		if (!m_Minimized)
 		{
 			for (Layer* layer : m_LayerStack)
 			{
-				layer->OnUpdate(m_Deltatime);
+				layer->OnUpdate(deltaSeconds);
 			}
 		}
 		//m_ImGuiLayer->Begin();

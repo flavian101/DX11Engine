@@ -23,7 +23,7 @@ namespace DXEngine
 		virtual ~UIButton() = default;
 
 		//element interface
-		virtual void Update(FrameTime dt) override;
+		virtual void Update(float dt) override;
 		virtual bool HandleInput(float mouseX, float mouseY, bool leftClick, bool rightClick) override;
 
 		//button

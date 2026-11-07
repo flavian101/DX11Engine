@@ -70,7 +70,7 @@ void Sandbox::OnDetach()
 {
 }
 
-void Sandbox::OnUpdate(DXEngine::FrameTime dt)
+void Sandbox::OnUpdate(float dt)
 {
 	DXEngine::Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
 

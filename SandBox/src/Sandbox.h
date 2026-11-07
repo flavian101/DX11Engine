@@ -17,7 +17,7 @@ public:
 
 	virtual void OnAttach()override;
 	virtual void OnDetach()override;
-	void OnUpdate(DXEngine::FrameTime dt) override;
+	void OnUpdate(float dt) override;
 	virtual void OnUIRender() override;
 	void OnEvent(DXEngine::Event& event) override;
 

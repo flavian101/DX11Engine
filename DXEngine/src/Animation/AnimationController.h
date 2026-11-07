@@ -59,7 +59,7 @@ namespace DXEngine
 		}
 
 		//update Animation (calls Every frame)
-		void Update(FrameTime deltatime)
+		void Update(float deltatime)
 		{
 			if (!m_IsPlaying || !m_CurrentClip)
 				return;

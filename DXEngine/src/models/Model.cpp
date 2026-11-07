@@ -25,7 +25,7 @@ namespace DXEngine {
 
 	}
 
-	void Model::Update(FrameTime deltatime)
+	void Model::Update(float deltatime)
 	{
 		// Update animation if skinned
 		if (IsSkinned() && m_SkinningData->animationController)
@@ -712,7 +712,7 @@ namespace DXEngine {
 	{
 	}
 
-	void Model::UpdateAnimation(FrameTime deltatime)
+	void Model::UpdateAnimation(float deltatime)
 	{
 		if (!m_SkinningData || !m_SkinningData->animationController)
 		{

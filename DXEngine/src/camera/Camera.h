@@ -6,7 +6,6 @@
 namespace DXEngine 
 {
 	class CameraBehavior;
-	class FrameTime;
 
 	struct CameraContribution
 	{
@@ -42,7 +41,7 @@ namespace DXEngine
 
 		void SetProjectionParams(float fov, float aspect, float nearPlane, float farPlane);
 
-		void Update(FrameTime deltatime);
+		void Update(float deltatime);
 		void UpdateViewMatrix();
 		void UpdateProjectionMatrix();
 		void SetAspectRatio(float aspect);

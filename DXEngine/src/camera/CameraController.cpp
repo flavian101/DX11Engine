@@ -35,7 +35,7 @@ namespace DXEngine
 	{
 	}
 
-	void CameraController::Update(FrameTime dt)
+	void CameraController::Update(float dt)
 	{
 		m_Camera->Update(dt);
 	}

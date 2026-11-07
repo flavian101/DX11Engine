@@ -30,7 +30,7 @@ namespace DXEngine {
 		UpdateProjectionMatrix();
 	}
 
-	void Camera::Update(FrameTime deltatime)
+	void Camera::Update(float deltatime)
 	{
 		std::vector<CameraContribution> contributions;
 

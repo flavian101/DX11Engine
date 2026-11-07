@@ -13,7 +13,7 @@ namespace DXEngine
 
 	{
 	}
-	CameraContribution MovementBehavior::GetCameraContribution(Camera& camera, FrameTime deltatime)
+	CameraContribution MovementBehavior::GetCameraContribution(Camera& camera, float deltatime)
 	{
 		if (!IsActive())
 			return CameraContribution();
