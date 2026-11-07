@@ -95,7 +95,8 @@ namespace DXEngine {
 
 					// ====== INSTANCING FEATURE ======
 		// Check if model supports instancing
-		bool IsInstanced() const { return HasFeature(ModelFeature::Instanced); }
+		// true only when the data behind the flag exists: the flag and the pointer used to be able to disagree
+		bool IsInstanced() const { return HasFeature(ModelFeature::Instanced) && m_InstanceData != nullptr; }
 		void EnableInstancing();
 		InstanceData* GetInstanceData() { return m_InstanceData.get(); } //return nullptr if not
 		const InstanceData* GetInstanceData() const { return m_InstanceData.get(); }
@@ -107,7 +108,7 @@ namespace DXEngine {
 
 					// ====== SKINNING FEATURE ======
 		 // Check if model has skinning
-		bool IsSkinned()const { return HasFeature(ModelFeature::Skinned); }
+		bool IsSkinned()const { return HasFeature(ModelFeature::Skinned) && m_SkinningData != nullptr; }
 		void EnableSkinning(std::shared_ptr<Skeleton> skeleton);
 		// Get skinning data (nullptr if not skinned)
 		SkinningData* GetSkinningData() { return m_SkinningData.get(); }
@@ -212,7 +213,9 @@ namespace DXEngine {
 		bool m_ReceivesShadows = true;
 		bool m_IsSelected = false;
 
-		ModelFeature m_Features;
+		// Was uninitialised: a model built with the default constructor (LightSphere, Ball, ...) held garbage
+		// bits, so IsSkinned() could be true with no SkinningData behind it.
+		ModelFeature m_Features = ModelFeature::Static;
 
 		//optional fetures based on flags
 		std::unique_ptr<InstanceData> m_InstanceData;
