@@ -18,6 +18,7 @@ target_include_directories(DXEngine PUBLIC
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/imgui
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/assimp/include
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/stb
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src
 )
 
 
