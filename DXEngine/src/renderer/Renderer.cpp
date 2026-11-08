@@ -110,6 +110,11 @@ namespace DXEngine
         g.reset();
     }
 
+    std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice()
+    {
+        return g ? g->services.device : std::shared_ptr<RHI::IGraphicsDevice>();
+    }
+
     void Renderer::SetEnvironment(const RenderEnvironment& environment)
     {
         if (g) g->environment = environment;
