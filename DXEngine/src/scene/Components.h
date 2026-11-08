@@ -13,6 +13,7 @@
 #include <DirectXMath.h>
 #include <cmath>
 #include <entt/entt.hpp>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -72,6 +73,22 @@ namespace DXEngine
             return len > 0.0f ? DirectX::XMFLOAT3{ x / len, y / len, z / len } : DirectX::XMFLOAT3{ 0, 0, 1 };
         }
 
+        // Rotate so the entity's +Z axis points along 'direction' (used to aim directional and spot lights).
+        // The up reference is world +Y; a (nearly) vertical direction falls back to +Z as the reference.
+        void SetForward(const DirectX::XMFLOAT3& direction)
+        {
+            using namespace DirectX;
+            const XMVECTOR raw = XMLoadFloat3(&direction);
+            if (XMVectorGetX(XMVector3LengthSq(raw)) < 1e-8f) return;   // no direction: keep the current rotation
+            XMVECTOR forward = XMVector3Normalize(raw);
+            XMVECTOR up = XMVectorSet(0, 1, 0, 0);
+            if (std::fabs(XMVectorGetY(forward)) > 0.9999f) up = XMVectorSet(0, 0, 1, 0);
+            XMVECTOR right = XMVector3Normalize(XMVector3Cross(up, forward));   // left-handed: right = up x forward
+            XMVECTOR realUp = XMVector3Cross(forward, right);
+            XMMATRIX basis(right, realUp, forward, XMVectorSet(0, 0, 0, 1));
+            XMStoreFloat4(&rotation, XMQuaternionNormalize(XMQuaternionRotationMatrix(basis)));
+        }
+
         static DirectX::XMFLOAT4X4 Identity()
         {
             DirectX::XMFLOAT4X4 m;
@@ -94,6 +111,26 @@ namespace DXEngine
         bool castsShadows = true;
         bool receivesShadows = true;
     };
+
+    // ------------------------------------------------------------------
+    // Skinned meshes (bridge): where this mesh's bone matrices come from. The function is asked EVERY frame and
+    // may return nullptr (no bones yet), so a missing skeleton is a normal case instead of a null read.
+    // Transitional: the model importer still produces a Model that owns the skeleton and the animation
+    // controller; this lets the scene draw it until the loader emits proper assets.
+    // ------------------------------------------------------------------
+    struct SkinnedMeshComponent
+    {
+        std::function<const std::vector<DirectX::XMFLOAT4X4>*()> boneMatrices;
+    };
+
+    // Per-frame update hook for things the scene does not own yet (the same bridge: advances a Model's animation).
+    struct AnimationUpdateComponent
+    {
+        std::function<void(float deltaSeconds)> update;
+    };
+
+    // The sky: drawn first, follows the camera, never culled.
+    struct SkyboxComponent {};
 
     // ------------------------------------------------------------------
     // Light: a light source. Position and direction come from the entity's Transform

@@ -27,7 +27,8 @@ namespace DXEngine
         bool IsValid() const;
         explicit operator bool() const { return IsValid(); }
 
-        template<typename T, typename... Args> T& Add(Args&&... args);   // adds or replaces
+        // adds or replaces. Returns the component (void for empty tag components such as SkyboxComponent).
+        template<typename T, typename... Args> decltype(auto) Add(Args&&... args);
         template<typename T> bool Has() const;
         template<typename T> T* TryGet();
         template<typename T> const T* TryGet() const;
@@ -92,7 +93,7 @@ namespace DXEngine
     }
 
     template<typename T, typename... Args>
-    T& Entity::Add(Args&&... args)
+    decltype(auto) Entity::Add(Args&&... args)
     {
         if (!IsValid()) throw std::runtime_error("Entity::Add on an invalid entity");
         return m_Scene->Registry().template emplace_or_replace<T>(m_Id, std::forward<Args>(args)...);
