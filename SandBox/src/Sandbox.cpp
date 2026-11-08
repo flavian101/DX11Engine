@@ -1,5 +1,9 @@
 #include "Sandbox.h"
+#include "models/Model.h"
+#include "utils/ImageLoader.h"
+#include "utils/material/Material.h"
 
+using namespace DXEngine;
 
 Sandbox::Sandbox()
 	:Layer("sanbox")
@@ -11,59 +15,91 @@ Sandbox::~Sandbox()
 
 void Sandbox::OnAttach()
 {
-	DXEngine::Renderer::InitLightManager();
+	auto device = Renderer::GetDevice();
+	Renderer::SetEnvironment(RenderEnvironment());      // defaults: dim bluish ambient, exposure 0.4, gamma 2.2
 
-	m_CameraController = std::make_shared<DXEngine::CameraController>();
+	m_CameraController = std::make_shared<CameraController>();
+	m_Loader = std::make_shared<ModelLoader>();
 
-//	m_Ground = std::make_shared<DXEngine::Ground>();
-	m_Moon = std::make_shared<DXEngine::Ball>();
-	m_Sky = std::make_shared<DXEngine::SkySphere>();
-	m_Light = std::make_shared<DXEngine::LightSphere>();
-	m_Loader = std::make_shared<DXEngine::ModelLoader>();
+	// ---- sky
+	SceneFactory::CreateSky(m_Scene, device, {
+		"assets/textures/NightSky/nightBack.png",   "assets/textures/NightSky/nightBottom.png",
+		"assets/textures/NightSky/nightFront.png",  "assets/textures/NightSky/nightLeft.png",
+		"assets/textures/NightSky/nightRight.png",  "assets/textures/NightSky/nightTop.png" });
 
-	m_Ship = m_Loader->LoadModel("assets/models/ship/dutch_ship_large_02_1k.fbx");
-	m_Table = m_Loader->LoadModel("assets/models/nano_textured/nanosuit.obj");
-	m_LionHead = m_Loader->LoadModel("assets/models/lion/lionHead.fbx");
-	m_Tunnel = m_Loader->LoadModel("assets/models/tunnel/future_tunnel.glb");
-	m_Shark = m_Loader->LoadModel("assets/models/shark/scene.gltf");
-	m_Ring = m_Loader->LoadModel("assets/models/ring.gltf");
-	m_Wall = m_Loader->LoadModel("assets/models/brick_wall/brick_wall.obj");
-	//m_AnimatedSpider = m_Loader->LoadModel("assets/models/horse/source/Horse.fbx");
+	// ---- ground: a big plane with a tiled grass material
+	{
+		auto grass = MaterialFactory::CreateLitMaterial("Ground Material");
+		const std::string dir = "assets/textures/grass/grass_with_mud_and_stones_39_46_";
+		grass->SetTexture(TextureSlot::Diffuse,          ImageLoader::LoadTexture2D(*device, dir + "diffuse.jpg"));
+		grass->SetTexture(TextureSlot::Normal,           ImageLoader::LoadTexture2D(*device, dir + "normal.jpg"));
+		grass->SetTexture(TextureSlot::Roughness,        ImageLoader::LoadTexture2D(*device, dir + "roughness.jpg"));
+		grass->SetTexture(TextureSlot::AmbientOcclusion, ImageLoader::LoadTexture2D(*device, dir + "ao.jpg"));
+		grass->SetTextureScale({ 30.0f, 30.0f });
+		Entity ground = SceneFactory::CreatePlane(m_Scene, device, "Ground", 1.0f, 1.0f, grass);
+		ground.Get<TransformComponent>().scale = { 500.0f, 1.0f, 500.0f };
+	}
+
+	// ---- moon: a textured sphere
+	{
+		auto moon = MaterialFactory::CreateLitMaterial("MoonMaterial");
+		moon->SetTexture(TextureSlot::Diffuse, ImageLoader::LoadTexture2D(*device, "assets/textures/8k_moon.jpg"));
+		moon->SetSpecularColor({ 0.2f, 0.2f, 0.2f, 1.0f });
+		moon->SetShininess(100.0f);
+		m_Moon = SceneFactory::CreateSphere(m_Scene, device, "Moon", 1.0f, 64, moon);
+		m_Moon.Get<TransformComponent>().position = { 100.0f, 40.0f, 10.0f };
+		m_Moon.Get<TransformComponent>().scale = { 20.0f, 20.0f, 20.0f };
+	}
+
+	// ---- a lamp: a point light entity with a small glowing sphere as its child, so the marker always
+	// sits exactly where the light is (this is what the old LightSphere class tried to do by hand)
+	{
+		Entity lamp = SceneFactory::CreatePointLight(m_Scene, "Lamp", { 10.0f, 15.0f, 0.0f }, { 1.0f, 1.0f, 1.0f }, 300.0f, 40.0f);
+		auto glow = MaterialFactory::CreateEmissiveMaterial("LampGlow");
+		glow->SetEmissiveColor({ 1.0f, 0.5f, 1.0f, 1.0f });
+		glow->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+		Entity marker = SceneFactory::CreateSphere(m_Scene, device, "LampMarker", 1.5f, 16, glow);
+		m_Scene.SetParent(marker, lamp);
+		marker.Get<TransformComponent>().scale = { 2.0f, 2.0f, 2.0f };
+		marker.Get<MeshRendererComponent>().castsShadows = false;
+	}
+
+	// ---- imported models become entities; position them once
+	auto place = [&](const char* path, const char* name, DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 scale = { 1, 1, 1 }) {
+		Entity e = SceneFactory::Instantiate(m_Scene, m_Loader->LoadModel(path), name);
+		if (e)
+		{
+			e.Get<TransformComponent>().position = position;
+			e.Get<TransformComponent>().scale = scale;
+		}
+		return e;
+	};
+	place("assets/models/tunnel/future_tunnel.glb",           "Tunnel", { 0.0f, 3.0f, 0.0f }, { 0.4f, 0.4f, 0.4f });
+	Entity ship = place("assets/models/ship/dutch_ship_large_02_1k.fbx", "Ship", { 0.0f, 5.0f, 30.0f });
+	if (ship) ship.Get<TransformComponent>().SetEulerDegrees(19.0f, 0.0f, 0.0f);
+	place("assets/models/shark/scene.gltf",                   "Shark", { 10.0f, 30.0f, -40.0f });
+	place("assets/models/ring.gltf",                          "Ring",  { 0.0f, 8.0f, 0.0f }, { 2.0f, 2.0f, 2.0f });
+	place("assets/models/nano_textured/nanosuit.obj",         "Nanosuit", { 0.0f, 10.0f, -5.0f });
+	place("assets/models/brick_wall/brick_wall.obj",          "Wall",  { 0.0f, 10.0f, 10.0f }, { 5.0f, 5.0f, 5.0f });
+	m_LionHead = place("assets/models/lion/lionHead.fbx",     "LionHead", { 0.0f, 5.0f, -20.0f }, { 30.0f, 30.0f, 30.0f });
+
+	// ---- the animated model: kept as an asset for the animation key bindings AND instantiated for drawing
 	m_AnimatedSpider = m_Loader->LoadModel("assets/models/cube/cube.fbx");
 	if (m_AnimatedSpider)
 	{
-		OutputDebugStringA("Spaceship loaded with animations!\n");
-
-		// Print animation info
-		size_t animCount = m_AnimatedSpider->GetAnimationClipCount();
-		OutputDebugStringA(("  Animations: " + std::to_string(animCount) + "\n").c_str());
-
+		const size_t animCount = m_AnimatedSpider->GetAnimationClipCount();
+		OutputDebugStringA(("Animated model: " + std::to_string(animCount) + " clip(s)\n").c_str());
 		auto animNames = m_AnimatedSpider->GetAnimationClipNames();
 		for (size_t i = 0; i < animNames.size(); i++)
-		{
-			OutputDebugStringA(("    [" + std::to_string(i) + "] " +
-				animNames[i] + "\n").c_str());
-		}
+			OutputDebugStringA(("    [" + std::to_string(i) + "] " + animNames[i] + "\n").c_str());
 
-		// Play first animation if available
+		// play clip 0 (the old code asked for clip 1, which does not exist when there is only one clip)
 		if (animCount > 0)
-		{
-			m_AnimatedSpider->PlayAnimation(1, DXEngine::PlaybackMode::Loop);
-			OutputDebugStringA(("  Playing: " + animNames[0] + "\n").c_str());
-		}
+			m_AnimatedSpider->PlayAnimation(0, PlaybackMode::Loop);
 
-		// Print skeleton info
-		if (auto skeleton = m_AnimatedSpider->GetSkeleton())
-		{
-			OutputDebugStringA(("  Bones: " +
-				std::to_string(skeleton->GetBoneCount()) + "\n").c_str());
-		}
+		Entity animated = SceneFactory::Instantiate(m_Scene, m_AnimatedSpider, "AnimatedCube");
+		if (animated) animated.Get<TransformComponent>().position = { 0.0f, 0.0f, -10.0f };
 	}
-	else
-	{
-		OutputDebugStringA("  spider loaded but has no animations\n");
-	}
-	InitializePicking();
 }
 
 void Sandbox::OnDetach()
@@ -72,134 +108,26 @@ void Sandbox::OnDetach()
 
 void Sandbox::OnUpdate(float dt)
 {
-	DXEngine::Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
+	Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
 
-	//window.().ClearDepthColor(0.1f, 0.1f, 0.16f);
 	m_CameraController->Update(dt);
-	DXEngine::Renderer::BeginScene(m_CameraController->GetCamera());
 	DetectInput(dt);
 
-	if (m_Sky)
-	{
-		// Position sky sphere at camera position
-		DirectX::XMFLOAT3 camPos = {
-			DirectX::XMVectorGetX(m_CameraController->GetCamera()->GetPositionVector()),
-			DirectX::XMVectorGetY(m_CameraController->GetCamera()->GetPositionVector()),
-			DirectX::XMVectorGetZ(m_CameraController->GetCamera()->GetPositionVector())
-		};
-		m_Sky->SetTranslation(camPos);
-		m_Sky->SetScale({ 50.0f, 50.0f, 50.0f });
-		DXEngine::Renderer::Submit(m_Sky);
-	
-	}
-
-	// Ground
-	if (m_Ground)
-	{
-		m_Ground->SetScale({ 500.0f, 10.0f, 500.0f });
-		m_Ground->SetTranslation({ 0.0f,0.0f, 0.0f });
-		DXEngine::Renderer::Submit(m_Ground);
-	}
-	
-	if (m_Tunnel)
-	{
-		m_Tunnel->SetTranslation({ 0.0f, 3.0f, 0.0f });
-		m_Tunnel->SetScale({ 0.4f, 0.4f, 0.4f });
-		DXEngine::Renderer::Submit(m_Tunnel);
-	}
-	
-	if (m_Ship)
-	{
-		m_Ship->SetScale({ 1.0f, 1.0f, 1.0f });
-		m_Ship->SetTranslation({ 0.0f, 5.0f, 30.0f });
-		m_Ship->SetRotation(19.0f, 0.0, 0.0f);
-
-		DXEngine::Renderer::Submit(m_Ship);
-	}
-	
-	if (m_Table)
-	{
-		m_Table->SetScale({ 1.f, 1.0f, 1.0f });
-		m_Table->SetTranslation({ 0.0f, 10.0f, -5.0f });
-		m_Table->SetRotation({ 0.0f, 0.0f, 0.0f, 0.0f });
-	
-		DXEngine::Renderer::Submit(m_Table);
-	}
-	
-	if (m_Shark)
-	{
-		m_Shark->SetTranslation({ 10.0f, 30.0f, -40.0f });
-		DXEngine::Renderer::Submit(m_Shark);
-	}
-	
+	// gameplay: only things that actually change are touched
+	m_CurrentRotation += m_Speed * dt;
 	if (m_LionHead)
-	{
-		m_LionHead->SetScale({ 30.0f, 30.0f, 30.0f });
-		m_LionHead->SetTranslation({ 0.0f, 5.0f, -20.0f });
-		m_CurrentRotation += m_Speed * dt;
-		m_LionHead->SetRotation({ 20.0f, m_CurrentRotation, 0.0f, 0.0f });
-		DXEngine::Renderer::Submit(m_LionHead);
-	}
-	
-	if (m_Moon)
-	{
-		m_Moon->SetTranslation({ 100.0f, 40.0f, 10.0f });
-		m_Moon->SetScale({ 20.f, 20.0f, 20.0f });
-		DXEngine::Renderer::Submit(m_Moon);
-	}
-	
-	if (m_Light)
-	{
-		m_Light->SetTranslation({ 10.0f, 15.0f, 0.0f });
-		m_Light->SetScale({ 2.0f, 2.0f, 2.0f });
-		m_Light->Update(dt);   // moves the point light to the sphere
-		DXEngine::Renderer::Submit(m_Light);
-	}
+		m_LionHead.Get<TransformComponent>().SetEulerDegrees(20.0f, m_CurrentRotation, 0.0f);
 
-	if (m_AnimatedSpider)
-	{
-		// Update animation
-		m_AnimatedSpider->Update(dt);
+	AnimationSystem::Update(m_Scene, dt);             // advance animations (before transforms are derived)
 
-		// Set transform
-		m_AnimatedSpider->SetScale({ 1.0f, 1.0f, 1.0f });
-		m_AnimatedSpider->SetTranslation({ 0.0f, 0.0f, -10.0f });
+	Renderer::BeginScene(m_CameraController->GetCamera());
+	Renderer::Submit(m_Scene);                        // the renderer reads the persistent scene
 
-		m_CurrentRotation += m_Speed * dt;
-		//m_AnimatedSpider->SetRotation({ 0.0f, m_CurrentRotation, 0.0f, 0.0f });
+	auto button = std::make_shared<UIButton>("Test Button", UIRect(100, 100, 200, 50));
+	button->SetNormalColor(UIColor(0.3f, 0.3f, 0.8f, 0.5f));
+	Renderer::SubmitUI(button);
 
-		// Submit for rendering
-		DXEngine::Renderer::Submit(m_AnimatedSpider);
-
-		// Debug info (can be removed later)
-		if (mDX_DEBUGMode && m_AnimatedSpider->IsAnimating())
-		{
-			float animTime = m_AnimatedSpider->GetAnimationTime();
-			float normalizedTime = m_AnimatedSpider->GetAnimationNormalizedTime();
-
-		}
-	}
-
-	if (m_Ring)
-	{
-		m_Ring->SetTranslation({ 0.0f, 8.0f, 0.0f });
-		m_Ring->SetScale({ 2.0f, 2.0f, 2.0f });
-		DXEngine::Renderer::Submit(m_Ring);
-	}
-	if (m_Wall)
-	{
-		m_Wall->SetTranslation({ 0.0f, 10.0f, 10.0f });
-		m_Wall->SetScale({ 5.0f, 5.0f, 5.0f });
-		DXEngine::Renderer::Submit(m_Wall);
-	}
-
-	auto button = std::make_shared<DXEngine::UIButton>("Test Button", DXEngine::UIRect::UIRect(100, 100, 200, 50));
-	button->SetNormalColor(DXEngine::UIColor::UIColor(0.3f, 0.3f, 0.8f, 0.5f));
-	// Submit to renderer
-	DXEngine::Renderer::SubmitUI(button);
-	
-	DXEngine::Renderer::EndScene();
-
+	Renderer::EndScene();
 }
 
 void Sandbox::OnUIRender()
@@ -229,6 +157,7 @@ bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
 
 	return false;
 }
+
 void Sandbox::DetectInput(double time)
 {
 	// Toggle wireframe mode
@@ -393,67 +322,19 @@ void Sandbox::DetectInput(double time)
 	//call update
 
 	return;
-}void Sandbox::InitializePicking()
-{
-	m_PickingManager = std::make_unique<DXEngine::PickingManager>();
-
-	// Register pickable objects - cast to InterfacePickable interface
-	if (m_Moon)
-		m_PickingManager->RegisterPickable(m_Moon);
-
-	if (m_Ground)
-		m_PickingManager->RegisterPickable(m_Ground);
-
-	if (m_Light)
-		m_PickingManager->RegisterPickable(m_Light);
-
-	// Don't register sky sphere as it should not be pickable
-	if (m_Sky)
-		m_Sky->SetPickable(false);
 }
 
 void Sandbox::HandlePicking(float mouseX, float mouseY)
 {
-	if (!m_PickingManager || !m_CameraController->GetCamera()) 
+	if (!m_CameraController->GetCamera())
 		return;
 
-	// Get window dimensions
-	//RECT clientRect;
-	////GetClientRect(window.GetHwnd(), &clientRect); TO-DO
-	//int screenWidth = clientRect.right - clientRect.left;
-	//int screenHeight = clientRect.bottom - clientRect.top;
-	
+	// TODO: ask the window for its real size (the old code hard-coded this too)
+	const int screenWidth = 1270;
+	const int screenHeight = 720;
 
-	int screenWidth = 1270;
-		int screenHeight = 720;
-	// Perform picking
-	DXEngine::HitInfo hit = m_PickingManager->Pick(mouseX, mouseY, screenWidth, screenHeight, *m_CameraController->GetCamera());
-
-	if (hit.Hit)  // Note: lowercase 'hit'
-	{
-		// Object was picked
-		auto pickedObject = m_PickingManager->GetPickedObject();
-		if (pickedObject)
-		{
-			// Since all your objects inherit from Model, cast to Model first
-			// Then check the actual type using the raw pointer approach
-			DXEngine::Model* modelPtr = static_cast<DXEngine::Model*>(hit.ObjectPtr);
-			if (modelPtr)
-			{
-				// Check what type of object was picked
-				if (dynamic_cast<DXEngine::Ball*>(modelPtr))
-				{
-					std::cout << "Ball was picked" << std::endl;
-				}
-				else if (dynamic_cast<DXEngine::Ground*>(modelPtr))
-				{
-					std::cout << "triangle was picked" << std::endl;
-				}
-				else if (dynamic_cast<DXEngine::LightSphere*>(modelPtr))
-				{
-					std::cout << "light sphere was picked" << std::endl;
-				}
-			}
-		}
-	}
+	// which ENTITY is under the cursor? (replaces PickingManager + dynamic_cast on Model subclasses)
+	PickResult pick = ScenePicking::Pick(m_Scene, *m_CameraController->GetCamera(), mouseX, mouseY, screenWidth, screenHeight);
+	if (pick)
+		OutputDebugStringA(("Picked: " + pick.entity.Get<NameComponent>().name + "\n").c_str());
 }

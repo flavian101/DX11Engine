@@ -20,7 +20,6 @@ namespace DXEngine
         m_ScreenWidth = screenWidth;
         m_ScreenHeight = screenHeight;
 
-        Renderer::UpdateUIProjectionMatrix(screenWidth, screenHeight);
 
         // Initialize UI renderer if you have one
         // m_UIRenderer.Initialize(screenWidth, screenHeight);
@@ -160,7 +159,6 @@ namespace DXEngine
         m_ScreenWidth = width;
         m_ScreenHeight = height;
 
-        Renderer::UpdateUIProjectionMatrix(width, height);
 
     }
 

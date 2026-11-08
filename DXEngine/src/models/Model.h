@@ -1,6 +1,6 @@
 #pragma once
 #include "ModelFeatures.h"
-#include "picking/InterfacePickable.h"
+#include "picking/Ray.h"
 #include "utils/Transform.h"
 #include <memory>
 #include <optional>
@@ -14,7 +14,7 @@ namespace DXEngine {
 	class Mesh;
 	class Material;
 
-	class Model : public InterfacePickable
+	class Model
 	{
 	public:
 	public:
@@ -63,7 +63,7 @@ namespace DXEngine {
 		void SetRotation(const DirectX::XMVECTOR& rotation);
 		void SetRotation(float pitch, float yaw, float roll);
 		const DirectX::XMVECTOR& GetRotation() const;
-		DirectX::XMMATRIX GetModelMatrix() const override;
+		DirectX::XMMATRIX GetModelMatrix() const;
 
 		// Transform management
 		void SetTransform(const Transform& transform);
@@ -168,9 +168,6 @@ namespace DXEngine {
 			std::shared_ptr<Skeleton> skeleton);
 
 	protected:
-		HitInfo TestRayIntersection(const Ray& ray) override;
-		void OnPicked() override;
-		void OnUnpicked() override;
 		void OnMeshChanged(size_t meshIndex);
 		void OnMaterialChanged(size_t meshIndex, size_t submeshIndex);
 		void InvalidateBounds();

@@ -49,6 +49,19 @@ namespace DXEngine
         void Clear() { background.clear(); opaque.clear(); transparent.clear(); }
     };
 
+    // ------------------------------------------------------------------
+    // RenderEnvironment: scene-wide shading settings that are not lights (what LightManager used to hold
+    // next to the lights). Lights themselves are LightComponents in the Scene.
+    // ------------------------------------------------------------------
+    struct RenderEnvironment
+    {
+        DirectX::XMFLOAT3 ambientColor{ 0.2f, 0.25f, 0.3f };
+        float ambientIntensity = 0.1f;
+        float iblIntensity     = 0.8f;
+        float exposure         = 0.4f;
+        float gamma            = 2.2f;
+    };
+
     // One statistics struct for the whole renderer (replaces 3 overlapping ones).
     struct RenderStatistics
     {

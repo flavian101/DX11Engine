@@ -591,44 +591,6 @@ namespace DXEngine {
 	}
 
 	//interfacePickable implementation
-	HitInfo Model::TestRayIntersection(const Ray& ray)
-	{
-		if (!IsPickable() || m_Meshes.empty())
-			return HitInfo();
-
-		HitInfo closestHit;
-		float closestDistance = FLT_MAX;
-
-		for (size_t i = 0; i < m_Meshes.size(); i++)
-		{
-			const auto& mesh = m_Meshes[i].Mesh;
-			if (!mesh || !mesh->IsValid())
-				continue;
-
-			auto meshResource = mesh->GetResource();
-			if (!meshResource)
-				continue;
-
-			HitInfo hit = RayIntersection::IntersectMesh(ray, meshResource, GetModelMatrix(), this);
-			if (hit.Hit && hit.Distance < closestDistance)
-			{
-				closestHit = hit;
-				closestDistance = hit.Distance;
-			}
-		}
-
-		return closestHit;
-	}
-
-	void Model::OnPicked()
-	{
-		m_IsSelected = true;
-	}
-	void Model::OnUnpicked()
-	{
-		m_IsSelected = false;
-	}
-
 	//virtual callbacks
 	void Model::OnMeshChanged(size_t meshIndex)
 	{

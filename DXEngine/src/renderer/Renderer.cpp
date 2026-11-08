@@ -9,14 +9,13 @@
 #include "Passes/ClearPass.h"
 #include "Passes/ForwardPass.h"
 #include "Passes/UIPass.h"
-#include "Systems/CullingSystem.h"
 #include "Systems/LightSystem.h"
-#include "Systems/RenderBatcher.h"
+#include "Systems/SceneExtraction.h"
 
 #include "RHI/GraphicsDevice.h"
 #include "camera/Camera.h"
-#include "models/Model.h"
-#include "utils/Light.h"
+#include "scene/Scene.h"
+#include "scene/TransformSystem.h"
 #include "utils/UI/UIElement.h"
 #include <algorithm>
 
@@ -34,9 +33,9 @@ namespace DXEngine
             RenderGraph  graph;                              // GPU passes
             std::shared_ptr<ClearPass> clearPass;            // typed handle for SetClearColor
 
-            CullingSystem culling;                           // CPU systems, run by EndScene
-            RenderBatcher batcher;
-            LightSystem   lights;
+            SceneExtraction extraction;                      // CPU systems, run by EndScene
+            LightSystem     lights;
+            RenderEnvironment environment;                   // ambient / exposure / gamma
 
             RenderStatistics lastStats;
             float time = 0.0f;
@@ -103,7 +102,6 @@ namespace DXEngine
         g->graph.Shutdown();
         g->services.resources->Clear();
         g->cmd.reset();
-        g->services.lights.reset();
         g->services.materials.reset();
         g->services.shaders.reset();
         g->services.resources.reset();
@@ -112,29 +110,14 @@ namespace DXEngine
         g.reset();
     }
 
-    void Renderer::InitLightManager()
+    void Renderer::SetEnvironment(const RenderEnvironment& environment)
     {
-        if (!g) return;
-        auto lm = std::make_shared<LightManager>();
-
-        lm->SetAmbientLight({ 0.2f, 0.25f, 0.3f }, 0.1f);
-        lm->SetExposure(0.4f);
-        lm->SetGamma(2.2f);
-        lm->SetIBLIntensity(0.8f);
-
-        // No default point light: lights belong to the scene (the Sandbox's LightSphere creates and moves its
-        // own). The old default sat at a fixed (0, 20, 4) with radius 20, so nothing at floor level was lit.
-        g->services.lights = lm;
+        if (g) g->environment = environment;
     }
 
-    std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice()
+    RenderEnvironment Renderer::GetEnvironment()
     {
-        return g ? g->services.device : nullptr;
-    }
-
-    std::shared_ptr<LightManager> Renderer::GetLightManager()
-    {
-        return g ? g->services.lights : nullptr;
+        return g ? g->environment : RenderEnvironment();
     }
 
     // ------------------------------------------------------------------ per frame
@@ -155,6 +138,7 @@ namespace DXEngine
 
         f.camera = camera;
         f.cmd    = g->cmd.get();
+        f.environment = g->environment;
 
         // Ask the device EVERY frame: it recreates these on resize, a cached pointer would dangle.
         f.targets.backBuffer  = g->services.device->GetBackBuffer();
@@ -164,14 +148,11 @@ namespace DXEngine
         g->inScene = true;
     }
 
-    void Renderer::Submit(const std::shared_ptr<Model>& model)
+    void Renderer::Submit(Scene& scene)
     {
-        if (g && g->inScene && model) g->frame.scene.models.push_back({ model, nullptr });
-    }
-
-    void Renderer::Submit(const std::shared_ptr<Model>& model, const std::shared_ptr<Material>& materialOverride)
-    {
-        if (g && g->inScene && model) g->frame.scene.models.push_back({ model, materialOverride });
+        if (!g || !g->inScene) return;
+        TransformSystem::Update(scene);          // world matrices are derived data: make sure they are current
+        g->frame.scene.world = &scene;
     }
 
     void Renderer::SubmitUI(const std::shared_ptr<UIElement>& element)
@@ -184,10 +165,16 @@ namespace DXEngine
         if (!g || !g->inScene) return;
         FrameContext& f = g->frame;
 
-        // ---- CPU systems: fill the blackboard (order matters, each reads the previous one's output)
-        g->culling.Cull(f);          // scene       -> visibility
-        g->batcher.BuildBatches(f);  // visibility  -> batches
-        g->lights.Upload(f);         // frustum     -> lightBuffer
+        // ---- CPU systems: fill the blackboard
+        if (f.scene.world && f.camera)
+        {
+            ExtractionCamera camera;
+            DirectX::XMStoreFloat4x4(&camera.view, f.camera->GetViewMatrix());
+            DirectX::XMStoreFloat4x4(&camera.projection, f.camera->GetProjectionMatrix());
+            camera.position = f.camera->GetPositionFloat3();
+            g->extraction.Extract(*f.scene.world, camera, f.batches, f.stats);   // scene -> batches
+        }
+        g->lights.Upload(f);                                                    // scene lights + environment -> lightBuffer
 
         // ---- GPU passes: read the blackboard
         g->graph.Execute(f);
@@ -212,8 +199,6 @@ namespace DXEngine
         g->graph.OnResize(width, height);
     }
 
-    void Renderer::UpdateUIProjectionMatrix(int, int) {}   // UIPass derives it from the back buffer each frame
-
     void Renderer::EnableWireframe(bool enable)
     {
         if (g) g->services.resources->SetWireframeMode(enable);
@@ -222,9 +207,9 @@ namespace DXEngine
     void Renderer::EnableFrustumCulling(bool enable)
     {
         if (!g) return;
-        CullingConfig cfg = g->culling.GetConfig();
-        cfg.enableFrustumCulling = enable;
-        g->culling.SetConfig(cfg);
+        ExtractionConfig cfg = g->extraction.GetConfig();
+        cfg.frustumCulling = enable;
+        g->extraction.SetConfig(cfg);
     }
 
     void Renderer::EnableDebugInfo(bool enable) { if (g) g->debugInfo = enable; }

@@ -73,7 +73,6 @@ namespace DXEngine
     {
         m_UIManager->SetScreenSize(width, height);
 
-        Renderer::UpdateUIProjectionMatrix(width, height);
     }
 
     void UILayer::HandleInput()

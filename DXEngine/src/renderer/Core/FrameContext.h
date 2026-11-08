@@ -10,11 +10,10 @@
 
 namespace DXEngine
 {
-    class Model;
+    class Scene;
     class Material;
     class Camera;
     class UIElement;
-    class LightManager;
     class ResourceCache;
     class ShaderCache;
     class MaterialSystem;
@@ -38,24 +37,14 @@ namespace DXEngine
         std::shared_ptr<ResourceCache>        resources;
         std::shared_ptr<ShaderCache>          shaders;
         std::shared_ptr<MaterialSystem>       materials;
-        std::shared_ptr<LightManager>         lights;     // may be null (no lighting set up)
-    };
-
-    // A model plus the (optional) material override it was submitted with.
-    // Keeping the override HERE removes the batcher's hidden "global override" state.
-    struct SceneModel
-    {
-        std::shared_ptr<Model>    model;
-        std::shared_ptr<Material> materialOverride;
     };
 
     // ==================================================================
     // FrameContext: the blackboard for ONE frame.
     //
     //  WHO WRITES WHAT (this table is the contract):
-    //   Renderer::BeginScene/Submit -> camera, cmd, targets, scene
-    //   CullingSystem               -> visibility
-    //   RenderBatcher               -> batches
+    //   Renderer::BeginScene/Submit -> camera, cmd, targets, scene, environment
+    //   SceneExtraction             -> batches (culling + material resolution + sorting)
     //   LightSystem                 -> lightBuffer
     //   Passes                      -> stats (and the GPU targets, as side effects)
     //
@@ -82,10 +71,12 @@ namespace DXEngine
 
         struct SceneInput
         {
-            std::vector<SceneModel>                 models;
-            std::vector<std::shared_ptr<UIElement>> uiElements;
-            void Clear() { models.clear(); uiElements.clear(); }
+            Scene* world = nullptr;                               // the persistent 3D world (not owned)
+            std::vector<std::shared_ptr<UIElement>> uiElements;   // 2D, rebuilt every frame
+            void Clear() { world = nullptr; uiElements.clear(); }
         } scene;
+
+        RenderEnvironment environment;                            // ambient / exposure / gamma (copied in by Renderer)
 
         // ---- render targets: raw, NON-owning, re-fetched from the device EVERY frame ----
         // (the device recreates them on resize, so caching them is a dangling-pointer bug)
@@ -95,15 +86,7 @@ namespace DXEngine
             RHI::ITexture* depthBuffer = nullptr;
         } targets;
 
-        // ---- produced by CullingSystem ----
-        struct VisibilityData
-        {
-            std::vector<const SceneModel*> visibleModels;   // points into scene.models
-            DirectX::BoundingFrustum       viewFrustum;
-            void Clear() { visibleModels.clear(); }
-        } visibility;
-
-        // ---- produced by RenderBatcher ----
+        // ---- produced by SceneExtraction ----
         BatchQueue batches;
 
         // ---- produced by LightSystem ----
@@ -132,7 +115,6 @@ namespace DXEngine
             deltaTime = dt;
             totalTime = total;
             scene.Clear();
-            visibility.Clear();
             batches.Clear();
             lightBuffer = nullptr;
             stats.Reset();

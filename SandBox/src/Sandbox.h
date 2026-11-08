@@ -1,61 +1,40 @@
 #pragma once
 #include "DXEngine.h"
 #include <memory>
-#include "Ground.h"
-#include "Ball.h"
-#include "SkySphere.h"
-#include "LightSphere.h"
 
-
-
-
-class Sandbox :public DXEngine::Layer
+// A test scene for the engine. Everything here is an ENTITY in a Scene: a thing is what components it has
+// (see docs/DESIGN.md). Nothing is re-submitted object by object every frame any more.
+class Sandbox : public DXEngine::Layer
 {
 public:
-	Sandbox();;
+	Sandbox();
 	virtual ~Sandbox();
 
-	virtual void OnAttach()override;
-	virtual void OnDetach()override;
+	virtual void OnAttach() override;
+	virtual void OnDetach() override;
 	void OnUpdate(float dt) override;
 	virtual void OnUIRender() override;
 	void OnEvent(DXEngine::Event& event) override;
 
 	bool OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e);
-
-
 	void DetectInput(double time);
-
-
 	void HandlePicking(float mouseX, float mouseY);
-	void InitializePicking();
-private:
-	//bool OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e);
 
 private:
 	std::shared_ptr<DXEngine::CameraController> m_CameraController;
-	std::shared_ptr<DXEngine::Ground> m_Ground;
-	std::shared_ptr<DXEngine::SkySphere> m_Sky;
-	std::shared_ptr<DXEngine::Ball> m_Moon;
-	std::shared_ptr<DXEngine::LightSphere> m_Light;
-	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
-	std::shared_ptr<DXEngine::Model> m_Ship;
-	std::shared_ptr<DXEngine::Model> m_Table;
-	std::shared_ptr<DXEngine::Model> m_LionHead;
-	std::shared_ptr<DXEngine::Model> m_Tunnel;
-	std::shared_ptr<DXEngine::Model> m_Shark;
-	std::shared_ptr<DXEngine::Model> m_Ring;
-	std::shared_ptr<DXEngine::Model> m_Wall;
-	std::shared_ptr<DXEngine::Model> m_AnimatedSpider;
 
+	DXEngine::Scene m_Scene;                       // the world
+	DXEngine::Entity m_LionHead;                   // kept because the sample spins it
+	DXEngine::Entity m_Moon;
+
+	// importer output. Loaded models are assets; Instantiate() turns them into entities. The animated one is also
+	// kept here because the key bindings in DetectInput control its animation clips.
+	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
+	std::shared_ptr<DXEngine::Model> m_AnimatedSpider;
 
 	float m_Speed = 10.0f;
 	float m_CurrentRotation = 0.0f;
 
-	//Window wnd;
-	std::unique_ptr<DXEngine::PickingManager> m_PickingManager;
-
-	// Mouse state for picking
 	float m_LastMouseX = 0.0f;
 	float m_LastMouseY = 0.0f;
 	bool m_WireframeMode = false;
@@ -64,4 +43,3 @@ private:
 	int m_CurrentAnimationIndex = 0;
 	bool m_IsAnimationPaused = false;
 };
-

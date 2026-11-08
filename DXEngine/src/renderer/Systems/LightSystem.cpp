@@ -4,7 +4,7 @@
 #include "RHI/GraphicsDevice.h"
 #include "camera/Camera.h"
 #include "utils/ConstantBufferTypes.h"
-#include "utils/Light.h"
+#include "LightPacking.h"
 
 namespace DXEngine
 {
@@ -16,16 +16,12 @@ namespace DXEngine
 
     void LightSystem::Upload(FrameContext& ctx)
     {
-        const auto& lights = ctx.services->lights;
-        if (!lights || !m_Buffer) return;                  // no lights: lightBuffer stays null
+        if (!m_Buffer) return;
 
-        // needs the frustum (and camera position for sorting), so run AFTER CullingSystem
-        lights->CullLights(ctx.visibility.viewFrustum,
-                           ctx.camera ? ctx.camera->GetPositionFloat3() : DirectX::XMFLOAT3{ 0, 0, 0 });
-        lights->UpdateLightData();                         // fills LightManager's SceneLightData (CPU only)
+        const DirectX::XMFLOAT3 cameraPosition = ctx.camera ? ctx.camera->GetPositionFloat3() : DirectX::XMFLOAT3{ 0, 0, 0 };
+        PackLights(ctx.scene.world, ctx.environment, cameraPosition, m_Data);
 
-        const SceneLightData& data = lights->GetSceneData();
-        m_Buffer->Update(&data, sizeof(SceneLightData), 0);
+        m_Buffer->Update(&m_Data, sizeof(SceneLightData), 0);
         ctx.lightBuffer = m_Buffer.get();
     }
 }
