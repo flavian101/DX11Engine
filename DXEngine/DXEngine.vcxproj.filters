@@ -61,7 +61,6 @@
       <Filter>Animation</Filter>
     </ClInclude>
     <ClInclude Include="src\Application.h" />
-    <ClInclude Include="src\Ball.h" />
     <ClInclude Include="src\Core\Input.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -88,10 +87,7 @@
       <Filter>Event</Filter>
     </ClInclude>
     <ClInclude Include="src\FrameTime.h" />
-    <ClInclude Include="src\Ground.h" />
-    <ClInclude Include="src\LightSphere.h" />
     <ClInclude Include="src\Main.h" />
-    <ClInclude Include="src\SkySphere.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\camera\Camera.h">
       <Filter>camera</Filter>
@@ -118,12 +114,6 @@
     <ClInclude Include="src\models\ModelLoader.h">
       <Filter>models</Filter>
     </ClInclude>
-    <ClInclude Include="src\picking\InterfacePickable.h">
-      <Filter>picking</Filter>
-    </ClInclude>
-    <ClInclude Include="src\picking\PickingManager.h">
-      <Filter>picking</Filter>
-    </ClInclude>
     <ClInclude Include="src\picking\Ray.h">
       <Filter>picking</Filter>
     </ClInclude>
@@ -132,9 +122,6 @@
       <Filter>shaders</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\ConstantBufferTypes.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\Light.h">
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Mesh\Mesh.h">
@@ -160,6 +147,21 @@
     </ClInclude>
     <ClInclude Include="src\scene\Scene.h">
       <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\AnimationSystem.h">
+      <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\SceneFactory.h">
+      <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\ScenePicking.h">
+      <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Systems\LightPacking.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Systems\SceneExtraction.h">
+      <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\scene\TransformSystem.h">
       <Filter>scene</Filter>
@@ -232,13 +234,10 @@
     <ClInclude Include="src\renderer\Passes\MeshDrawer.h" />
     <ClInclude Include="src\renderer\Passes\ClearPass.h" />
     <ClInclude Include="src\renderer\Passes\UIPass.h" />
-    <ClInclude Include="src\renderer\Systems\RenderBatcher.h" />
-    <ClInclude Include="src\renderer\Systems\CullingSystem.h" />
     <ClInclude Include="src\renderer\Systems\LightSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
-    <ClCompile Include="src\Ball.cpp" />
     <ClCompile Include="src\Core\Input.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -249,9 +248,6 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="src\FrameTime.cpp" />
-    <ClCompile Include="src\Ground.cpp" />
-    <ClCompile Include="src\LightSphere.cpp" />
-    <ClCompile Include="src\SkySphere.cpp" />
     <ClCompile Include="src\Window.cpp" />
     <ClCompile Include="src\camera\Camera.cpp">
       <Filter>camera</Filter>
@@ -272,17 +268,11 @@
     <ClCompile Include="src\models\ModelLoader.cpp">
       <Filter>models</Filter>
     </ClCompile>
-    <ClCompile Include="src\picking\PickingManager.cpp">
-      <Filter>picking</Filter>
-    </ClCompile>
     <ClCompile Include="src\picking\Ray.cpp">
       <Filter>picking</Filter>
     </ClCompile>
     <ClCompile Include="src\shaders\ShaderProgram.cpp">
       <Filter>shaders</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\Light.cpp">
-      <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\Mesh\Mesh.cpp">
       <Filter>utils\Mesh</Filter>
@@ -301,6 +291,21 @@
     </ClCompile>
     <ClCompile Include="src\scene\Scene.cpp">
       <Filter>scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene\AnimationSystem.cpp">
+      <Filter>scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene\SceneFactory.cpp">
+      <Filter>scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene\ScenePicking.cpp">
+      <Filter>scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Systems\LightPacking.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Systems\SceneExtraction.cpp">
+      <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\scene\TransformSystem.cpp">
       <Filter>scene</Filter>
@@ -360,8 +365,6 @@
     <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
     <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />
     <ClCompile Include="src\renderer\Passes\UIPass.cpp" />
-    <ClCompile Include="src\renderer\Systems\RenderBatcher.cpp" />
-    <ClCompile Include="src\renderer\Systems\CullingSystem.cpp" />
     <ClCompile Include="src\renderer\Systems\LightSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
