@@ -9,3 +9,23 @@ target_include_directories(scene_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(scene_tests PRIVATE cxx_std_17)
 add_test(NAME scene_tests COMMAND scene_tests)
+
+# Renderer-side logic that needs no GPU: scene extraction (culling, routing, sorting, materials) and light packing.
+# Uses the real Mesh / Material classes; meshes are created without a device.
+add_executable(render_tests
+    render_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightPacking.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/SceneExtraction.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp)
+target_include_directories(render_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/DXEngine/src
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
+target_compile_features(render_tests PRIVATE cxx_std_17)
+add_test(NAME render_tests COMMAND render_tests)
