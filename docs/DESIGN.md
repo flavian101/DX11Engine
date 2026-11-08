@@ -80,6 +80,15 @@ Not needed yet, and not before the scene exists. Once everything is an entity wi
 * `ModelLoader` produces an asset (meshes, materials, skeleton, clips, node tree) instead of a `Model`; `Instantiate` creates entities from it.
 * Animation: keep the current hand-written evaluator (tested, small) until blending/layering/IK are needed; then evaluate a library (ozz-animation) as its own step.
 
+## Status
+
+* **Milestone 1 is done** (patches 0051-0061): EnTT scene, transform hierarchy, extraction from the scene, lights and picking as
+  scene features, Sandbox rebuilt as a scene. `Ball`, `Ground`, `SkySphere`, `LightSphere`, `LightManager`, `PickingManager` are gone.
+  `Model` remains only as the importer's output; `Scene::Instantiate` turns it into entities (skinned models keep animating
+  through a transitional bridge).
+* Tests that need no GPU: `scene_tests` (9) and `render_tests` (13), built with `-DDXENGINE_BUILD_TESTS=ON`.
+* Also removed along the way: `FrameTime` passed by value as if it were a number (now a plain float of seconds).
+
 ## Order of work
 
 | # | Milestone | Leaves behind |
