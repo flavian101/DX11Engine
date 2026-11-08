@@ -127,7 +127,11 @@ namespace DXEngine
     void MeshResource::SetVertexData(std::unique_ptr<VertexData> vertexData)
     {
         m_VertexData = std::move(vertexData);
-        InvalidateBounds();
+        // Recompute the bounds NOW. They used to be only invalidated, and nothing recomputed them for the
+        // procedural meshes (cube, sphere, plane, quad, cylinder): an empty box and a radius-0 sphere, so
+        // frustum culling treated them as single points and picking could never hit them. (Only the model
+        // importer called GenerateBounds().)
+        ComputeBounds();
         OnDataChanged();
     }
 
