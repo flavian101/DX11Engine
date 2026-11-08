@@ -51,6 +51,7 @@ namespace DXEngine::RHI
 		void SetIndexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) override;
 		void SetConstantBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage = ShaderStage::Vertex) override;
 		void SetTexture(ITexture* texture, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) override;
+		void SetBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) override;
 		void SetSampler(ISampler* sampler, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) override;
 
 		//Multiple Resource binding

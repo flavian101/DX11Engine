@@ -8,6 +8,22 @@
 
 namespace DXEngine::RHI
 {
+	// Binds shader resource views (textures AND structured buffers) to one stage. One place for the per-stage
+	// switch, so SetTexture / SetTextures / SetBuffer cannot disagree about which stages they support.
+	static void BindSRVs(ID3D11DeviceContext* context, ShaderStage stage, UINT startSlot, UINT count,
+		ID3D11ShaderResourceView* const* srvs)
+	{
+		switch (stage)
+		{
+		case ShaderStage::Vertex:   context->VSSetShaderResources(startSlot, count, srvs); break;
+		case ShaderStage::Pixel:    context->PSSetShaderResources(startSlot, count, srvs); break;
+		case ShaderStage::Geometry: context->GSSetShaderResources(startSlot, count, srvs); break;
+		case ShaderStage::Hull:     context->HSSetShaderResources(startSlot, count, srvs); break;
+		case ShaderStage::Domain:   context->DSSetShaderResources(startSlot, count, srvs); break;
+		case ShaderStage::Compute:  context->CSSetShaderResources(startSlot, count, srvs); break;
+		}
+	}
+
 	D3D11CommandBuffer::D3D11CommandBuffer(ComPtr<ID3D11DeviceContext> context)
 		:
 		m_Context(context)
@@ -114,16 +130,23 @@ namespace DXEngine::RHI
 	void D3D11CommandBuffer::SetTexture(ITexture* texture, uint32_t slot, ShaderStage stage)
 	{
 		auto* d3d11Texture = static_cast<D3D11Texture*>(texture);
-		ID3D11ShaderResourceView* srv = d3d11Texture->GetSRV();
-
-		switch (stage) {
-		case ShaderStage::Vertex:
-			m_Context->VSSetShaderResources(slot, 1, &srv);
-			break;
-		case ShaderStage::Pixel:
-			m_Context->PSSetShaderResources(slot, 1, &srv);
-			break;
+		ID3D11ShaderResourceView* srv = d3d11Texture ? d3d11Texture->GetSRV() : nullptr;
+		BindSRVs(m_Context.Get(), stage, slot, 1, &srv);
+	}
+	void D3D11CommandBuffer::SetBuffer(IBuffer* buffer, uint32_t slot, ShaderStage stage)
+	{
+		ID3D11ShaderResourceView* srv = nullptr;
+		if (buffer)
+		{
+			srv = static_cast<D3D11Buffer*>(buffer)->GetSRV();
+			if (!srv)
+			{
+				// Not a Storage buffer. Unbind instead of leaving a stale resource in the slot.
+				OutputDebugStringA("D3D11CommandBuffer::SetBuffer: the buffer has no shader resource view (BufferType::Storage required)\n");
+				assert(false && "SetBuffer needs a BufferType::Storage buffer");
+			}
 		}
+		BindSRVs(m_Context.Get(), stage, slot, 1, &srv);
 	}
 	void D3D11CommandBuffer::SetSampler(ISampler* sampler, uint32_t slot, ShaderStage stage)
 	{
@@ -225,27 +248,7 @@ namespace DXEngine::RHI
 			}
 		}
 
-		switch (stage)
-		{
-		case ShaderStage::Vertex:
-			m_Context->VSSetShaderResources(startSlot, count, srvs.data());
-			break;
-		case ShaderStage::Pixel:
-			m_Context->PSSetShaderResources(startSlot, count, srvs.data());
-			break;
-		case ShaderStage::Geometry:
-			m_Context->GSSetShaderResources(startSlot, count, srvs.data());
-			break;
-		case ShaderStage::Hull:
-			m_Context->HSSetShaderResources(startSlot, count, srvs.data());
-			break;
-		case ShaderStage::Domain:
-			m_Context->DSSetShaderResources(startSlot, count, srvs.data());
-			break;
-		case ShaderStage::Compute:
-			m_Context->CSSetShaderResources(startSlot, count, srvs.data());
-			break;
-		}
+		BindSRVs(m_Context.Get(), stage, startSlot, count, srvs.data());
 	}
 	//draw commands 
 	void D3D11CommandBuffer::Draw(uint32_t vertexCount, uint32_t startVertex) {

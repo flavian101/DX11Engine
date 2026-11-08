@@ -29,3 +29,9 @@ target_include_directories(render_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(render_tests PRIVATE cxx_std_17)
 add_test(NAME render_tests COMMAND render_tests)
+
+# RHI rules that need no device (buffer description validation).
+add_executable(rhi_tests rhi_tests.cpp)
+target_include_directories(rhi_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
+target_compile_features(rhi_tests PRIVATE cxx_std_17)
+add_test(NAME rhi_tests COMMAND rhi_tests)

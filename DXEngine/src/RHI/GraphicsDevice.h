@@ -170,6 +170,10 @@ namespace DXEngine::RHI
 		virtual void SetIndexBuffer(IBuffer* buffer, uint32_t slot = 0, uint32_t offset = 0) = 0;
 		virtual void SetConstantBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage = ShaderStage::Vertex) = 0;
 		virtual void SetTexture(ITexture* texture, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) = 0;
+		// Binds a Storage (structured) buffer for READING in a shader: StructuredBuffer<T> in register(t<slot>).
+		// Shares the t# register space with textures, so keep engine-wide buffers out of the material range
+		// (see SrvSlot in ConstantBufferTypes.h). nullptr unbinds the slot.
+		virtual void SetBuffer(IBuffer* buffer, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) = 0;
 		virtual void SetSampler(ISampler* sampler, uint32_t slot = 0, ShaderStage stage = ShaderStage::Pixel) = 0;
 
 		//Multiple Resource binding

@@ -36,9 +36,14 @@ namespace DXEngine::RHI
 
 		//D3D11-Specific
 		ID3D11Buffer* GetD3D11Buffer()const { return m_Buffer.Get(); }
+		// Read-only view for StructuredBuffer<T>. Null unless the buffer is BufferType::Storage.
+		ID3D11ShaderResourceView* GetSRV() const { return m_SRV.Get(); }
 
 	private:
 		ComPtr<ID3D11Buffer> m_Buffer;
+		ComPtr<ID3D11ShaderResourceView> m_SRV;
+		D3D11_USAGE m_D3DUsage = D3D11_USAGE_DEFAULT;   // what was actually created (can differ from m_Desc.usage)
+		uint32_t    m_ByteWidth = 0;                    // real size in bytes (constant buffers are rounded up to 16)
 		ComPtr<ID3D11Device> m_Device;
 		ComPtr<ID3D11DeviceContext> m_Context;
 		BufferDesc  m_Desc;

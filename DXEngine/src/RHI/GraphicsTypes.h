@@ -558,6 +558,24 @@ namespace DXEngine::RHI
     // Enhanced Buffer Description
     // ============================================================================
 
+    // ----------------------------------------------------------------------------
+    // BufferDesc
+    //
+    //  type     what the buffer is bound as.
+    //             Uniform  constant buffer (size is rounded up to 16 bytes).
+    //             Storage  STRUCTURED buffer read in shaders through a shader resource view (StructuredBuffer<T>,
+    //                      bound with ICommandBuffer::SetBuffer). 'stride' is sizeof(T) and is required.
+    //  usage    Static   written once at creation (needs initialData), never changes.
+    //           Dynamic  rewritten by the CPU, typically every frame (Update / Map).
+    //  allowUnorderedAccess
+    //           Storage only: the GPU (compute) writes it. Such a buffer is GPU-only: the CPU cannot Map it and
+    //           Update() goes through the staging path, so 'usage' is ignored for it.
+    //
+    //  Dynamic Update()/Map() REPLACE the contents of the whole buffer: bytes outside the written range are
+    //  undefined afterwards. Always write the complete live range.
+    //
+    //  Use ValidateBufferDesc() to check a description before creating the buffer.
+    // ----------------------------------------------------------------------------
     struct BufferDesc {
         BufferType type = BufferType::Vertex;
         BufferUsage usage = BufferUsage::Static;
@@ -565,12 +583,47 @@ namespace DXEngine::RHI
         uint32_t stride = 0;
 
         //: Additional flags
-        bool allowUnorderedAccess = false;  // For compute shaders
+        bool allowUnorderedAccess = false;  // For compute shaders (Storage only)
         bool indirectArgs = false;          // For indirect drawing
 
         const void* initialData = nullptr;
         std::string debugName;
     };
+
+    // Largest element a structured buffer can hold (a D3D11 limit; the other APIs allow at least as much).
+    constexpr uint32_t kMaxStructuredStride = 2048;
+
+    // Checks a BufferDesc against the rules every backend shares. Returns an empty string when the description
+    // is valid, otherwise a sentence saying what is wrong (suitable for a log or an exception message).
+    // Pure logic: no device needed, so it is unit-tested.
+    inline std::string ValidateBufferDesc(const BufferDesc& d)
+    {
+        const std::string name = d.debugName.empty() ? std::string("buffer") : "buffer '" + d.debugName + "'";
+
+        if (d.size == 0)
+            return name + ": size is 0";
+
+        if (d.type == BufferType::Storage)
+        {
+            if (d.stride == 0)
+                return name + ": a Storage buffer needs a stride (the element size)";
+            if (d.stride % 4 != 0)
+                return name + ": the stride of a Storage buffer must be a multiple of 4 bytes";
+            if (d.stride > kMaxStructuredStride)
+                return name + ": the stride of a Storage buffer is limited to " + std::to_string(kMaxStructuredStride) + " bytes";
+            if (d.size % d.stride != 0)
+                return name + ": size must be a whole number of elements (size % stride != 0)";
+        }
+
+        if (d.allowUnorderedAccess && d.type != BufferType::Storage)
+            return name + ": allowUnorderedAccess is only supported for Storage buffers";
+
+        // A Static buffer is filled once at creation. (A GPU-written Storage buffer is exempt: it is never static.)
+        if (d.usage == BufferUsage::Static && !d.allowUnorderedAccess && d.initialData == nullptr)
+            return name + ": a Static buffer needs initialData (it cannot be written after creation)";
+
+        return {};
+    }
 
     // ============================================================================
     // Other Existing Types
