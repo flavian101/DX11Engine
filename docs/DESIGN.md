@@ -55,7 +55,13 @@ Plan: **clustered forward shading**.
 * The view frustum is split into a grid of clusters (for example 16 x 9 x 24). A cluster stores a range into a `light index` buffer. First version assigns lights to clusters **on the CPU** (pure math, unit-testable); a compute-shader version can replace it later without changing the shader.
 * The pixel shader finds its cluster from screen position and depth and loops only over that cluster's lights.
 
-Needs from the RHI: structured buffers with a shader resource view, `SetBuffer` for SRVs.
+Needs from the RHI: structured buffers with a shader resource view, `SetBuffer` for SRVs. **Done** (patch 0062).
+
+Decisions made while building it:
+* **Directional lights stay in the small constant buffer** (b3). There are at most 4, every pixel needs all of them (nothing to cull), and shadows attach cascade matrices to them. Only point and spot lights go into the structured buffer, so the cluster work only ever deals with lights that have a position and a range.
+* Engine-wide buffers live at **t32 and up**; t0..t31 belong to the material textures (`TextureSlot::MaxTextureSlots`). The light buffer is `SRV_Lights = 32`.
+* The shader finds lights in ONE function, `ShadeLocalLights()` (common.hlsli), and the BRDF exists once (`EvaluateDirectLight`). Clustering changes that function and nothing else.
+* The falloff is one function too (`LightDistanceAttenuation`). It is still the old `1 / (1 + d^2)` with the smooth window, so scenes look as before; switching to true inverse-square is a change to that function plus re-tuned intensities.
 
 ## Shadows (milestone 3)
 
@@ -86,7 +92,10 @@ Not needed yet, and not before the scene exists. Once everything is an entity wi
   scene features, Sandbox rebuilt as a scene. `Ball`, `Ground`, `SkySphere`, `LightSphere`, `LightManager`, `PickingManager` are gone.
   `Model` remains only as the importer's output; `Scene::Instantiate` turns it into entities (skinned models keep animating
   through a transitional bridge).
-* Tests that need no GPU: `scene_tests` (9) and `render_tests` (13), built with `-DDXENGINE_BUILD_TESTS=ON`.
+* **Milestone 2, in progress:** patch 0062 (structured buffers in the RHI) and 0063 (point/spot lights in a `StructuredBuffer<LightGPU>`,
+  caps of 64 / 32 gone, up to 8192 local lights, grown by doubling). Still to do: the cluster grid, the CPU light-to-cluster assignment
+  (pure, unit-tested), the shader switching from "loop over all lights" to "loop over this pixel's cluster", the stress scene.
+* Tests that need no GPU: `scene_tests` (9), `render_tests` (9), `light_tests` (10) and `rhi_tests` (5), built with `-DDXENGINE_BUILD_TESTS=ON`.
 * Also removed along the way: `FrameTime` passed by value as if it were a number (now a plain float of seconds).
 
 ## Order of work

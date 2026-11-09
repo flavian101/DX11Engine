@@ -10,13 +10,12 @@ target_include_directories(scene_tests PRIVATE
 target_compile_features(scene_tests PRIVATE cxx_std_17)
 add_test(NAME scene_tests COMMAND scene_tests)
 
-# Renderer-side logic that needs no GPU: scene extraction (culling, routing, sorting, materials) and light packing.
+# Renderer-side logic that needs no GPU: scene extraction (culling, routing, sorting, materials).
 # Uses the real Mesh / Material classes; meshes are created without a device.
 add_executable(render_tests
     render_tests.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightPacking.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/SceneExtraction.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
@@ -29,6 +28,18 @@ target_include_directories(render_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(render_tests PRIVATE cxx_std_17)
 add_test(NAME render_tests COMMAND render_tests)
+
+# Light packing: Scene lights -> the GPU light data (directional block + structured local lights).
+add_executable(light_tests
+    light_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightPacking.cpp)
+target_include_directories(light_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/DXEngine/src
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
+target_compile_features(light_tests PRIVATE cxx_std_17)
+add_test(NAME light_tests COMMAND light_tests)
 
 # RHI rules that need no device (buffer description validation).
 add_executable(rhi_tests rhi_tests.cpp)

@@ -14,7 +14,7 @@ namespace DXEngine
     // pass files that would all have contained the same bind-and-draw code.
     // Split into separate classes ONLY when they truly diverge (e.g. depth pre-pass).
     //
-    // Reads:  ctx.batches.<queue>, ctx.camera, ctx.lightBuffer, ctx.targets
+    // Reads:  ctx.batches.<queue>, ctx.camera, ctx.lightBuffer, ctx.localLightBuffer, ctx.targets
     // Writes: ctx.stats, the GPU back buffer / depth buffer
     // ==================================================================
     class ForwardPass final : public RenderPass

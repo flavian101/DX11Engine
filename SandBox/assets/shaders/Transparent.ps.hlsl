@@ -102,37 +102,16 @@ float4 main(StandardVertexOutput input) : SV_Target
         color += lightContrib * 0.8; // Reduce lighting intensity for transparency
     }
     
-    // Point lights
-    for (uint i = 0; i < pointLightCount; ++i)
-    {
-        float3 lightContrib = CalculatePointLight(
-            pointLights[i],
-            input.worldPos.xyz,
-            worldNormal,
-            V,
-            albedo,
-            metallicValue,
-            roughnessValue,
-            F0
-        );
-        color += lightContrib * 0.8;
-    }
-    
-    // Spot lights
-    for (uint i = 0; i < spotLightCount; ++i)
-    {
-        float3 lightContrib = CalculateSpotLight(
-            spotLights[i],
-            input.worldPos.xyz,
-            worldNormal,
-            V,
-            albedo,
-            metallicValue,
-            roughnessValue,
-            F0
-        );
-        color += lightContrib * 0.8;
-    }
+    // Local lights (point + spot), with the same reduced intensity
+    color += ShadeLocalLights(
+        input.worldPos.xyz,
+        worldNormal,
+        V,
+        albedo,
+        metallicValue,
+        roughnessValue,
+        F0
+    ) * 0.8;
     
     // ========================================================================
     // TRANSPARENCY-SPECIFIC EFFECTS

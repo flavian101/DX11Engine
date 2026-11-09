@@ -60,7 +60,7 @@ namespace DXEngine
 
     // ==================================================================
     // ResourceCache: owns the long-lived GPU objects the RENDERER creates
-    // (pipelines, shared constant buffers, the default sampler).
+    // (pipelines, shared constant / structured buffers, the default sampler).
     // No pass creates raw RHI resources directly.
     //
     // Removed on purpose (nothing used them): transient buffer pool, BuildPipelineKey,
@@ -82,6 +82,12 @@ namespace DXEngine
 
         // Named, dynamic constant buffer (size rounded up to 16 bytes). Same name => same buffer.
         std::shared_ptr<RHI::IBuffer> GetOrCreateConstantBuffer(const std::string& name, uint32_t sizeBytes);
+
+        // Named, dynamic structured buffer: 'elementCount' elements of 'strideBytes' each, rewritten by the CPU and
+        // read in shaders as StructuredBuffer<T> (bind it with ICommandBuffer::SetBuffer). Same name + same shape =>
+        // same buffer; a different shape REPLACES it (users that still hold the old one keep it alive until they
+        // let go). Returns nullptr when the device refuses (the reason goes to the debug output).
+        std::shared_ptr<RHI::IBuffer> GetOrCreateStructuredBuffer(const std::string& name, uint32_t strideBytes, uint32_t elementCount);
 
         // Linear + wrap. Bound to s0 by the drawer.
         RHI::ISampler* GetDefaultSampler();
@@ -106,6 +112,7 @@ namespace DXEngine
         std::shared_ptr<RHI::IGraphicsDevice> m_Device;
         std::unordered_map<PipelineKey, PipelineEntry, PipelineKeyHash> m_Pipelines;
         std::unordered_map<std::string, CBEntry> m_ConstantBuffers;
+        std::unordered_map<std::string, CBEntry> m_StructuredBuffers;   // same entry type: buffer + size in bytes
         std::shared_ptr<RHI::ISampler> m_DefaultSampler;
         bool m_Wireframe = false;   // was uninitialised before
     };

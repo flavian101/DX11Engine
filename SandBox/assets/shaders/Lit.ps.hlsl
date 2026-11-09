@@ -117,40 +117,18 @@ float4 main(StandardVertexOutput input) : SV_Target
     }
     
     // ========================================================================
-    // POINT LIGHTS
+    // LOCAL LIGHTS (point + spot)
     // ========================================================================
     
-    for (uint i = 0; i < pointLightCount; ++i)
-    {
-        color += CalculatePointLight(
-            pointLights[i],
-            input.worldPos.xyz,
-            worldNormal,
-            V,
-            albedo,
-            metallicValue,
-            roughnessValue,
-            F0
-        );
-    }
-    
-    // ========================================================================
-    // SPOT LIGHTS
-    // ========================================================================
-    
-    for (uint i = 0; i < spotLightCount; ++i)
-    {
-        color += CalculateSpotLight(
-            spotLights[i],
-            input.worldPos.xyz,
-            worldNormal,
-            V,
-            albedo,
-            metallicValue,
-            roughnessValue,
-            F0
-        );
-    }
+    color += ShadeLocalLights(
+        input.worldPos.xyz,
+        worldNormal,
+        V,
+        albedo,
+        metallicValue,
+        roughnessValue,
+        F0
+    );
     
     // ========================================================================
     // FOG - Optional feature

@@ -157,14 +157,14 @@ cbuffer MaterialBufferData : register(b2)
     
 };
 
-// Enhanced Scene Lighting buffer
+// Scene lighting: the environment + the DIRECTIONAL lights (few, every pixel needs all of them).
+// Mirrors SceneLightData in utils/ConstantBufferTypes.h.
 cbuffer SceneLightData : register(b3)
 {
     // Light counts
     uint directionalLightCount;
-    uint pointLightCount;
-    uint spotLightCount;
-    uint lightPadding;
+    uint localLightCount;      // valid elements of localLights below
+    uint2 lightPadding;
     
     // Global parameters
     float3 ambientColor;
@@ -184,33 +184,31 @@ cbuffer SceneLightData : register(b3)
         float4 cascadeSplits;
         float4x4 shadowMatrices[4];
     } directionalLights[4];
-    
-    // Point lights (max 64)
-    struct PointLightGPU
-    {
-        float3 position;
-        float radius;
-        float3 color;
-        float intensity;
-        float3 attenuation;
-        float shadowMapIndex;
-    } pointLights[64];
-    
-    // Spot lights (max 32)
-    struct SpotLightGPU
-    {
-        float3 position;
-        float range;
-        float3 direction;
-        float innerCone;
-        float3 color;
-        float outerCone;
-        float intensity;
-        float3 attenuation;
-        float shadowMapIndex;
-        float4x4 shadowMatrix;
-    } spotLights[32];
 };
+
+// LOCAL lights (point + spot): a structured buffer, so a scene is not limited to a few dozen.
+// Mirrors LightGPU in utils/ConstantBufferTypes.h FIELD FOR FIELD (64 bytes; that header static_asserts the
+// size and offsets). t32 = SRV_Lights; t0..t31 are the material textures.
+#define LIGHT_TYPE_POINT 1
+#define LIGHT_TYPE_SPOT  2
+
+struct LightGPU
+{
+    float3 position;
+    float  range;          // distance where the light has fully faded
+
+    float3 color;          // linear RGB, already multiplied by the intensity
+    uint   type;           // LIGHT_TYPE_*
+
+    float3 direction;      // spot: the way the light points (unit)
+    int    shadowIndex;    // -1 = no shadow
+
+    float  spotScale;      // cone = saturate(dot(-L, direction) * spotScale + spotOffset)
+    float  spotOffset;
+    float2 lightPadding2;
+};
+
+StructuredBuffer<LightGPU> localLights : register(t32);
 
 cbuffer UIBuffer : register(b4)
 {
@@ -688,15 +686,12 @@ float SampleShadowMap(float4 shadowPos, int shadowMapIndex)
 
 //lighting calculation
 
-float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, float3 albedo, float metallicValue, float roughnessValue,
-                                float3 F0, float4 worldPos)
+// Cook-Torrance (GGX) + Lambert for ONE light direction. 'L' points from the surface TO the light and
+// 'radiance' is what arrives at the surface (colour * intensity * attenuation). Every light type ends here,
+// so the BRDF exists exactly once.
+float3 EvaluateDirectLight(float3 N, float3 V, float3 L, float3 radiance,
+                           float3 albedo, float metallicValue, float roughnessValue, float3 F0)
 {
-    if (light.intensity <= 0.0)
-        return float3(0, 0, 0);
-    
-    float3 L = normalize(-light.direction);
-    float3 H = normalize(V + L);
-    
     float NdotL = max(dot(N, L), 0.0);
     if (NdotL <= 0.0)
         return float3(0, 0, 0);
@@ -705,18 +700,7 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     // from the viewer near silhouettes, and an early-out there paints dark speckles.
     float NdotV = max(dot(N, V), 0.001);
     
-    float shadow = 1.0;
-#if ENABLE_SHADOWS
-    if (light.shadowMapIndex >= 0)
-    {
-        // Transform world position to shadow space
-        float4 shadowPos = mul(worldPos, light.shadowMatrices[0]);
-        shadow = SampleShadowMap(shadowPos, (int)light.shadowMapIndex);
-    }
-#endif
-    
-    //BRDF calculation
-    float3 radiance = light.color * light.intensity;
+    float3 H = normalize(V + L);
     
     float NDF = DistributionGGX(N, H, roughnessValue);
     float G = GeometrySmith(N, V, L, roughnessValue);
@@ -733,124 +717,80 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     //Lambert diffuse (divided by PI for energy conservation)
     float3 diffuse = kD * albedo / PI;
     
-    // Final contribution
-    return (diffuse + specular) * radiance * NdotL * shadow;
-}
-
-float3 CalculatePointLight(PointLightGPU light, float3 worldPos, float3 N, float3 V,
-                           float3 albedo, float metallicValue, float roughnessValue, float3 F0)
-{
-    if (light.intensity <= 0.0)
-        return float3(0, 0, 0);
-    
-    float3 L = light.position - worldPos;
-    float distance = max(length(L), 0.0001); // avoid L / 0 when the surface is at the light
-    
-    L /= distance;
-    float3 H = normalize(V + L);
-    
-    if (distance > light.radius)
-        return float3(0, 0, 0);
-    
-    float NdotL = max(dot(N, L), 0.0);
-    if (NdotL <= 0.0)
-        return float3(0, 0, 0);
-    
-    // Clamp instead of returning black: interpolated or normal-mapped normals often face slightly away
-    // from the viewer near silhouettes, and an early-out there paints dark speckles.
-    float NdotV = max(dot(N, V), 0.001);
-    
-    //physical attenuation with smooth falloff
-    float attenuation = 1.0 / (light.attenuation.x +
-                              light.attenuation.y * distance +
-                              light.attenuation.z * distance * distance);
-    
-    // Window function for smooth falloff at radius
-    float distanceRatio = distance / light.radius;
-    float falloff = saturate(1.0 - pow(distanceRatio, 4.0));
-    falloff *= falloff;
-    attenuation *= falloff;
-    
-    float3 radiance = light.color * light.intensity * attenuation;
-
-    //BRDF calculation
-    float NDF = DistributionGGX(N, H, roughnessValue);
-    float G = GeometrySmith(N, V, L, roughnessValue);
-    float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-    
-    float3 kS = F;
-    float3 kD = float3(1.0, 1.0, 1.0) - kS;
-    kD *= 1.0 - metallicValue;
-    
-   // BRDF
-    float3 numerator = NDF * G * F;
-    float denominator = 4.0 * NdotV * NdotL + EPSILON;
-    float3 specular = numerator / denominator;
-    
-    float3 diffuse = kD * albedo / PI;
-    
     return (diffuse + specular) * radiance * NdotL;
 }
 
-float3 CalculateSpotLight(SpotLightGPU light, float3 worldPos, float3 N, float3 V,
-                         float3 albedo, float metallicValue, float roughnessValue, float3 F0)
+float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, float3 albedo, float metallicValue, float roughnessValue,
+                                float3 F0, float4 worldPos)
 {
     if (light.intensity <= 0.0)
         return float3(0, 0, 0);
     
-    float3 L = light.position - worldPos;
-    float distance = max(length(L), 0.0001); // avoid L / 0 when the surface is at the light
+    float3 L = normalize(-light.direction);
+    
+    if (dot(N, L) <= 0.0)
+        return float3(0, 0, 0);
+    
+    float shadow = 1.0;
+#if ENABLE_SHADOWS
+    if (light.shadowMapIndex >= 0)
+    {
+        // Transform world position to shadow space
+        float4 shadowPos = mul(worldPos, light.shadowMatrices[0]);
+        shadow = SampleShadowMap(shadowPos, (int)light.shadowMapIndex);
+    }
+#endif
+    
+    float3 radiance = light.color * light.intensity;
+    return EvaluateDirectLight(N, V, L, radiance, albedo, metallicValue, roughnessValue, F0) * shadow;
+}
+
+// Distance falloff of a local light: 1 / (1 + d^2), windowed to exactly zero at 'range'.
+// (The curve the old attenuation vector {1, 0, 1} produced. Changing the falloff model is a change to this
+// one function.)
+float LightDistanceAttenuation(float distance, float range)
+{
+    float ratio2 = (distance * distance) / (range * range);
+    float window = saturate(1.0 - ratio2 * ratio2);      // 1 - (d / range)^4
+    return (window * window) / (1.0 + distance * distance);
+}
+
+// One point or spot light (an element of localLights).
+float3 CalculateLocalLight(LightGPU light, float3 worldPos, float3 N, float3 V,
+                           float3 albedo, float metallicValue, float roughnessValue, float3 F0)
+{
+    float3 toLight = light.position - worldPos;
+    float distance = max(length(toLight), 0.0001);       // avoid L / 0 when the surface is at the light
     
     if (distance > light.range)
         return float3(0, 0, 0);
     
-    L /= distance;
-    float3 H = normalize(V + L);
+    float3 L = toLight / distance;
+    float attenuation = LightDistanceAttenuation(distance, light.range);
     
-    float NdotL = max(dot(N, L), 0.0);
-    if (NdotL <= 0.0)
+    if (light.type == LIGHT_TYPE_SPOT)
+        attenuation *= saturate(dot(-L, light.direction) * light.spotScale + light.spotOffset);
+    
+    if (attenuation <= 0.0)
         return float3(0, 0, 0);
     
-    // Clamp instead of returning black: interpolated or normal-mapped normals often face slightly away
-    // from the viewer near silhouettes, and an early-out there paints dark speckles.
-    float NdotV = max(dot(N, V), 0.001);
+    return EvaluateDirectLight(N, V, L, light.color * attenuation, albedo, metallicValue, roughnessValue, F0);
+}
+
+// All local lights that reach this pixel. The ONE place that decides which lights a pixel considers: every
+// lit shader calls it, so changing how lights are found (clusters, tiles) changes this function only.
+float3 ShadeLocalLights(float3 worldPos, float3 N, float3 V,
+                        float3 albedo, float metallicValue, float roughnessValue, float3 F0)
+{
+    float3 result = float3(0, 0, 0);
     
-    //spotLight cone calculation
-    float3 spotDirection = normalize(light.direction);
-    float cosAngle = dot(-L, spotDirection);
-    
-    float epsilon = light.innerCone - light.outerCone;
-    float spotFalloff = saturate((cosAngle - light.outerCone) / epsilon);
-    if (spotFalloff <= 0.0)
-        return float3(0, 0, 0);
-    
-    //phisical attenuation
-    float attenuation = 1.0 / (light.attenuation.x +
-                              light.attenuation.y * distance +
-                              light.attenuation.z * distance * distance);
-    
-    float falloff = saturate(1.0 - pow(distance / light.range, 4.0));
-    falloff *= falloff;
-    attenuation *= falloff * spotFalloff;
-    
-    float3 radiance = light.color * light.intensity * attenuation;
-    
-    // BRDF calculation
-    float NDF = DistributionGGX(N, H, roughnessValue);
-    float G = GeometrySmith(N, V, L, roughnessValue);
-    float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-    
-    float3 kS = F;
-    float3 kD = float3(1.0, 1.0, 1.0) - kS;
-    kD *= 1.0 - metallicValue;
-    
-    float3 numerator = NDF * G * F;
-    float denominator = 4.0 * NdotV * NdotL + EPSILON;
-    float3 specular = numerator / denominator;
-    
-    float3 diffuse = kD * albedo / PI;
-    
-    return (diffuse + specular) * radiance * NdotL;
+    [loop]
+    for (uint i = 0; i < localLightCount; ++i)
+    {
+        result += CalculateLocalLight(localLights[i], worldPos, N, V,
+                                      albedo, metallicValue, roughnessValue, F0);
+    }
+    return result;
 }
 
 ///Tone mapping

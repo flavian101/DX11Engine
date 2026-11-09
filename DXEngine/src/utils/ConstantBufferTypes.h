@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
 namespace DXEngine {
 
@@ -35,42 +37,61 @@ namespace DXEngine {
         DirectX::XMMATRIX shadowMatrices[4]; // Up to 4 cascade levels
     };
 
-    struct PointLightGPU
+    // ------------------------------------------------------------------
+    // LOCAL lights (point + spot): one element of the structured buffer `localLights` (SRV_Lights).
+    //
+    // 64 bytes, laid out in four 16-byte rows. THE HLSL STRUCT IN SandBox/assets/shaders/common.hlsli MUST MATCH
+    // FIELD FOR FIELD (structured buffers use plain C packing, so a float3 + float pair fills one row).
+    // The size and every offset are checked below: change a field here and the build tells you.
+    //
+    //   color        linear RGB already multiplied by the intensity (the shader never needs them apart)
+    //   direction    spot: the way the light points (unit); point: unused
+    //   spotScale / spotOffset
+    //                the spot cone as  saturate(cos(angle) * spotScale + spotOffset):  0 at the outer cone,
+    //                1 at the inner cone, no division in the shader and no NaN when inner == outer
+    //   shadowIndex  -1 = casts no shadow (the shadow milestone fills it in)
+    // ------------------------------------------------------------------
+    enum GpuLightType : uint32_t
     {
-        DirectX::XMFLOAT3 position;
-        float radius;
-        DirectX::XMFLOAT3 color;
-        float intensity;
-        DirectX::XMFLOAT3 attenuation; // constant, linear, quadratic
-        float shadowMapIndex; // -1 if no shadows
+        GpuLight_Directional = 0,   // lives in SceneLightData, not in the structured buffer
+        GpuLight_Point       = 1,
+        GpuLight_Spot        = 2,
     };
 
-    struct SpotLightGPU
+    struct LightGPU
     {
         DirectX::XMFLOAT3 position;
-        float range;
+        float             range;          // distance where the light has fully faded
+
+        DirectX::XMFLOAT3 color;
+        uint32_t          type;           // GpuLightType
+
         DirectX::XMFLOAT3 direction;
-        float innerCone;
-        DirectX::XMFLOAT3 color;
-        float outerCone;
-        float intensity;
-        DirectX::XMFLOAT3 attenuation;
-        float shadowMapIndex;
-        DirectX::XMMATRIX shadowMatrix;
-    };
+        int32_t           shadowIndex;
 
-    // Unified light buffer for GPU
+        float             spotScale;
+        float             spotOffset;
+        float             padding0;       // explicit: keeps the element at 64 bytes (room for flags later)
+        float             padding1;
+    };
+    static_assert(sizeof(LightGPU) == 64, "LightGPU must stay 64 bytes (4 x float4) to match the HLSL struct");
+    static_assert(offsetof(LightGPU, position)    == 0  && offsetof(LightGPU, range)       == 12 &&
+                  offsetof(LightGPU, color)       == 16 && offsetof(LightGPU, type)        == 28 &&
+                  offsetof(LightGPU, direction)   == 32 && offsetof(LightGPU, shadowIndex) == 44 &&
+                  offsetof(LightGPU, spotScale)   == 48 && offsetof(LightGPU, spotOffset)  == 52,
+                  "LightGPU field offsets no longer match the HLSL struct");
+
+    // Constant buffer b3: the environment, the DIRECTIONAL lights, and how many local lights the structured buffer holds.
+    // Directional lights stay here: there are only a few, every pixel needs all of them (nothing to cull), and the
+    // shadow milestone attaches cascade matrices to them.
     struct SceneLightData
     {
         static constexpr uint32_t MAX_DIRECTIONAL_LIGHTS = 4;
-        static constexpr uint32_t MAX_POINT_LIGHTS = 64;
-        static constexpr uint32_t MAX_SPOT_LIGHTS = 32;
 
         // Light counts
         uint32_t directionalLightCount;
-        uint32_t pointLightCount;
-        uint32_t spotLightCount;
-        uint32_t padding;
+        uint32_t localLightCount;     // valid elements of the local light buffer
+        uint32_t padding[2];
 
         // Global lighting parameters
         DirectX::XMFLOAT3 ambientColor;
@@ -84,8 +105,6 @@ namespace DXEngine {
 
         // Light arrays
         std::array<DirectionalLightGPU, MAX_DIRECTIONAL_LIGHTS> directionalLights;
-        std::array<PointLightGPU, MAX_POINT_LIGHTS> pointLights;
-        std::array<SpotLightGPU, MAX_SPOT_LIGHTS> spotLights;
     };
 
     
@@ -111,5 +130,12 @@ namespace DXEngine {
         CB_Post_Process = 6        // For post-processing effects
 
 
+    };
+
+    // Shader-resource (t#) slots of ENGINE-WIDE buffers. t0..t31 belong to the material textures
+    // (TextureSlot::MaxTextureSlots), so anything the renderer binds for every draw starts above that.
+    enum SrvSlot : uint32_t
+    {
+        SRV_Lights = 32,            // StructuredBuffer<LightGPU> localLights
     };
 }

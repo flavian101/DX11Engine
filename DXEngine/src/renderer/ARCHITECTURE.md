@@ -6,14 +6,14 @@ command recording, resource lifetime management). This one describes what the co
 ## One frame
 
 ```
-Renderer::BeginScene(camera)        fills FrameContext: camera, cmd, targets
-Renderer::Submit(model) ...         appends to FrameContext::scene
+Renderer::BeginScene(camera)        fills FrameContext: camera, cmd, targets, environment
+Renderer::Submit(scene)             makes the world matrices current, points FrameContext at the Scene
+Renderer::SubmitUI(element) ...
 Renderer::EndScene()
    |
    |-- CPU SYSTEMS  (write the blackboard)
-   |     CullingSystem   scene       -> visibility
-   |     RenderBatcher   visibility  -> batches (background / opaque / transparent)
-   |     LightSystem     frustum     -> lightBuffer
+   |     SceneExtraction  scene + camera  -> batches (background / opaque / transparent), culling, sorting
+   |     LightSystem      scene + env     -> lightBuffer (b3), localLightBuffer (t32)
    |
    |-- GPU PASSES   (read the blackboard), in insertion order
    |     ClearPass
@@ -25,6 +25,19 @@ Renderer::EndScene()
    `-- cmd.End -> device.Submit -> device.Present
 ```
 
+## Shader register map
+
+| Register | What | Bound by |
+|---|---|---|
+| b0..b2 | transform, bones, material | `MeshDrawer` |
+| b3 | `SceneLightData`: environment + directional lights + local light count | `MeshDrawer` (filled by `LightSystem`) |
+| t0..t31 | material textures (`TextureSlot`) | `MeshDrawer` |
+| t32 | `StructuredBuffer<LightGPU> localLights` (point + spot) | `MeshDrawer` (filled by `LightSystem`) |
+| s0 | default sampler | `MeshDrawer` |
+
+`LightGPU` is declared twice, in `utils/ConstantBufferTypes.h` and `common.hlsli`. The C++ side `static_assert`s the size and
+every offset, so a change there fails the build instead of corrupting lights.
+
 ## The one rule that keeps it clean
 
 **Systems fill the FrameContext. Passes read it.**
@@ -35,10 +48,10 @@ If you are about to create a GPU object inside a system, it belongs in `Resource
 
 | Thing | Owner | Lifetime |
 |---|---|---|
-| Device, ResourceCache, ShaderCache, MaterialSystem, LightManager | `RenderServices` inside `Renderer` | whole run |
-| Pipelines, shared constant buffers, default sampler | `ResourceCache` | whole run |
+| Device, ResourceCache, ShaderCache, MaterialSystem | `RenderServices` inside `Renderer` | whole run |
+| Pipelines, shared constant + structured buffers, default sampler | `ResourceCache` | whole run (a structured buffer may be REPLACED by a bigger one) |
 | Back buffer, depth buffer | the device | recreated on resize, so FrameContext holds raw pointers re-fetched every frame |
-| Scene, visibility, batches, stats | `FrameContext` | one frame |
+| Camera, batches, stats, pointers to the buffers above | `FrameContext` | one frame |
 
 ## Adding a pass (checklist)
 

@@ -72,6 +72,9 @@ namespace DXEngine
         uint32_t pipelineChanges    = 0;
         uint32_t materialChanges    = 0;
         uint32_t uiElementsRendered = 0;
+        uint32_t directionalLights  = 0;   // written by LightSystem
+        uint32_t localLights        = 0;   // point + spot lights uploaded this frame
+        uint32_t lightsDropped      = 0;   // local lights over the limit (0 in a healthy scene)
 
         void Reset() { *this = RenderStatistics{}; }
 
@@ -83,7 +86,10 @@ namespace DXEngine
                 << "  draw calls " << drawCalls << ", triangles " << trianglesRendered << "\n"
                 << "  pipeline changes " << pipelineChanges
                 << ", material changes " << materialChanges << "\n"
-                << "  ui elements " << uiElementsRendered << "\n";
+                << "  ui elements " << uiElementsRendered << "\n"
+                << "  lights: " << directionalLights << " directional, " << localLights << " local";
+            if (lightsDropped) oss << " (" << lightsDropped << " DROPPED: over the limit)";
+            oss << "\n";
             return oss.str();
         }
     };

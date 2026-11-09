@@ -6,20 +6,23 @@
 
 namespace DXEngine
 {
+    // The GPU numbers lights the way the scene does (the HLSL compares against these values).
+    static_assert(static_cast<uint32_t>(LightType::Directional) == GpuLight_Directional &&
+                  static_cast<uint32_t>(LightType::Point)       == GpuLight_Point &&
+                  static_cast<uint32_t>(LightType::Spot)        == GpuLight_Spot,
+                  "LightType and GpuLightType must use the same numbers");
+
     namespace
     {
-        struct Candidate { float distanceSq; entt::entity entity; };
-
         float DistanceSq(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
         {
             const float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
             return dx * dx + dy * dy + dz * dz;
         }
-
-        DirectX::XMFLOAT4X4 IdentityMatrix() { return TransformComponent::Identity(); }
     }
 
-    void PackLights(Scene* scene, const RenderEnvironment& env, const DirectX::XMFLOAT3& cameraPosition, SceneLightData& out)
+    uint32_t PackLights(Scene* scene, const RenderEnvironment& env, const DirectX::XMFLOAT3& cameraPosition,
+                        SceneLightData& out, std::vector<LightGPU>& localLights, uint32_t maxLocalLights)
     {
         out = SceneLightData{};
         out.ambientColor     = env.ambientColor;
@@ -28,14 +31,14 @@ namespace DXEngine
         out.exposure         = env.exposure;
         out.gamma            = env.gamma;
 
-        if (!scene) return;
+        localLights.clear();                                          // keeps the capacity
+        if (!scene) return 0;
         entt::registry& reg = scene->Registry();
-
-        std::vector<Candidate> points, spots;
 
         for (auto [entity, transform, light] : reg.view<TransformComponent, LightComponent>().each())
         {
-            if (light.intensity <= 0.0f) continue;                    // switched off
+            (void)entity;
+            if (!(light.intensity > 0.0f)) continue;                  // switched off (also rejects NaN)
 
             switch (light.type)
             {
@@ -52,54 +55,58 @@ namespace DXEngine
                 break;
             }
             case LightType::Point:
-                points.push_back({ DistanceSq(transform.WorldPosition(), cameraPosition), entity });
-                break;
             case LightType::Spot:
-                spots.push_back({ DistanceSq(transform.WorldPosition(), cameraPosition), entity });
+            {
+                if (!(light.range > 0.0f)) break;                     // no reach: it can never light anything
+
+                LightGPU g{};
+                g.position    = transform.WorldPosition();
+                g.range       = light.range;
+                g.color       = { light.color.x * light.intensity, light.color.y * light.intensity, light.color.z * light.intensity };
+                g.type        = static_cast<uint32_t>(light.type);
+                g.shadowIndex = -1;                                   // the shadow milestone assigns real indices
+
+                if (light.type == LightType::Spot)
+                {
+                    const float outer = std::max(light.outerConeDegrees, 0.1f);
+                    const float inner = std::min(light.innerConeDegrees, outer);
+                    const float cosInner = std::cos(DirectX::XMConvertToRadians(inner));
+                    const float cosOuter = std::cos(DirectX::XMConvertToRadians(outer));
+
+                    // cone(cosAngle) = saturate(cosAngle * scale + offset): 0 at the outer cone, 1 at the inner cone.
+                    // The floor on the width keeps scale finite when inner == outer (a hard-edged spot), where the
+                    // old shader divided by zero.
+                    const float width = std::max(cosInner - cosOuter, 1e-4f);
+                    g.direction  = transform.WorldForward();
+                    g.spotScale  = 1.0f / width;
+                    g.spotOffset = -cosOuter * g.spotScale;
+                }
+                localLights.push_back(g);
                 break;
+            }
             }
         }
 
-        auto byDistance = [](const Candidate& a, const Candidate& b) { return a.distanceSq < b.distanceSq; };
-        std::sort(points.begin(), points.end(), byDistance);
-        std::sort(spots.begin(), spots.end(), byDistance);
-
-        // 1 / (1 + d^2), windowed to zero at 'range' by the shader. (The old three hand-tuned numbers are gone;
-        // intensity is the only brightness control now.)
-        const DirectX::XMFLOAT3 attenuation{ 1.0f, 0.0f, 1.0f };
-
-        for (const Candidate& c : points)
+        // Over the limit: keep the lights nearest to the camera.
+        uint32_t dropped = 0;
+        if (localLights.size() > maxLocalLights)
         {
-            if (out.pointLightCount >= SceneLightData::MAX_POINT_LIGHTS) break;
-            const auto& t = reg.get<TransformComponent>(c.entity);
-            const auto& l = reg.get<LightComponent>(c.entity);
-            PointLightGPU& g = out.pointLights[out.pointLightCount++];
-            g.position       = t.WorldPosition();
-            g.radius         = l.range;
-            g.color          = l.color;
-            g.intensity      = l.intensity;
-            g.attenuation    = attenuation;
-            g.shadowMapIndex = -1.0f;
+            dropped = static_cast<uint32_t>(localLights.size()) - maxLocalLights;
+            std::nth_element(localLights.begin(), localLights.begin() + maxLocalLights, localLights.end(),
+                [&](const LightGPU& a, const LightGPU& b)
+                { return DistanceSq(a.position, cameraPosition) < DistanceSq(b.position, cameraPosition); });
+            localLights.resize(maxLocalLights);
         }
 
-        for (const Candidate& c : spots)
-        {
-            if (out.spotLightCount >= SceneLightData::MAX_SPOT_LIGHTS) break;
-            const auto& t = reg.get<TransformComponent>(c.entity);
-            const auto& l = reg.get<LightComponent>(c.entity);
-            const float outer = std::max(l.outerConeDegrees, 0.1f);
-            const float inner = std::min(l.innerConeDegrees, outer);
-            SpotLightGPU& g = out.spotLights[out.spotLightCount++];
-            g.position       = t.WorldPosition();
-            g.range          = l.range;
-            g.direction      = t.WorldForward();
-            g.innerCone      = std::cos(DirectX::XMConvertToRadians(inner));   // the shader compares cosines
-            g.color          = l.color;
-            g.outerCone      = std::cos(DirectX::XMConvertToRadians(outer));
-            g.intensity      = l.intensity;
-            g.attenuation    = attenuation;
-            g.shadowMapIndex = -1.0f;
-            g.shadowMatrix   = DirectX::XMMatrixIdentity();
-        }
+        out.localLightCount = static_cast<uint32_t>(localLights.size());
+        return dropped;
+    }
+
+    uint32_t LightBufferCapacityFor(uint32_t lightCount)
+    {
+        uint32_t capacity = kMinLocalLightCapacity;
+        while (capacity < lightCount && capacity < kMaxLocalLights)
+            capacity *= 2;
+        return std::min(capacity, kMaxLocalLights);
     }
 }

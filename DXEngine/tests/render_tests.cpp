@@ -1,6 +1,5 @@
-// Renderer-side logic that needs no GPU: scene extraction (culling, routing, sorting, material resolution)
-// and light packing. Uses the real Mesh / Material / Scene classes; meshes are created without a device.
-#include "renderer/Systems/LightPacking.h"
+// Renderer-side logic that needs no GPU: scene extraction (culling, routing, sorting, material resolution).
+// (Light packing has its own tests: light_tests.cpp.) Uses the real Mesh / Material / Scene classes; meshes are created without a device.
 #include "renderer/Systems/SceneExtraction.h"
 #include "scene/Scene.h"
 #include "scene/TransformSystem.h"
@@ -202,86 +201,6 @@ static void TestExtractionReusesCapacity()
     CHECK(q.opaque.capacity() == cap && q.opaque.size() == 50);
 }
 
-// ------------------------------------------------------------ light packing
-static void TestEnvironmentOnly()
-{
-    RenderEnvironment env; env.exposure = 0.7f; env.gamma = 2.0f; env.ambientIntensity = 0.25f;
-    SceneLightData data;
-    PackLights(nullptr, env, { 0, 0, 0 }, data);
-    CHECK(data.directionalLightCount == 0 && data.pointLightCount == 0 && data.spotLightCount == 0);
-    CHECK(Near(data.exposure, 0.7f) && Near(data.gamma, 2.0f) && Near(data.ambientIntensity, 0.25f));
-}
-
-static void TestDirectionalAimsAlongForward()
-{
-    const XMFLOAT3 dirs[] = { { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0.3f, -0.5f, 0.8f }, { 0, 0, -1 } };
-    for (auto d : dirs)
-    {
-        Scene scene;
-        Entity sun = scene.CreateEntity("sun");
-        sun.Get<TransformComponent>().SetForward(d);
-        auto& l = sun.Add<LightComponent>(); l.type = LightType::Directional; l.intensity = 3.0f;
-        TransformSystem::Update(scene);
-
-        SceneLightData data; PackLights(&scene, RenderEnvironment(), { 0, 0, 0 }, data);
-        const float len = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
-        CHECK(data.directionalLightCount == 1);
-        CHECK(Near(data.directionalLights[0].direction.x, d.x / len) && Near(data.directionalLights[0].direction.y, d.y / len) &&
-              Near(data.directionalLights[0].direction.z, d.z / len));
-        CHECK(Near(data.directionalLights[0].intensity, 3.0f));
-    }
-}
-
-static void TestPointAndSpotConversion()
-{
-    Scene scene;
-    Entity holder = scene.CreateEntity("holder");
-    holder.Get<TransformComponent>().position = { 10, 0, 0 };
-    Entity lamp = scene.CreateEntity("lamp", holder);                     // light moves with its parent
-    lamp.Get<TransformComponent>().position = { 0, 5, 0 };
-    auto& p = lamp.Add<LightComponent>(); p.type = LightType::Point; p.color = { 1, 0.5f, 0 }; p.intensity = 7; p.range = 25;
-
-    Entity spot = scene.CreateEntity("spot");
-    spot.Get<TransformComponent>().SetForward({ 0, -1, 0 });
-    auto& s = spot.Add<LightComponent>(); s.type = LightType::Spot; s.innerConeDegrees = 10; s.outerConeDegrees = 30; s.range = 12;
-
-    TransformSystem::Update(scene);
-    SceneLightData data; PackLights(&scene, RenderEnvironment(), { 0, 0, 0 }, data);
-
-    CHECK(data.pointLightCount == 1 && data.spotLightCount == 1);
-    CHECK(Near(data.pointLights[0].position.x, 10) && Near(data.pointLights[0].position.y, 5));   // world position through the parent
-    CHECK(Near(data.pointLights[0].radius, 25) && Near(data.pointLights[0].intensity, 7) && Near(data.pointLights[0].color.y, 0.5f));
-    CHECK(Near(data.spotLights[0].innerCone, std::cos(XMConvertToRadians(10))));                  // cosines, as the shader expects
-    CHECK(Near(data.spotLights[0].outerCone, std::cos(XMConvertToRadians(30))));
-    CHECK(Near(data.spotLights[0].direction.y, -1) && Near(data.spotLights[0].range, 12));
-}
-
-static void TestCapsKeepTheNearestAndSkipOffLights()
-{
-    Scene scene;
-    for (int i = 0; i < 100; ++i)                                         // lights at x = 0..99, camera at the origin
-    {
-        Entity e = scene.CreateEntity("p");
-        e.Get<TransformComponent>().position = { float(i), 0, 0 };
-        auto& l = e.Add<LightComponent>(); l.type = LightType::Point; l.intensity = 1.0f;
-    }
-    Entity off = scene.CreateEntity("off");
-    off.Get<TransformComponent>().position = { -1, 0, 0 };                // would be the nearest, but is switched off
-    off.Add<LightComponent>().intensity = 0.0f;
-    for (int i = 0; i < 10; ++i)
-    {
-        Entity e = scene.CreateEntity("sun");
-        auto& l = e.Add<LightComponent>(); l.type = LightType::Directional;
-    }
-    TransformSystem::Update(scene);
-    SceneLightData data; PackLights(&scene, RenderEnvironment(), { 0, 0, 0 }, data);
-
-    CHECK(data.pointLightCount == 64 && data.directionalLightCount == 4);
-    float maxX = 0; for (uint32_t i = 0; i < data.pointLightCount; ++i) maxX = std::fmax(maxX, data.pointLights[i].position.x);
-    CHECK(Near(maxX, 63));                                                // the 64 nearest, x = 0..63
-    CHECK(Near(data.pointLights[0].position.x, 0));                       // nearest first
-}
-
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -294,10 +213,6 @@ int main()
         { "extraction: material resolution",                   TestMaterialResolution },
         { "extraction: skinned bones optional and safe",       TestSkinnedBonesAreOptionalAndSafe },
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
-        { "lights: environment only",                          TestEnvironmentOnly },
-        { "lights: directional aims along forward",            TestDirectionalAimsAlongForward },
-        { "lights: point/spot conversion through hierarchy",   TestPointAndSpotConversion },
-        { "lights: caps keep nearest, off lights skipped",     TestCapsKeepTheNearestAndSkipOffLights },
     };
     for (auto& t : tests)
     {

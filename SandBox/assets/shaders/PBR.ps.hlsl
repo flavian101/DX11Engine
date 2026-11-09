@@ -164,37 +164,16 @@ float4 main(StandardVertexOutput input) : SV_Target
         );
     }
     
-    // ========== POINT LIGHTS ==========
-    [loop]
-    for (uint j = 0; j < pointLightCount; ++j)
-    {
-        color += CalculatePointLight(
-            pointLights[j],
-            input.worldPos.xyz,
-            N,
-            V,
-            albedo,
-            metallicValue,
-            roughnessValue,
-            F0
-        );
-    }
-    
-    // ========== SPOT LIGHTS ==========
-    [loop]
-    for (uint k = 0; k < spotLightCount; ++k)
-    {
-        color += CalculateSpotLight(
-            spotLights[k],
-            input.worldPos.xyz,
-            N,
-            V,
-            albedo,
-            metallicValue,
-            roughnessValue,
-            F0
-        );
-    }
+    // ========== LOCAL LIGHTS (point + spot) ==========
+    color += ShadeLocalLights(
+        input.worldPos.xyz,
+        N,
+        V,
+        albedo,
+        metallicValue,
+        roughnessValue,
+        F0
+    );
     
     // ========================================================================
     // IMAGE-BASED LIGHTING (IBL)

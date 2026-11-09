@@ -37,6 +37,7 @@ namespace DXEngine
     {
         m_Pipelines.clear();
         m_ConstantBuffers.clear();
+        m_StructuredBuffers.clear();
         m_DefaultSampler.reset();
     }
 
@@ -115,6 +116,42 @@ namespace DXEngine
         return buffer;
     }
 
+    std::shared_ptr<RHI::IBuffer> ResourceCache::GetOrCreateStructuredBuffer(const std::string& name, uint32_t strideBytes, uint32_t elementCount)
+    {
+        const uint32_t sizeBytes = strideBytes * elementCount;
+
+        auto it = m_StructuredBuffers.find(name);
+        if (it != m_StructuredBuffers.end() && it->second.sizeBytes == sizeBytes && it->second.buffer->GetStride() == strideBytes)
+            return it->second.buffer;
+
+        RHI::BufferDesc desc;
+        desc.type      = RHI::BufferType::Storage;
+        desc.usage     = RHI::BufferUsage::Dynamic;
+        desc.size      = sizeBytes;
+        desc.stride    = strideBytes;
+        desc.debugName = name;
+
+        // The RHI refuses a bad description (stride rules, size 0) by throwing, with the reason in the message.
+        std::shared_ptr<RHI::IBuffer> buffer;
+        try
+        {
+            buffer = m_Device->CreateBuffer(desc);
+        }
+        catch (const std::exception& e)
+        {
+            OutputDebugStringA(("ERROR: ResourceCache: failed to create structured buffer " + name + ": " + e.what() + "\n").c_str());
+            return nullptr;
+        }
+
+        if (!buffer || !buffer->IsValid())
+        {
+            OutputDebugStringA(("ERROR: ResourceCache: failed to create structured buffer " + name + "\n").c_str());
+            return nullptr;
+        }
+        m_StructuredBuffers[name] = { buffer, sizeBytes };
+        return buffer;
+    }
+
     RHI::ISampler* ResourceCache::GetDefaultSampler()
     {
         if (!m_DefaultSampler)
@@ -137,7 +174,8 @@ namespace DXEngine
     {
         std::ostringstream oss;
         oss << "ResourceCache: " << m_Pipelines.size() << " pipelines, "
-            << m_ConstantBuffers.size() << " constant buffers, wireframe "
+            << m_ConstantBuffers.size() << " constant buffers, "
+            << m_StructuredBuffers.size() << " structured buffers, wireframe "
             << (m_Wireframe ? "ON" : "OFF") << "\n";
         return oss.str();
     }

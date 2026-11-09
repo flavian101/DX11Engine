@@ -13,6 +13,10 @@ namespace DXEngine
 {
     using namespace DirectX;
 
+    // Engine-wide buffers must not share a register with a material texture.
+    static_assert(SRV_Lights >= static_cast<uint32_t>(TextureSlot::MaxTextureSlots),
+                  "SRV_Lights collides with the material texture slots (t0..t31)");
+
     bool MeshDrawer::Initialize(FrameContext& ctx)
     {
         auto& cache = *ctx.services->resources;
@@ -43,6 +47,10 @@ namespace DXEngine
 
         if (ctx.lightBuffer)
             m_Cmd->SetConstantBuffer(ctx.lightBuffer, CB_Scene_Lights, RHI::ShaderStage::Pixel);
+
+        // The point + spot lights. Bound unconditionally: a null buffer UNBINDS the slot, so the pixel shader can
+        // never read a buffer left over from an earlier frame.
+        m_Cmd->SetBuffer(ctx.localLightBuffer, SRV_Lights, RHI::ShaderStage::Pixel);
 
         if (RHI::ISampler* sampler = ctx.services->resources->GetDefaultSampler())
             m_Cmd->SetSampler(sampler, 0, RHI::ShaderStage::Pixel);
