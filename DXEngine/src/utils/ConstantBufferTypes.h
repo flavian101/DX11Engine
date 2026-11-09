@@ -109,6 +109,25 @@ namespace DXEngine {
 
     
 
+    // Constant buffer b7: how a pixel finds its light cluster. The cluster grid divides the view frustum into
+    // gridX x gridY screen tiles and gridZ depth slices; slices grow exponentially with distance.
+    //   tile   = pixel * tilesPerPixel
+    //   slice  = floor(ln(viewZ) * sliceScale + sliceBias)
+    // MIRRORED by cbuffer ClusterData in common.hlsli; the size is checked here.
+    struct ClusterConstants
+    {
+        uint32_t gridX;
+        uint32_t gridY;
+        uint32_t gridZ;
+        uint32_t mode;             // LightCullingMode: 0 = every pixel loops over all lights, 1 = clustered, 2 = heat map
+
+        float tilesPerPixelX;      // gridX / screen width
+        float tilesPerPixelY;      // gridY / screen height
+        float sliceScale;          // gridZ / ln(far / near)
+        float sliceBias;           // -ln(near) * sliceScale
+    };
+    static_assert(sizeof(ClusterConstants) == 32, "ClusterConstants must stay 32 bytes (2 x float4) to match the HLSL cbuffer");
+
     struct UIConstantBuffer
     {
         DirectX::XMMATRIX projection;
@@ -127,7 +146,8 @@ namespace DXEngine {
         CB_Scene_Lights = 3,
         CB_UI = 4,
         CB_Shadow_Data = 5,        // For future shadow system
-        CB_Post_Process = 6        // For post-processing effects
+        CB_Post_Process = 6,       // For post-processing effects
+        CB_Cluster_Data = 7        // Light cluster grid (ClusterConstants)
 
 
     };

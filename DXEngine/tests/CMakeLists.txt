@@ -41,6 +41,14 @@ target_include_directories(light_tests PRIVATE
 target_compile_features(light_tests PRIVATE cxx_std_17)
 add_test(NAME light_tests COMMAND light_tests)
 
+# Clustered light assignment (grid maths, light -> cluster, the shader's pixel -> cluster formula).
+add_executable(cluster_tests
+    cluster_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightClustering.cpp)
+target_include_directories(cluster_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
+target_compile_features(cluster_tests PRIVATE cxx_std_17)
+add_test(NAME cluster_tests COMMAND cluster_tests)
+
 # RHI rules that need no device (buffer description validation).
 add_executable(rhi_tests rhi_tests.cpp)
 target_include_directories(rhi_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)

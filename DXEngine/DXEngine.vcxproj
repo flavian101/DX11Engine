@@ -173,6 +173,7 @@
     <ClInclude Include="src\scene\SceneFactory.h" />
     <ClInclude Include="src\scene\ScenePicking.h" />
     <ClInclude Include="src\renderer\Systems\LightPacking.h" />
+    <ClInclude Include="src\renderer\Systems\LightClustering.h" />
     <ClInclude Include="src\renderer\Systems\SceneExtraction.h" />
     <ClInclude Include="src\scene\TransformSystem.h" />
     <ClInclude Include="src\utils\ImageLoader.h" />
@@ -241,6 +242,7 @@
     <ClCompile Include="src\scene\SceneFactory.cpp" />
     <ClCompile Include="src\scene\ScenePicking.cpp" />
     <ClCompile Include="src\renderer\Systems\LightPacking.cpp" />
+    <ClCompile Include="src\renderer\Systems\LightClustering.cpp" />
     <ClCompile Include="src\renderer\Systems\SceneExtraction.cpp" />
     <ClCompile Include="src\scene\TransformSystem.cpp" />
     <ClCompile Include="src\utils\ImageLoader.cpp" />

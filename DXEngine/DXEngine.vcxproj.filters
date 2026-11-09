@@ -160,6 +160,9 @@
     <ClInclude Include="src\renderer\Systems\LightPacking.h">
       <Filter>renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\renderer\Systems\LightClustering.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\renderer\Systems\SceneExtraction.h">
       <Filter>renderer</Filter>
     </ClInclude>
@@ -302,6 +305,9 @@
       <Filter>scene</Filter>
     </ClCompile>
     <ClCompile Include="src\renderer\Systems\LightPacking.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Systems\LightClustering.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\renderer\Systems\SceneExtraction.cpp">
