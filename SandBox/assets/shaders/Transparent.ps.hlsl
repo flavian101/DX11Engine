@@ -104,6 +104,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     
     // Local lights (point + spot), with the same reduced intensity
     color += ShadeLocalLights(
+        input.position,
         input.worldPos.xyz,
         worldNormal,
         V,
@@ -162,6 +163,10 @@ float4 main(StandardVertexOutput input) : SV_Target
 #if ENABLE_ALPHA_TEST
     clip(finalAlpha - 0.1); // Lower threshold for transparency
 #endif
+    
+    // Debug view: lights per cluster (Renderer environment: LightCullingMode::ClusterHeatmap)
+    if (lightCullingMode == LIGHT_CULLING_HEATMAP)
+        return float4(LightHeatmap(input.position), 1.0);
     
     return float4(color, finalAlpha);
 }

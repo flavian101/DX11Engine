@@ -61,6 +61,11 @@ Decisions made while building it:
 * **Directional lights stay in the small constant buffer** (b3). There are at most 4, every pixel needs all of them (nothing to cull), and shadows attach cascade matrices to them. Only point and spot lights go into the structured buffer, so the cluster work only ever deals with lights that have a position and a range.
 * Engine-wide buffers live at **t32 and up**; t0..t31 belong to the material textures (`TextureSlot::MaxTextureSlots`). The light buffer is `SRV_Lights = 32`.
 * The shader finds lights in ONE function, `ShadeLocalLights()` (common.hlsli), and the BRDF exists once (`EvaluateDirectLight`). Clustering changes that function and nothing else.
+* **Cluster grid: 16 x 9 screen tiles x 24 exponential depth slices** (3456 clusters), built by `LightClusterer` (pure CPU, patch 0064). The slice is `floor(ln(viewZ) * scale + bias)`: thin near the camera, thick far away. The cluster boxes depend only on the projection and the screen size, so a moving camera costs nothing; an orthographic camera falls back to "loop over all lights".
+* A light reaches a cluster when its **sphere** touches the cluster's box. Spot lights use their bounding sphere for now (a cone test would be tighter; it is an internal change to `LightClusterer`).
+* The cluster light list has a fixed capacity (2^20 entries = 4 MB, only the used part is uploaded). Every cluster a light reaches costs one entry, so a few hundred big lights can fill it; then the far slices lose lights first and `RenderStatistics::clusterDropped` says so.
+* The pixel finds its cluster from `SV_POSITION`: xy are pixel coordinates, and `w` is **1 / view depth** in a pixel shader (not the depth itself).
+* `RenderEnvironment::lightCulling` selects `None` (every pixel loops over all lights, the reference), `Clustered` (default) or `ClusterHeatmap` (a debug view of lights per cluster). Sandbox: **L** cycles them, **K** adds / removes 1000 point lights, **I** shows the statistics.
 * The falloff is one function too (`LightDistanceAttenuation`). It is still the old `1 / (1 + d^2)` with the smooth window, so scenes look as before; switching to true inverse-square is a change to that function plus re-tuned intensities.
 
 ## Shadows (milestone 3)
@@ -92,10 +97,10 @@ Not needed yet, and not before the scene exists. Once everything is an entity wi
   scene features, Sandbox rebuilt as a scene. `Ball`, `Ground`, `SkySphere`, `LightSphere`, `LightManager`, `PickingManager` are gone.
   `Model` remains only as the importer's output; `Scene::Instantiate` turns it into entities (skinned models keep animating
   through a transitional bridge).
-* **Milestone 2, in progress:** patch 0062 (structured buffers in the RHI) and 0063 (point/spot lights in a `StructuredBuffer<LightGPU>`,
-  caps of 64 / 32 gone, up to 8192 local lights, grown by doubling). Still to do: the cluster grid, the CPU light-to-cluster assignment
-  (pure, unit-tested), the shader switching from "loop over all lights" to "loop over this pixel's cluster", the stress scene.
-* Tests that need no GPU: `scene_tests` (9), `render_tests` (9), `light_tests` (10) and `rhi_tests` (5), built with `-DDXENGINE_BUILD_TESTS=ON`.
+* **Milestone 2, implemented** (patches 0062 to 0065): structured buffers in the RHI; point/spot lights in a `StructuredBuffer<LightGPU>` (up to 8192, caps of 64 / 32 gone);
+  the pure cluster grid and light assignment with tests; the GPU hookup (cluster constants + two structured buffers, the pixel shader looping over its cluster only), a heat-map debug view and a 1000-light stress scene in the Sandbox.
+  **Open until it has run on a GPU:** compare frame times with and without clusters (Sandbox: K, then L, with I on). Not done on purpose: cone-shaped culling for spot lights, a compute-shader assignment, a depth pre-pass.
+* Tests that need no GPU: `scene_tests` (9), `render_tests` (9), `light_tests` (10), `cluster_tests` (11) and `rhi_tests` (5), built with `-DDXENGINE_BUILD_TESTS=ON`.
 * Also removed along the way: `FrameTime` passed by value as if it were a number (now a plain float of seconds).
 
 ## Order of work

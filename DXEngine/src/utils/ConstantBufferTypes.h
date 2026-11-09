@@ -156,6 +156,8 @@ namespace DXEngine {
     // (TextureSlot::MaxTextureSlots), so anything the renderer binds for every draw starts above that.
     enum SrvSlot : uint32_t
     {
-        SRV_Lights = 32,            // StructuredBuffer<LightGPU> localLights
+        SRV_Lights         = 32,    // StructuredBuffer<LightGPU> localLights
+        SRV_ClusterRanges  = 33,    // StructuredBuffer<uint2>    clusterRanges        {offset, count} per cluster
+        SRV_LightIndices   = 34,    // StructuredBuffer<uint>     clusterLightIndices  the lights of every cluster
     };
 }

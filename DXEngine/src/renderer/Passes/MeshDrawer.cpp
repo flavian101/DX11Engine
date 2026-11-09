@@ -16,6 +16,7 @@ namespace DXEngine
     // Engine-wide buffers must not share a register with a material texture.
     static_assert(SRV_Lights >= static_cast<uint32_t>(TextureSlot::MaxTextureSlots),
                   "SRV_Lights collides with the material texture slots (t0..t31)");
+    static_assert(SRV_Lights < SRV_ClusterRanges && SRV_ClusterRanges < SRV_LightIndices, "engine-wide SRV slots are in order");
 
     bool MeshDrawer::Initialize(FrameContext& ctx)
     {
@@ -51,6 +52,12 @@ namespace DXEngine
         // The point + spot lights. Bound unconditionally: a null buffer UNBINDS the slot, so the pixel shader can
         // never read a buffer left over from an earlier frame.
         m_Cmd->SetBuffer(ctx.localLightBuffer, SRV_Lights, RHI::ShaderStage::Pixel);
+
+        // Which of those lights reach which part of the screen (the cluster grid).
+        if (ctx.clusterBuffer)
+            m_Cmd->SetConstantBuffer(ctx.clusterBuffer, CB_Cluster_Data, RHI::ShaderStage::Pixel);
+        m_Cmd->SetBuffer(ctx.clusterRangeBuffer, SRV_ClusterRanges, RHI::ShaderStage::Pixel);
+        m_Cmd->SetBuffer(ctx.lightIndexBuffer,   SRV_LightIndices,  RHI::ShaderStage::Pixel);
 
         if (RHI::ISampler* sampler = ctx.services->resources->GetDefaultSampler())
             m_Cmd->SetSampler(sampler, 0, RHI::ShaderStage::Pixel);

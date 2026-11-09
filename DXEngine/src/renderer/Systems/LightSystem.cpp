@@ -21,12 +21,16 @@ namespace DXEngine
         m_LocalCapacity = kMinLocalLightCapacity;
         m_LocalBuffer   = services.resources->GetOrCreateStructuredBuffer(kLocalLightBufferName, sizeof(LightGPU), m_LocalCapacity);
 
-        return m_Buffer != nullptr && m_LocalBuffer != nullptr;
+        m_ClusterBuffer = services.resources->GetOrCreateConstantBuffer("Scene.Clusters", sizeof(ClusterConstants));
+        m_ClusterRanges = services.resources->GetOrCreateStructuredBuffer("Scene.ClusterRanges", sizeof(ClusterRange), m_Clusterer.ClusterCount());
+        m_LightIndices  = services.resources->GetOrCreateStructuredBuffer("Scene.ClusterLightIndices", sizeof(uint32_t), m_Clusterer.Desc().maxLightIndices);
+
+        return m_Buffer && m_LocalBuffer && m_ClusterBuffer && m_ClusterRanges && m_LightIndices;
     }
 
     void LightSystem::Upload(FrameContext& ctx)
     {
-        if (!m_Buffer || !m_LocalBuffer) return;
+        if (!m_Buffer || !m_LocalBuffer || !m_ClusterBuffer || !m_ClusterRanges || !m_LightIndices) return;
 
         const DirectX::XMFLOAT3 cameraPosition = ctx.camera ? ctx.camera->GetPositionFloat3() : DirectX::XMFLOAT3{ 0, 0, 0 };
         uint32_t dropped = PackLights(ctx.scene.world, ctx.environment, cameraPosition, m_Data, m_Local);
@@ -57,8 +61,41 @@ namespace DXEngine
         ctx.lightBuffer      = m_Buffer.get();
         ctx.localLightBuffer = m_LocalBuffer.get();
 
+        // ---- cluster the lights (skipped when the mode is None or the camera cannot be clustered)
+        bool clustered = false;
+        if (ctx.environment.lightCulling != LightCullingMode::None && ctx.camera && ctx.targets.backBuffer)
+        {
+            DirectX::XMFLOAT4X4 view, projection;
+            DirectX::XMStoreFloat4x4(&view, ctx.camera->GetViewMatrix());
+            DirectX::XMStoreFloat4x4(&projection, ctx.camera->GetProjectionMatrix());
+
+            // The render target is what the pixel shader's SV_Position is measured in.
+            if (m_Clusterer.SetCamera(view, projection, ctx.targets.backBuffer->GetWidth(), ctx.targets.backBuffer->GetHeight()))
+            {
+                m_Clusterer.Assign(m_Local.data(), usable);
+                clustered = true;
+
+                m_ClusterRanges->Update(m_Clusterer.Ranges().data(), m_Clusterer.ClusterCount() * static_cast<uint32_t>(sizeof(ClusterRange)), 0);
+                if (m_Clusterer.IndexCount() > 0)
+                    m_LightIndices->Update(m_Clusterer.Indices(), m_Clusterer.IndexCount() * static_cast<uint32_t>(sizeof(uint32_t)), 0);
+            }
+        }
+
+        const ClusterConstants clusterConstants = m_Clusterer.Constants(clustered ? static_cast<uint32_t>(ctx.environment.lightCulling) : 0u);
+        m_ClusterBuffer->Update(&clusterConstants, sizeof(ClusterConstants), 0);
+
+        ctx.clusterBuffer      = m_ClusterBuffer.get();
+        ctx.clusterRangeBuffer = m_ClusterRanges.get();
+        ctx.lightIndexBuffer   = m_LightIndices.get();
+
         ctx.stats.directionalLights = m_Data.directionalLightCount;
         ctx.stats.localLights       = usable;
         ctx.stats.lightsDropped     = dropped;
+        if (clustered)
+        {
+            ctx.stats.clusterAssignments = m_Clusterer.Stats().assignments;
+            ctx.stats.clusterMaxLights   = m_Clusterer.Stats().maxLightsPerCluster;
+            ctx.stats.clusterDropped     = m_Clusterer.Stats().assignmentsDropped;
+        }
     }
 }

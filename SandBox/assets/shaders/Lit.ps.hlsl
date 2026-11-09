@@ -121,6 +121,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     // ========================================================================
     
     color += ShadeLocalLights(
+        input.position,
         input.worldPos.xyz,
         worldNormal,
         V,
@@ -166,6 +167,10 @@ float4 main(StandardVertexOutput input) : SV_Target
 #if ENABLE_ALPHA_TEST
     clip(finalAlpha - 0.5); // Discard pixels below threshold
 #endif
+    
+    // Debug view: lights per cluster (Renderer environment: LightCullingMode::ClusterHeatmap)
+    if (lightCullingMode == LIGHT_CULLING_HEATMAP)
+        return float4(LightHeatmap(input.position), 1.0);
     
     return float4(color, finalAlpha);
 }

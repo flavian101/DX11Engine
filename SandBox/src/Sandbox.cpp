@@ -2,6 +2,8 @@
 #include "models/Model.h"
 #include "utils/ImageLoader.h"
 #include "utils/material/Material.h"
+#include <random>
+#include <string>
 
 using namespace DXEngine;
 
@@ -16,7 +18,8 @@ Sandbox::~Sandbox()
 void Sandbox::OnAttach()
 {
 	auto device = Renderer::GetDevice();
-	Renderer::SetEnvironment(RenderEnvironment());      // defaults: dim bluish ambient, exposure 0.4, gamma 2.2
+	m_Environment = RenderEnvironment();                // defaults: dim bluish ambient, exposure 0.4, gamma 2.2, clustered lights
+	Renderer::SetEnvironment(m_Environment);
 
 	m_CameraController = std::make_shared<CameraController>();
 	m_Loader = std::make_shared<ModelLoader>();
@@ -158,6 +161,42 @@ bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
 	return false;
 }
 
+void Sandbox::CycleLightCulling()
+{
+	const char* name = "";
+	switch (m_Environment.lightCulling)
+	{
+	case LightCullingMode::Clustered:      m_Environment.lightCulling = LightCullingMode::ClusterHeatmap; name = "cluster heat map (lights per cluster)"; break;
+	case LightCullingMode::ClusterHeatmap: m_Environment.lightCulling = LightCullingMode::None;           name = "none: every pixel loops over all lights"; break;
+	default:                               m_Environment.lightCulling = LightCullingMode::Clustered;      name = "clustered"; break;
+	}
+	Renderer::SetEnvironment(m_Environment);
+	OutputDebugStringA((std::string("Light culling: ") + name + "\n").c_str());
+}
+
+void Sandbox::ToggleStressLights()
+{
+	if (!m_StressLights.empty())
+	{
+		for (Entity& e : m_StressLights) m_Scene.DestroyEntity(e);
+		m_StressLights.clear();
+		OutputDebugStringA("Stress lights: removed\n");
+		return;
+	}
+
+	// 1000 small lights scattered over the ground around the models. Fixed seed: the same scene every time, so
+	// clustered and unclustered frame times can be compared fairly.
+	std::mt19937 rng(1234);
+	std::uniform_real_distribution<float> spread(-120.0f, 120.0f), height(1.0f, 9.0f), range(8.0f, 16.0f), channel(0.2f, 1.0f);
+	m_StressLights.reserve(1000);
+	for (int i = 0; i < 1000; ++i)
+	{
+		m_StressLights.push_back(SceneFactory::CreatePointLight(m_Scene, "StressLight",
+			{ spread(rng), height(rng), spread(rng) }, { channel(rng), channel(rng), channel(rng) }, 60.0f, range(rng)));
+	}
+	OutputDebugStringA("Stress lights: 1000 point lights added\n");
+}
+
 void Sandbox::DetectInput(double time)
 {
 	// Toggle wireframe mode
@@ -175,6 +214,22 @@ void Sandbox::DetectInput(double time)
 	{
 		wireframeToggled = false;
 	}
+
+	// L: cycle how pixels find their lights (clustered -> heat map -> all lights). K: 1000 point lights on/off.
+	// Use them together with I (statistics): the same scene, with and without clusters, to compare frame times.
+	static bool cullingToggled = false;
+	if (DXEngine::Input::IsKeyPressed('L'))
+	{
+		if (!cullingToggled) { CycleLightCulling(); cullingToggled = true; }
+	}
+	else cullingToggled = false;
+
+	static bool stressToggled = false;
+	if (DXEngine::Input::IsKeyPressed('K'))
+	{
+		if (!stressToggled) { ToggleStressLights(); stressToggled = true; }
+	}
+	else stressToggled = false;
 
 	// Toggle debug info
 	static bool debugToggled = false;

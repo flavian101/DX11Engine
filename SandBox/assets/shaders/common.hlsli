@@ -210,6 +210,25 @@ struct LightGPU
 
 StructuredBuffer<LightGPU> localLights : register(t32);
 
+// CLUSTERED light culling. The view frustum is cut into clusterGrid.x * clusterGrid.y screen tiles and
+// clusterGrid.z exponential depth slices. For every cluster the CPU lists the lights that reach it, so a pixel only
+// loops over the lights of its own cluster. Mirrors ClusterConstants in utils/ConstantBufferTypes.h.
+#define LIGHT_CULLING_NONE       0    // loop over ALL local lights (reference path)
+#define LIGHT_CULLING_CLUSTERED  1
+#define LIGHT_CULLING_HEATMAP    2    // clustered, and the pixel shows how many lights its cluster has
+
+cbuffer ClusterData : register(b7)
+{
+    uint3  clusterGrid;
+    uint   lightCullingMode;
+    float2 clusterTilesPerPixel;      // clusterGrid.xy / screen size
+    float  clusterSliceScale;         // slice = floor(ln(viewZ) * scale + bias)
+    float  clusterSliceBias;
+};
+
+StructuredBuffer<uint2> clusterRanges       : register(t33);   // {offset, count} per cluster
+StructuredBuffer<uint>  clusterLightIndices : register(t34);   // indices into localLights, per cluster
+
 cbuffer UIBuffer : register(b4)
 {
     float4x4 uiProjection;
@@ -777,20 +796,64 @@ float3 CalculateLocalLight(LightGPU light, float3 worldPos, float3 N, float3 V,
     return EvaluateDirectLight(N, V, L, light.color * attenuation, albedo, metallicValue, roughnessValue, F0);
 }
 
+// The cluster of this pixel. 'svPosition' is the pixel shader's SV_POSITION: xy = pixel coordinates in the render
+// target, w = 1 / w_clip, and for a perspective projection w_clip IS the view-space depth.
+// The slice formula is the one LightClusterer uses on the CPU (the unit tests drive both from the same constants).
+uint ClusterIndexOf(float4 svPosition)
+{
+    float viewZ = 1.0 / svPosition.w;
+    int slice = (int)floor(log(max(viewZ, 1e-4)) * clusterSliceScale + clusterSliceBias);
+    slice = clamp(slice, 0, (int)clusterGrid.z - 1);
+    
+    uint2 tile = min((uint2)(svPosition.xy * clusterTilesPerPixel), clusterGrid.xy - 1);
+    return tile.x + tile.y * clusterGrid.x + (uint)slice * (clusterGrid.x * clusterGrid.y);
+}
+
 // All local lights that reach this pixel. The ONE place that decides which lights a pixel considers: every
-// lit shader calls it, so changing how lights are found (clusters, tiles) changes this function only.
-float3 ShadeLocalLights(float3 worldPos, float3 N, float3 V,
+// lit shader calls it.
+float3 ShadeLocalLights(float4 svPosition, float3 worldPos, float3 N, float3 V,
                         float3 albedo, float metallicValue, float roughnessValue, float3 F0)
 {
     float3 result = float3(0, 0, 0);
     
-    [loop]
-    for (uint i = 0; i < localLightCount; ++i)
+    if (lightCullingMode == LIGHT_CULLING_NONE)
     {
-        result += CalculateLocalLight(localLights[i], worldPos, N, V,
-                                      albedo, metallicValue, roughnessValue, F0);
+        // Reference path: every light, every pixel.
+        [loop]
+        for (uint i = 0; i < localLightCount; ++i)
+        {
+            result += CalculateLocalLight(localLights[i], worldPos, N, V,
+                                          albedo, metallicValue, roughnessValue, F0);
+        }
+    }
+    else
+    {
+        // Only the lights listed for this pixel's cluster.
+        uint2 range = clusterRanges[ClusterIndexOf(svPosition)];   // x = offset, y = count
+        
+        [loop]
+        for (uint i = 0; i < range.y; ++i)
+        {
+            result += CalculateLocalLight(localLights[clusterLightIndices[range.x + i]], worldPos, N, V,
+                                          albedo, metallicValue, roughnessValue, F0);
+        }
     }
     return result;
+}
+
+// Debug view (LIGHT_CULLING_HEATMAP): how many lights does this pixel's cluster hold?
+// dark = none, blue = few, green = some, red = 32 or more.
+float3 LightHeatmap(float4 svPosition)
+{
+    uint count = clusterRanges[ClusterIndexOf(svPosition)].y;
+    if (count == 0)
+        return float3(0.02, 0.02, 0.04);
+    
+    float t = saturate((float)count / 32.0);
+    float3 cool = float3(0.0, 0.25, 1.0);
+    float3 mid = float3(0.0, 1.0, 0.2);
+    float3 hot = float3(1.0, 0.1, 0.0);
+    return (t < 0.5) ? lerp(cool, mid, t * 2.0) : lerp(mid, hot, t * 2.0 - 1.0);
 }
 
 ///Tone mapping

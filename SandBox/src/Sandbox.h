@@ -1,6 +1,7 @@
 #pragma once
 #include "DXEngine.h"
 #include <memory>
+#include <vector>
 
 // A test scene for the engine. Everything here is an ENTITY in a Scene: a thing is what components it has
 // (see docs/DESIGN.md). Nothing is re-submitted object by object every frame any more.
@@ -19,6 +20,8 @@ public:
 	bool OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e);
 	void DetectInput(double time);
 	void HandlePicking(float mouseX, float mouseY);
+	void ToggleStressLights();
+	void CycleLightCulling();
 
 private:
 	std::shared_ptr<DXEngine::CameraController> m_CameraController;
@@ -31,6 +34,10 @@ private:
 	// kept here because the key bindings in DetectInput control its animation clips.
 	std::shared_ptr<DXEngine::ModelLoader> m_Loader;
 	std::shared_ptr<DXEngine::Model> m_AnimatedSpider;
+
+	// Light culling A/B + stress test (keys L and K, see DetectInput)
+	DXEngine::RenderEnvironment m_Environment;      // the environment last given to the renderer
+	std::vector<DXEngine::Entity> m_StressLights;   // 1000 point lights, spawned / removed with K
 
 	float m_Speed = 10.0f;
 	float m_CurrentRotation = 0.0f;

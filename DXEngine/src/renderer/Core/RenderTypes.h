@@ -53,6 +53,14 @@ namespace DXEngine
     // RenderEnvironment: scene-wide shading settings that are not lights (what LightManager used to hold
     // next to the lights). Lights themselves are LightComponents in the Scene.
     // ------------------------------------------------------------------
+    // How a pixel finds the lights that reach it.
+    enum class LightCullingMode : uint32_t
+    {
+        None             = 0,   // every pixel loops over ALL local lights (the reference; slow with many lights)
+        Clustered        = 1,   // every pixel loops over the lights of its cluster only (the default)
+        ClusterHeatmap   = 2,   // clustered, and the screen shows lights per cluster: blue = few, red = many (debug view)
+    };
+
     struct RenderEnvironment
     {
         DirectX::XMFLOAT3 ambientColor{ 0.2f, 0.25f, 0.3f };
@@ -60,6 +68,7 @@ namespace DXEngine
         float iblIntensity     = 0.8f;
         float exposure         = 0.4f;
         float gamma            = 2.2f;
+        LightCullingMode lightCulling = LightCullingMode::Clustered;
     };
 
     // One statistics struct for the whole renderer (replaces 3 overlapping ones).
@@ -75,6 +84,9 @@ namespace DXEngine
         uint32_t directionalLights  = 0;   // written by LightSystem
         uint32_t localLights        = 0;   // point + spot lights uploaded this frame
         uint32_t lightsDropped      = 0;   // local lights over the limit (0 in a healthy scene)
+        uint32_t clusterAssignments = 0;   // (light, cluster) pairs this frame; 0 when clustering is off
+        uint32_t clusterMaxLights   = 0;   // the most lights any cluster holds = the worst a pixel loops over
+        uint32_t clusterDropped     = 0;   // pairs lost because the cluster index list was full (0 in a healthy scene)
 
         void Reset() { *this = RenderStatistics{}; }
 
@@ -90,6 +102,12 @@ namespace DXEngine
                 << "  lights: " << directionalLights << " directional, " << localLights << " local";
             if (lightsDropped) oss << " (" << lightsDropped << " DROPPED: over the limit)";
             oss << "\n";
+            if (clusterAssignments)
+            {
+                oss << "  clusters: " << clusterAssignments << " light assignments, at most " << clusterMaxLights << " lights per cluster";
+                if (clusterDropped) oss << " (" << clusterDropped << " DROPPED: cluster index list full)";
+                oss << "\n";
+            }
             return oss.str();
         }
     };

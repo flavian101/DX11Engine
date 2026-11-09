@@ -45,7 +45,7 @@ namespace DXEngine
     //  WHO WRITES WHAT (this table is the contract):
     //   Renderer::BeginScene/Submit -> camera, cmd, targets, scene, environment
     //   SceneExtraction             -> batches (culling + material resolution + sorting)
-    //   LightSystem                 -> lightBuffer, localLightBuffer, stats (light counts)
+    //   LightSystem                 -> lightBuffer, localLightBuffer, clusterBuffer, clusterRangeBuffer, lightIndexBuffer, stats
     //   Passes                      -> stats (and the GPU targets, as side effects)
     //
     //  RULES
@@ -92,6 +92,9 @@ namespace DXEngine
         // ---- produced by LightSystem ----
         RHI::IBuffer* lightBuffer      = nullptr;   // constant buffer b3: environment + directional lights + local light count
         RHI::IBuffer* localLightBuffer = nullptr;   // StructuredBuffer<LightGPU> (point + spot lights), bound at SRV_Lights
+        RHI::IBuffer* clusterBuffer      = nullptr; // constant buffer b7: the cluster grid (ClusterConstants)
+        RHI::IBuffer* clusterRangeBuffer = nullptr; // StructuredBuffer<uint2>: {offset, count} per cluster, SRV_ClusterRanges
+        RHI::IBuffer* lightIndexBuffer   = nullptr; // StructuredBuffer<uint>: the light indices of every cluster, SRV_LightIndices
         // Both are valid every frame once LightSystem is initialised (a scene without lights has a count of 0), and
         // both point into buffers that the LightSystem may REPLACE next frame when the scene needs more lights.
 
@@ -121,6 +124,9 @@ namespace DXEngine
             batches.Clear();
             lightBuffer = nullptr;
             localLightBuffer = nullptr;
+            clusterBuffer = nullptr;
+            clusterRangeBuffer = nullptr;
+            lightIndexBuffer = nullptr;
             stats.Reset();
             m_Extra.clear();
         }

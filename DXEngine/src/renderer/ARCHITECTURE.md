@@ -13,7 +13,7 @@ Renderer::EndScene()
    |
    |-- CPU SYSTEMS  (write the blackboard)
    |     SceneExtraction  scene + camera  -> batches (background / opaque / transparent), culling, sorting
-   |     LightSystem      scene + env     -> lightBuffer (b3), localLightBuffer (t32)
+   |     LightSystem      scene + env + camera -> lights (b3, t32) and the light cluster grid (b7, t33, t34)
    |
    |-- GPU PASSES   (read the blackboard), in insertion order
    |     ClearPass
@@ -32,11 +32,14 @@ Renderer::EndScene()
 | b0..b2 | transform, bones, material | `MeshDrawer` |
 | b3 | `SceneLightData`: environment + directional lights + local light count | `MeshDrawer` (filled by `LightSystem`) |
 | t0..t31 | material textures (`TextureSlot`) | `MeshDrawer` |
+| b7 | `ClusterData`: grid size, culling mode, how a pixel finds its cluster | `MeshDrawer` (filled by `LightSystem`) |
 | t32 | `StructuredBuffer<LightGPU> localLights` (point + spot) | `MeshDrawer` (filled by `LightSystem`) |
+| t33 | `StructuredBuffer<uint2> clusterRanges`: {offset, count} per cluster | `MeshDrawer` (filled by `LightSystem`) |
+| t34 | `StructuredBuffer<uint> clusterLightIndices`: the lights of every cluster | `MeshDrawer` (filled by `LightSystem`) |
 | s0 | default sampler | `MeshDrawer` |
 
-`LightGPU` is declared twice, in `utils/ConstantBufferTypes.h` and `common.hlsli`. The C++ side `static_assert`s the size and
-every offset, so a change there fails the build instead of corrupting lights.
+`ClusterConstants` and `LightGPU` are declared twice, in `utils/ConstantBufferTypes.h` and `common.hlsli`. The C++ side `static_assert`s the size of both (and every offset of
+`LightGPU`), so a change there fails the build instead of corrupting lights; the shader compiler's reflection lists the HLSL offsets for a manual check.
 
 ## The one rule that keeps it clean
 
