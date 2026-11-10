@@ -32,12 +32,20 @@ namespace DXEngine
         bool                   depthWrite = true;
         bool                   wireframe  = false;
 
+        // Depth-only pipelines (shadow maps). A normal pipeline leaves these at their defaults, so its key is unchanged.
+        bool                   depthOnly  = false;   // no pixel shader, no colour writes
+        int32_t                depthBias  = 0;       // rasterizer depth bias (in depth-buffer units)
+        float                  slopeBias  = 0.0f;    // rasterizer slope-scaled depth bias
+        bool                   scissor    = false;   // scissor test on (shadow tiles share one atlas)
+
         bool operator==(const PipelineKey& o) const
         {
             return program == o.program && vertexLayoutHash == o.vertexLayoutHash &&
                    cullMode == o.cullMode && blendMode == o.blendMode &&
                    depthTest == o.depthTest && topology == o.topology &&
-                   depthWrite == o.depthWrite && wireframe == o.wireframe;
+                   depthWrite == o.depthWrite && wireframe == o.wireframe &&
+                   depthOnly == o.depthOnly && depthBias == o.depthBias &&
+                   slopeBias == o.slopeBias && scissor == o.scissor;
         }
     };
 
@@ -54,6 +62,10 @@ namespace DXEngine
             mix(static_cast<size_t>(k.topology));
             mix(k.depthWrite ? 1u : 0u);
             mix(k.wireframe ? 1u : 0u);
+            mix(k.depthOnly ? 1u : 0u);
+            mix(static_cast<size_t>(k.depthBias));
+            mix(std::hash<float>{}(k.slopeBias));
+            mix(k.scissor ? 1u : 0u);
             return h;
         }
     };
@@ -79,6 +91,23 @@ namespace DXEngine
         std::shared_ptr<RHI::IPipeline> GetPipeline(const Material& material,
                                                     const Mesh& mesh,
                                                     const std::shared_ptr<ShaderProgram>& program);
+
+        // A pipeline that only writes DEPTH: a vertex shader, no pixel shader, no colour target. Used by the shadow
+        // pass. 'program' must be depth-only (ShaderProgram::CreateDepthOnly). The rasterizer bias is part of the
+        // pipeline in D3D11, so it is part of the cache key; the scissor test is on because every shadow view is a
+        // tile of ONE atlas and must not draw into its neighbour.
+        std::shared_ptr<RHI::IPipeline> GetDepthOnlyPipeline(const Mesh& mesh,
+                                                             const std::shared_ptr<ShaderProgram>& program,
+                                                             RHI::CullMode cullMode,
+                                                             int32_t depthBias, float slopeBias);
+
+        // Named depth texture (a render target AND shader-readable: the shadow atlas). Same name + same shape => same
+        // texture; a different shape REPLACES it. Returns nullptr when the device refuses.
+        std::shared_ptr<RHI::ITexture> GetOrCreateDepthTexture(const std::string& name, uint32_t width, uint32_t height,
+                                                               RHI::TextureFormat format = RHI::TextureFormat::D32_FLOAT);
+
+        // Linear PCF + clamp, "reference <= stored depth" comparison. Bound to s1 for shadow lookups.
+        RHI::ISampler* GetShadowSampler();
 
         // Named, dynamic constant buffer (size rounded up to 16 bytes). Same name => same buffer.
         std::shared_ptr<RHI::IBuffer> GetOrCreateConstantBuffer(const std::string& name, uint32_t sizeBytes);
@@ -113,7 +142,9 @@ namespace DXEngine
         std::unordered_map<PipelineKey, PipelineEntry, PipelineKeyHash> m_Pipelines;
         std::unordered_map<std::string, CBEntry> m_ConstantBuffers;
         std::unordered_map<std::string, CBEntry> m_StructuredBuffers;   // same entry type: buffer + size in bytes
+        std::unordered_map<std::string, std::shared_ptr<RHI::ITexture>> m_DepthTextures;
         std::shared_ptr<RHI::ISampler> m_DefaultSampler;
+        std::shared_ptr<RHI::ISampler> m_ShadowSampler;
         bool m_Wireframe = false;   // was uninitialised before
     };
 }

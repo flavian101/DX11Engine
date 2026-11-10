@@ -79,6 +79,8 @@ namespace DXEngine
 		m_BaseShaders.clear();
 		m_VariantCache.clear();
 		m_FallbackShaders.clear();
+		m_ShadowCasterPrograms[0].reset();
+		m_ShadowCasterPrograms[1].reset();
 		m_FileTimestamps.clear();
 
 		m_Initialized = false;
@@ -131,6 +133,38 @@ namespace DXEngine
 		}
 
 		return shader;
+	}
+
+	std::shared_ptr<ShaderProgram> ShaderCache::GetShadowCasterShader(const VertexLayout& layout)
+	{
+		const bool skinned = layout.HasAttribute(RHI::VertexAttributeType::BlendWeights);
+		const size_t index = skinned ? 1 : 0;
+
+		std::lock_guard<std::mutex> lock(m_CacheMutex);
+		if (m_ShadowCasterPrograms[index])
+			return m_ShadowCasterPrograms[index];
+
+		const std::string path = m_Config.shaderDirectory + "ShadowCaster.vs.hlsl";
+		const std::string defines = skinned ? "#define HAS_SKINNING_ATTRIBUTES 1\n" : "";
+
+		std::shared_ptr<RHI::IShader> vs;
+		try
+		{
+			vs = CompileShaderFromFile(path, RHI::ShaderStage::Vertex, defines);
+		}
+		catch (const std::exception& e)
+		{
+			LogError("Shadow caster shader failed to compile: " + std::string(e.what()));
+		}
+		if (!vs)
+			return nullptr;
+
+		auto program = ShaderProgram::CreateDepthOnly(vs);
+		if (!program || !program->IsValid())
+			return nullptr;
+
+		m_ShadowCasterPrograms[index] = program;   // (cleared with the rest in ClearCache / Shutdown)
+		return program;
 	}
 
 	std::shared_ptr<ShaderProgram> ShaderCache::GetShaderVariant(const ShaderVariantKey& key)
@@ -406,11 +440,13 @@ namespace DXEngine
 		// Add material type specific features
 		switch (materialType) {
 		case MaterialType::Transparent:
-			combined |= ShaderFeature::AlphaTest;
+			combined |= ShaderFeature::AlphaTest | ShaderFeature::Shadows;   // transparent surfaces are lit too
 			break;
 		case MaterialType::Lit:
 		case MaterialType::PBR:
-			combined |= ShaderFeature::Lighting;
+			// Every lit shader can RECEIVE shadows. It is a compile-time feature on purpose (one variant, not two): a
+			// light with no shadow, or an object with receiveShadows off, skips the lookup at run time.
+			combined |= ShaderFeature::Lighting | ShaderFeature::Shadows;
 			break;
 		case MaterialType::Skybox:
 			combined |= ShaderFeature::EnvironmentMap;
@@ -554,6 +590,8 @@ namespace DXEngine
 		std::lock_guard<std::mutex> lock(m_CacheMutex);
 
 		m_VariantCache.clear();
+		m_ShadowCasterPrograms[0].reset();
+		m_ShadowCasterPrograms[1].reset();
 		m_Stats.totalVariants = 0;
 
 		LogInfo("Shader cache cleared");

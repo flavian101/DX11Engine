@@ -10,4 +10,10 @@ namespace DXEngine {
 	ShaderProgram::~ShaderProgram()
 	{
 	}
+	std::shared_ptr<ShaderProgram> ShaderProgram::CreateDepthOnly(std::shared_ptr<RHI::IShader> vs)
+	{
+		auto program = std::make_shared<ShaderProgram>(std::move(vs), nullptr);
+		program->m_DepthOnly = true;
+		return program;
+	}
 }

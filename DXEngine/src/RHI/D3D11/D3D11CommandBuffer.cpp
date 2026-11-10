@@ -64,6 +64,11 @@ namespace DXEngine::RHI
 			auto* ps = static_cast<D3D11Shader*>(desc.pixelShader);
 			m_Context->PSSetShader(static_cast<ID3D11PixelShader*>(ps->GetD3D11Shader()), nullptr, 0);
 		}
+		else {
+			// A depth-only pipeline: UNBIND the previous pipeline's pixel shader, otherwise it keeps running
+			// (and reading its textures) for every shadow-map pixel.
+			m_Context->PSSetShader(nullptr, nullptr, 0);
+		}
 		if (desc.geometryShader)
 		{
 			auto* gs = static_cast<D3D11Shader*>(desc.geometryShader);
@@ -326,8 +331,13 @@ namespace DXEngine::RHI
 	}
 	void D3D11CommandBuffer::ClearDepthStencil(ITexture* target, float depth, uint8_t stencil)
 	{
-		m_Context->ClearDepthStencilView(static_cast<D3D11Texture*>(target)->GetDSV(),
-			D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, depth, stencil);
+		// Only a format WITH a stencil plane may be cleared with D3D11_CLEAR_STENCIL. Depth-only formats (D32_FLOAT,
+		// D16_UNORM: the shadow atlas) would make the debug layer complain, so the flag follows the format.
+		UINT flags = D3D11_CLEAR_DEPTH;
+		if (target->GetFormat() == TextureFormat::D24_UNORM_S8_UINT)
+			flags |= D3D11_CLEAR_STENCIL;
+
+		m_Context->ClearDepthStencilView(static_cast<D3D11Texture*>(target)->GetDSV(), flags, depth, stencil);
 	}
 	void D3D11CommandBuffer::BeginRenderPass(IRenderPass* renderPass, ITexture** targets, uint32_t targetCount)
 	{

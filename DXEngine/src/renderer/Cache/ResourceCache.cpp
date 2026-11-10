@@ -38,7 +38,9 @@ namespace DXEngine
         m_Pipelines.clear();
         m_ConstantBuffers.clear();
         m_StructuredBuffers.clear();
+        m_DepthTextures.clear();
         m_DefaultSampler.reset();
+        m_ShadowSampler.reset();
     }
 
     std::shared_ptr<RHI::IPipeline> ResourceCache::GetPipeline(const Material& material,
@@ -89,6 +91,126 @@ namespace DXEngine
 
         m_Pipelines.emplace(key, PipelineEntry{ pipeline, program });
         return pipeline;
+    }
+
+    std::shared_ptr<RHI::IPipeline> ResourceCache::GetDepthOnlyPipeline(const Mesh& mesh,
+                                                                        const std::shared_ptr<ShaderProgram>& program,
+                                                                        RHI::CullMode cullMode,
+                                                                        int32_t depthBias, float slopeBias)
+    {
+        const auto& resource = mesh.GetResource();
+        if (!program || !program->IsValid() || !program->IsDepthOnly() || !resource || !resource->GetVertexData())
+            return nullptr;
+
+        const VertexLayout& layout = resource->GetVertexData()->GetLayout();
+
+        PipelineKey key;
+        key.program          = program.get();
+        key.vertexLayoutHash = HashLayout(layout);
+        key.cullMode         = cullMode;
+        key.blendMode        = RHI::BlendMode::Opaque;
+        key.depthTest        = RHI::DepthTestMode::Less;
+        key.topology         = resource->GetTopology();
+        key.depthWrite       = true;
+        key.wireframe        = false;          // a wireframe SHADOW map would only show the edges of the casters
+        key.depthOnly        = true;
+        key.depthBias        = depthBias;
+        key.slopeBias        = slopeBias;
+        key.scissor          = true;
+
+        if (auto it = m_Pipelines.find(key); it != m_Pipelines.end())
+            return it->second.pipeline;
+
+        RHI::PipelineDesc desc;
+        desc.vertexShader         = program->GetVertexShader();
+        desc.pixelShader          = nullptr;     // depth only
+        desc.inputLayout          = layout.GetAttributes();
+        desc.rasterizer.cullMode  = key.cullMode;
+        desc.rasterizer.depthBias = depthBias;
+        desc.rasterizer.slopeScaledDepthBias = slopeBias;
+        desc.rasterizer.scissorEnable = true;
+        desc.depthTest            = key.depthTest;
+        desc.depthWrite           = true;
+        desc.blendMode            = RHI::BlendMode::Opaque;
+        desc.topology             = key.topology;
+        desc.debugName            = "Pipeline_ShadowDepth";
+
+        std::shared_ptr<RHI::IPipeline> pipeline;
+        try
+        {
+            pipeline = m_Device->CreatePipeline(desc);
+        }
+        catch (const std::exception& e)
+        {
+            OutputDebugStringA((std::string("ERROR: ResourceCache: depth-only pipeline creation failed: ") + e.what() + "\n").c_str());
+            return nullptr;
+        }
+        if (!pipeline || !pipeline->IsValid())
+        {
+            OutputDebugStringA("ERROR: ResourceCache: depth-only pipeline creation failed\n");
+            return nullptr;
+        }
+
+        m_Pipelines.emplace(key, PipelineEntry{ pipeline, program });
+        return pipeline;
+    }
+
+    std::shared_ptr<RHI::ITexture> ResourceCache::GetOrCreateDepthTexture(const std::string& name, uint32_t width, uint32_t height,
+                                                                         RHI::TextureFormat format)
+    {
+        if (width == 0 || height == 0) return nullptr;
+
+        auto it = m_DepthTextures.find(name);
+        if (it != m_DepthTextures.end() && it->second && it->second->GetWidth() == width &&
+            it->second->GetHeight() == height && it->second->GetFormat() == format)
+            return it->second;
+
+        RHI::TextureDesc desc;
+        desc.type            = RHI::TextureType::Texture2D;
+        desc.format          = format;
+        desc.width           = width;
+        desc.height          = height;
+        desc.isDepthStencil  = true;      // can be rendered to ...
+        desc.isRenderTarget  = false;
+        desc.debugName       = name;      // ... and (always) read by shaders: the D3D11 backend adds the SRV
+
+        // The D3D11 backend throws when the device refuses (out of memory, unsupported size).
+        std::shared_ptr<RHI::ITexture> texture;
+        try
+        {
+            texture = m_Device->CreateTexture(desc);
+        }
+        catch (const std::exception& e)
+        {
+            OutputDebugStringA(("ERROR: ResourceCache: failed to create depth texture " + name + ": " + e.what() + "\n").c_str());
+            return nullptr;
+        }
+        if (!texture || !texture->IsValid())
+        {
+            OutputDebugStringA(("ERROR: ResourceCache: failed to create depth texture " + name + "\n").c_str());
+            return nullptr;
+        }
+        m_DepthTextures[name] = texture;
+        return texture;
+    }
+
+    RHI::ISampler* ResourceCache::GetShadowSampler()
+    {
+        if (!m_ShadowSampler)
+        {
+            RHI::SamplerDesc desc;
+            desc.minFilter  = RHI::FilterMode::Linear;       // linear + comparison = the hardware does a 2x2 PCF per tap
+            desc.magFilter  = RHI::FilterMode::Linear;
+            desc.mipFilter  = RHI::FilterMode::Point;
+            desc.addressU   = RHI::AddressMode::Clamp;
+            desc.addressV   = RHI::AddressMode::Clamp;
+            desc.addressW   = RHI::AddressMode::Clamp;
+            desc.enableComparison = true;
+            desc.comparisonFunc   = RHI::ComparisonFunc::LessEqual;   // lit when  reference depth <= stored depth
+            desc.debugName  = "ShadowComparison";
+            m_ShadowSampler = m_Device->CreateSampler(desc);
+        }
+        return m_ShadowSampler.get();
     }
 
     std::shared_ptr<RHI::IBuffer> ResourceCache::GetOrCreateConstantBuffer(const std::string& name, uint32_t sizeBytes)
@@ -175,7 +297,8 @@ namespace DXEngine
         std::ostringstream oss;
         oss << "ResourceCache: " << m_Pipelines.size() << " pipelines, "
             << m_ConstantBuffers.size() << " constant buffers, "
-            << m_StructuredBuffers.size() << " structured buffers, wireframe "
+            << m_StructuredBuffers.size() << " structured buffers, "
+            << m_DepthTextures.size() << " depth textures, wireframe "
             << (m_Wireframe ? "ON" : "OFF") << "\n";
         return oss.str();
     }

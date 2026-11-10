@@ -148,6 +148,11 @@ namespace DXEngine {
         std::shared_ptr<ShaderProgram> GetShaderVariant(const ShaderVariantKey& key);
         std::shared_ptr<ShaderProgram> GetFallbackShader(MaterialType materialType);
 
+        // The depth-only vertex shader the shadow pass draws casters with (ShadowCaster.vs.hlsl). Two variants only:
+        // static and skinned (decided by the mesh's vertex layout), because a depth pass needs nothing but the position.
+        // Returns nullptr when the shader cannot be compiled.
+        std::shared_ptr<ShaderProgram> GetShadowCasterShader(const VertexLayout& layout);
+
         // Base shader loading (without variants)
         bool LoadBaseShader(const std::string& name,
             const std::string& vsPath,
@@ -239,6 +244,7 @@ namespace DXEngine {
         std::unordered_map<std::string, ShaderEntry> m_BaseShaders;
         std::unordered_map<ShaderVariantKey, VariantEntry, ShaderVariantKeyHash> m_VariantCache;
         std::unordered_map<MaterialType, std::shared_ptr<ShaderProgram>> m_FallbackShaders;
+        std::shared_ptr<ShaderProgram> m_ShadowCasterPrograms[2];   // [0] static, [1] skinned
 
         // Hot Reload Tracking
         std::unordered_map<std::string, uint64_t> m_FileTimestamps;

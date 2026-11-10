@@ -35,8 +35,10 @@ namespace DXEngine::RHI
 			throw std::runtime_error("D3D11Pipeline: Device cannot be null");
 		}
 
-		if (!desc.vertexShader || !desc.pixelShader) {
-			throw std::runtime_error("D3D11Pipeline: Vertex and pixel shaders are required");
+		// The pixel shader is OPTIONAL: a depth-only pipeline (shadow maps, depth pre-pass) has none, and the
+		// rasterizer then just writes depth. A pipeline without a vertex shader can never draw anything.
+		if (!desc.vertexShader) {
+			throw std::runtime_error("D3D11Pipeline: a vertex shader is required");
 		}
 		//create input layout
 		if (!CreateInputLayout(device, desc))
@@ -116,13 +118,16 @@ namespace DXEngine::RHI
 		rasterizerDesc.FillMode = desc.rasterizer.wireframe? D3D11_FILL_WIREFRAME : D3D11_FILL_SOLID;
 		rasterizerDesc.CullMode = GetD3DCullMode(desc.rasterizer.cullMode);
 		rasterizerDesc.FrontCounterClockwise = static_cast<BOOL>(desc.rasterizer.frontCounterClockwise);
-		rasterizerDesc.DepthBias = 0;
-		rasterizerDesc.DepthBiasClamp = 0.0f;
-		rasterizerDesc.SlopeScaledDepthBias = 0.0f;
-		rasterizerDesc.DepthClipEnable = TRUE;
-		rasterizerDesc.ScissorEnable = FALSE;
-		rasterizerDesc.MultisampleEnable = FALSE;
-		rasterizerDesc.AntialiasedLineEnable = FALSE;
+		// These used to be hard-coded (0 / TRUE / FALSE) even though RasterizerState has the fields: a pipeline that
+		// asked for a depth bias silently got none. The defaults of RasterizerState are the old hard-coded values,
+		// so every existing pipeline is unchanged.
+		rasterizerDesc.DepthBias = desc.rasterizer.depthBias;
+		rasterizerDesc.DepthBiasClamp = desc.rasterizer.depthBiasClamp;
+		rasterizerDesc.SlopeScaledDepthBias = desc.rasterizer.slopeScaledDepthBias;
+		rasterizerDesc.DepthClipEnable = static_cast<BOOL>(desc.rasterizer.depthClipEnable);
+		rasterizerDesc.ScissorEnable = static_cast<BOOL>(desc.rasterizer.scissorEnable);
+		rasterizerDesc.MultisampleEnable = static_cast<BOOL>(desc.rasterizer.multisampleEnable);
+		rasterizerDesc.AntialiasedLineEnable = static_cast<BOOL>(desc.rasterizer.antialiasedLineEnable);
 
 		HRESULT hr = device->CreateRasterizerState(&rasterizerDesc, m_RasterizerState.GetAddressOf());
 		return SUCCEEDED(hr);
