@@ -41,6 +41,7 @@ void Sandbox::OnAttach()
 		grass->SetTextureScale({ 30.0f, 30.0f });
 		Entity ground = SceneFactory::CreatePlane(m_Scene, device, "Ground", 1.0f, 1.0f, grass);
 		ground.Get<TransformComponent>().scale = { 500.0f, 1.0f, 500.0f };
+		ground.Get<MeshRendererComponent>().castsShadows = false;   // a 500 m plane in every shadow view would only cost; it RECEIVES shadows
 	}
 
 	// ---- moon: a textured sphere
@@ -58,6 +59,7 @@ void Sandbox::OnAttach()
 	// sits exactly where the light is (this is what the old LightSphere class tried to do by hand)
 	{
 		Entity lamp = SceneFactory::CreatePointLight(m_Scene, "Lamp", { 10.0f, 15.0f, 0.0f }, { 1.0f, 1.0f, 1.0f }, 300.0f, 40.0f);
+		lamp.Get<LightComponent>().castsShadows = true;              // six atlas tiles: the tunnel, the ring and the nanosuit throw shadows
 		auto glow = MaterialFactory::CreateEmissiveMaterial("LampGlow");
 		glow->SetEmissiveColor({ 1.0f, 0.5f, 1.0f, 1.0f });
 		glow->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -65,6 +67,25 @@ void Sandbox::OnAttach()
 		m_Scene.SetParent(marker, lamp);
 		marker.Get<TransformComponent>().scale = { 2.0f, 2.0f, 2.0f };
 		marker.Get<MeshRendererComponent>().castsShadows = false;
+	}
+
+	// ---- shadows: a dim moonlight with cascaded shadows, and a spot light on the ship (H: shadows on/off, J: filter size)
+	{
+		Entity moonlight = SceneFactory::CreateDirectionalLight(m_Scene, "Moonlight", { -0.4f, -0.8f, 0.45f }, { 0.55f, 0.65f, 1.0f }, 1.2f);
+		moonlight.Get<LightComponent>().castsShadows = true;
+
+		Entity spot = m_Scene.CreateEntity("ShipSpot");
+		auto& t = spot.Get<TransformComponent>();
+		t.position = { -18.0f, 22.0f, 12.0f };
+		t.SetForward({ 18.0f, -17.0f, 18.0f });                      // toward the ship at (0, 5, 30)
+		auto& l = spot.Add<LightComponent>();
+		l.type = LightType::Spot;
+		l.color = { 1.0f, 0.9f, 0.7f };
+		l.intensity = 400.0f;
+		l.range = 50.0f;
+		l.innerConeDegrees = 18.0f;
+		l.outerConeDegrees = 32.0f;
+		l.castsShadows = true;
 	}
 
 	// ---- imported models become entities; position them once
@@ -174,6 +195,21 @@ void Sandbox::CycleLightCulling()
 	OutputDebugStringA((std::string("Light culling: ") + name + "\n").c_str());
 }
 
+void Sandbox::ToggleShadows()
+{
+	m_Environment.shadows.enabled = !m_Environment.shadows.enabled;
+	Renderer::SetEnvironment(m_Environment);
+	OutputDebugStringA(m_Environment.shadows.enabled ? "Shadows: on\n" : "Shadows: off\n");
+}
+
+void Sandbox::CyclePcfRadius()
+{
+	m_Environment.shadows.pcfRadius = (m_Environment.shadows.pcfRadius + 1) % 4;
+	Renderer::SetEnvironment(m_Environment);
+	const uint32_t r = m_Environment.shadows.pcfRadius;
+	OutputDebugStringA(("Shadow filter: " + std::to_string(2 * r + 1) + "x" + std::to_string(2 * r + 1) + " taps\n").c_str());
+}
+
 void Sandbox::ToggleStressLights()
 {
 	if (!m_StressLights.empty())
@@ -230,6 +266,21 @@ void Sandbox::DetectInput(double time)
 		if (!stressToggled) { ToggleStressLights(); stressToggled = true; }
 	}
 	else stressToggled = false;
+
+	// H: shadows on/off. J: shadow filter size (hard, 3x3, 5x5, 7x7 taps). Use with I to see the shadow counters.
+	static bool shadowsToggled = false;
+	if (DXEngine::Input::IsKeyPressed('H'))
+	{
+		if (!shadowsToggled) { ToggleShadows(); shadowsToggled = true; }
+	}
+	else shadowsToggled = false;
+
+	static bool pcfToggled = false;
+	if (DXEngine::Input::IsKeyPressed('J'))
+	{
+		if (!pcfToggled) { CyclePcfRadius(); pcfToggled = true; }
+	}
+	else pcfToggled = false;
 
 	// Toggle debug info
 	static bool debugToggled = false;

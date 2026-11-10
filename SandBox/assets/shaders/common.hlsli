@@ -123,6 +123,8 @@ cbuffer TransformBuffer : register(b0)
     float4x4 Projection;
     float3 CameraPosition;
     float Time;
+    float ReceiveShadows;      // 1 = this draw looks the shadow maps up (MeshRendererComponent::receivesShadows), 0 = it does not
+    float3 transformPadding;
 };
 
 cbuffer cb_BoneMatrices : register(b1)
@@ -174,15 +176,17 @@ cbuffer SceneLightData : register(b3)
     float gamma;
     float globalPadding;
     
-    // Directional lights (max 4)
+    // Directional lights (max 4). 64 bytes each; mirrors DirectionalLightGPU in utils/ConstantBufferTypes.h.
+    // The cascade matrices are NOT here: every shadow view lives in the shadowViews buffer (t36), and a directional
+    // light only says where its cascades start.
     struct DirectionalLightGPU
     {
         float3 direction;
         float intensity;
         float3 color;
-        float shadowMapIndex;
-        float4 cascadeSplits;
-        float4x4 shadowMatrices[4];
+        int shadowViewIndex;       // index of cascade 0 in shadowViews; the cascades follow it. -1 = no shadow
+        float4 cascadeSplits;      // view-space depth at the FAR edge of cascade 0..3
+        float4 shadowParams;       // x = cascade count, y = depth where the last cascade starts to fade out
     } directionalLights[4];
 };
 
@@ -353,9 +357,33 @@ TextureCube irradianceTexture : register(t12); // TextureSlot::Irradiance
 Texture2D brdfLUTTexture : register(t13); // TextureSlot::BRDF_LUT
 
 // ========== SHADOWS ==========
+// ONE depth atlas holds every shadow view (directional cascades, spot views, point-light faces) as a square tile.
+// Each view is one element of shadowViews. Mirrors ShadowViewGPU / ShadowConstants in utils/ConstantBufferTypes.h.
+// (t14 = TextureSlot::Shadow used to be reserved here; it sat inside the material texture range, so the atlas lives
+// at t35 with the other engine-wide resources.)
 #if ENABLE_SHADOWS
-Texture2DArray shadowMaps       : register(t14); // TextureSlot::Shadow
-SamplerComparisonState shadowSampler : register(s1);
+struct ShadowView
+{
+    float4 row0;               // world -> light clip matrix, as DirectXMath stores it: clip = row0*x + row1*y + row2*z + row3
+    float4 row1;
+    float4 row2;
+    float4 row3;
+    float4 atlasRect;          // this view's tile in the atlas, in UV: xy = offset, zw = size
+    float4 params;             // x = normal offset (texels), y = world size of a texel (perspective: at distance 1),
+                               // z = constant depth bias (NDC), w = 0 orthographic / 1 perspective
+};
+
+Texture2D<float>             shadowAtlas : register(t35);
+StructuredBuffer<ShadowView> shadowViews : register(t36);
+SamplerComparisonState       shadowSampler : register(s1);   // linear + "reference <= stored": 1 = lit
+
+cbuffer ShadowData : register(b5)
+{
+    float shadowAtlasSize;     // texels (square)
+    float shadowInvAtlasSize;
+    uint  shadowPcfRadius;     // 0 = one tap, 1 = 3x3, 2 = 5x5, 3 = 7x7 (every tap is itself a 2x2 hardware PCF)
+    uint  shadowsEnabled;
+};
 #endif
 
 // ========== SAMPLERS ==========
@@ -678,30 +706,105 @@ float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
     return F0 + (max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), F0) - F0) * oneMinusCosThetaPow5;
 }
 
-//Shadow Sampling 
-float SampleShadowMap(float4 shadowPos, int shadowMapIndex)
-{
+// ========== SHADOW LOOKUPS ==========
+// Every function returns the LIT fraction: 1 = fully lit, 0 = fully in shadow. Without ENABLE_SHADOWS (or for a light /
+// object that has no shadow) they cost nothing and return 1.
 #if ENABLE_SHADOWS
-    if (shadowMapIndex < 0)
-        return 1.0;
-    
-    // Perform perspective divide
-    float3 projCoords = shadowPos.xyz / shadowPos.w;
-    
-    // Check if the position is outside the shadow map bounds
-    if (any(abs(projCoords.xy) > 1.0) || projCoords.z < 0.0 || projCoords.z > 1.0)
-        return 1.0;
-    
-    // Convert from NDC to texture coordinates
-    float2 shadowTexCoord = float2(projCoords.x * 0.5 + 0.5, projCoords.y * -0.5 + 0.5);
-    
-    // Sample the shadow map
-    return shadowMaps.SampleCmpLevelZero(shadowSampler,
-           float3(shadowTexCoord, shadowMapIndex), projCoords.z).r;
-#else
-    return 1.0;
-#endif
+float4 ShadowProject(ShadowView v, float3 p)
+{
+    return v.row0 * p.x + v.row1 * p.y + v.row2 * p.z + v.row3;     // (p, 1) through the rows: no matrix-packing rule involved
 }
+
+// One view: normal offset -> project -> PCF. 'N' must be the surface normal, 'NdotL' how directly the light hits it.
+float SampleShadowView(ShadowView v, float3 worldPos, float3 N, float NdotL)
+{
+    // 1) NORMAL OFFSET: push the receiver a little along its normal, more when the light grazes it. This removes shadow
+    //    acne without the peter-panning a big depth bias causes. Measured in shadow TEXELS so it follows the resolution.
+    const float w0 = ShadowProject(v, worldPos).w;
+    const float texelWorld = v.params.y * (v.params.w > 0.5 ? max(w0, 0.0) : 1.0);   // perspective: a texel grows with distance
+    const float3 pos = worldPos + N * (v.params.x * texelWorld * (0.25 + saturate(1.0 - NdotL)));
+
+    const float4 clip = ShadowProject(v, pos);
+    if (clip.w <= 0.0)
+        return 1.0;
+    const float3 ndc = clip.xyz / clip.w;
+
+    // outside the view = nothing there can shadow it
+    if (any(abs(ndc.xy) > 1.0) || ndc.z < 0.0 || ndc.z > 1.0)
+        return 1.0;
+
+    // 2) NDC -> a position inside this view's tile of the atlas
+    const float2 tileUV = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    const float2 center = v.atlasRect.xy + tileUV * v.atlasRect.zw;
+    const float  depth  = ndc.z - v.params.z;                         // constant bias
+
+    // every tap stays INSIDE the tile: a tap that left it would read the neighbouring view's depths
+    const float2 lo = v.atlasRect.xy + 0.5 * shadowInvAtlasSize;
+    const float2 hi = v.atlasRect.xy + v.atlasRect.zw - 0.5 * shadowInvAtlasSize;
+
+    // 3) PCF: (2r+1)^2 taps, each a hardware 2x2 bilinear comparison
+    const int r = (int)shadowPcfRadius;
+    float sum = 0.0;
+    [loop]
+    for (int y = -r; y <= r; ++y)
+    {
+        [loop]
+        for (int x = -r; x <= r; ++x)
+        {
+            const float2 uv = clamp(center + float2(x, y) * shadowInvAtlasSize, lo, hi);
+            sum += shadowAtlas.SampleCmpLevelZero(shadowSampler, uv, depth);
+        }
+    }
+    const float taps = (float)((2 * r + 1) * (2 * r + 1));
+    return sum / taps;
+}
+
+// Cascaded shadow map of a directional light: the cascade comes from the pixel's view-space depth.
+float DirectionalShadow(DirectionalLightGPU light, float3 worldPos, float3 N, float NdotL)
+{
+    if (light.shadowViewIndex < 0 || shadowsEnabled == 0 || ReceiveShadows < 0.5)
+        return 1.0;
+
+    const uint cascades = max((uint)(light.shadowParams.x + 0.5), 1u);
+    const float viewZ = mul(float4(worldPos, 1.0), View).z;
+    const float lastSplit = light.cascadeSplits[cascades - 1];
+    if (viewZ > lastSplit)
+        return 1.0;                                                    // past the last cascade: the shadow has ended
+
+    uint cascade = 0;
+    [unroll]
+    for (uint i = 0; i < 3; ++i)
+        if (i + 1 < cascades && viewZ > light.cascadeSplits[i])
+            cascade = i + 1;
+
+    const float shadow = SampleShadowView(shadowViews[light.shadowViewIndex + cascade], worldPos, N, NdotL);
+
+    // the end of the last cascade fades out instead of popping
+    const float fade = saturate((lastSplit - viewZ) / max(lastSplit - light.shadowParams.y, 0.001));
+    return lerp(1.0, shadow, fade);
+}
+
+// Spot light: one view. Point light: six faces, the one the direction (fragment - light) points at.
+float LocalShadow(LightGPU light, float3 worldPos, float3 N, float NdotL)
+{
+    if (light.shadowIndex < 0 || shadowsEnabled == 0 || ReceiveShadows < 0.5)
+        return 1.0;
+
+    uint viewIndex = (uint)light.shadowIndex;
+    if (light.type == LIGHT_TYPE_POINT)
+    {
+        // the dominant axis picks the face (+X -X +Y -Y +Z -Z): the same rule as ShadowMath::PointFaceIndex on the CPU
+        const float3 d = worldPos - light.position;
+        const float3 a = abs(d);
+        uint face;
+        if (a.x >= a.y && a.x >= a.z)  face = d.x > 0.0 ? 0 : 1;
+        else if (a.y >= a.z)           face = d.y > 0.0 ? 2 : 3;
+        else                           face = d.z > 0.0 ? 4 : 5;
+        viewIndex += face;
+    }
+    return SampleShadowView(shadowViews[viewIndex], worldPos, N, NdotL);
+}
+#endif
 
 //lighting calculation
 
@@ -752,12 +855,7 @@ float3 CalculateDirectionalLight(DirectionalLightGPU light, float3 N, float3 V, 
     
     float shadow = 1.0;
 #if ENABLE_SHADOWS
-    if (light.shadowMapIndex >= 0)
-    {
-        // Transform world position to shadow space
-        float4 shadowPos = mul(worldPos, light.shadowMatrices[0]);
-        shadow = SampleShadowMap(shadowPos, (int)light.shadowMapIndex);
-    }
+    shadow = DirectionalShadow(light, worldPos.xyz, N, dot(N, L));
 #endif
     
     float3 radiance = light.color * light.intensity;
@@ -793,7 +891,14 @@ float3 CalculateLocalLight(LightGPU light, float3 worldPos, float3 N, float3 V,
     if (attenuation <= 0.0)
         return float3(0, 0, 0);
     
-    return EvaluateDirectLight(N, V, L, light.color * attenuation, albedo, metallicValue, roughnessValue, F0);
+    float3 lit = EvaluateDirectLight(N, V, L, light.color * attenuation, albedo, metallicValue, roughnessValue, F0);
+
+#if ENABLE_SHADOWS
+    // the lookup is the expensive part: only for a light that actually reaches this pixel
+    if (light.shadowIndex >= 0 && any(lit > 0.0))
+        lit *= LocalShadow(light, worldPos, N, dot(N, L));
+#endif
+    return lit;
 }
 
 // The cluster of this pixel. 'svPosition' is the pixel shader's SV_POSITION: xy = pixel coordinates in the render

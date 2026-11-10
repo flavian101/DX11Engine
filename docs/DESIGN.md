@@ -70,10 +70,25 @@ Decisions made while building it:
 
 ## Shadows (milestone 3)
 
-* Directional light: **cascaded shadow maps** (3-4 cascades, fitted to the camera frustum, stable texel snapping).
-* Spot lights: one shadow map each; point lights: cube (6 faces). All in one **shadow atlas** with a budget (the N most important lights cast shadows).
+* Directional light: **cascaded shadow maps** (up to 4 cascades, fitted to slices of the camera frustum, stable texel snapping).
+* Spot lights: one shadow view each; point lights: six faces. All in one **shadow atlas** with a budget (the N most important lights cast shadows).
 * A `ShadowPass` (depth only, no pixel shader, depth bias + slope-scaled bias) runs before the forward passes and writes the atlas; the forward shader samples it with a comparison sampler and PCF.
 * The depth-texture format work (typeless resource, depth view, shader view) is already done (patch 0040).
+
+Decisions made while building it:
+* **The atlas is ONE `Texture2D` (D32_FLOAT, 4096 x 4096 by default), not a texture array.** Every view is a square power-of-two tile drawn with a viewport + scissor. A point light is six tiles, not a cube map: the shader picks the face from the dominant axis of `fragment - light`. This needs no per-slice depth views from the RHI, and a cube lookup's seam handling is replaced by a **padded face field of view**, so a pixel's whole PCF kernel stays inside its own tile (tested for every direction).
+* **All views live in one structured buffer** (`ShadowViewGPU`, t36); the atlas is t35. A light only stores where its views start: directional -> `shadowViewIndex` (+ `cascadeSplits`, cascade count), spot -> `shadowIndex`, point -> `shadowIndex` = first of 6 faces. The cascade matrices that used to sit in the directional light block (4 x 64 bytes per light, never filled) are gone, so that block shrank from ~1.2 KB to 256 bytes.
+* The shader does the matrix multiply from four `float4` rows (`r0*x + r1*y + r2*z + r3`) instead of `mul()`, so nothing depends on HLSL's matrix packing rule and the matrices are NOT transposed. `ShadowMath::MulRows` is the same code on the CPU and is tested against DirectXMath.
+* **Planner, then upload, then draw.** `ShadowPlanner` is pure CPU (scene + camera + settings -> views, tiles, casters per view) and is unit-tested; `ShadowSystem` uploads and owns no GPU objects (the `ResourceCache` does); `ShadowPass` only draws. `ShadowSystem` runs BEFORE `LightSystem` because the light buffers point at the views.
+* **Casters are not culled by the camera.** An object behind the camera still shadows the view. `SceneExtraction::ExtractShadowCasters` returns every opaque, shadow-casting mesh once, and the planner culls them per view (an oriented box for a cascade, a frustum for a spot / face). Transparent materials and the sky never cast.
+* **No shimmer:** a cascade is a sphere fit around its slice (its size does not depend on where the camera looks) and moves in whole-texel steps. Both are tested (a fixed point keeps the same texel phase while the camera walks).
+* **Budget, all or nothing:** the strongest sun gets `cascadeCount` tiles; local lights whose reach touches the view are ranked by `range / distance`, the best `maxShadowedLocalLights` get tiles (bigger tiles when they look bigger). A light gets ALL its tiles or none; when the atlas is full the tiles shrink down to `minTileResolution`, then the light is dropped and counted in `shadowLightsDropped`.
+* **Bias, in three layers:** a normal offset in the shader (in texels, so it follows the resolution), a small constant bias, and the rasterizer's depth + slope-scaled bias in the shadow pipeline. This needed an RHI fix: `RasterizerState` had depth bias / slope bias / clip / scissor fields that the D3D11 backend ignored (hard-coded values), and a depth-only pipeline could not exist because a pixel shader was required.
+* **`receivesShadows`** is a per-draw flag in the transform buffer (`ReceiveShadows`); the shadow lookup is compiled into every lit shader (`ShaderFeature::Shadows`, one variant, not two) and skipped at run time for lights / objects without shadows. `castsShadows` on the light and on the `MeshRenderer` decide who casts.
+* The shadow lookup lives inside `CalculateDirectionalLight` / `CalculateLocalLight`, so no pixel shader changed.
+* `TextureSlot::Shadow` (14) is no longer used by the shader (it sat inside the material texture range); the atlas is an engine-wide resource at t35.
+* Sandbox: a moonlight with cascades, a shadowed spot light on the ship and a shadowed lamp (point light). **H** toggles shadows, **J** cycles the filter (1, 3x3, 5x5, 7x7 taps), **I** shows the shadow counters.
+* **Not done on purpose:** shadows from transparent / alpha-tested materials, cascade blending (the last cascade fades out, the borders between cascades are hard), per-frame caching of static shadow maps, a spot-light cone cull of casters (a frustum is used), variance / PCSS soft shadows, a compute-based caster cull.
 
 ## Materials and shaders (milestone 4)
 
@@ -100,7 +115,10 @@ Not needed yet, and not before the scene exists. Once everything is an entity wi
 * **Milestone 2, implemented** (patches 0062 to 0065): structured buffers in the RHI; point/spot lights in a `StructuredBuffer<LightGPU>` (up to 8192, caps of 64 / 32 gone);
   the pure cluster grid and light assignment with tests; the GPU hookup (cluster constants + two structured buffers, the pixel shader looping over its cluster only), a heat-map debug view and a 1000-light stress scene in the Sandbox.
   **Open until it has run on a GPU:** compare frame times with and without clusters (Sandbox: K, then L, with I on). Not done on purpose: cone-shaped culling for spot lights, a compute-shader assignment, a depth pre-pass.
-* Tests that need no GPU: `scene_tests` (9), `render_tests` (9), `light_tests` (10), `cluster_tests` (11) and `rhi_tests` (5), built with `-DDXENGINE_BUILD_TESTS=ON`.
+* **Milestone 3, implemented** (patches 0066 to 0070): depth-only pipelines and the missing rasterizer state in the RHI; the pure shadow math (stable cascades, spot / point views, atlas allocator); caster extraction and the `ShadowPlanner`;
+  `ShadowSystem` + `ShadowPass` + the depth-only drawer; the shader lookup (cascade pick, normal offset, PCF inside an atlas tile); a shadowed sun, spot and lamp in the Sandbox.
+  **Open until it has run on a GPU:** the bias values (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` in `ShadowSettings`) were chosen by reasoning, not by looking at acne / peter-panning in the Sandbox; tune them with **J** and the three light types. The HLSL was compile-checked with DXC (shader model 6, with and without `ENABLE_SHADOWS`), the C++ was syntax-checked against the Windows headers, the CPU logic is tested; nothing of it has been run through D3D11 and FXC.
+* Tests that need no GPU: `scene_tests` (9), `render_tests` (9), `light_tests` (10), `cluster_tests` (11), `shadow_tests` (29) and `rhi_tests` (5), built with `-DDXENGINE_BUILD_TESTS=ON`.
 * Also removed along the way: `FrameTime` passed by value as if it were a number (now a plain float of seconds).
 
 ## Order of work
@@ -109,7 +127,7 @@ Not needed yet, and not before the scene exists. Once everything is an entity wi
 |---|---|---|
 | 1 | Scene foundation (EnTT, components, transforms) + render extraction + Sandbox ported | `Model` subclasses and `Renderer::Submit(model)` removed |
 | 2 | Lights as components, clustered forward | arbitrary light counts |
-| 3 | Shadows | directional + spot + point shadows |
+| 3 | Shadows (implemented, see Status) | directional + spot + point shadows |
 | 4 | Material/shader redesign | one slot table, sRGB, shared surface function |
 | 5 | Debug panel, then editor | inspectable, editable scenes |
 | 6 | Asset pipeline, animation review | loader emits assets |

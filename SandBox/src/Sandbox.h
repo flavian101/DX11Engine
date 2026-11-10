@@ -22,6 +22,8 @@ public:
 	void HandlePicking(float mouseX, float mouseY);
 	void ToggleStressLights();
 	void CycleLightCulling();
+	void ToggleShadows();
+	void CyclePcfRadius();
 
 private:
 	std::shared_ptr<DXEngine::CameraController> m_CameraController;
