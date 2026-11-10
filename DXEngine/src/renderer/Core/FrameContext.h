@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderTypes.h"
+#include "ShadowTypes.h"
 #include <DirectXCollision.h>
 #include <DirectXMath.h>
 #include <any>
@@ -45,6 +46,7 @@ namespace DXEngine
     //  WHO WRITES WHAT (this table is the contract):
     //   Renderer::BeginScene/Submit -> camera, cmd, targets, scene, environment
     //   SceneExtraction             -> batches (culling + material resolution + sorting)
+    //   ShadowSystem                -> shadows (casters, views, atlas + buffers), shadow stats
     //   LightSystem                 -> lightBuffer, localLightBuffer, clusterBuffer, clusterRangeBuffer, lightIndexBuffer, stats
     //   Passes                      -> stats (and the GPU targets, as side effects)
     //
@@ -89,6 +91,9 @@ namespace DXEngine
         // ---- produced by SceneExtraction ----
         BatchQueue batches;
 
+        // ---- produced by ShadowSystem (BEFORE LightSystem: the light buffers point at the shadow views) ----
+        ShadowFrame shadows;
+
         // ---- produced by LightSystem ----
         RHI::IBuffer* lightBuffer      = nullptr;   // constant buffer b3: environment + directional lights + local light count
         RHI::IBuffer* localLightBuffer = nullptr;   // StructuredBuffer<LightGPU> (point + spot lights), bound at SRV_Lights
@@ -122,6 +127,7 @@ namespace DXEngine
             totalTime = total;
             scene.Clear();
             batches.Clear();
+            shadows.Clear();
             lightBuffer = nullptr;
             localLightBuffer = nullptr;
             clusterBuffer = nullptr;

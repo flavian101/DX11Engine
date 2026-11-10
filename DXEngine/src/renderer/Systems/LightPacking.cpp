@@ -22,7 +22,8 @@ namespace DXEngine
     }
 
     uint32_t PackLights(Scene* scene, const RenderEnvironment& env, const DirectX::XMFLOAT3& cameraPosition,
-                        SceneLightData& out, std::vector<LightGPU>& localLights, uint32_t maxLocalLights)
+                        SceneLightData& out, std::vector<LightGPU>& localLights, uint32_t maxLocalLights,
+                        const ShadowLightTable* shadows)
     {
         out = SceneLightData{};
         out.ambientColor     = env.ambientColor;
@@ -35,9 +36,17 @@ namespace DXEngine
         if (!scene) return 0;
         entt::registry& reg = scene->Registry();
 
+        // The ShadowPlanner's verdict for this light, if it got one. Keyed by entity id: this loop and the planner
+        // iterate in the same order today, but nothing here depends on that.
+        auto shadowOf = [shadows](entt::entity e) -> const ShadowLightAssignment*
+        {
+            if (!shadows) return nullptr;
+            auto it = shadows->find(static_cast<uint32_t>(entt::to_integral(e)));
+            return it == shadows->end() ? nullptr : &it->second;
+        };
+
         for (auto [entity, transform, light] : reg.view<TransformComponent, LightComponent>().each())
         {
-            (void)entity;
             if (!(light.intensity > 0.0f)) continue;                  // switched off (also rejects NaN)
 
             switch (light.type)
@@ -49,9 +58,15 @@ namespace DXEngine
                 g.direction       = transform.WorldForward();         // the way the light travels
                 g.intensity       = light.intensity;
                 g.color           = light.color;
-                g.shadowMapIndex  = -1.0f;                            // a ShadowPass assigns real indices (shadows milestone)
-                g.cascadeSplits   = { 0.1f, 0.25f, 0.5f, 1.0f };
-                for (auto& m : g.shadowMatrices) m = DirectX::XMMatrixIdentity();
+                g.shadowViewIndex = -1;                               // no shadow unless the planner gave this light cascades
+                g.cascadeSplits   = { 0, 0, 0, 0 };
+                g.shadowParams    = { 0, 0, 0, 0 };
+                if (const ShadowLightAssignment* a = shadowOf(entity); a && a->firstView >= 0 && a->viewCount > 0)
+                {
+                    g.shadowViewIndex = a->firstView;
+                    g.cascadeSplits   = a->cascadeSplits;
+                    g.shadowParams    = { static_cast<float>(a->viewCount), a->fadeStart, 0.0f, 0.0f };
+                }
                 break;
             }
             case LightType::Point:
@@ -64,7 +79,9 @@ namespace DXEngine
                 g.range       = light.range;
                 g.color       = { light.color.x * light.intensity, light.color.y * light.intensity, light.color.z * light.intensity };
                 g.type        = static_cast<uint32_t>(light.type);
-                g.shadowIndex = -1;                                   // the shadow milestone assigns real indices
+                g.shadowIndex = -1;                                   // -1 = no shadow
+                if (const ShadowLightAssignment* a = shadowOf(entity); a && a->firstView >= 0 && a->viewCount > 0)
+                    g.shadowIndex = a->firstView;                     // spot: its view. point: the first of its 6 faces
 
                 if (light.type == LightType::Spot)
                 {

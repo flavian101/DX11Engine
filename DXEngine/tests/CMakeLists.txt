@@ -54,3 +54,13 @@ add_executable(rhi_tests rhi_tests.cpp)
 target_include_directories(rhi_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
 target_compile_features(rhi_tests PRIVATE cxx_std_17)
 add_test(NAME rhi_tests COMMAND rhi_tests)
+
+# Shadows: cascade fitting, spot / point views, the atlas allocator, and (with the planner) which lights get shadows.
+add_executable(shadow_tests
+    shadow_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/ShadowMath.cpp)
+target_include_directories(shadow_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/DXEngine/src
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
+target_compile_features(shadow_tests PRIVATE cxx_std_17)
+add_test(NAME shadow_tests COMMAND shadow_tests)

@@ -33,7 +33,7 @@ namespace DXEngine
         if (!m_Buffer || !m_LocalBuffer || !m_ClusterBuffer || !m_ClusterRanges || !m_LightIndices) return;
 
         const DirectX::XMFLOAT3 cameraPosition = ctx.camera ? ctx.camera->GetPositionFloat3() : DirectX::XMFLOAT3{ 0, 0, 0 };
-        uint32_t dropped = PackLights(ctx.scene.world, ctx.environment, cameraPosition, m_Data, m_Local);
+        uint32_t dropped = PackLights(ctx.scene.world, ctx.environment, cameraPosition, m_Data, m_Local, kMaxLocalLights, &ctx.shadows.lights);
 
         // Grow the structured buffer when the scene outgrew it. Replacing it is safe: the FrameContext pointers
         // to the old one were cleared by BeginFrame and are set again below, and D3D11 keeps a bound resource alive

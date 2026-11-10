@@ -238,6 +238,10 @@
     <ClInclude Include="src\renderer\Passes\ClearPass.h" />
     <ClInclude Include="src\renderer\Passes\UIPass.h" />
     <ClInclude Include="src\renderer\Systems\LightSystem.h" />
+    <ClInclude Include="src\renderer\Core\ShadowTypes.h" />
+    <ClInclude Include="src\renderer\Systems\ShadowMath.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -372,6 +376,9 @@
     <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />
     <ClCompile Include="src\renderer\Passes\UIPass.cpp" />
     <ClCompile Include="src\renderer\Systems\LightSystem.cpp" />
+    <ClCompile Include="src\renderer\Systems\ShadowMath.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\RHI\Readme_OwnerShip.md" />

@@ -1,5 +1,6 @@
 #pragma once
 #include "../Core/RenderTypes.h"
+#include "../Core/ShadowTypes.h"
 #include "utils/ConstantBufferTypes.h"   // SceneLightData, LightGPU
 #include <DirectXMath.h>
 #include <cstdint>
@@ -27,10 +28,13 @@ namespace DXEngine
     // nearest to 'cameraPosition' are kept, in no particular order). 0 in every normal case.
     //
     // 'scene' may be null: only the environment is written.
+    // 'shadows' (optional) is the ShadowPlanner's table: lights found in it get their shadow view index / cascade data,
+    // every other light gets "no shadow" (-1). Null = no light has a shadow.
     uint32_t PackLights(Scene* scene, const RenderEnvironment& environment,
                         const DirectX::XMFLOAT3& cameraPosition,
                         SceneLightData& out, std::vector<LightGPU>& localLights,
-                        uint32_t maxLocalLights = kMaxLocalLights);
+                        uint32_t maxLocalLights = kMaxLocalLights,
+                        const ShadowLightTable* shadows = nullptr);
 
     // How many LightGPU elements the GPU buffer should have for 'lightCount' lights: the next power of two,
     // never below kMinLocalLightCapacity, never above kMaxLocalLights. Growing in doubling steps keeps buffer
