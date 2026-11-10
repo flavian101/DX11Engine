@@ -58,7 +58,19 @@ add_test(NAME rhi_tests COMMAND rhi_tests)
 # Shadows: cascade fitting, spot / point views, the atlas allocator, and (with the planner) which lights get shadows.
 add_executable(shadow_tests
     shadow_tests.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/ShadowMath.cpp)
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/SceneExtraction.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightClustering.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightPacking.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/ShadowMath.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/ShadowPlanner.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp)
 target_include_directories(shadow_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)

@@ -40,6 +40,12 @@ namespace DXEngine
 
         void Extract(Scene& scene, const ExtractionCamera& camera, BatchQueue& out, RenderStatistics& stats) const;
 
+        // Every opaque mesh that casts a shadow, with its world bounding sphere (items[i] <-> bounds[i], margin included).
+        // NOT culled against the camera: an object behind the camera or outside the view still throws a shadow into it, so
+        // the shadow planner culls these per light view instead. Transparent materials and the sky never cast.
+        // Both vectors are cleared first (capacity kept) and sorted by mesh so the shadow pass binds each mesh once.
+        void ExtractShadowCasters(Scene& scene, std::vector<DrawItem>& items, std::vector<DirectX::BoundingSphere>& bounds) const;
+
         static DirectX::BoundingFrustum BuildFrustum(const ExtractionCamera& camera);
 
     private:
