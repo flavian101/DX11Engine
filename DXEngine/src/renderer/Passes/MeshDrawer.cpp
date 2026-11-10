@@ -17,6 +17,7 @@ namespace DXEngine
     static_assert(SRV_Lights >= static_cast<uint32_t>(TextureSlot::MaxTextureSlots),
                   "SRV_Lights collides with the material texture slots (t0..t31)");
     static_assert(SRV_Lights < SRV_ClusterRanges && SRV_ClusterRanges < SRV_LightIndices, "engine-wide SRV slots are in order");
+    static_assert(SRV_LightIndices < SRV_ShadowAtlas && SRV_ShadowAtlas < SRV_ShadowViews, "engine-wide SRV slots are in order");
 
     bool MeshDrawer::Initialize(FrameContext& ctx)
     {
@@ -33,6 +34,8 @@ namespace DXEngine
         m_LastMaterial = nullptr;
         m_LastMesh     = nullptr;
         m_Time         = ctx.totalTime;
+        m_DepthPass    = false;
+        m_ReceiveShadows = 1.0f;
 
         if (ctx.camera)
         {
@@ -61,12 +64,110 @@ namespace DXEngine
 
         if (RHI::ISampler* sampler = ctx.services->resources->GetDefaultSampler())
             m_Cmd->SetSampler(sampler, 0, RHI::ShaderStage::Pixel);
+
+        // Shadows. The atlas and the views are bound unconditionally for the same reason as the lights: null UNBINDS, so
+        // a frame without shadows can never read last frame's atlas (and the shadow pass can always bind it as a target).
+        m_Cmd->SetTexture(ctx.shadows.atlas,       SRV_ShadowAtlas, RHI::ShaderStage::Pixel);
+        m_Cmd->SetBuffer(ctx.shadows.viewBuffer,   SRV_ShadowViews, RHI::ShaderStage::Pixel);
+        if (ctx.shadows.constantBuffer)
+            m_Cmd->SetConstantBuffer(ctx.shadows.constantBuffer, CB_Shadow_Data, RHI::ShaderStage::Pixel);
+        if (RHI::ISampler* shadowSampler = ctx.services->resources->GetShadowSampler())
+            m_Cmd->SetSampler(shadowSampler, 1, RHI::ShaderStage::Pixel);
+    }
+
+    // ------------------------------------------------------------------
+    // Shadow casters
+    // ------------------------------------------------------------------
+    void MeshDrawer::BeginDepthPass(FrameContext& ctx, int32_t depthBias, float slopeBias)
+    {
+        m_Cmd          = ctx.cmd;
+        m_LastPipeline = nullptr;
+        m_LastMaterial = nullptr;
+        m_LastMesh     = nullptr;
+        m_DepthPass    = true;
+        m_DepthBias    = depthBias;
+        m_SlopeBias    = slopeBias;
+        m_DepthMesh    = nullptr;
+        m_DepthPipeline = nullptr;
+        m_Time         = ctx.totalTime;
+        m_ReceiveShadows = 0.0f;
+        m_CameraPos    = XMFLOAT3{ 0, 0, 0 };
+
+        // the caster shader reads b0 (WVP, or View * Projection for skinned meshes) and b1 (bones): nothing else
+        m_Cmd->SetConstantBuffer(m_TransformCB.get(), CB_Transform, RHI::ShaderStage::Vertex);
+        m_Cmd->SetConstantBuffer(m_BoneCB.get(),      CB_Bones,     RHI::ShaderStage::Vertex);
+    }
+
+    void MeshDrawer::SetDepthViewProj(const XMFLOAT4X4& lightViewProj)
+    {
+        // The vertex shaders compute WVP = World * View * Projection, and skinned meshes View * Projection. Putting the
+        // light's matrix in View and the identity in Projection gives both of them the light's clip space.
+        m_View = lightViewProj;
+        XMStoreFloat4x4(&m_Proj, XMMatrixIdentity());
+    }
+
+    RHI::IPipeline* MeshDrawer::DepthPipelineFor(FrameContext& ctx, Mesh& mesh, RHI::CullMode cull)
+    {
+        if (&mesh == m_DepthMesh && cull == m_DepthCull)
+            return m_DepthPipeline;                                   // casters are sorted by mesh: this is the usual case
+
+        m_DepthMesh = &mesh;
+        m_DepthCull = cull;
+        m_DepthPipeline = nullptr;
+
+        const auto& resource = mesh.GetResource();
+        if (!resource || !resource->GetVertexData()) return nullptr;
+
+        auto& svc = *ctx.services;
+        const VertexLayout& layout = resource->GetVertexData()->GetLayout();
+        std::shared_ptr<ShaderProgram> program = svc.shaders->GetShadowCasterShader(layout);
+        std::shared_ptr<RHI::IPipeline> pipeline = svc.resources->GetDepthOnlyPipeline(mesh, program, cull, m_DepthBias, m_SlopeBias);
+        m_DepthPipeline = pipeline.get();                            // the ResourceCache keeps it alive
+        return m_DepthPipeline;
+    }
+
+    bool MeshDrawer::DrawDepth(FrameContext& ctx, const DrawItem& item)
+    {
+        if (!item.mesh || !m_Cmd) return false;
+
+        // double-sided materials (cull none) cast from both faces; everything else is drawn the way the camera sees it
+        const RHI::CullMode cull = item.material ? item.material->GetCullMode() : RHI::CullMode::Back;
+        RHI::IPipeline* pipeline = DepthPipelineFor(ctx, *item.mesh, cull);
+        if (!pipeline) return false;
+
+        if (pipeline != m_LastPipeline)
+        {
+            m_Cmd->SetPipeline(pipeline);
+            m_LastPipeline = pipeline;
+        }
+
+        if (item.IsSkinned())
+            UploadBones(item);
+
+        if (item.IsInstanced())
+        {
+            const XMMATRIX model = XMLoadFloat4x4(&item.world);       // same convention as Draw()
+            for (const XMFLOAT4X4& inst : *item.instanceTransforms)
+            {
+                XMFLOAT4X4 world;
+                XMStoreFloat4x4(&world, XMLoadFloat4x4(&inst) * model);
+                UploadTransform(world);
+                IssueDraw(ctx, *item.mesh, item.submeshIndex);
+            }
+            return true;
+        }
+
+        UploadTransform(item.world);
+        IssueDraw(ctx, *item.mesh, item.submeshIndex);
+        return true;
     }
 
     // ------------------------------------------------------------------
     void MeshDrawer::Draw(FrameContext& ctx, const DrawItem& item)
     {
         if (!item.mesh || !item.material || !m_Cmd) return;
+
+        m_ReceiveShadows = item.receivesShadows ? 1.0f : 0.0f;
 
         if (item.IsSkinned())
             UploadBones(item);
@@ -143,6 +244,8 @@ namespace DXEngine
         cb.Projection = XMMatrixTranspose(proj);
         cb.cameraPosition = m_CameraPos;
         cb.time       = m_Time;
+        cb.receiveShadows = m_ReceiveShadows;
+        cb.padding[0] = cb.padding[1] = cb.padding[2] = 0.0f;
         m_TransformCB->Update(&cb, sizeof(cb), 0);
     }
 
@@ -199,14 +302,17 @@ namespace DXEngine
                 count = sm.indexCount;              // submesh indices are absolute -> baseVertex 0
             }
             m_Cmd->DrawIndexed(count, start, 0);
-            ctx.stats.trianglesRendered += count / 3;
+            if (!m_DepthPass) ctx.stats.trianglesRendered += count / 3;
         }
         else
         {
             const uint32_t vertices = static_cast<uint32_t>(res.GetVertexData()->GetVertexCount());
             m_Cmd->Draw(vertices, 0);
-            ctx.stats.trianglesRendered += vertices / 3;
+            if (!m_DepthPass) ctx.stats.trianglesRendered += vertices / 3;
         }
-        ++ctx.stats.drawCalls;
+        // shadow caster draws are their own number: they are not scene draw calls, and adding them would hide
+        // what the scene itself costs
+        if (m_DepthPass) ++ctx.stats.shadowCasterDraws;
+        else             ++ctx.stats.drawCalls;
     }
 }

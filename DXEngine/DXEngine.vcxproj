@@ -194,6 +194,8 @@
     <ClInclude Include="src\renderer\Core\ShadowTypes.h" />
     <ClInclude Include="src\renderer\Systems\ShadowMath.h" />
     <ClInclude Include="src\renderer\Systems\ShadowPlanner.h" />
+    <ClInclude Include="src\renderer\Systems\ShadowSystem.h" />
+    <ClInclude Include="src\renderer\Passes\ShadowPass.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Cache\ResourceCache.cpp" />
@@ -263,6 +265,8 @@
     <ClCompile Include="src\renderer\Passes\UIPass.cpp" />
     <ClCompile Include="src\renderer\Systems\ShadowMath.cpp" />
     <ClCompile Include="src\renderer\Systems\ShadowPlanner.cpp" />
+    <ClCompile Include="src\renderer\Systems\ShadowSystem.cpp" />
+    <ClCompile Include="src\renderer\Passes\ShadowPass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

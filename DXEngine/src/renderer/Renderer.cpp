@@ -8,9 +8,11 @@
 #include "ShaderCache.h"
 #include "Passes/ClearPass.h"
 #include "Passes/ForwardPass.h"
+#include "Passes/ShadowPass.h"
 #include "Passes/UIPass.h"
 #include "Systems/LightSystem.h"
 #include "Systems/SceneExtraction.h"
+#include "Systems/ShadowSystem.h"
 
 #include "RHI/GraphicsDevice.h"
 #include "camera/Camera.h"
@@ -34,6 +36,7 @@ namespace DXEngine
             std::shared_ptr<ClearPass> clearPass;            // typed handle for SetClearColor
 
             SceneExtraction extraction;                      // CPU systems, run by EndScene
+            ShadowSystem    shadows;                         // BEFORE lights: the light buffers point at its views
             LightSystem     lights;
             RenderEnvironment environment;                   // ambient / exposure / gamma
 
@@ -70,7 +73,7 @@ namespace DXEngine
         s.shaders   = std::make_shared<ShaderCache>(s.device);
         s.materials = std::make_shared<MaterialSystem>(s.device, s.shaders);
         if (!s.resources->Initialize() || !s.shaders->Initialize() || !s.materials->Initialize() ||
-            !g->lights.Initialize(s))
+            !g->shadows.Initialize(s) || !g->lights.Initialize(s))
         {
             Log("ERROR: Renderer::Init - service initialisation failed\n");
             g.reset();
@@ -81,6 +84,7 @@ namespace DXEngine
         g->frame.services = &g->services;
 
         // 3) the frame: passes run in the order they are added
+        g->graph.AddPass<ShadowPass>("shadow");          // first: every lit draw below samples the atlas it fills
         g->clearPass = g->graph.AddPass<ClearPass>("clear");
         g->graph.AddPass<ForwardPass>("background",  ForwardPass::Queue::Background);
         g->graph.AddPass<ForwardPass>("opaque",      ForwardPass::Queue::Opaque);
@@ -178,6 +182,7 @@ namespace DXEngine
             DirectX::XMStoreFloat4x4(&camera.projection, f.camera->GetProjectionMatrix());
             camera.position = f.camera->GetPositionFloat3();
             g->extraction.Extract(*f.scene.world, camera, f.batches, f.stats);   // scene -> batches
+            g->shadows.Update(f, g->extraction, camera);                          // which lights cast, where their tiles are, which casters
         }
         g->lights.Upload(f);                                                    // scene lights + environment -> lightBuffer
 
