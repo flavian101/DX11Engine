@@ -63,14 +63,14 @@ namespace DXEngine
 
         // ---- cluster the lights (skipped when the mode is None or the camera cannot be clustered)
         bool clustered = false;
-        if (ctx.environment.lightCulling != LightCullingMode::None && ctx.camera && ctx.targets.backBuffer)
+        if (ctx.environment.lightCulling != LightCullingMode::None && ctx.camera && ctx.targets.color)
         {
             DirectX::XMFLOAT4X4 view, projection;
             DirectX::XMStoreFloat4x4(&view, ctx.camera->GetViewMatrix());
             DirectX::XMStoreFloat4x4(&projection, ctx.camera->GetProjectionMatrix());
 
             // The render target is what the pixel shader's SV_Position is measured in.
-            if (m_Clusterer.SetCamera(view, projection, ctx.targets.backBuffer->GetWidth(), ctx.targets.backBuffer->GetHeight()))
+            if (m_Clusterer.SetCamera(view, projection, ctx.targets.color->GetWidth(), ctx.targets.color->GetHeight()))
             {
                 m_Clusterer.Assign(m_Local.data(), usable);
                 clustered = true;

@@ -3,6 +3,7 @@
 
 #include "Core/FrameContext.h"
 #include "Core/RenderGraph.h"
+#include "Core/SceneTarget.h"
 #include "Cache/ResourceCache.h"
 #include "MaterialSystem.h"
 #include "ShaderCache.h"
@@ -40,6 +41,14 @@ namespace DXEngine
             LightSystem     lights;
             RenderEnvironment environment;                   // ambient / exposure / gamma
 
+            // The editor's scene texture (null = the scene is drawn into the back buffer). 'request' is what was asked
+            // for, 'size' what exists; BeginScene makes the second follow the first.
+            std::shared_ptr<RHI::ITexture> sceneColor;
+            std::shared_ptr<RHI::ITexture> sceneDepth;
+            int             requestWidth  = 0;
+            int             requestHeight = 0;
+            SceneTargetSize sceneSize;
+
             RenderStatistics lastStats;
             float time = 0.0f;
             bool  inScene = false;
@@ -50,6 +59,53 @@ namespace DXEngine
         const RenderStatistics kEmptyStats{};
 
         void Log(const char* msg) { OutputDebugStringA(msg); }
+
+        // The colour the window is cleared to while the scene is drawn into a texture (nothing in the graph touches
+        // the back buffer then). The editor covers all of it with its panels; this is what shows between frames of a resize.
+        constexpr float kWindowClear[4] = { 0.09f, 0.09f, 0.10f, 1.0f };
+
+        // Makes the scene texture match the requested size. Called at the start of a frame.
+        void UpdateSceneTarget()
+        {
+            RenderServices& s = g->services;
+            const SceneTargetSize want = ResolveSceneTargetSize(g->requestWidth, g->requestHeight,
+                                                                s.device->GetCapabilities().maxTextureSize);
+            if (want == g->sceneSize && (g->sceneColor != nullptr) == want.Enabled())
+                return;
+
+            g->sceneColor.reset();
+            g->sceneDepth.reset();
+            g->sceneSize = {};
+            if (!want.Enabled())
+                return;
+
+            RHI::TextureDesc color;
+            color.width  = want.width;
+            color.height = want.height;
+            color.format = RHI::TextureFormat::RGBA8_UNORM;        // the same as the back buffer: pipelines do not care which one they draw to
+            color.isRenderTarget = true;
+            color.debugName = "SceneColor";
+
+            RHI::TextureDesc depth = color;
+            depth.format = RHI::TextureFormat::D24_UNORM_S8_UINT;  // the same as the device's depth buffer
+            depth.isRenderTarget = false;
+            depth.isDepthStencil = true;
+            depth.debugName = "SceneDepth";
+
+            try
+            {
+                g->sceneColor = s.device->CreateTexture(color);
+                g->sceneDepth = s.device->CreateTexture(depth);
+                g->sceneSize  = want;
+            }
+            catch (const std::exception& e)       // D3D11Texture reports failure by throwing
+            {
+                Log((std::string("WARNING: scene texture could not be created, drawing into the back buffer: ") + e.what() + "\n").c_str());
+                g->sceneColor.reset();
+                g->sceneDepth.reset();
+                g->requestWidth = g->requestHeight = 0;   // do not retry (and log) every frame
+            }
+        }
     }
 
     // ------------------------------------------------------------------ lifetime
@@ -104,6 +160,8 @@ namespace DXEngine
     {
         if (!g) return;
         g->graph.Shutdown();
+        g->sceneColor.reset();
+        g->sceneDepth.reset();
         g->services.resources->Clear();
         g->cmd.reset();
         g->services.materials.reset();
@@ -149,11 +207,23 @@ namespace DXEngine
         f.cmd    = g->cmd.get();
         f.environment = g->environment;
 
-        // Ask the device EVERY frame: it recreates these on resize, a cached pointer would dangle.
-        f.targets.backBuffer  = g->services.device->GetBackBuffer();
-        f.targets.depthBuffer = g->services.device->GetDepthBuffer();
+        // Ask EVERY frame: the device recreates the back buffer on resize and the scene texture changes with its panel,
+        // a cached pointer would dangle.
+        UpdateSceneTarget();
+        if (g->sceneColor)
+        {
+            f.targets.color = g->sceneColor.get();
+            f.targets.depth = g->sceneDepth.get();
+        }
+        else
+        {
+            f.targets.color = g->services.device->GetBackBuffer();
+            f.targets.depth = g->services.device->GetDepthBuffer();
+        }
 
         g->cmd->Begin();
+        if (g->sceneColor)      // the graph draws into the texture: the window itself is not touched by any pass
+            g->cmd->ClearRenderTarget(g->services.device->GetBackBuffer(), kWindowClear[0], kWindowClear[1], kWindowClear[2], kWindowClear[3]);
         g->inScene = true;
     }
 
@@ -191,7 +261,6 @@ namespace DXEngine
 
         g->cmd->End();
         g->services.device->Submit(g->cmd.get());
-        g->services.device->Present();
 
         g->lastStats = f.stats;
         f.scene.Clear();             // release models/UI now, not at the start of the next frame
@@ -207,6 +276,20 @@ namespace DXEngine
         if (!g || width <= 0 || height <= 0) return;
         g->services.device->Resize(width, height);
         g->graph.OnResize(width, height);
+    }
+
+    void Renderer::SetSceneTargetSize(int width, int height)
+    {
+        if (!g) return;
+        g->requestWidth  = width;
+        g->requestHeight = height;       // applied by the next BeginScene
+    }
+
+    RHI::ITexture* Renderer::GetSceneTexture() { return g ? g->sceneColor.get() : nullptr; }
+
+    void Renderer::Present()
+    {
+        if (g) g->services.device->Present();
     }
 
     void Renderer::EnableWireframe(bool enable)

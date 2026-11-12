@@ -6,7 +6,7 @@
 namespace DXEngine
 {
     // Clears colour + depth. First pass in the graph.
-    // Reads:  ctx.targets.backBuffer / depthBuffer.     Writes: the GPU targets (cleared).
+    // Reads:  ctx.targets.color / depth.     Writes: the GPU targets (cleared).
     class ClearPass final : public RenderPass
     {
     public:
@@ -27,14 +27,14 @@ namespace DXEngine
         void Execute(FrameContext& ctx) override
         {
             RHI::ICommandBuffer* cmd = ctx.cmd;
-            if (!cmd || !ctx.targets.backBuffer) return;
+            if (!cmd || !ctx.targets.color) return;
 
             if (m_Config.clearColor)
-                cmd->ClearRenderTarget(ctx.targets.backBuffer,
+                cmd->ClearRenderTarget(ctx.targets.color,
                                        m_Config.color[0], m_Config.color[1], m_Config.color[2], m_Config.color[3]);
 
-            if (m_Config.clearDepth && ctx.targets.depthBuffer)
-                cmd->ClearDepthStencil(ctx.targets.depthBuffer, m_Config.depth, m_Config.stencil);
+            if (m_Config.clearDepth && ctx.targets.depth)
+                cmd->ClearDepthStencil(ctx.targets.depth, m_Config.depth, m_Config.stencil);
         }
 
         std::string GetName() const override { return "ClearPass"; }

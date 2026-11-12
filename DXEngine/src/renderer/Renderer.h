@@ -8,7 +8,7 @@ namespace DXEngine
     class Camera;
     class Scene;
     class UIElement;
-    namespace RHI { class IGraphicsDevice; }
+    namespace RHI { class IGraphicsDevice; class ITexture; }
 
     // ==================================================================
     // Renderer: the FACADE. It contains no drawing code:
@@ -16,7 +16,8 @@ namespace DXEngine
     //   BeginScene(camera)     start a frame: fill FrameContext (camera, targets, command buffer)
     //   Submit(scene)          the 3D world to draw (the Scene is persistent; nothing is re-submitted per object)
     //   SubmitUI(element)      2D UI for this frame
-    //   EndScene()             extract (cull, route, sort) -> pack lights -> run the render graph -> present
+    //   EndScene()             extract (cull, route, sort) -> pack lights -> run the render graph
+    //   Present()              show the frame (Application calls it once per frame, after everything that draws on top)
     // ==================================================================
     class Renderer
     {
@@ -42,6 +43,22 @@ namespace DXEngine
         static void EndScene();
 
         static void OnWindowResize(int width, int height);
+
+        // ---- where the scene is drawn ----
+        // Default: straight into the window's back buffer. An editor wants the scene in a TEXTURE it can show inside a
+        // panel: SetSceneTargetSize(w, h) with w, h > 0 turns that on, (0, 0) turns it off again.
+        //  * The new size is applied at the next BeginScene, never in the middle of a frame (the UI being built may still
+        //    point at the old texture).
+        //  * While it is on the renderer clears the back buffer itself; whoever shows the texture draws over it before Present().
+        //  * Sizes are clamped to what the device supports (see ResolveSceneTargetSize).
+        static void SetSceneTargetSize(int width, int height);
+        // The texture the scene is drawn into, or null while it is drawn into the back buffer. It is replaced when the
+        // size changes, so do not keep the pointer past the frame.
+        static RHI::ITexture* GetSceneTexture();
+
+        // End of the frame: shows what was drawn. (EndScene used to do this; it moved so that something can still be drawn
+        // on top of the finished scene, like the ImGui layer.)
+        static void Present();
 
         static void EnableWireframe(bool enable);
         static void EnableFrustumCulling(bool enable);

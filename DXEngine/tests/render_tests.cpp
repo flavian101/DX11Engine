@@ -1,5 +1,6 @@
 // Renderer-side logic that needs no GPU: scene extraction (culling, routing, sorting, material resolution).
 // (Light packing has its own tests: light_tests.cpp.) Uses the real Mesh / Material / Scene classes; meshes are created without a device.
+#include "renderer/Core/SceneTarget.h"
 #include "renderer/Systems/SceneExtraction.h"
 #include "scene/Scene.h"
 #include "scene/TransformSystem.h"
@@ -236,6 +237,32 @@ static void TestExtractionReusesCapacity()
     CHECK(q.opaque.capacity() == cap && q.opaque.size() == 50);
 }
 
+// ------------------------------------------------------------ scene target (the editor's viewport texture)
+static void TestSceneTargetSize()
+{
+    // a panel that is collapsed or not laid out yet asks for nothing: draw into the back buffer
+    CHECK(!ResolveSceneTargetSize(0, 0, 16384).Enabled());
+    CHECK(!ResolveSceneTargetSize(800, 0, 16384).Enabled());
+    CHECK(!ResolveSceneTargetSize(0, 600, 16384).Enabled());
+    CHECK(!ResolveSceneTargetSize(-5, 600, 16384).Enabled());
+    CHECK(!ResolveSceneTargetSize(800, 600, 0).Enabled());            // a device that reports no limit: nothing can be created
+
+    // normal sizes pass through unchanged
+    const SceneTargetSize a = ResolveSceneTargetSize(1280, 720, 16384);
+    CHECK(a.Enabled() && a.width == 1280 && a.height == 720);
+    CHECK(ResolveSceneTargetSize(1, 1, 16384).Enabled());
+
+    // each side is clamped on its own; an oversized request keeps working instead of failing to create
+    const SceneTargetSize big = ResolveSceneTargetSize(40000, 720, 16384);
+    CHECK(big.width == 16384 && big.height == 720);
+    const SceneTargetSize tall = ResolveSceneTargetSize(100, 99999, 4096);
+    CHECK(tall.width == 100 && tall.height == 4096);
+
+    // equal requests give equal sizes (Renderer compares them to decide whether to recreate the texture)
+    CHECK(ResolveSceneTargetSize(640, 480, 16384) == ResolveSceneTargetSize(640, 480, 16384));
+    CHECK(ResolveSceneTargetSize(640, 480, 16384) != ResolveSceneTargetSize(641, 480, 16384));
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -249,6 +276,7 @@ int main()
         { "extraction: bucket follows the material's state",   TestBucketComesFromTheMaterialsRenderState },
         { "extraction: skinned bones optional and safe",       TestSkinnedBonesAreOptionalAndSafe },
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
+        { "scene target: size resolution",                     TestSceneTargetSize },
     };
     for (auto& t : tests)
     {

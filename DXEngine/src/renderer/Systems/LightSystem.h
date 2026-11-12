@@ -18,7 +18,7 @@ namespace DXEngine
     // The light buffer grows in doubling steps (up to kMaxLocalLights). All buffers are owned by the ResourceCache;
     // this system only asks for them.
     //
-    // Reads: ctx.scene.world, ctx.environment (lightCulling), ctx.camera, ctx.targets.backBuffer (screen size).
+    // Reads: ctx.scene.world, ctx.environment (lightCulling), ctx.camera, ctx.targets.color (screen size).
     // Writes: ctx.lightBuffer, ctx.localLightBuffer, ctx.clusterBuffer, ctx.clusterRangeBuffer, ctx.lightIndexBuffer
     //         (ALWAYS valid: the environment values - exposure, gamma, ambient - are in the constant block even when
     //         there are no lights), ctx.stats (light and cluster counts).

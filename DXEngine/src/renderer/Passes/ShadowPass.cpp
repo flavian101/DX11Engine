@@ -43,12 +43,12 @@ namespace DXEngine
 
         // Leave the pipeline state the way the next pass expects it: back buffer + scene depth, full-size viewport.
         // (ForwardPass sets these itself; this is for whatever comes next.)
-        if (ctx.targets.backBuffer)
+        if (ctx.targets.color)
         {
-            cmd.SetRenderTarget(ctx.targets.backBuffer, ctx.targets.depthBuffer);
+            cmd.SetRenderTarget(ctx.targets.color, ctx.targets.depth);
             RHI::ViewportDesc full;
-            full.width  = static_cast<float>(ctx.targets.backBuffer->GetWidth());
-            full.height = static_cast<float>(ctx.targets.backBuffer->GetHeight());
+            full.width  = static_cast<float>(ctx.targets.color->GetWidth());
+            full.height = static_cast<float>(ctx.targets.color->GetHeight());
             cmd.SetViewport(full);
         }
     }

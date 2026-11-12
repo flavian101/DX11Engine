@@ -9,7 +9,7 @@ namespace DXEngine
     namespace RHI { class IBuffer; }
 
     // Draws 2D UI elements as coloured quads on top of the finished 3D image.
-    // Reads:  ctx.scene.uiElements, ctx.targets.backBuffer.     Writes: ctx.stats.uiElementsRendered.
+    // Reads:  ctx.scene.uiElements, ctx.targets.color.     Writes: ctx.stats.uiElementsRendered.
     // The orthographic projection is derived from the back buffer size EVERY frame,
     // so it can never go stale after a resize (no UpdateUIProjectionMatrix state needed).
     class UIPass final : public RenderPass

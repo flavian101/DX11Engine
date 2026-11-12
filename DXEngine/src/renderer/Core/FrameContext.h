@@ -80,12 +80,15 @@ namespace DXEngine
 
         RenderEnvironment environment;                            // ambient / exposure / gamma (copied in by Renderer)
 
-        // ---- render targets: raw, NON-owning, re-fetched from the device EVERY frame ----
-        // (the device recreates them on resize, so caching them is a dangling-pointer bug)
+        // ---- render targets: raw, NON-owning, re-fetched EVERY frame ----
+        // (the device recreates the back buffer on resize, and the scene texture is replaced when its size changes,
+        //  so caching either is a dangling-pointer bug)
+        // 'color' is where the 3D scene and the UI are drawn: the window's back buffer, or the scene texture when an
+        // editor asked for one (Renderer::SetSceneTargetSize). Passes never need to know which.
         struct RenderTargets
         {
-            RHI::ITexture* backBuffer  = nullptr;
-            RHI::ITexture* depthBuffer = nullptr;
+            RHI::ITexture* color = nullptr;
+            RHI::ITexture* depth = nullptr;
         } targets;
 
         // ---- produced by SceneExtraction ----

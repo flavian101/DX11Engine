@@ -25,8 +25,15 @@ Renderer::EndScene()
    |     ForwardPass(transparent)
    |     UIPass
    |
-   `-- cmd.End -> device.Submit -> device.Present
+   `-- cmd.End -> device.Submit
+
+Renderer::Present()                 device.Present. Application calls it once per frame, AFTER the UI layer has drawn on top.
 ```
+
+Where the scene lands: `FrameContext::targets.color` / `depth`. By default that is the window's back buffer. An editor calls
+`Renderer::SetSceneTargetSize(w, h)` and the scene is drawn into a texture (`Renderer::GetSceneTexture()`) it shows inside a panel;
+the renderer then clears the back buffer itself, because no pass touches it. Passes read `targets.color` and never know which one it is.
+The size is applied at the next `BeginScene`, never mid-frame: the UI being built may still point at the old texture.
 
 ## Shader register map
 
@@ -61,6 +68,7 @@ If you are about to create a GPU object inside a system, it belongs in `Resource
 | Device, ResourceCache, ShaderCache, MaterialSystem | `RenderServices` inside `Renderer` | whole run |
 | Pipelines, shared constant + structured buffers, default sampler | `ResourceCache` | whole run (a structured buffer may be REPLACED by a bigger one) |
 | Back buffer, depth buffer | the device | recreated on resize, so FrameContext holds raw pointers re-fetched every frame |
+| Scene texture + its depth (only while an editor asked for one) | `Renderer` | replaced when the requested size changes (applied at `BeginScene`) |
 | Camera, batches, stats, pointers to the buffers above | `FrameContext` | one frame |
 
 ## Adding a pass (checklist)

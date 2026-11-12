@@ -79,7 +79,11 @@ namespace DXEngine {
 			layer->OnUIRender();
 		}
 		//m_ImGuiLayer->End();
-		//m_Window->OnUpdate();
+
+		// Everything of this frame is drawn: show it. (Renderer::EndScene used to present, which left no way to draw
+		// on top of the finished scene; the UI layer needs exactly that.)
+		if (!m_Minimized)
+			Renderer::Present();
 	}
 
 	void Application::OnEvent(Event& e)

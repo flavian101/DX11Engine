@@ -30,12 +30,12 @@ namespace DXEngine
 
     void UIPass::Execute(FrameContext& ctx)
     {
-        if (ctx.scene.uiElements.empty() || !ctx.cmd || !ctx.targets.backBuffer) return;
+        if (ctx.scene.uiElements.empty() || !ctx.cmd || !ctx.targets.color) return;
 
-        const float w = static_cast<float>(ctx.targets.backBuffer->GetWidth());
-        const float h = static_cast<float>(ctx.targets.backBuffer->GetHeight());
+        const float w = static_cast<float>(ctx.targets.color->GetWidth());
+        const float h = static_cast<float>(ctx.targets.color->GetHeight());
 
-        ctx.cmd->SetRenderTarget(ctx.targets.backBuffer, nullptr);     // UI never touches depth
+        ctx.cmd->SetRenderTarget(ctx.targets.color, nullptr);     // UI never touches depth
         RHI::ViewportDesc vp; vp.width = w; vp.height = h;
         ctx.cmd->SetViewport(vp);
         m_Drawer.BeginPass(ctx);

@@ -27,14 +27,14 @@ namespace DXEngine
     void ForwardPass::Execute(FrameContext& ctx)
     {
         const std::vector<DrawItem>& items = Items(ctx);
-        if (items.empty() || !ctx.cmd || !ctx.targets.backBuffer) return;     // nothing to draw: no state changes either
+        if (items.empty() || !ctx.cmd || !ctx.targets.color) return;     // nothing to draw: no state changes either
 
         // WHERE we draw (the pass's job)
-        ctx.cmd->SetRenderTarget(ctx.targets.backBuffer, ctx.targets.depthBuffer);
+        ctx.cmd->SetRenderTarget(ctx.targets.color, ctx.targets.depth);
 
         RHI::ViewportDesc vp;
-        vp.width    = static_cast<float>(ctx.targets.backBuffer->GetWidth());
-        vp.height   = static_cast<float>(ctx.targets.backBuffer->GetHeight());
+        vp.width    = static_cast<float>(ctx.targets.color->GetWidth());
+        vp.height   = static_cast<float>(ctx.targets.color->GetHeight());
         vp.minDepth = 0.0f;
         vp.maxDepth = 1.0f;
         ctx.cmd->SetViewport(vp);
