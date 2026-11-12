@@ -135,7 +135,8 @@ void Sandbox::OnUpdate(float dt)
 	Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
 
 	m_CameraController->Update(dt);
-	DetectInput(dt);
+	if (!Application::Get().GetImGuiLayer().WantsTextInput())      // the keys below are polled: not while typing in a UI field
+		DetectInput(dt);
 
 	// gameplay: only things that actually change are touched
 	m_CurrentRotation += m_Speed * dt;
@@ -156,8 +157,7 @@ void Sandbox::OnUpdate(float dt)
 
 void Sandbox::OnUIRender()
 {
-
-	
+	RendererPanel::OnImGui(&m_ShowRendererPanel);
 }
 
 void Sandbox::OnEvent(DXEngine::Event& event)
@@ -184,6 +184,7 @@ bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
 
 void Sandbox::CycleLightCulling()
 {
+	m_Environment = Renderer::GetEnvironment();       // the Renderer panel may have changed it since
 	const char* name = "";
 	switch (m_Environment.lightCulling)
 	{
@@ -197,6 +198,7 @@ void Sandbox::CycleLightCulling()
 
 void Sandbox::ToggleShadows()
 {
+	m_Environment = Renderer::GetEnvironment();
 	m_Environment.shadows.enabled = !m_Environment.shadows.enabled;
 	Renderer::SetEnvironment(m_Environment);
 	OutputDebugStringA(m_Environment.shadows.enabled ? "Shadows: on\n" : "Shadows: off\n");
@@ -204,6 +206,7 @@ void Sandbox::ToggleShadows()
 
 void Sandbox::CyclePcfRadius()
 {
+	m_Environment = Renderer::GetEnvironment();
 	m_Environment.shadows.pcfRadius = (m_Environment.shadows.pcfRadius + 1) % 4;
 	Renderer::SetEnvironment(m_Environment);
 	const uint32_t r = m_Environment.shadows.pcfRadius;
@@ -241,8 +244,8 @@ void Sandbox::DetectInput(double time)
 	{
 		if (!wireframeToggled)
 		{
-			DXEngine::Renderer::EnableWireframe(!m_WireframeMode);
-			m_WireframeMode = !m_WireframeMode;
+			m_WireframeMode = !DXEngine::Renderer::IsWireframeEnabled();    // ask the renderer: the panel can flip it too
+			DXEngine::Renderer::EnableWireframe(m_WireframeMode);
 			wireframeToggled = true;
 		}
 	}

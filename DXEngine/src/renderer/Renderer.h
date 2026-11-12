@@ -62,6 +62,8 @@ namespace DXEngine
 
         static void EnableWireframe(bool enable);
         static void EnableFrustumCulling(bool enable);
+        static bool IsWireframeEnabled();         // so a UI shows the real state, whoever changed it last
+        static bool IsFrustumCullingEnabled();
         static void EnableDebugInfo(bool enable);
 
         static const RenderStatistics& GetStats();

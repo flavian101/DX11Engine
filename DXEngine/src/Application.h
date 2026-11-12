@@ -9,6 +9,7 @@
 #include <Core/LayerStack.h>
 #include "renderer/Renderer.h"
 #include "utils/UI/UILayer.h"
+#include "Core/ImGuiLayer.h"
 
 
 
@@ -28,7 +29,9 @@ namespace DXEngine {
 		void PushOverlay(Layer* overlay);
 
 		inline static  Application& Get() { return *s_Instance; }
+		inline static bool HasInstance() { return s_Instance != nullptr; }
 		inline Window& GetWindow() { return *m_Window; }
+		inline ImGuiLayer& GetImGuiLayer() { return *m_ImGuiLayer; }
 
 	private:
 		void Render();
@@ -46,6 +49,7 @@ namespace DXEngine {
 		FrameTime m_Deltatime;
 		std::unique_ptr<Window> m_Window;
 		UILayer* m_UILayer;
+		ImGuiLayer* m_ImGuiLayer;
 		bool m_Minimized = false;
 		LayerStack m_LayerStack;
 

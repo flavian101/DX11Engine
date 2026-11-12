@@ -14,6 +14,8 @@
 #include "Core/LayerStack.h"
 #include <FrameTime.h>
 #include "Core/Input.h"
+#include "Core/ImGuiLayer.h"
+#include "editor/RendererPanel.h"
 
 #include "renderer/Renderer.h"
 

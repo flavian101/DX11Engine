@@ -48,6 +48,7 @@ private:
 	float m_LastMouseY = 0.0f;
 	bool m_WireframeMode = false;
 	bool mDX_DEBUGMode = false;
+	bool m_ShowRendererPanel = true;
 
 	int m_CurrentAnimationIndex = 0;
 	bool m_IsAnimationPaused = false;

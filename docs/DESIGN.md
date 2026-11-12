@@ -118,7 +118,19 @@ Decisions made while building it:
 
 ## Editor (milestone 5)
 
-Not needed yet, and not before the scene exists. Once everything is an entity with components, an ImGui editor is mostly a loop over components: hierarchy panel, inspector, gizmo, stats. ImGui is already vendored. A small **debug panel** (frame stats, light list, toggles) is worth adding earlier because it is cheap and pays off immediately.
+ImGui is on the **docking** branch (the submodule follows `branch = docking`; run `git submodule update --init` after a pull that moves it).
+Everything below sits on top of the scene: the editor is a loop over components, and the engine part knows nothing about game content.
+
+**The frame.** `Application::Render` is: layers `OnUpdate` (the scene is drawn: `BeginScene` ... `EndScene`), then `ImGuiLayer::Begin`, layers `OnUIRender`,
+`ImGuiLayer::End` (draws into the back buffer, over the scene), then `Renderer::Present`. `EndScene` no longer presents, which is what makes drawing a UI over the finished scene possible.
+
+**Input rules** (these are easy to get wrong, so they are written down):
+* `ImGuiLayer` is the top overlay, so it sees events first and marks the mouse / keyboard events the UI wants as handled. A click on a panel never also picks an entity. Mouse blocking can be switched off (`SetBlockMouseEvents(false)`): the editor does that while the cursor is over its viewport.
+* Middle mouse = look around (cursor captured). It only starts when the UI does not want the mouse, and while it runs the UI ignores the mouse completely (the pointer is re-centred every move).
+* Code that **polls** input (`Input::IsKeyPressed`, used by the Sandbox shortcuts and the camera) does not see events, so it asks: `ImGuiLayer::WantsTextInput()` (a text field is being edited) before reacting to keys.
+* The renderer owns its settings (environment, wireframe, culling). Anything that shows or changes them reads the live value first (`Renderer::GetEnvironment`, `IsWireframeEnabled`), so a key and a panel cannot undo each other.
+
+**Debug panel first** (`editor/RendererPanel`): frame time, the renderer's statistics (with the "must be zero" counters in red), wireframe / culling toggles, the environment and every shadow setting.
 
 ## Assets and animation (milestone 6)
 

@@ -52,6 +52,9 @@
     <Filter Include="imgui_backends">
       <UniqueIdentifier>{A26F55DF-0329-4351-8524-682529B9CE4B}</UniqueIdentifier>
     </Filter>
+    <Filter Include="editor">
+      <UniqueIdentifier>{B984231E-F897-4261-8E0E-2B01726702C1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Animation\AnimationClip.h">
@@ -260,6 +263,12 @@
     <ClInclude Include="src\utils\ImageMips.h">
       <Filter>utils</Filter>
     </ClInclude>
+    <ClInclude Include="src\Core\ImGuiLayer.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\RendererPanel.h">
+      <Filter>editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -420,6 +429,12 @@
     </ClCompile>
     <ClCompile Include="vendor\imgui\backends\imgui_impl_dx11.cpp">
       <Filter>imgui_backends</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Core\ImGuiLayer.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\RendererPanel.cpp">
+      <Filter>editor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

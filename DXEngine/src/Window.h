@@ -9,6 +9,9 @@ namespace DXEngine {
 
 	public:
 		using EventCallbackFn = std::function<void(Event&)>;
+		// Sees EVERY native message before the engine does; return true to say "consumed, do not handle it again".
+		// (The ImGui layer needs the raw messages: mouse, keyboard, text, cursor.)
+		using NativeMessageHook = std::function<bool(HWND, UINT, WPARAM, LPARAM)>;
 
 		Window(HINSTANCE hInstance, int nCmdShow,
 			LPCWSTR windowTitle, LPCWSTR windowClass,
@@ -19,9 +22,11 @@ namespace DXEngine {
 		bool Initialize();
 		static std::optional<int> ProcessMessages();
 		void SetEventCallback(const EventCallbackFn& callback);
+		void SetNativeMessageHook(NativeMessageHook hook) { m_NativeMessageHook = std::move(hook); }
 		void QuitWindow();
 		void CaptureCursor();
 		void ReleaseCursor();
+		bool IsCursorCaptured() const { return m_IsCursorCaptured; }
 
 		HWND GetHwnd() const;
 		int GetWidth() const { return m_Width; }
@@ -41,6 +46,7 @@ namespace DXEngine {
 		int m_Width;
 		int m_Height;
 		EventCallbackFn m_EventCallback;
+		NativeMessageHook m_NativeMessageHook;
 		bool m_IsCursorCaptured;
 
 	};

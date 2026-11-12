@@ -53,6 +53,7 @@ namespace DXEngine
             float time = 0.0f;
             bool  inScene = false;
             bool  debugInfo = false;
+            bool  wireframe = false;
         };
 
         std::unique_ptr<State> g;
@@ -294,8 +295,13 @@ namespace DXEngine
 
     void Renderer::EnableWireframe(bool enable)
     {
-        if (g) g->services.resources->SetWireframeMode(enable);
+        if (!g) return;
+        g->wireframe = enable;
+        g->services.resources->SetWireframeMode(enable);
     }
+
+    bool Renderer::IsWireframeEnabled() { return g && g->wireframe; }
+    bool Renderer::IsFrustumCullingEnabled() { return g && g->extraction.GetConfig().frustumCulling; }
 
     void Renderer::EnableFrustumCulling(bool enable)
     {

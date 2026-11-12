@@ -142,6 +142,9 @@ namespace DXEngine {
 
 	LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 	{
+		if (m_NativeMessageHook && m_NativeMessageHook(hWnd, msg, wParam, lParam))
+			return TRUE;
+
 		switch (msg)
 		{
 			// -- keyboard down --
@@ -301,12 +304,14 @@ namespace DXEngine {
 	}
 	void Window::CaptureCursor()
 	{
+		if (m_IsCursorCaptured) return;      // ShowCursor counts calls: an unbalanced pair would leave the cursor hidden / shown for good
 		SetCapture(hwnd);
 		ShowCursor(FALSE);
 		m_IsCursorCaptured = true;
 	}
 	void Window::ReleaseCursor()
 	{
+		if (!m_IsCursorCaptured) return;     // e.g. the button went down over a UI panel, so nothing was captured
 		ReleaseCapture();
 		ShowCursor(TRUE);
 		m_IsCursorCaptured = false;
