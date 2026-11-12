@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <assimp/scene.h>
+#include "utils/material/MaterialSlots.h"   // TextureColorSpace
 
 namespace DXEngine
 {
@@ -16,8 +17,11 @@ namespace DXEngine
 	public:
 		explicit TextureLoader(std::shared_ptr<RHI::IGraphicsDevice> device);
 
-		std::shared_ptr<RHI::ITexture> LoadTexture(const std::string& filepath, aiTextureType type);
-		std::shared_ptr<RHI::ITexture> LoadEmbeddedTexture(const aiScene* scene, const std::string& filepath);
+		// colorSpace: how the image is meant to be read (sRGB for colours, linear for data); the importer takes it from the
+		// slot table. It is part of the cache key: one file can be an albedo in one material and data in another, and the two
+		// must not share a texture.
+		std::shared_ptr<RHI::ITexture> LoadTexture(const std::string& filepath, aiTextureType type, TextureColorSpace colorSpace);
+		std::shared_ptr<RHI::ITexture> LoadEmbeddedTexture(const aiScene* scene, const std::string& filepath, TextureColorSpace colorSpace);
 
 		// The scene whose embedded textures ("*0", "*1", ...) LoadTexture should resolve. ModelLoader sets it
 		// while it processes a scene and clears it afterwards; it is never owned or kept.

@@ -127,11 +127,10 @@ float4 main(StandardVertexOutput input) : SV_Target
     // Apply occlusion strength from material buffer
     occlusionValue = lerp(1.0, occlusionValue, occlusionStrength);
     
-    // Convert albedo to linear space if using sRGB textures
-    // Most texture formats store colors in sRGB, but lighting calculations need linear
-#if HAS_DIFFUSE_TEXTURE
-    baseColor.rgb = pow(abs(baseColor.rgb), 2.2); // sRGB to Linear
-#endif
+    // (No sRGB -> linear conversion here any more. Colour textures are RGBA8_SRGB, so the GPU already hands this shader
+    // LINEAR values; converting again would darken every textured surface. This used to be pow(baseColor, 2.2) applied
+    // to the textured case only, and Lit.ps / Transparent.ps never converted at all: the same texture rendered differently
+    // depending on the material type. See the linear-workflow note in common.hlsli.)
     
     // Proper F0 calculation for metallic workflow
     // Dielectrics: ~0.04 (4% reflectance)

@@ -197,6 +197,7 @@
     <ClInclude Include="src\renderer\Systems\ShadowSystem.h" />
     <ClInclude Include="src\renderer\Passes\ShadowPass.h" />
     <ClInclude Include="src\utils\material\MaterialSlots.h" />
+    <ClInclude Include="src\utils\ImageMips.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Cache\ResourceCache.cpp" />
@@ -269,6 +270,7 @@
     <ClCompile Include="src\renderer\Systems\ShadowSystem.cpp" />
     <ClCompile Include="src\renderer\Passes\ShadowPass.cpp" />
     <ClCompile Include="src\utils\material\MaterialSlots.cpp" />
+    <ClCompile Include="src\utils\ImageMips.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "ImageLoader.h"
+#include "ImageMips.h"
 
 // The single translation unit that compiles stb_image (the legacy Texture.cpp no longer does).
 #define STB_IMAGE_IMPLEMENTATION
@@ -14,48 +15,11 @@ namespace DXEngine
     {
         void Log(const std::string& msg) { OutputDebugStringA(("[ImageLoader] " + msg + "\n").c_str()); }
 
-        // Appends mip levels 1..N to `pixels` (which holds level 0 on entry) and returns the level count.
-        // Level sizes follow the same rule as D3D11Texture's initial-data loop: max(1, size / 2).
-        uint32_t AppendMipChain(std::vector<uint8_t>& pixels, uint32_t width, uint32_t height)
+        // sRGB data is stored in an RGBA8_SRGB texture: the GPU then converts to linear when it samples (and filters in
+        // linear). Everything else is plain RGBA8_UNORM.
+        RHI::TextureFormat FormatFor(TextureColorSpace colorSpace)
         {
-            uint32_t levels = 1;
-            size_t prevOffset = 0;
-            uint32_t pw = width, ph = height;
-
-            while (pw > 1 || ph > 1)
-            {
-                const uint32_t nw = std::max(1u, pw / 2);
-                const uint32_t nh = std::max(1u, ph / 2);
-
-                const size_t newOffset = pixels.size();
-                pixels.resize(newOffset + static_cast<size_t>(nw) * nh * 4);   // may reallocate: index, never hold pointers
-
-                for (uint32_t y = 0; y < nh; ++y)
-                {
-                    const uint32_t y0 = std::min(2 * y,     ph - 1);
-                    const uint32_t y1 = std::min(2 * y + 1, ph - 1);
-                    for (uint32_t x = 0; x < nw; ++x)
-                    {
-                        const uint32_t x0 = std::min(2 * x,     pw - 1);
-                        const uint32_t x1 = std::min(2 * x + 1, pw - 1);
-
-                        for (uint32_t c = 0; c < 4; ++c)
-                        {
-                            auto at = [&](uint32_t sx, uint32_t sy) -> uint32_t {
-                                return pixels[prevOffset + (static_cast<size_t>(sy) * pw + sx) * 4 + c];
-                            };
-                            const uint32_t sum = at(x0, y0) + at(x1, y0) + at(x0, y1) + at(x1, y1);
-                            pixels[newOffset + (static_cast<size_t>(y) * nw + x) * 4 + c] = static_cast<uint8_t>((sum + 2) / 4);
-                        }
-                    }
-                }
-
-                prevOffset = newOffset;
-                pw = nw;
-                ph = nh;
-                ++levels;
-            }
-            return levels;
+            return colorSpace == TextureColorSpace::SRGB ? RHI::TextureFormat::RGBA8_SRGB : RHI::TextureFormat::RGBA8_UNORM;
         }
 
         std::shared_ptr<RHI::ITexture> CreateTexture(RHI::IGraphicsDevice& device, const RHI::TextureDesc& desc)
@@ -80,14 +44,15 @@ namespace DXEngine
         std::shared_ptr<RHI::ITexture> CreateFromRGBA8(RHI::IGraphicsDevice& device,
                                                        std::vector<uint8_t>& pixels,
                                                        uint32_t width, uint32_t height,
-                                                       const std::string& debugName, bool generateMipChain)
+                                                       const std::string& debugName, TextureColorSpace colorSpace,
+                                                       bool generateMipChain)
         {
             RHI::TextureDesc desc;
             desc.type      = RHI::TextureType::Texture2D;
-            desc.format    = RHI::TextureFormat::RGBA8_UNORM;
+            desc.format    = FormatFor(colorSpace);
             desc.width     = width;
             desc.height    = height;
-            desc.mipLevels = generateMipChain ? AppendMipChain(pixels, width, height) : 1;
+            desc.mipLevels = generateMipChain ? ImageMips::AppendMipChain(pixels, width, height, colorSpace) : 1;
             desc.initialData = pixels.data();    // complete chain, contiguous: exactly what D3D11Texture expects
             desc.debugName = debugName;
             return CreateTexture(device, desc);
@@ -96,6 +61,7 @@ namespace DXEngine
 
     std::shared_ptr<RHI::ITexture> ImageLoader::LoadTexture2D(RHI::IGraphicsDevice& device,
                                                               const std::string& path,
+                                                              TextureColorSpace colorSpace,
                                                               bool generateMipChain)
     {
         int width = 0, height = 0, channels = 0;
@@ -108,12 +74,13 @@ namespace DXEngine
 
         std::vector<uint8_t> pixels(decoded, decoded + static_cast<size_t>(width) * height * 4);
         stbi_image_free(decoded);
-        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), path, generateMipChain);
+        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), path, colorSpace, generateMipChain);
     }
 
     std::shared_ptr<RHI::ITexture> ImageLoader::LoadTexture2DFromMemory(RHI::IGraphicsDevice& device,
                                                                         const uint8_t* data, size_t sizeBytes,
                                                                         const std::string& debugName,
+                                                                        TextureColorSpace colorSpace,
                                                                         bool generateMipChain)
     {
         int width = 0, height = 0, channels = 0;
@@ -126,13 +93,14 @@ namespace DXEngine
 
         std::vector<uint8_t> pixels(decoded, decoded + static_cast<size_t>(width) * height * 4);
         stbi_image_free(decoded);
-        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), debugName, generateMipChain);
+        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), debugName, colorSpace, generateMipChain);
     }
 
     std::shared_ptr<RHI::ITexture> ImageLoader::CreateTexture2DFromRGBA8(RHI::IGraphicsDevice& device,
                                                                          const uint8_t* rgba,
                                                                          uint32_t width, uint32_t height,
                                                                          const std::string& debugName,
+                                                                         TextureColorSpace colorSpace,
                                                                          bool generateMipChain)
     {
         if (!rgba || width == 0 || height == 0)
@@ -141,11 +109,12 @@ namespace DXEngine
             return nullptr;
         }
         std::vector<uint8_t> pixels(rgba, rgba + static_cast<size_t>(width) * height * 4);
-        return CreateFromRGBA8(device, pixels, width, height, debugName, generateMipChain);
+        return CreateFromRGBA8(device, pixels, width, height, debugName, colorSpace, generateMipChain);
     }
 
     std::shared_ptr<RHI::ITexture> ImageLoader::LoadCubeMap(RHI::IGraphicsDevice& device,
-                                                            const std::array<std::string, 6>& facePaths)
+                                                            const std::array<std::string, 6>& facePaths,
+                                                            TextureColorSpace colorSpace)
     {
         std::vector<uint8_t> pixels;
         int width = 0, height = 0;
@@ -172,7 +141,7 @@ namespace DXEngine
 
         RHI::TextureDesc desc;
         desc.type        = RHI::TextureType::TextureCube;
-        desc.format      = RHI::TextureFormat::RGBA8_UNORM;
+        desc.format      = FormatFor(colorSpace);
         desc.width       = static_cast<uint32_t>(width);
         desc.height      = static_cast<uint32_t>(height);
         desc.mipLevels   = 1;
@@ -184,13 +153,14 @@ namespace DXEngine
     }
 
     std::shared_ptr<RHI::ITexture> ImageLoader::CreateSolidColor(RHI::IGraphicsDevice& device,
-                                                                 uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+                                                                 uint8_t r, uint8_t g, uint8_t b, uint8_t a,
+                                                                 TextureColorSpace colorSpace)
     {
         const uint8_t pixel[4] = { r, g, b, a };
 
         RHI::TextureDesc desc;
         desc.type        = RHI::TextureType::Texture2D;
-        desc.format      = RHI::TextureFormat::RGBA8_UNORM;
+        desc.format      = FormatFor(colorSpace);
         desc.width       = 1;
         desc.height      = 1;
         desc.mipLevels   = 1;
@@ -198,5 +168,18 @@ namespace DXEngine
         desc.debugName   = "SolidColor";
 
         return CreateTexture(device, desc);
+    }
+
+    // ---- the slot table decides the colour space ----
+    std::shared_ptr<RHI::ITexture> ImageLoader::LoadForSlot(RHI::IGraphicsDevice& device, const std::string& path,
+                                                            TextureSlot slot, bool generateMipChain)
+    {
+        return LoadTexture2D(device, path, MaterialSlots::Info(slot).colorSpace, generateMipChain);
+    }
+
+    std::shared_ptr<RHI::ITexture> ImageLoader::LoadCubeMapForSlot(RHI::IGraphicsDevice& device,
+                                                                   const std::array<std::string, 6>& facePaths, TextureSlot slot)
+    {
+        return LoadCubeMap(device, facePaths, MaterialSlots::Info(slot).colorSpace);
     }
 }

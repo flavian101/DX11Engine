@@ -254,6 +254,9 @@
     <ClInclude Include="src\utils\material\MaterialSlots.h">
       <Filter>utils\material</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\ImageMips.h">
+      <Filter>utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -402,6 +405,9 @@
     </ClCompile>
     <ClCompile Include="src\utils\material\MaterialSlots.cpp">
       <Filter>utils\material</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\ImageMips.cpp">
+      <Filter>utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

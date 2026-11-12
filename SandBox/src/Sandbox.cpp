@@ -34,10 +34,10 @@ void Sandbox::OnAttach()
 	{
 		auto grass = MaterialFactory::CreateLitMaterial("Ground Material");
 		const std::string dir = "assets/textures/grass/grass_with_mud_and_stones_39_46_";
-		grass->SetTexture(TextureSlot::Diffuse,          ImageLoader::LoadTexture2D(*device, dir + "diffuse.jpg"));
-		grass->SetTexture(TextureSlot::Normal,           ImageLoader::LoadTexture2D(*device, dir + "normal.jpg"));
-		grass->SetTexture(TextureSlot::Roughness,        ImageLoader::LoadTexture2D(*device, dir + "roughness.jpg"));
-		grass->SetTexture(TextureSlot::AmbientOcclusion, ImageLoader::LoadTexture2D(*device, dir + "ao.jpg"));
+		grass->SetTexture(TextureSlot::Diffuse,          ImageLoader::LoadForSlot(*device, dir + "diffuse.jpg", TextureSlot::Diffuse));
+		grass->SetTexture(TextureSlot::Normal,           ImageLoader::LoadForSlot(*device, dir + "normal.jpg", TextureSlot::Normal));
+		grass->SetTexture(TextureSlot::Roughness,        ImageLoader::LoadForSlot(*device, dir + "roughness.jpg", TextureSlot::Roughness));
+		grass->SetTexture(TextureSlot::AmbientOcclusion, ImageLoader::LoadForSlot(*device, dir + "ao.jpg", TextureSlot::AmbientOcclusion));
 		grass->SetTextureScale({ 30.0f, 30.0f });
 		Entity ground = SceneFactory::CreatePlane(m_Scene, device, "Ground", 1.0f, 1.0f, grass);
 		ground.Get<TransformComponent>().scale = { 500.0f, 1.0f, 500.0f };
@@ -47,7 +47,7 @@ void Sandbox::OnAttach()
 	// ---- moon: a textured sphere
 	{
 		auto moon = MaterialFactory::CreateLitMaterial("MoonMaterial");
-		moon->SetTexture(TextureSlot::Diffuse, ImageLoader::LoadTexture2D(*device, "assets/textures/8k_moon.jpg"));
+		moon->SetTexture(TextureSlot::Diffuse, ImageLoader::LoadForSlot(*device, "assets/textures/8k_moon.jpg", TextureSlot::Diffuse));
 		moon->SetSpecularColor({ 0.2f, 0.2f, 0.2f, 1.0f });
 		moon->SetShininess(100.0f);
 		m_Moon = SceneFactory::CreateSphere(m_Scene, device, "Moon", 1.0f, 64, moon);

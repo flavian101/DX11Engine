@@ -34,5 +34,7 @@ float4 main(StandardVertexOutput input) : SV_Target
     clip(baseColor.a - 0.5);
 #endif
     
-    return baseColor;
+    // Unlit still works in linear light (the texture arrives linear, the colour is linear): encode it for the display.
+    // At the neutral gamma this reproduces the texture exactly as it is in the file.
+    return float4(ApplyGamma(baseColor.rgb, gamma), baseColor.a);
 }

@@ -957,9 +957,28 @@ float3 ToneMapExposure(float3 color, float exposure)
     return saturate(mapped);
 }
 
+// LINEAR WORKFLOW. Everything the lighting maths touches is LINEAR light:
+//   - colour textures (albedo, emissive, the sky) are stored as RGBA8_SRGB, so the GPU converts them to linear when
+//     sampling (ImageLoader / the slot table decide which textures are colours); data textures are never converted;
+//   - material colours (diffuseColor, emissiveColor, light colours, ambient) are linear values.
+// The result is encoded for the (non-sRGB) back buffer exactly once, here, at the very end of a shader.
+
+// The exact sRGB transfer function (the inverse of what the GPU does when it samples an RGBA8_SRGB texture).
+float3 LinearToSRGB(float3 c)
+{
+    c = saturate(c);
+    float3 low  = c * 12.92f;
+    float3 high = 1.055f * pow(c, 1.0f / 2.4f) - 0.055f;
+    return float3(c.r <= 0.0031308f ? low.r : high.r,
+                  c.g <= 0.0031308f ? low.g : high.g,
+                  c.b <= 0.0031308f ? low.b : high.b);
+}
+
+// Display encoding. gamma == 2.2 is NEUTRAL and gives the exact sRGB curve, so an unlit texture comes out bit-for-bit as
+// it was in the file; any other value bends the curve (a brightness knob: higher = brighter midtones).
 float3 ApplyGamma(float3 color, float gamma)
 {
-    return pow(saturate(color), 1.0f / gamma);
+    return pow(LinearToSRGB(color), 2.2f / gamma);
 }
 
 StandardVertexOutput StandardVertexShader(StandardVertexInput input)

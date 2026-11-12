@@ -37,7 +37,7 @@ namespace DXEngine
         {
             auto material = MaterialFactory::CreateSkyboxMaterial("SkyMaterial");
             if (device)
-                material->SetTexture(TextureSlot::Environment, ImageLoader::LoadCubeMap(*device, faces));
+                material->SetTexture(TextureSlot::Environment, ImageLoader::LoadCubeMapForSlot(*device, faces, TextureSlot::Environment));
 
             Entity sky = CreateMesh(scene, "Sky", Mesh::CreateSphere(device, radius, 32), std::move(material));
             sky.Get<MeshRendererComponent>().castsShadows = false;

@@ -10,7 +10,7 @@ namespace DXEngine
 {
     TextureLoader::TextureLoader(std::shared_ptr<RHI::IGraphicsDevice> device) : m_Device(std::move(device)) {}
 
-    std::shared_ptr<RHI::ITexture> TextureLoader::LoadTexture(const std::string& filepath, aiTextureType type)
+    std::shared_ptr<RHI::ITexture> TextureLoader::LoadTexture(const std::string& filepath, aiTextureType type, TextureColorSpace colorSpace)
     {
         if (filepath.empty())
         {
@@ -28,14 +28,15 @@ namespace DXEngine
             }
 
             // Not cached by name: "*0" means a different image in every model.
-            auto embedded = LoadEmbeddedTexture(m_CurrentScene, filepath);
+            auto embedded = LoadEmbeddedTexture(m_CurrentScene, filepath, colorSpace);
             return embedded ? embedded : CreateFallbackTexture(type);
         }
 
-        // Check cache first
+        // Check cache first. The colour space is part of the key (see LoadTexture in the header).
+        const std::string cacheKey = filepath + (colorSpace == TextureColorSpace::SRGB ? "|srgb" : "|linear");
         if (m_CachingEnabled)
         {
-            auto it = m_TextureCache.find(filepath);
+            auto it = m_TextureCache.find(cacheKey);
             if (it != m_TextureCache.end())
             {
                 if (auto cached = it->second.lock())
@@ -59,11 +60,11 @@ namespace DXEngine
         // Load from file (ImageLoader logs the reason and returns nullptr on failure)
         if (m_Device)
         {
-            if (auto texture = ImageLoader::LoadTexture2D(*m_Device, filepath))
+            if (auto texture = ImageLoader::LoadTexture2D(*m_Device, filepath, colorSpace))
             {
                 if (m_CachingEnabled)
                 {
-                    m_TextureCache[filepath] = texture;
+                    m_TextureCache[cacheKey] = texture;
                 }
                 m_TexturesLoaded++;
                 return texture;
@@ -73,7 +74,7 @@ namespace DXEngine
         return CreateFallbackTexture(type);
     }
 
-    std::shared_ptr<RHI::ITexture> TextureLoader::LoadEmbeddedTexture(const aiScene* scene, const std::string& filepath)
+    std::shared_ptr<RHI::ITexture> TextureLoader::LoadEmbeddedTexture(const aiScene* scene, const std::string& filepath, TextureColorSpace colorSpace)
     {
         if (!scene || filepath.empty() || filepath[0] != '*')
         {
@@ -93,7 +94,7 @@ namespace DXEngine
                 const unsigned char* data = reinterpret_cast<const unsigned char*>(texture->pcData);
                 size_t dataSize = texture->mWidth;
 
-                auto loadedTexture = m_Device ? ImageLoader::LoadTexture2DFromMemory(*m_Device, data, dataSize, filepath) : nullptr;
+                auto loadedTexture = m_Device ? ImageLoader::LoadTexture2DFromMemory(*m_Device, data, dataSize, filepath, colorSpace) : nullptr;
                 if (loadedTexture)
                 {
                     m_TexturesLoaded++;
@@ -120,7 +121,7 @@ namespace DXEngine
                 }
 
                 auto loadedTexture = m_Device ? ImageLoader::CreateTexture2DFromRGBA8(*m_Device, pixels.data(),
-                    static_cast<uint32_t>(width), static_cast<uint32_t>(height), filepath) : nullptr;
+                    static_cast<uint32_t>(width), static_cast<uint32_t>(height), filepath, colorSpace) : nullptr;
 
                 if (loadedTexture)
                 {
@@ -187,7 +188,10 @@ namespace DXEngine
         auto it = m_SolidColorCache.find(key);
         if (it != m_SolidColorCache.end()) return it->second;
 
-        auto texture = ImageLoader::CreateSolidColor(*m_Device, r, g, b, a);
+        // Every fallback colour is either 0, 255 or a data value (flat normal, mid roughness): the neutral colours of the
+        // two COLOUR slots (white albedo, black emission) are the same number in sRGB and linear, so one linear texture
+        // serves all of them.
+        auto texture = ImageLoader::CreateSolidColor(*m_Device, r, g, b, a, TextureColorSpace::Linear);
         if (texture) m_SolidColorCache[key] = texture;
         return texture;
     }

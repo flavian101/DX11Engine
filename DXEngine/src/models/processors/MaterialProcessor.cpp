@@ -179,7 +179,8 @@ namespace DXEngine
 			return "";
 		}
 
-		auto texture = m_TextureLoader->LoadTexture(fullPath, type);
+		// colours are read as sRGB, data as linear: the slot table says which (MaterialSlots.cpp)
+		auto texture = m_TextureLoader->LoadTexture(fullPath, type, MaterialSlots::Info(slot).colorSpace);
 
 		if (texture && texture->IsValid()) {
 			mat->SetTexture(slot, texture);
