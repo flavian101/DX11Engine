@@ -251,6 +251,9 @@
     <ClInclude Include="src\renderer\Passes\ShadowPass.h">
       <Filter>renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\material\MaterialSlots.h">
+      <Filter>utils\material</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -396,6 +399,9 @@
     </ClCompile>
     <ClCompile Include="src\renderer\Passes\ShadowPass.cpp">
       <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\material\MaterialSlots.cpp">
+      <Filter>utils\material</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

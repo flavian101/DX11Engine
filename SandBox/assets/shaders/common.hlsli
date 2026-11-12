@@ -334,27 +334,10 @@ struct UIVertexOutput
 };
 
 // === TEXTURE BINDINGS ===
-// ========== CORE TEXTURE BINDINGS ==========
-Texture2D diffuseTexture : register(t0); // TextureSlot::Diffuse
-Texture2D normalTexture : register(t1); // TextureSlot::Normal
-Texture2D specularTexture : register(t2); // TextureSlot::Specular
-Texture2D emissiveTexture : register(t3); // TextureSlot::Emissive
-
-// ========== PBR TEXTURE BINDINGS ==========
-Texture2D roughnessTexture : register(t4); // TextureSlot::Roughness
-Texture2D metallicTexture : register(t5); // TextureSlot::Metallic
-Texture2D aoTexture : register(t6); // TextureSlot::AmbientOcclusion
-Texture2D heightTexture : register(t7); // TextureSlot::Height
-
-// ========== ADDITIONAL TEXTURES ==========
-Texture2D opacityTexture : register(t8); // TextureSlot::Opacity
-Texture2D detailDiffuseTexture : register(t9); // TextureSlot::DetailDiffuse
-Texture2D detailNormalTexture : register(t10); // TextureSlot::DetailNormal
-
-// ========== ENVIRONMENT MAPPING ==========
-TextureCube environmentTexture : register(t11); // TextureSlot::Environment
-TextureCube irradianceTexture : register(t12); // TextureSlot::Irradiance
-Texture2D brdfLUTTexture : register(t13); // TextureSlot::BRDF_LUT
+// The material textures (diffuseTexture ... brdfLUTTexture, t0..t13) are NOT declared here. ShaderCache prepends their
+// declarations to every shader, generated from the slot table (MaterialSlots.cpp), together with the HAS_*_TEXTURE
+// defines. One table decides the name, type and register of each, so this file can no longer disagree with the C++ side.
+// To see exactly what is prepended: MaterialSlots::GenerateHlslDeclarations().
 
 // ========== SHADOWS ==========
 // ONE depth atlas holds every shadow view (directional cascades, spot views, point-light faces) as a square tile.

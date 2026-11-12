@@ -121,9 +121,8 @@ namespace DXEngine
 		key.actualLayout = layout; //Store the actual layout for compilation
 
 		// Analyze features
-		uint32_t layoutFeatures = AnalyzeVertexLayout(layout);
-		uint32_t materialFeatures = AnalyzeMaterial(material);
-		key.featureFlags = CombineFeatures(layoutFeatures, materialFeatures, material->GetType());
+		key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), material->GetType());
+		key.textureMask = material->GetTextureMask();      // which textures it has: decided by the slot table
 
 		// Try to get cached variant
 		auto shader = GetShaderVariant(key);
@@ -332,7 +331,7 @@ namespace DXEngine
 		}
 
 		// Generate defines
-		std::string defines = GenerateDefinesString(key.featureFlags, key.actualLayout);
+		std::string defines = GenerateDefinesString(key.featureFlags, key.textureMask, key.actualLayout);
 
 		// Compile with defines
 		auto vsShader = CompileShaderFromFile(vsPath, RHI::ShaderStage::Vertex, defines);
@@ -373,8 +372,10 @@ namespace DXEngine
 			return nullptr;
 		}
 
-		// Prepend defines
-		std::string finalSource = defines + "\n" + source;
+		// Prepend: the texture declarations (generated from the slot table, so no shader declares a texture register by
+		// hand), then the #defines. "#line 1" makes compiler messages count from the shader file's own first line again
+		// instead of from the top of this generated text.
+		std::string finalSource = MaterialSlots::GenerateHlslDeclarations() + defines + "\n#line 1\n" + source;
 
 		//Shader Desc
 		RHI::ShaderDesc desc;
@@ -420,22 +421,9 @@ namespace DXEngine
 		return features;
 	}
 
-	uint32_t ShaderCache::AnalyzeMaterial(const Material* material) {
-		if (!material) return 0;
-
-		// Material::GetFeatureFlags() already holds ShaderFeature bits, so they are masked, not translated.
-		// This function used to re-map them with raw bit numbers ((1 << 0) -> DiffuseMap, (1 << 1) ->
-		// NormalMap, ...) from an older numbering, which scrambled every texture feature: a diffuse map
-		// became MetallicMap, a normal map AOMap, a roughness map DetailNormalMap, and a skybox
-		// EnvironmentMap DetailDiffuseMap. Shaders then sampled textures that were never bound.
-		return ShaderFeature::FromMaterialFlags(material->GetFeatureFlags());
-	}
-
-	uint32_t ShaderCache::CombineFeatures(uint32_t layoutFeatures,
-		uint32_t materialFeatures,
-		MaterialType materialType)
+	uint32_t ShaderCache::CombineFeatures(uint32_t layoutFeatures, MaterialType materialType)
 	{
-		uint32_t combined = layoutFeatures | materialFeatures;
+		uint32_t combined = layoutFeatures;
 
 		// Add material type specific features
 		switch (materialType) {
@@ -449,44 +437,19 @@ namespace DXEngine
 			combined |= ShaderFeature::Lighting | ShaderFeature::Shadows;
 			break;
 		case MaterialType::Skybox:
-			combined |= ShaderFeature::EnvironmentMap;
-			break;
+			break;   // the environment cube map is a texture: it arrives through the material's texture mask
 		}
 
 		return combined;
 	}
 
 	// ========== DEFINE STRING GENERATION ==========
-	std::string ShaderCache::GenerateDefinesString(uint32_t features, const VertexLayout& layout) {
+	std::string ShaderCache::GenerateDefinesString(uint32_t features, uint32_t textureMask, const VertexLayout& layout) {
 		std::ostringstream defines;
 
-		// Texture features
-		if (features & ShaderFeature::DiffuseMap)
-			defines << "#define HAS_DIFFUSE_TEXTURE 1\n";
-		if (features & ShaderFeature::NormalMap)
-			defines << "#define HAS_NORMAL_MAP 1\n";
-		if (features & ShaderFeature::SpecularMap)
-			defines << "#define HAS_SPECULAR_MAP 1\n";
-		if (features & ShaderFeature::EmissiveMap)
-			defines << "#define HAS_EMISSIVE_MAP 1\n";
-		if (features & ShaderFeature::EnvironmentMap)
-			defines << "#define HAS_ENVIRONMENT_MAP 1\n";
-		if (features & ShaderFeature::RoughnessMap)
-			defines << "#define HAS_ROUGHNESS_MAP 1\n";
-		if (features & ShaderFeature::MetallicMap)
-			defines << "#define HAS_METALLIC_MAP 1\n";
-		if (features & ShaderFeature::AOMap)
-			defines << "#define HAS_AO_MAP 1\n";
-		if (features & ShaderFeature::HeightMap)
-			defines << "#define HAS_HEIGHT_MAP 1\n";
-		if (features & ShaderFeature::OpacityMap)
-			defines << "#define HAS_OPACITY_MAP 1\n";
-		if (features & ShaderFeature::DetailDiffuseMap)
-			defines << "#define HAS_DETAIL_DIFFUSE_MAP 1\n";
-		if (features & ShaderFeature::DetailNormalMap)
-			defines << "#define HAS_DETAIL_NORMAL_MAP 1\n";
-		if (features & ShaderFeature::UseDetailsTextures)
-			defines << "#define HAS_DETAIL_TEXTURES 1\n";
+		// Texture features (HAS_DIFFUSE_TEXTURE, HAS_NORMAL_MAP, ... plus HAS_DETAIL_TEXTURES and ENABLE_PARALLAX_MAPPING):
+		// one function reads the slot table. This used to be thirteen hand-written if-lines.
+		defines << MaterialSlots::GenerateTextureDefines(textureMask);
 
 		// Vertex attribute features
 		if (features & ShaderFeature::HasTexCoords)
@@ -511,8 +474,6 @@ namespace DXEngine
 			defines << "#define ENABLE_INSTANCING 1\n";
 		if (features & ShaderFeature::AlphaTest)
 			defines << "#define ENABLE_ALPHA_TEST 1\n";
-		if (features & ShaderFeature::ParallaxMapping)
-			defines << "#define ENABLE_PARALLAX_MAPPING 1\n";
 
 		return defines.str();
 	}
@@ -553,11 +514,7 @@ namespace DXEngine
 				key.baseName = MaterialTypeToShaderName(materialType);
 				key.vertexLayoutHash = GenerateVertexLayoutHash(layout);
 				key.actualLayout = layout;
-				key.featureFlags = CombineFeatures(
-					AnalyzeVertexLayout(layout),
-					0, // No material features for precompilation
-					materialType
-				);
+				key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), materialType);   // no textures: mask 0
 
 				if (CreateShaderVariant(key)) {
 					variantsCompiled++;
@@ -576,11 +533,7 @@ namespace DXEngine
 		key.baseName = MaterialTypeToShaderName(type);
 		key.vertexLayoutHash = GenerateVertexLayoutHash(layout);
 		key.actualLayout = layout;
-		key.featureFlags = CombineFeatures(
-			AnalyzeVertexLayout(layout),
-			0,
-			type
-		);
+		key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), type);
 
 		CreateShaderVariant(key);
 	}
@@ -829,15 +782,6 @@ namespace DXEngine
 		std::string FeaturesToString(uint32_t flags) {
 			std::vector<std::string> featureNames;
 
-			if (HasFeature(flags, ShaderFeature::DiffuseMap)) featureNames.push_back("DiffuseMap");
-			if (HasFeature(flags, ShaderFeature::NormalMap)) featureNames.push_back("NormalMap");
-			if (HasFeature(flags, ShaderFeature::SpecularMap)) featureNames.push_back("SpecularMap");
-			if (HasFeature(flags, ShaderFeature::EmissiveMap)) featureNames.push_back("EmissiveMap");
-			if (HasFeature(flags, ShaderFeature::EnvironmentMap)) featureNames.push_back("EnvMap");
-			if (HasFeature(flags, ShaderFeature::RoughnessMap)) featureNames.push_back("RoughnessMap");
-			if (HasFeature(flags, ShaderFeature::MetallicMap)) featureNames.push_back("MetallicMap");
-			if (HasFeature(flags, ShaderFeature::AOMap)) featureNames.push_back("AOMap");
-			if (HasFeature(flags, ShaderFeature::HeightMap)) featureNames.push_back("HeightMap");
 
 			if (HasFeature(flags, ShaderFeature::HasTexCoords)) featureNames.push_back("TexCoords");
 			if (HasFeature(flags, ShaderFeature::HasNormals)) featureNames.push_back("Normals");
@@ -850,7 +794,6 @@ namespace DXEngine
 			if (HasFeature(flags, ShaderFeature::Fog)) featureNames.push_back("Fog");
 			if (HasFeature(flags, ShaderFeature::Instancing)) featureNames.push_back("Instancing");
 			if (HasFeature(flags, ShaderFeature::AlphaTest)) featureNames.push_back("AlphaTest");
-			if (HasFeature(flags, ShaderFeature::ParallaxMapping)) featureNames.push_back("Parallax");
 
 			if (featureNames.empty()) {
 				return "None";
@@ -862,29 +805,6 @@ namespace DXEngine
 				result += featureNames[i];
 			}
 			return result;
-		}
-
-		MaterialType DeduceMaterialType(const Material* material) {
-			if (!material) return MaterialType::Lit;
-			return material->GetType();
-		}
-
-		uint32_t ExtractMaterialFeatures(const Material* material) {
-			if (!material) return 0;
-
-			uint32_t features = 0;
-			uint32_t matFlags = material->GetFeatureFlags();
-
-			if (matFlags & (1 << 0)) features |= ShaderFeature::DiffuseMap;
-			if (matFlags & (1 << 1)) features |= ShaderFeature::NormalMap;
-			if (matFlags & (1 << 2)) features |= ShaderFeature::SpecularMap;
-			if (matFlags & (1 << 3)) features |= ShaderFeature::EmissiveMap;
-			if (matFlags & (1 << 4)) features |= ShaderFeature::EnvironmentMap;
-			if (matFlags & (1 << 5)) features |= ShaderFeature::RoughnessMap;
-			if (matFlags & (1 << 6)) features |= ShaderFeature::MetallicMap;
-			if (matFlags & (1 << 7)) features |= ShaderFeature::AOMap;
-
-			return features;
 		}
 	}
 

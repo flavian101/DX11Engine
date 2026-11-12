@@ -14,7 +14,7 @@ namespace DXEngine
     using namespace DirectX;
 
     // Engine-wide buffers must not share a register with a material texture.
-    static_assert(SRV_Lights >= static_cast<uint32_t>(TextureSlot::MaxTextureSlots),
+    static_assert(SRV_Lights >= kMaterialRegisterLimit,
                   "SRV_Lights collides with the material texture slots (t0..t31)");
     static_assert(SRV_Lights < SRV_ClusterRanges && SRV_ClusterRanges < SRV_LightIndices, "engine-wide SRV slots are in order");
     static_assert(SRV_LightIndices < SRV_ShadowAtlas && SRV_ShadowAtlas < SRV_ShadowViews, "engine-wide SRV slots are in order");
@@ -272,7 +272,8 @@ namespace DXEngine
             m_Cmd->SetConstantBuffer(cb, CB_Material, RHI::ShaderStage::Pixel);
         }
 
-        // textures vector is indexed by TextureSlot, which equals the HLSL register number
+        // textures vector is indexed by TextureSlot, which equals the HLSL register number (the slot table guarantees it:
+        // the Texture2D declarations the shaders get are generated from the same table)
         const auto& textures = material.GetTextures();
         for (uint32_t slot = 0; slot < textures.size(); ++slot)
             if (textures[slot])

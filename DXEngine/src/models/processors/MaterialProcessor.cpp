@@ -3,7 +3,6 @@
 #include "utils/material/Material.h"
 #include "TextureLoader.h"
 #include "RHI/GraphicsDevice.h"
-#include "renderer/ShaderCache.h"   // ShaderFeature flags
 #include "renderer/Renderer.h"
 #include <algorithm>
 #include <filesystem>
@@ -203,9 +202,9 @@ namespace DXEngine
 		// (The old Lit -> PBR promotion is gone: a material's type is fixed at construction now and
 		// DetermineMaterialType() already picks PBR when the model has metalness/roughness textures.)
 
-		// Configure parallax mapping
+		// Parallax mapping: the shader switch (ENABLE_PARALLAX_MAPPING) follows from the height map being bound; only the
+		// strength is configured here.
 		if (mat->GetTexture(TextureSlot::Height)) {
-			mat->EnableFeature(ShaderFeature::ParallaxMapping);
 			mat->SetHeightScale(0.05f);
 		}
 

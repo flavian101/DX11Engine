@@ -12,10 +12,12 @@
 namespace DXEngine {
 
     // ========== SHADER FEATURE FLAGS ==========
+    // What a shader variant is compiled WITH, besides the textures. (Which textures a material has is not a feature
+    // flag: it is the material's texture mask, one bit per TextureSlot, described by MaterialSlots.h.)
     namespace ShaderFeature {
         constexpr uint32_t None = 0;
 
-        // Vertex Attributes
+        // Vertex attributes the mesh provides
         constexpr uint32_t HasNormals = 1 << 0;
         constexpr uint32_t HasTangents = 1 << 1;
         constexpr uint32_t HasTexCoords = 1 << 2;
@@ -23,63 +25,31 @@ namespace DXEngine {
         constexpr uint32_t HasVertexColors = 1 << 4;
         constexpr uint32_t HasSkinning = 1 << 5;
 
-        // Texture Maps
-        constexpr uint32_t DiffuseMap = 1 << 6;
-        constexpr uint32_t NormalMap = 1 << 7;
-        constexpr uint32_t SpecularMap = 1 << 8;
-        constexpr uint32_t EmissiveMap = 1 << 9;
-        constexpr uint32_t EnvironmentMap = 1 << 10;
-        constexpr uint32_t RoughnessMap = 1 << 11;
-        constexpr uint32_t MetallicMap = 1 << 12;
-        constexpr uint32_t AOMap = 1 << 13;
-        constexpr uint32_t HeightMap = 1 << 14;
-        constexpr uint32_t OpacityMap = 1 << 15;
-        constexpr uint32_t DetailDiffuseMap = 1 << 16;
-        constexpr uint32_t DetailNormalMap = 1 << 17;
-        constexpr uint32_t UseDetailsTextures = 1 << 18;
-
-        // Rendering Features
-        constexpr uint32_t Fog = 1 << 19;
-        constexpr uint32_t ParallaxMapping = 1 << 20;
-        constexpr uint32_t Instancing = 1 << 21;
-        constexpr uint32_t AlphaTest = 1 << 22;
-        constexpr uint32_t Lighting = 1 << 23;
-        constexpr uint32_t Shadows = 1 << 24;
-
-        // The bits of a Material's feature flags that are forwarded to the shader variant: every
-        // texture map plus the combined "details" switch. A Material stores ShaderFeature bits
-        // directly (Material::SetTexture calls EnableFeature(ShaderFeature::...)), so they are
-        // masked, never re-mapped.
-        constexpr uint32_t MaterialTextureMask =
-            DiffuseMap | NormalMap | SpecularMap | EmissiveMap | EnvironmentMap | RoughnessMap |
-            MetallicMap | AOMap | HeightMap | OpacityMap | DetailDiffuseMap | DetailNormalMap |
-            UseDetailsTextures;
-
-        // The shader features a material asks for (parallax mapping follows the height map).
-        constexpr uint32_t FromMaterialFlags(uint32_t materialFlags)
-        {
-            uint32_t features = materialFlags & MaterialTextureMask;
-            if (features & HeightMap)
-                features |= ParallaxMapping;
-            return features;
-        }
+        // Rendering features
+        constexpr uint32_t Fog = 1 << 6;
+        constexpr uint32_t Instancing = 1 << 7;
+        constexpr uint32_t AlphaTest = 1 << 8;
+        constexpr uint32_t Lighting = 1 << 9;
+        constexpr uint32_t Shadows = 1 << 10;
     }
 
     // ========== SHADER VARIANT KEY ==========
     struct ShaderVariantKey {
         std::string baseName;           // "Lit", "PBR", "Unlit", etc.
         uint32_t featureFlags = 0;      // Combination of ShaderFeature flags
+        uint32_t textureMask = 0;       // Material::GetTextureMask(): bit i = a texture in TextureSlot i
         std::string vertexLayoutHash;   // Hash of vertex layout
         VertexLayout actualLayout;      // REQUIRED: Actual vertex layout for compilation
 
         bool operator==(const ShaderVariantKey& other) const {
             return baseName == other.baseName &&
                 featureFlags == other.featureFlags &&
+                textureMask == other.textureMask &&
                 vertexLayoutHash == other.vertexLayoutHash;
         }
 
         std::string ToString() const {
-            return baseName + "_" + std::to_string(featureFlags) + "_" + vertexLayoutHash;
+            return baseName + "_" + std::to_string(featureFlags) + "_t" + std::to_string(textureMask) + "_" + vertexLayoutHash;
         }
     };
 
@@ -88,7 +58,8 @@ namespace DXEngine {
             size_t h1 = std::hash<std::string>{}(key.baseName);
             size_t h2 = std::hash<uint32_t>{}(key.featureFlags);
             size_t h3 = std::hash<std::string>{}(key.vertexLayoutHash);
-            return h1 ^ (h2 << 1) ^ (h3 << 2);
+            size_t h4 = std::hash<uint32_t>{}(key.textureMask);
+            return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
         }
     };
 
@@ -174,10 +145,7 @@ namespace DXEngine {
 
         // Feature Analysis
         uint32_t AnalyzeVertexLayout(const VertexLayout& layout);
-        uint32_t AnalyzeMaterial(const Material* material);
-        uint32_t CombineFeatures(uint32_t layoutFeatures,
-            uint32_t materialFeatures,
-            MaterialType materialType);
+        uint32_t CombineFeatures(uint32_t layoutFeatures, MaterialType materialType);
 
         // Statistics
         const ShaderCacheStats& GetStats() const { return m_Stats; }
@@ -220,7 +188,8 @@ namespace DXEngine {
         std::string MaterialTypeToShaderName(MaterialType type) const;
 
         // Define String Generation
-        std::string GenerateDefinesString(uint32_t features, const VertexLayout& layout);
+        // "#define ..." lines: the texture ones come from the slot table (MaterialSlots::GenerateTextureDefines)
+        std::string GenerateDefinesString(uint32_t features, uint32_t textureMask, const VertexLayout& layout);
 
         // Hot Reload Support
         void CheckForFileChanges();
@@ -264,9 +233,5 @@ namespace DXEngine {
         bool HasFeature(uint32_t flags, uint32_t feature);
         void SetFeature(uint32_t& flags, uint32_t feature, bool enabled);
         std::string FeaturesToString(uint32_t flags);
-
-        // Material helpers
-        MaterialType DeduceMaterialType(const Material* material);
-        uint32_t ExtractMaterialFeatures(const Material* material);
     }
 }

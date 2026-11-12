@@ -1,6 +1,5 @@
 #include "dxpch.h"
 #include "Material.h"
-#include "renderer/ShaderCache.h"
 #include <algorithm>
 
 namespace DXEngine {
@@ -11,7 +10,7 @@ namespace DXEngine {
 		: m_Name(name)
 		, m_ID(s_NextID++)
 		, m_Type(type)
-		, m_Textures(static_cast<size_t>(TextureSlot::MaxTextureSlots), nullptr)
+		, m_Textures(kTextureSlotCount, nullptr)
 	{}
 
 	Material::~Material()
@@ -19,52 +18,24 @@ namespace DXEngine {
 
 	void Material::SetTexture(TextureSlot slot, std::shared_ptr < RHI::ITexture> texture)
 	{
-		int textureSlot = static_cast<int>(slot);
-		if (textureSlot < m_Textures.size())
+		if (!MaterialSlots::IsValid(slot))
 		{
-			m_Textures[textureSlot] = texture;
-
-			// Keep the shader-feature flags in sync with what is bound. Setting nullptr must also
-			// switch the feature OFF, otherwise the shader variant still expects a texture that is gone.
-			// Switch on the enum, not on raw integers: the old numeric cases were shifted by one from
-			// slot 4 on (a roughness texture enabled EnvironmentMap), so materials picked the wrong
-			// shader variant. The names match the register comments in common.hlsli.
-			uint32_t feature = 0;
-			switch (slot) {
-			case TextureSlot::Diffuse:          feature = ShaderFeature::DiffuseMap;       break;
-			case TextureSlot::Normal:           feature = ShaderFeature::NormalMap;        break;
-			case TextureSlot::Specular:         feature = ShaderFeature::SpecularMap;      break;
-			case TextureSlot::Emissive:         feature = ShaderFeature::EmissiveMap;      break;
-			case TextureSlot::Roughness:        feature = ShaderFeature::RoughnessMap;     break;
-			case TextureSlot::Metallic:         feature = ShaderFeature::MetallicMap;      break;
-			case TextureSlot::AmbientOcclusion: feature = ShaderFeature::AOMap;            break;
-			case TextureSlot::Height:           feature = ShaderFeature::HeightMap;        break;
-			case TextureSlot::Opacity:          feature = ShaderFeature::OpacityMap;       break;
-			case TextureSlot::DetailDiffuse:    feature = ShaderFeature::DetailDiffuseMap; break;
-			case TextureSlot::DetailNormal:     feature = ShaderFeature::DetailNormalMap;  break;
-			case TextureSlot::Environment:      feature = ShaderFeature::EnvironmentMap;   break; // TODO: irradiance + BRDF LUT features for IBL
-			default: break; // no feature for this slot
-			}
-			if (feature != 0)
-			{
-				if (texture) EnableFeature(feature); else DisableFeature(feature);
-			}
-
-			// the combined "details" switch is on while at least one detail texture is bound
-			if (slot == TextureSlot::DetailDiffuse || slot == TextureSlot::DetailNormal)
-			{
-				const bool anyDetail = m_Textures[static_cast<int>(TextureSlot::DetailDiffuse)] ||
-				                       m_Textures[static_cast<int>(TextureSlot::DetailNormal)];
-				if (anyDetail) EnableFeature(ShaderFeature::UseDetailsTextures);
-				else           DisableFeature(ShaderFeature::UseDetailsTextures);
-			}
+			OutputDebugStringA(("Material::SetTexture: invalid texture slot " + std::to_string(static_cast<uint32_t>(slot)) + " ignored\n").c_str());
+			return;
 		}
+
+		// The mask is a function of the textures: set while a texture is bound, clear when it is removed (setting nullptr
+		// must switch the shader feature OFF, or the variant would still sample a texture that is gone). There is no
+		// per-slot switch any more: the slot table decides what each bit means.
+		m_Textures[static_cast<size_t>(slot)] = texture;
+		if (texture) m_TextureMask |= MaterialSlots::MaskBit(slot);
+		else         m_TextureMask &= ~MaterialSlots::MaskBit(slot);
+
 		m_Dirty = true;
 	}
 	std::shared_ptr<RHI::ITexture> Material::GetTexture(TextureSlot slot)
 	{
-		int textureSlot = static_cast<int>(slot);
-		return  textureSlot < m_Textures.size() ? m_Textures[textureSlot] : nullptr;
+		return MaterialSlots::IsValid(slot) ? m_Textures[static_cast<size_t>(slot)] : nullptr;
 	}
 
 	void Material::UpdateConstantBuffer(RHI::IGraphicsDevice* device)

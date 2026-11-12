@@ -77,7 +77,6 @@ namespace DXEngine
 		// Lit default
 		auto lit = CreateMaterial("DefaultLit", MaterialType::Lit);
 		lit->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
-		lit->EnableFeature(ShaderFeature::Lighting);
 		m_DefaultMaterials[MaterialType::Lit] = lit;
 
 		// PBR default
@@ -85,7 +84,6 @@ namespace DXEngine
 		pbr->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
 		pbr->SetMetallic(0.0f);
 		pbr->SetRoughness(0.5f);
-		pbr->EnableFeature(ShaderFeature::Lighting);
 		m_DefaultMaterials[MaterialType::PBR] = pbr;
 
 		// Transparent default

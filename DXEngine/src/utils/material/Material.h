@@ -28,17 +28,15 @@ namespace DXEngine {
 		//setTextures
 		void SetTexture(TextureSlot slot, std::shared_ptr <RHI::ITexture> texture);
 		std::shared_ptr<RHI::ITexture> GetTexture(TextureSlot slot);
-		const std::vector<std::shared_ptr<RHI::ITexture>>& GetTextures() const { return m_Textures; }
+		const std::vector<std::shared_ptr<RHI::ITexture>>& GetTextures() const { return m_Textures; }   // index == TextureSlot == register
+
+		// Bit i set = a texture is bound in slot i. DERIVED from the textures themselves (SetTexture is its only writer), so
+		// it cannot disagree with them. The shader variant is chosen from this (see MaterialSlots.h).
+		uint32_t GetTextureMask() const { return m_TextureMask; }
 
 		// ========== Constant Buffer ==========
 		RHI::IBuffer* GetConstantBuffer() { return m_ConstantBuffer.get(); }
 		void UpdateConstantBuffer(RHI::IGraphicsDevice* device);
-
-		// ========== Features ==========
-		uint32_t GetFeatureFlags() const { return m_FeatureFlags; }
-		void EnableFeature(uint32_t feature) { m_FeatureFlags |= feature; }
-		void DisableFeature(uint32_t feature) { m_FeatureFlags &= ~feature; }
-		bool HasFeature(uint32_t feature) const { return (m_FeatureFlags & feature) != 0; }
 
 		// ========== Render State ==========
 		void SetBlendMode(RHI::BlendMode mode) { m_BlendMode = mode; }
@@ -85,7 +83,7 @@ namespace DXEngine {
 		std::vector<std::shared_ptr<RHI::ITexture>> m_Textures;
 		std::shared_ptr<RHI::IBuffer> m_ConstantBuffer;
 
-		uint32_t m_FeatureFlags = 0;
+		uint32_t m_TextureMask = 0;      // derived from m_Textures, see GetTextureMask()
 		bool m_Dirty = true;
 
 

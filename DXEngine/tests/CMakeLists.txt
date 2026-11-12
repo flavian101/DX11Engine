@@ -22,7 +22,8 @@ add_executable(render_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp)
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp)
 target_include_directories(render_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
@@ -70,9 +71,21 @@ add_executable(shadow_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp)
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp)
 target_include_directories(shadow_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(shadow_tests PRIVATE cxx_std_17)
 add_test(NAME shadow_tests COMMAND shadow_tests)
+
+# Materials: the texture slot table (generated #defines / HLSL declarations / colour spaces) and Material's derived texture mask.
+add_executable(material_tests
+    material_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp)
+target_include_directories(material_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/DXEngine/src
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
+target_compile_features(material_tests PRIVATE cxx_std_17)
+add_test(NAME material_tests COMMAND material_tests)
