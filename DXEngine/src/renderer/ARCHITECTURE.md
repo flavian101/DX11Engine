@@ -35,7 +35,7 @@ Renderer::EndScene()
 | b0..b2 | transform (incl. `ReceiveShadows`), bones, material | `MeshDrawer` |
 | b3 | `SceneLightData`: environment + directional lights + local light count | `MeshDrawer` (filled by `LightSystem`) |
 | b5 | `ShadowData`: atlas size, PCF radius, shadows on/off | `MeshDrawer` (filled by `ShadowSystem`) |
-| t0..t31 | material textures (`TextureSlot`) | `MeshDrawer` |
+| t0..t13 | material textures: ONE row per slot in `MaterialSlots.cpp`; the declarations are generated and prepended to every shader | `MeshDrawer` |
 | b7 | `ClusterData`: grid size, culling mode, how a pixel finds its cluster | `MeshDrawer` (filled by `LightSystem`) |
 | t32 | `StructuredBuffer<LightGPU> localLights` (point + spot) | `MeshDrawer` (filled by `LightSystem`) |
 | t33 | `StructuredBuffer<uint2> clusterRanges`: {offset, count} per cluster | `MeshDrawer` (filled by `LightSystem`) |
@@ -69,6 +69,16 @@ If you are about to create a GPU object inside a system, it belongs in `Resource
 2. Write its `Reads:` / `Writes:` in the class comment.
 3. If it writes something others read, add ONE typed field to `FrameContext` and update the "who writes what" table there.
 4. `graph.AddPass<MyPass>("name")` in `Renderer::Init`, in the position it should run.
+
+## Adding a material texture slot (checklist)
+
+1. Add the enumerator to `TextureSlot` (before `Count`; its value is its HLSL register) and ONE row to the table in `MaterialSlots.cpp`: name, HLSL type + variable name, `HAS_*` define, sRGB (a colour) or linear (data).
+2. Use the variable and the define in `surface.hlsli` (`EvaluateSurface`). That is all: the declaration, the define, the Material's mask bit, the binding and the loader's colour space all follow from the row. `material_tests` fails if the row is out of order or collides with another.
+
+## Adding a shading model (checklist)
+
+1. Add the enumerator to `ShadingModel` and ONE row to the table in `MaterialTypes.cpp` (name, vertex + pixel shader file, lit by the scene or not). A test checks the files exist, and that no shader file in the folder is unreferenced.
+2. Write the pixel shader as a thin function over `EvaluateSurface()` (and `ShadeSurface()` if it is lit). Blending, culling and draw order are NOT part of a model: they are the material's `RenderState`.
 
 ## Deliberately not built yet (add when something needs it)
 
