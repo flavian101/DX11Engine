@@ -23,7 +23,8 @@ add_executable(render_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp)
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialTypes.cpp)
 target_include_directories(render_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
@@ -72,7 +73,8 @@ add_executable(shadow_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp)
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialTypes.cpp)
 target_include_directories(shadow_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
@@ -85,7 +87,9 @@ add_executable(material_tests
     material_tests.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/ImageMips.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp)
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialTypes.cpp)
+target_compile_definitions(material_tests PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/SandBox/assets/shaders/")
 target_include_directories(material_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)

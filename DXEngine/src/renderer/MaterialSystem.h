@@ -22,9 +22,9 @@ namespace DXEngine
 		void Shutdown();
 
 		std::shared_ptr<Material> CreateMaterial(const std::string& name,
-			MaterialType type);
+			ShadingModel model = ShadingModel::Lit);
 		std::shared_ptr<Material> GetMaterial(const std::string& name);
-		std::shared_ptr<Material> GetDefaultMaterial(MaterialType type);
+		std::shared_ptr<Material> GetDefaultMaterial(ShadingModel model);
 
 		// ========== Material Management ==========
 		void UpdateMaterials();  // Update dirty material constant buffers
@@ -43,7 +43,7 @@ namespace DXEngine
 		std::shared_ptr<ShaderCache> m_ShaderCache;
 
 		std::unordered_map<std::string, std::shared_ptr<Material>> m_Materials;
-		std::unordered_map<MaterialType, std::shared_ptr<Material>> m_DefaultMaterials;
+		std::unordered_map<ShadingModel, std::shared_ptr<Material>> m_DefaultMaterials;
 
 
 	};

@@ -33,7 +33,7 @@ namespace DXEngine
 		OutputDebugStringA("MaterialSystem: Shutdown complete\n");
 
 	}
-	std::shared_ptr<Material> MaterialSystem::CreateMaterial(const std::string& name, MaterialType type)
+	std::shared_ptr<Material> MaterialSystem::CreateMaterial(const std::string& name, ShadingModel model)
 	{
 		auto it = m_Materials.find(name);
 		if (it != m_Materials.end()) {
@@ -42,7 +42,7 @@ namespace DXEngine
 			return it->second;
 		}
 
-		auto material = std::make_shared<Material>(name, type);
+		auto material = std::make_shared<Material>(name, model);
 		m_Materials[name] = material;
 
 		OutputDebugStringA(("MaterialSystem: Created material: " + name + "\n").c_str());
@@ -53,9 +53,9 @@ namespace DXEngine
 		auto it = m_Materials.find(name);
 		return it != m_Materials.end() ? it->second : nullptr;
 	}
-	std::shared_ptr<Material> MaterialSystem::GetDefaultMaterial(MaterialType type)
+	std::shared_ptr<Material> MaterialSystem::GetDefaultMaterial(ShadingModel model)
 	{
-		auto it = m_DefaultMaterials.find(type);
+		auto it = m_DefaultMaterials.find(model);
 		return it != m_DefaultMaterials.end() ? it->second : nullptr;
 	}
 	void MaterialSystem::UpdateMaterials()
@@ -69,36 +69,19 @@ namespace DXEngine
 		m_Materials.erase(name);
 	}
 	void MaterialSystem::CreateDefaultMaterials() {
-		// Unlit default
-		auto unlit = CreateMaterial("DefaultUnlit", MaterialType::Unlit);
-		unlit->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-		m_DefaultMaterials[MaterialType::Unlit] = unlit;
+		// One default per shading model that can be used on its own. (There is no "default PBR" or "default transparent":
+		// they are the Lit model; a transparent material is a Lit material with a blended RenderState.)
+		auto add = [this](const std::string& name, std::shared_ptr<Material> material)
+		{
+			material->SetName(name);
+			m_Materials[name] = material;
+			m_DefaultMaterials[material->GetShadingModel()] = material;
+		};
 
-		// Lit default
-		auto lit = CreateMaterial("DefaultLit", MaterialType::Lit);
-		lit->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
-		m_DefaultMaterials[MaterialType::Lit] = lit;
-
-		// PBR default
-		auto pbr = CreateMaterial("DefaultPBR", MaterialType::PBR);
-		pbr->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
-		pbr->SetMetallic(0.0f);
-		pbr->SetRoughness(0.5f);
-		m_DefaultMaterials[MaterialType::PBR] = pbr;
-
-		// Transparent default
-		auto transparent = CreateMaterial("DefaultTransparent", MaterialType::Transparent);
-		transparent->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 0.5f });
-		transparent->SetBlendMode(RHI::BlendMode::AlphaBlend);
-		m_DefaultMaterials[MaterialType::Transparent] = transparent;
-
-		// UI default
-		auto ui = CreateMaterial("DefaultUI", MaterialType::UI);
-		ui->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-		ui->SetCullMode(RHI::CullMode::None);
-		ui->SetBlendMode(RHI::BlendMode::AlphaBlend);
-		ui->SetDepthTest(RHI::DepthTestMode::None);
-		m_DefaultMaterials[MaterialType::UI] = ui;
+		add("DefaultUnlit",    MaterialFactory::CreateUnlitMaterial());
+		add("DefaultLit",      MaterialFactory::CreateLitMaterial());
+		add("DefaultEmissive", MaterialFactory::CreateEmissiveMaterial());
+		add("DefaultUI",       MaterialFactory::CreateUIMaterial());
 
 		OutputDebugStringA("MaterialSystem: Default materials created\n");
 	}

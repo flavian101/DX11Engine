@@ -28,11 +28,6 @@ namespace DXEngine
             return a.distanceToCamera > b.distanceToCamera;
         }
 
-        bool IsTransparent(const Material& m)
-        {
-            return m.GetType() == MaterialType::Transparent || m.GetBlendMode() != RHI::BlendMode::Opaque;
-        }
-
         float AxisLength(float x, float y, float z) { return std::sqrt(x * x + y * y + z * z); }
 
         // The mesh's local bounding sphere moved by a world matrix; the radius grows with the largest axis scale.
@@ -122,9 +117,14 @@ namespace DXEngine
                 item.boneMatrices     = bones;
                 item.receivesShadows  = renderer.receivesShadows;
 
-                if (isSky)                       out.background.push_back(std::move(item));
-                else if (IsTransparent(*material)) out.transparent.push_back(std::move(item));
-                else                             out.opaque.push_back(std::move(item));
+                // The bucket comes from the MATERIAL's render state (an explicit queue, else blended -> Transparent, else
+                // Opaque). SkyboxComponent still decides the PLACEMENT (it follows the camera, is never culled) and
+                // forces the background bucket for meshes that have it.
+                const RenderQueue queue = material->GetRenderQueue();
+                if (isSky || queue == RenderQueue::Background)  out.background.push_back(std::move(item));
+                else if (queue == RenderQueue::Transparent)     out.transparent.push_back(std::move(item));
+                else if (queue == RenderQueue::Opaque)          out.opaque.push_back(std::move(item));
+                // UI / Overlay materials belong to the UI pass, not to the 3D scene
             }
         }
 
@@ -158,8 +158,8 @@ namespace DXEngine
                 std::shared_ptr<Material> material =
                     (si < renderer.materials.size() && renderer.materials[si]) ? renderer.materials[si]
                                                                                : renderer.mesh->GetMaterial(si);
-                if (!material || IsTransparent(*material))
-                    continue;                                                // glass / particles do not cast (yet)
+                if (!material || material->GetRenderQueue() != RenderQueue::Opaque)
+                    continue;                                                // glass, the sky and UI do not cast (yet)
 
                 DrawItem item;
                 item.mesh         = renderer.mesh;

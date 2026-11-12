@@ -31,6 +31,7 @@ namespace DXEngine {
         constexpr uint32_t AlphaTest = 1 << 8;
         constexpr uint32_t Lighting = 1 << 9;
         constexpr uint32_t Shadows = 1 << 10;
+        constexpr uint32_t Blended = 1 << 11;    // the surface is alpha blended: only pixels that would be invisible are discarded
     }
 
     // ========== SHADER VARIANT KEY ==========
@@ -73,7 +74,7 @@ namespace DXEngine {
         size_t maxCachedVariants = 256;
 
         // Fallback shaders
-        std::string fallbackVertexShader = "Lit.vs.hlsl";
+        std::string fallbackVertexShader = "Standard.vs.hlsl";
         std::string fallbackPixelShader = "Lit.ps.hlsl";
     };
 
@@ -117,7 +118,7 @@ namespace DXEngine {
 
         // Direct variant access
         std::shared_ptr<ShaderProgram> GetShaderVariant(const ShaderVariantKey& key);
-        std::shared_ptr<ShaderProgram> GetFallbackShader(MaterialType materialType);
+        std::shared_ptr<ShaderProgram> GetFallbackShader(ShadingModel model);
 
         // The depth-only vertex shader the shadow pass draws casters with (ShadowCaster.vs.hlsl). Two variants only:
         // static and skinned (decided by the mesh's vertex layout), because a depth pass needs nothing but the position.
@@ -132,7 +133,7 @@ namespace DXEngine {
 
         // Precompilation
         void PrecompileCommonVariants();
-        void PrecompileVariantForMaterial(MaterialType type);
+        void PrecompileVariantForMaterial(ShadingModel model);
 
         // Cache Management
         void ClearCache();
@@ -145,7 +146,8 @@ namespace DXEngine {
 
         // Feature Analysis
         uint32_t AnalyzeVertexLayout(const VertexLayout& layout);
-        uint32_t CombineFeatures(uint32_t layoutFeatures, MaterialType materialType);
+        // blended: the material's RenderState alpha-blends (it needs the Blended feature, whatever the shading model)
+        uint32_t CombineFeatures(uint32_t layoutFeatures, ShadingModel model, bool blended);
 
         // Statistics
         const ShaderCacheStats& GetStats() const { return m_Stats; }
@@ -184,8 +186,7 @@ namespace DXEngine {
         );
 
         // Shader Path Resolution
-        std::pair<std::string, std::string> GetShaderPaths(MaterialType materialType);
-        std::string MaterialTypeToShaderName(MaterialType type) const;
+        std::pair<std::string, std::string> GetShaderPaths(ShadingModel model);   // from the ShadingModels table
 
         // Define String Generation
         // "#define ..." lines: the texture ones come from the slot table (MaterialSlots::GenerateTextureDefines)
@@ -212,7 +213,7 @@ namespace DXEngine {
         // Cache Storage
         std::unordered_map<std::string, ShaderEntry> m_BaseShaders;
         std::unordered_map<ShaderVariantKey, VariantEntry, ShaderVariantKeyHash> m_VariantCache;
-        std::unordered_map<MaterialType, std::shared_ptr<ShaderProgram>> m_FallbackShaders;
+        std::unordered_map<ShadingModel, std::shared_ptr<ShaderProgram>> m_FallbackShaders;
         std::shared_ptr<ShaderProgram> m_ShadowCasterPrograms[2];   // [0] static, [1] skinned
 
         // Hot Reload Tracking

@@ -271,6 +271,7 @@
     <ClCompile Include="src\renderer\Passes\ShadowPass.cpp" />
     <ClCompile Include="src\utils\material\MaterialSlots.cpp" />
     <ClCompile Include="src\utils\ImageMips.cpp" />
+    <ClCompile Include="src\utils\material\MaterialTypes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

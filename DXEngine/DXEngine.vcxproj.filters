@@ -409,6 +409,9 @@
     <ClCompile Include="src\utils\ImageMips.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils\material\MaterialTypes.cpp">
+      <Filter>utils\material</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\RHI\Readme_OwnerShip.md" />

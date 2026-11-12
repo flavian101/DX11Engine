@@ -29,7 +29,6 @@ namespace DXEngine {
     class Skeleton;
     class AnimationClip;
     struct Keyframe;
-    enum class MaterialType;
     class TextureLoader;
     class MaterialProcessor;
     class MeshProcessor;

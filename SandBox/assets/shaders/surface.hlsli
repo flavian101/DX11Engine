@@ -26,7 +26,7 @@
 #define SURFACE_HLSLI
 
 // Pixels with alpha below this are discarded when ENABLE_ALPHA_TEST is on. 0.5 is the cut-out convention (leaves, fences);
-// a BLENDED material only wants to skip pixels that would be invisible anyway, and overrides this (see Transparent.ps).
+// a BLENDED material only wants to skip pixels that would be invisible anyway: ShaderCache then defines this as 0.1 (the Blended feature).
 #ifndef ALPHA_TEST_THRESHOLD
     #define ALPHA_TEST_THRESHOLD 0.5
 #endif

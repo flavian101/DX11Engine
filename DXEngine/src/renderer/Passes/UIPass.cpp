@@ -17,7 +17,7 @@ namespace DXEngine
         auto& svc = *ctx.services;
 
         m_Quad     = Mesh::CreateQuad(svc.device, 1.0f, 1.0f);
-        m_Material = svc.materials->GetDefaultMaterial(MaterialType::UI);
+        m_Material = svc.materials->GetDefaultMaterial(ShadingModel::UI);
         if (!m_Quad || !m_Material)
         {
             OutputDebugStringA("ERROR: UIPass::Initialize - missing UI quad or default UI material\n");

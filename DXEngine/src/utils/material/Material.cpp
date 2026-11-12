@@ -6,10 +6,10 @@ namespace DXEngine {
 
 	uint32_t Material::s_NextID = 1;
 
-	Material::Material(const std::string& name, MaterialType type)
+	Material::Material(const std::string& name, ShadingModel model)
 		: m_Name(name)
 		, m_ID(s_NextID++)
-		, m_Type(type)
+		, m_Model(model)
 		, m_Textures(kTextureSlotCount, nullptr)
 	{}
 
@@ -58,19 +58,6 @@ namespace DXEngine {
 			m_Dirty = false;
 		}
 	}
-	std::string Material::GetShaderName() const {
-		// Shader name is derived from material type
-		switch (m_Type) {
-		case MaterialType::Unlit: return "Unlit";
-		case MaterialType::Lit: return "Lit";
-		case MaterialType::PBR: return "PBR";
-		case MaterialType::Transparent: return "Transparent";
-		case MaterialType::UI: return "UI";
-		case MaterialType::Skybox: return "Skybox";
-		default: return "Basic";
-		}
-	}
-
 	void Material::SetDiffuseColor(const DirectX::XMFLOAT4& color)
 	{
 		m_Properties.diffuseColor = color;
@@ -105,22 +92,12 @@ namespace DXEngine {
 	{
 		m_Properties.metallic = std::clamp(metallic, 0.0f, 1.0f);
 		m_Dirty = true;
-
-		if (metallic > 0.1f && m_Type == MaterialType::Lit)
-		{
-			m_Type = MaterialType::PBR;
-		}
 	}
 
 	void Material::SetRoughness(float roughness)
 	{
 		m_Properties.roughness = std::clamp(roughness, 0.04f, 1.0f);
 		m_Dirty = true;
-
-		if (roughness > 0.1f && m_Type == MaterialType::Lit)
-		{
-			m_Type = MaterialType::PBR;
-		}
 	}
 
 	void Material::SetNormalScale(float scale)
@@ -171,14 +148,14 @@ namespace DXEngine {
 	
 	std::shared_ptr<Material> MaterialFactory::CreateUnlitMaterial(const std::string& name)
 	{
-		auto mat = std::make_shared<Material>(name, MaterialType::Unlit);
+		auto mat = std::make_shared<Material>(name, ShadingModel::Unlit);
 		mat->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
 		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateLitMaterial(const std::string& name)
 	{
-		auto mat = std::make_shared<Material>(name, MaterialType::Lit);
+		auto mat = std::make_shared<Material>(name, ShadingModel::Lit);
 		mat->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
 		mat->SetSpecularColor({ 0.5f, 0.5f, 0.5f, 1.0f });
 		mat->SetShininess(32.0f);
@@ -187,8 +164,7 @@ namespace DXEngine {
 
 	std::shared_ptr<Material> MaterialFactory::CreatePBRMaterial(const std::string& name)
 	{
-		auto mat = std::make_shared<Material>(name, MaterialType::PBR);
-		mat->SetDiffuseColor({ 0.8f, 0.8f, 0.8f, 1.0f });
+		auto mat = CreateLitMaterial(name);     // PBR IS the Lit shading model
 		mat->SetMetallic(0.0f);
 		mat->SetRoughness(0.5f);
 		return mat;
@@ -196,7 +172,7 @@ namespace DXEngine {
 
 	std::shared_ptr<Material> MaterialFactory::CreateEmissiveMaterial(const std::string& name)
 	{
-		auto mat = std::make_shared<Material>(name, MaterialType::Emissive);
+		auto mat = std::make_shared<Material>(name, ShadingModel::Emissive);
 		mat->SetEmissiveColor({ 1.0f, 1.0f, 1.0f, 1.0f });
 		mat->SetEmissiveIntensity(3.0f);
 		return mat;
@@ -204,26 +180,24 @@ namespace DXEngine {
 
 	std::shared_ptr<Material> MaterialFactory::CreateSkyboxMaterial(const std::string& name)
 	{
-		auto mat = std::make_shared<Material>(name, MaterialType::Skybox);
-		mat->SetCullMode(RHI::CullMode::Front);
-		mat->SetDepthTest(RHI::DepthTestMode::LessEqual);
+		auto mat = std::make_shared<Material>(name, ShadingModel::Sky);
+		mat->SetRenderState(RenderState::Sky());
 		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateTransparentMaterial(const std::string& name)
 	{
-		auto mat = std::make_shared<Material>(name, MaterialType::Transparent);
+		auto mat = CreateLitMaterial(name);
 		mat->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 0.5f });
-		mat->SetBlendMode(RHI::BlendMode::AlphaBlend);
+		mat->SetRenderState(RenderState::Blended());
 		return mat;
 	}
 
 	std::shared_ptr<Material> MaterialFactory::CreateUIMaterial(const std::string& name)
 	{
-		auto mat = std::make_shared<Material>(name, MaterialType::UI);
+		auto mat = std::make_shared<Material>(name, ShadingModel::UI);
 		mat->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-		mat->SetDepthTest(RHI::DepthTestMode::None);
-		mat->SetBlendMode(RHI::BlendMode::AlphaBlend);
+		mat->SetRenderState(RenderState::Overlay());
 		return mat;
 	}
 

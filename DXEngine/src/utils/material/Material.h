@@ -12,11 +12,12 @@ namespace DXEngine {
 	class Material
 	{
 	public:
-		Material(const std::string& name = "DefaultMaterial", MaterialType type = MaterialType::Lit);
+		Material(const std::string& name = "DefaultMaterial", ShadingModel model = ShadingModel::Lit);
 		~Material();
 
-		//material type and Properties 
-		MaterialType GetType()const { return m_Type; }
+		// WHAT the pixels compute. Fixed for the life of the material: no setter changes it behind your back (Material used to
+		// turn itself from Lit into PBR when you set a metallic or roughness value).
+		ShadingModel GetShadingModel() const { return m_Model; }
 
 		const std::string& GetName()const { return m_Name; }
 		void SetName(const std::string& name) { m_Name = name; }
@@ -38,18 +39,22 @@ namespace DXEngine {
 		RHI::IBuffer* GetConstantBuffer() { return m_ConstantBuffer.get(); }
 		void UpdateConstantBuffer(RHI::IGraphicsDevice* device);
 
-		// ========== Render State ==========
-		void SetBlendMode(RHI::BlendMode mode) { m_BlendMode = mode; }
-		RHI::BlendMode GetBlendMode() const { return m_BlendMode; }
+		// ========== Render State: HOW it is drawn (independent of the shading model) ==========
+		RenderState&       GetRenderState()       { return m_State; }
+		const RenderState& GetRenderState() const { return m_State; }
+		void SetRenderState(const RenderState& state) { m_State = state; }
 
-		void SetCullMode(RHI::CullMode mode) { m_CullMode = mode; }
-		RHI::CullMode GetCullMode() const { return m_CullMode; }
+		// Derived from the state, never stored: the draw-order bucket and "is this surface alpha blended".
+		RenderQueue GetRenderQueue() const { return ResolveRenderQueue(m_State); }
+		bool        IsBlended() const      { return DXEngine::IsBlended(m_State); }
 
-		void SetDepthTest(RHI::DepthTestMode mode) { m_DepthTest = mode; }
-		RHI::DepthTestMode GetDepthTest() const { return m_DepthTest; }
-
-		// ========== Shader Selection ==========
-		std::string GetShaderName() const;  // Determined by type
+		// Single-field shortcuts (the state is the source of truth)
+		void SetBlendMode(RHI::BlendMode mode) { m_State.blend = mode; }
+		RHI::BlendMode GetBlendMode() const { return m_State.blend; }
+		void SetCullMode(RHI::CullMode mode) { m_State.cull = mode; }
+		RHI::CullMode GetCullMode() const { return m_State.cull; }
+		void SetDepthTest(RHI::DepthTestMode mode) { m_State.depthTest = mode; }
+		RHI::DepthTestMode GetDepthTest() const { return m_State.depthTest; }
 
 		void SetDiffuseColor(const DirectX::XMFLOAT4& color);
 		void SetSpecularColor(const DirectX::XMFLOAT4& color);
@@ -77,8 +82,7 @@ namespace DXEngine {
 	private:
 		std::string m_Name;
 		uint32_t m_ID;
-		MaterialType m_Type;
-		RenderQueue m_RenderQueue;
+		ShadingModel m_Model;
 		MaterialProperties m_Properties;
 		std::vector<std::shared_ptr<RHI::ITexture>> m_Textures;
 		std::shared_ptr<RHI::IBuffer> m_ConstantBuffer;
@@ -86,11 +90,7 @@ namespace DXEngine {
 		uint32_t m_TextureMask = 0;      // derived from m_Textures, see GetTextureMask()
 		bool m_Dirty = true;
 
-
-		// Render state
-		RHI::BlendMode m_BlendMode = RHI::BlendMode::Opaque;
-		RHI::CullMode m_CullMode = RHI::CullMode::Back;
-		RHI::DepthTestMode m_DepthTest = RHI::DepthTestMode::Less;
+		RenderState m_State;             // see RenderState: the pipeline, the draw order and the shadow pass all read this
 
 		static uint32_t s_NextID;
 	};
@@ -101,9 +101,11 @@ namespace DXEngine {
 	public:
 		static std::shared_ptr<Material> CreateUnlitMaterial(const std::string& name = "Unlit");
 		static std::shared_ptr<Material> CreateLitMaterial(const std::string& name = "Lit");
+		// PBR is the Lit shading model: this is CreateLitMaterial with metallic / roughness set (kept for existing callers).
 		static std::shared_ptr<Material> CreatePBRMaterial(const std::string& name = "PBR");
 		static std::shared_ptr<Material> CreateEmissiveMaterial(const std::string& name = "Emissive");
 		static std::shared_ptr<Material> CreateSkyboxMaterial(const std::string& name = "Skybox");
+		// Transparent = the Lit shading model + a blended RenderState (there is no separate "transparent" shader).
 		static std::shared_ptr<Material> CreateTransparentMaterial(const std::string& name = "Transparent");
 		static std::shared_ptr<Material> CreateUIMaterial(const std::string& name = "UI");
 

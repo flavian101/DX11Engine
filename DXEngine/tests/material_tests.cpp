@@ -2,13 +2,16 @@
 // and these tests are what keeps it honest: ordering, uniqueness, registers, the generated #defines and HLSL
 // declarations, and that a Material's texture mask can never disagree with the textures it holds. Also the colour-space
 // aware mip generation (ImageMips): sRGB images are filtered in linear light, data images as plain numbers.
+// And the shading model + render state split: what a material computes vs. how it is drawn.
 #include "utils/ConstantBufferTypes.h"
 #include "utils/ImageMips.h"
 #include "utils/material/Material.h"
 #include "utils/material/MaterialSlots.h"
+#include "utils/material/MaterialTypes.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <filesystem>
 #include <cstdio>
 #include <random>
 #include <set>
@@ -377,6 +380,175 @@ static void TestSrgbMipsAreBrighterThanNaive()
     CHECK(brighter > 200);                                                       // and usually brighter: the test has teeth
 }
 
+// ----------------------------------------------------------------------------------------- shading models + render state
+static void TestShadingModelTable()
+{
+    const auto& rows = ShadingModels::All();
+    CHECK(rows.size() == static_cast<size_t>(ShadingModel::Count));
+    std::set<std::string> names;
+    for (uint32_t i = 0; i < rows.size(); ++i)
+    {
+        CHECK(static_cast<uint32_t>(rows[i].model) == i);                           // row i IS model i
+        CHECK(names.insert(rows[i].name).second);
+        const std::string vs = rows[i].vertexShader, ps = rows[i].pixelShader;
+        CHECK(vs.size() > 9 && vs.compare(vs.size() - 9, 9, ".vs.hlsl") == 0 || vs.find(".vs.hlsl") != std::string::npos);
+        CHECK(ps.find(".ps.hlsl") != std::string::npos);
+
+        ShadingModel parsed = ShadingModel::Count;                                  // name <-> model round trip
+        CHECK(ShadingModels::Parse(rows[i].name, parsed) && parsed == rows[i].model);
+        CHECK(&ShadingModels::Info(rows[i].model) == &rows[i]);
+    }
+    ShadingModel out = ShadingModel::Lit;
+    CHECK(!ShadingModels::Parse("PBR", out));            // the retired names do not parse (they used to silently become UI)
+    CHECK(!ShadingModels::Parse("Transparent", out) && !ShadingModels::Parse("Skybox", out) && !ShadingModels::Parse("", out) && !ShadingModels::Parse("lit", out));
+    CHECK(&ShadingModels::Info(static_cast<ShadingModel>(77)) == &ShadingModels::Info(ShadingModel::Lit));   // out of range: stays in bounds
+
+    // only Lit is lit by the scene's lights (and so gets the lighting + shadow features)
+    for (const auto& r : rows) CHECK(r.litByScene == (r.model == ShadingModel::Lit));
+}
+
+#ifdef SHADER_DIR
+static void TestShaderFilesMatchTheTable()
+{
+    namespace fs = std::filesystem;
+    const fs::path dir(SHADER_DIR);
+    CHECK(fs::exists(dir));
+
+    std::set<std::string> referenced = { "ShadowCaster.vs.hlsl" };                   // the one shader that belongs to no shading model
+    for (const auto& r : ShadingModels::All())
+    {
+        referenced.insert(r.vertexShader);
+        referenced.insert(r.pixelShader);
+        CHECK(fs::exists(dir / r.vertexShader));                                      // the table never names a missing file
+        CHECK(fs::exists(dir / r.pixelShader));
+    }
+    // ... and no shader file is orphaned: a stray PBR.ps.hlsl / Lit.vs.hlsl copy is exactly how the old duplicates crept in
+    for (const auto& e : fs::directory_iterator(dir))
+    {
+        const std::string file = e.path().filename().string();
+        if (file.find(".vs.hlsl") != std::string::npos || file.find(".ps.hlsl") != std::string::npos)
+            CHECK(referenced.count(file) == 1);
+    }
+}
+#endif
+
+static void TestRenderStateDefaultsAndPresets()
+{
+    const RenderState d;
+    CHECK(d.blend == RHI::BlendMode::Opaque && d.cull == RHI::CullMode::Back && d.depthTest == RHI::DepthTestMode::Less);
+    CHECK(d.depthWrite == DepthWriteMode::Auto && d.queue == RenderQueue::Auto && d == RenderState::Opaque());
+
+    const RenderState b = RenderState::Blended();
+    CHECK(b.blend == RHI::BlendMode::AlphaBlend && b.cull == RHI::CullMode::Back && b != d);
+
+    const RenderState sky = RenderState::Sky();
+    CHECK(sky.cull == RHI::CullMode::Front && sky.depthTest == RHI::DepthTestMode::LessEqual && sky.queue == RenderQueue::Background);
+
+    const RenderState ui = RenderState::Overlay();
+    CHECK(ui.blend == RHI::BlendMode::AlphaBlend && ui.cull == RHI::CullMode::None && ui.depthTest == RHI::DepthTestMode::None && ui.queue == RenderQueue::UI);
+
+    RenderState x = d;                                                                 // equality sees every field
+    x.queue = RenderQueue::Overlay;        CHECK(x != d);  x = d;
+    x.depthWrite = DepthWriteMode::Off;    CHECK(x != d);  x = d;
+    x.cull = RHI::CullMode::None;          CHECK(x != d);  x = d;
+    x.depthTest = RHI::DepthTestMode::Always; CHECK(x != d); x = d;
+    CHECK(x == d);
+}
+
+static void TestRenderQueueResolution()
+{
+    RenderState s;
+    CHECK(ResolveRenderQueue(s) == RenderQueue::Opaque && !IsBlended(s));
+    for (RHI::BlendMode m : { RHI::BlendMode::AlphaBlend, RHI::BlendMode::Additive, RHI::BlendMode::Multiply, RHI::BlendMode::Premultiplied })
+    {
+        s.blend = m;
+        CHECK(IsBlended(s) && ResolveRenderQueue(s) == RenderQueue::Transparent);      // any blending -> the transparent bucket
+    }
+    s.queue = RenderQueue::Background;                                                  // an explicit queue always wins
+    CHECK(ResolveRenderQueue(s) == RenderQueue::Background);
+    s.blend = RHI::BlendMode::Opaque; s.queue = RenderQueue::Transparent;
+    CHECK(ResolveRenderQueue(s) == RenderQueue::Transparent);                           // ... even for an opaque surface
+    CHECK(ResolveRenderQueue(RenderState::Sky()) == RenderQueue::Background);
+    CHECK(ResolveRenderQueue(RenderState::Overlay()) == RenderQueue::UI);
+}
+
+static void TestDepthWriteResolution()
+{
+    // Auto must equal the rule the pipeline cache used before the state existed: write unless blended or no depth test
+    const RHI::BlendMode blends[] = { RHI::BlendMode::Opaque, RHI::BlendMode::AlphaBlend, RHI::BlendMode::Additive, RHI::BlendMode::Multiply, RHI::BlendMode::Premultiplied };
+    const RHI::DepthTestMode tests[] = { RHI::DepthTestMode::None, RHI::DepthTestMode::Less, RHI::DepthTestMode::LessEqual, RHI::DepthTestMode::Greater,
+                                         RHI::DepthTestMode::GreaterEqual, RHI::DepthTestMode::Equal, RHI::DepthTestMode::NotEqual, RHI::DepthTestMode::Always };
+    for (auto b : blends)
+        for (auto t : tests)
+        {
+            RenderState s; s.blend = b; s.depthTest = t;
+            CHECK(ResolveDepthWrite(s) == (b == RHI::BlendMode::Opaque && t != RHI::DepthTestMode::None));
+            s.depthWrite = DepthWriteMode::On;   CHECK(ResolveDepthWrite(s));            // explicit choices win
+            s.depthWrite = DepthWriteMode::Off;  CHECK(!ResolveDepthWrite(s));
+        }
+    CHECK(ResolveDepthWrite(RenderState::Sky()));                                        // the dome is opaque with a depth test
+    CHECK(!ResolveDepthWrite(RenderState::Blended()) && !ResolveDepthWrite(RenderState::Overlay()));
+}
+
+static void TestMaterialModelIsFixed()
+{
+    // The old Material turned itself from Lit into PBR when a metallic or roughness value was set: the importer set
+    // roughness on EVERY material, so every imported Lit material silently became PBR. The model never changes now.
+    Material m("m", ShadingModel::Lit);
+    m.SetMetallic(0.9f); m.SetRoughness(0.3f); m.SetRoughness(0.9f); m.SetMetallic(0.0f);
+    CHECK(m.GetShadingModel() == ShadingModel::Lit);
+    CHECK(m.GetMetallic() == 0.0f && std::fabs(m.GetRoughness() - 0.9f) < 1e-6f);        // ... but the values are stored
+
+    for (ShadingModel model : { ShadingModel::Unlit, ShadingModel::Emissive, ShadingModel::Sky, ShadingModel::UI })
+    {
+        Material other("o", model);
+        other.SetMetallic(1.0f); other.SetRoughness(0.5f);
+        CHECK(other.GetShadingModel() == model);
+    }
+}
+
+static void TestMaterialRenderStateIsTheSourceOfTruth()
+{
+    Material m("m");
+    CHECK(m.GetRenderQueue() == RenderQueue::Opaque && !m.IsBlended());
+
+    m.SetBlendMode(RHI::BlendMode::AlphaBlend);                                           // the shortcuts write the state ...
+    CHECK(m.GetRenderState().blend == RHI::BlendMode::AlphaBlend && m.IsBlended() && m.GetRenderQueue() == RenderQueue::Transparent);
+    m.SetBlendMode(RHI::BlendMode::Opaque);                                               // ... and the queue FOLLOWS: nothing to keep in sync
+    CHECK(m.GetRenderQueue() == RenderQueue::Opaque);
+
+    m.SetCullMode(RHI::CullMode::None); m.SetDepthTest(RHI::DepthTestMode::LessEqual);
+    CHECK(m.GetRenderState().cull == RHI::CullMode::None && m.GetRenderState().depthTest == RHI::DepthTestMode::LessEqual);
+    CHECK(m.GetCullMode() == RHI::CullMode::None && m.GetDepthTest() == RHI::DepthTestMode::LessEqual);
+
+    m.SetRenderState(RenderState::Sky());
+    CHECK(m.GetCullMode() == RHI::CullMode::Front && m.GetRenderQueue() == RenderQueue::Background);
+}
+
+static void TestFactories()
+{
+    auto lit = MaterialFactory::CreateLitMaterial();
+    CHECK(lit->GetShadingModel() == ShadingModel::Lit && lit->GetRenderQueue() == RenderQueue::Opaque);
+
+    auto pbr = MaterialFactory::CreatePBRMaterial();                                      // PBR IS the Lit model
+    CHECK(pbr->GetShadingModel() == ShadingModel::Lit && pbr->GetRenderQueue() == RenderQueue::Opaque);
+
+    auto glass = MaterialFactory::CreateTransparentMaterial();                            // transparent = Lit + a blended state
+    CHECK(glass->GetShadingModel() == ShadingModel::Lit && glass->IsBlended() && glass->GetRenderQueue() == RenderQueue::Transparent);
+    CHECK(!ResolveDepthWrite(glass->GetRenderState()));
+
+    auto sky = MaterialFactory::CreateSkyboxMaterial();
+    CHECK(sky->GetShadingModel() == ShadingModel::Sky && sky->GetRenderQueue() == RenderQueue::Background);
+    CHECK(sky->GetCullMode() == RHI::CullMode::Front && sky->GetDepthTest() == RHI::DepthTestMode::LessEqual);
+
+    auto ui = MaterialFactory::CreateUIMaterial();
+    CHECK(ui->GetShadingModel() == ShadingModel::UI && ui->GetRenderQueue() == RenderQueue::UI);
+    CHECK(ui->GetCullMode() == RHI::CullMode::None && ui->GetDepthTest() == RHI::DepthTestMode::None && ui->IsBlended());
+
+    CHECK(MaterialFactory::CreateEmissiveMaterial()->GetShadingModel() == ShadingModel::Emissive);
+    CHECK(MaterialFactory::CreateUnlitMaterial()->GetShadingModel() == ShadingModel::Unlit);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -400,6 +572,16 @@ int main()
         { "mips: uniform images do not drift",                      TestUniformImagesStayUniform },
         { "mips: a flat normal map stays flat",                     TestFlatNormalMapSurvivesMips },
         { "mips: sRGB mips are brighter than naive byte averages",  TestSrgbMipsAreBrighterThanNaive },
+        { "models: table, names, parse, only Lit is lit",           TestShadingModelTable },
+#ifdef SHADER_DIR
+        { "models: shader files exist and none is orphaned",        TestShaderFilesMatchTheTable },
+#endif
+        { "state: defaults and presets",                            TestRenderStateDefaultsAndPresets },
+        { "state: render queue is derived, explicit wins",          TestRenderQueueResolution },
+        { "state: depth write == the old pipeline rule",            TestDepthWriteResolution },
+        { "material: the shading model never changes",              TestMaterialModelIsFixed },
+        { "material: render state is the source of truth",          TestMaterialRenderStateIsTheSourceOfTruth },
+        { "material: factories produce the right model + state",    TestFactories },
     };
     for (auto& t : tests)
     {

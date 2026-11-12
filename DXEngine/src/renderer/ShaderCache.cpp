@@ -50,14 +50,9 @@ namespace DXEngine
 
 		LogInfo("ShaderCache: Initializing...");
 
-		// Load base shaders
-		LoadBaseShader("Lit", "Lit.vs.hlsl", "Lit.ps.hlsl");
-		LoadBaseShader("PBR", "PBR.vs.hlsl", "PBR.ps.hlsl");
-		LoadBaseShader("Unlit", "Unlit.vs.hlsl", "Unlit.ps.hlsl");
-		LoadBaseShader("Transparent", "Transparent.vs.hlsl", "Transparent.ps.hlsl");
-		LoadBaseShader("Emissive", "Emissive.vs.hlsl", "Emissive.ps.hlsl");
-		LoadBaseShader("Skybox", "Skybox.vs.hlsl", "Skybox.ps.hlsl");
-		LoadBaseShader("UI", "UI.vs.hlsl", "UI.ps.hlsl");
+		// Load the base shader of every shading model (the file names come from the ShadingModels table)
+		for (const ShadingModelInfo& info : ShadingModels::All())
+			LoadBaseShader(info.name, info.vertexShader, info.pixelShader);
 
 		//precompile common variants
 		if (m_Config.precompileCommonVariants)
@@ -106,29 +101,29 @@ namespace DXEngine
 	{
 		if (!m_Initialized) {
 			LogError("ShaderCache not initialized");
-			return GetFallbackShader(MaterialType::Lit);
+			return GetFallbackShader(ShadingModel::Lit);
 		}
 
 		if (!material) {
 			LogWarning("Material is null, using fallback");
-			return GetFallbackShader(MaterialType::Lit);
+			return GetFallbackShader(ShadingModel::Lit);
 		}
 
 		// Build variant key
 		ShaderVariantKey key;
-		key.baseName = MaterialTypeToShaderName(material->GetType());
+		key.baseName = ShadingModels::Name(material->GetShadingModel());
 		key.vertexLayoutHash = GenerateVertexLayoutHash(layout);
 		key.actualLayout = layout; //Store the actual layout for compilation
 
 		// Analyze features
-		key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), material->GetType());
+		key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), material->GetShadingModel(), material->IsBlended());
 		key.textureMask = material->GetTextureMask();      // which textures it has: decided by the slot table
 
 		// Try to get cached variant
 		auto shader = GetShaderVariant(key);
 		if (!shader) {
 			LogWarning("Failed to get shader variant, using fallback");
-			return GetFallbackShader(material->GetType());
+			return GetFallbackShader(material->GetShadingModel());
 		}
 
 		return shader;
@@ -187,17 +182,10 @@ namespace DXEngine
 			entry.program = program;
 			entry.lastUsedFrame = m_CurrentFrame;
 
-			MaterialType materialType =
-				key.baseName == "Lit" ? MaterialType::Lit :
-				key.baseName == "PBR" ? MaterialType::PBR :
-				key.baseName == "Unlit" ? MaterialType::Unlit :
-				key.baseName == "Transparent" ? MaterialType::Transparent :
-				key.baseName == "Emissive" ? MaterialType::Emissive :
-				key.baseName == "Skybox" ? MaterialType::Skybox :
-				key.baseName == "UI" ? MaterialType::UI :
-				MaterialType::Lit; // fallback
+			ShadingModel model = ShadingModel::Lit;
+			ShadingModels::Parse(key.baseName, model);   // the key was built from ShadingModels::Name, so this cannot miss
 
-			auto [vsPath, psPath] = GetShaderPaths(materialType);
+			auto [vsPath, psPath] = GetShaderPaths(model);
 
 			entry.vsPath = vsPath;
 			entry.psPath = psPath;
@@ -214,10 +202,10 @@ namespace DXEngine
 		return program;
 	}
 
-	std::shared_ptr<ShaderProgram>ShaderCache::GetFallbackShader(MaterialType materialType)
+	std::shared_ptr<ShaderProgram>ShaderCache::GetFallbackShader(ShadingModel model)
 	{
 		// Check if we have a fallback for this material type
-		auto it = m_FallbackShaders.find(materialType);
+		auto it = m_FallbackShaders.find(model);
 		if (it != m_FallbackShaders.end()) {
 			return it->second;
 		}
@@ -226,12 +214,12 @@ namespace DXEngine
 		VertexLayout fallbackLayout;
 		fallbackLayout.Position();
 
-		switch (materialType) {
-		case MaterialType::UI:
+		switch (model) {
+		case ShadingModel::UI:
 			fallbackLayout.TexCoord(0);
 			fallbackLayout.Color(0);
 			break;
-		case MaterialType::Skybox:
+		case ShadingModel::Sky:
 			fallbackLayout.Normal();
 			break;
 		default:
@@ -243,13 +231,13 @@ namespace DXEngine
 		fallbackLayout.Finalize();
 
 		ShaderVariantKey key;
-		key.baseName = MaterialTypeToShaderName(materialType);
+		key.baseName = ShadingModels::Name(model);
 		key.vertexLayoutHash = GenerateVertexLayoutHash(fallbackLayout);
 		key.featureFlags = AnalyzeVertexLayout(fallbackLayout);
 		key.actualLayout = fallbackLayout;
 		auto fallback = CreateShaderVariant(key);
 		if (fallback) {
-			m_FallbackShaders[materialType] = fallback;
+			m_FallbackShaders[model] = fallback;
 		}
 
 		return fallback;
@@ -305,16 +293,13 @@ namespace DXEngine
 
 	std::shared_ptr<ShaderProgram> ShaderCache::CreateShaderVariant(const ShaderVariantKey& key)
 	{
-		auto [vsPath, psPath] = GetShaderPaths(
-			// Deduce material type from key.baseName
-			key.baseName == "Lit" ? MaterialType::Lit :
-			key.baseName == "PBR" ? MaterialType::PBR :
-			key.baseName == "Unlit" ? MaterialType::Unlit :
-			key.baseName == "Transparent" ? MaterialType::Transparent :
-			key.baseName == "Emissive" ? MaterialType::Emissive :
-			key.baseName == "Skybox" ? MaterialType::Skybox :
-			MaterialType::UI
-		);
+		ShadingModel model = ShadingModel::Lit;
+		if (!ShadingModels::Parse(key.baseName, model))
+		{
+			LogError("Unknown shading model in shader key: " + key.baseName);   // (it used to silently become UI)
+			return nullptr;
+		}
+		auto [vsPath, psPath] = GetShaderPaths(model);
 
 		// Check if shader files exist
 		if (!std::filesystem::exists(vsPath) || !std::filesystem::exists(psPath)) {
@@ -421,24 +406,19 @@ namespace DXEngine
 		return features;
 	}
 
-	uint32_t ShaderCache::CombineFeatures(uint32_t layoutFeatures, MaterialType materialType)
+	uint32_t ShaderCache::CombineFeatures(uint32_t layoutFeatures, ShadingModel model, bool blended)
 	{
 		uint32_t combined = layoutFeatures;
 
-		// Add material type specific features
-		switch (materialType) {
-		case MaterialType::Transparent:
-			combined |= ShaderFeature::AlphaTest | ShaderFeature::Shadows;   // transparent surfaces are lit too
-			break;
-		case MaterialType::Lit:
-		case MaterialType::PBR:
-			// Every lit shader can RECEIVE shadows. It is a compile-time feature on purpose (one variant, not two): a
-			// light with no shadow, or an object with receiveShadows off, skips the lookup at run time.
+		// A model lit by the scene can RECEIVE shadows. It is a compile-time feature on purpose (one variant, not two): a light
+		// with no shadow, or an object with receiveShadows off, skips the lookup at run time.
+		if (ShadingModels::Info(model).litByScene)
 			combined |= ShaderFeature::Lighting | ShaderFeature::Shadows;
-			break;
-		case MaterialType::Skybox:
-			break;   // the environment cube map is a texture: it arrives through the material's texture mask
-		}
+
+		// Blending is render STATE, not a shading model: any model can be blended, and then only needs to drop the pixels that
+		// would be invisible anyway.
+		if (blended)
+			combined |= ShaderFeature::Blended;
 
 		return combined;
 	}
@@ -472,8 +452,10 @@ namespace DXEngine
 			defines << "#define ENABLE_FOG 1\n";
 		if (features & ShaderFeature::Instancing)
 			defines << "#define ENABLE_INSTANCING 1\n";
-		if (features & ShaderFeature::AlphaTest)
+		if ((features & ShaderFeature::AlphaTest) || (features & ShaderFeature::Blended))
 			defines << "#define ENABLE_ALPHA_TEST 1\n";
+		if (features & ShaderFeature::Blended)
+			defines << "#define ALPHA_TEST_THRESHOLD 0.1\n";      // (cut-out materials keep surface.hlsli's 0.5)
 
 		return defines.str();
 	}
@@ -490,12 +472,11 @@ namespace DXEngine
 		};
 
 		// Common material types
-		std::vector<MaterialType> materialTypes = {
-			MaterialType::Lit,
-			MaterialType::PBR,
-			MaterialType::Unlit,
-			MaterialType::Transparent,
-			MaterialType::UI
+		// (a blended material is the same model with the Blended feature: the common blended Lit variant is added below)
+		std::vector<ShadingModel> models = {
+			ShadingModel::Lit,
+			ShadingModel::Unlit,
+			ShadingModel::UI
 		};
 
 		size_t variantsCompiled = 0;
@@ -503,21 +484,25 @@ namespace DXEngine
 		for (auto& layout : layouts) {
 			layout.Finalize();
 
-			for (MaterialType materialType : materialTypes) {
+			for (ShadingModel model : models) {
 				// Skip UI shaders for non-UI layouts
-				if (materialType == MaterialType::UI &&
+				if (model == ShadingModel::UI &&
 					!layout.HasAttribute(RHI::VertexAttributeType::Color0)) {
 					continue;
 				}
 
 				ShaderVariantKey key;
-				key.baseName = MaterialTypeToShaderName(materialType);
+				key.baseName = ShadingModels::Name(model);
 				key.vertexLayoutHash = GenerateVertexLayoutHash(layout);
 				key.actualLayout = layout;
-				key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), materialType);   // no textures: mask 0
+				key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), model, false);   // no textures: mask 0
 
 				if (CreateShaderVariant(key)) {
 					variantsCompiled++;
+				}
+				if (model == ShadingModel::Lit) {          // the blended twin (glass, fades)
+					key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), model, true);
+					if (CreateShaderVariant(key)) variantsCompiled++;
 				}
 			}
 		}
@@ -525,15 +510,15 @@ namespace DXEngine
 		LogInfo("Precompiled " + std::to_string(variantsCompiled) + " shader variants");
 	}
 
-	void ShaderCache::PrecompileVariantForMaterial(MaterialType type) {
+	void ShaderCache::PrecompileVariantForMaterial(ShadingModel model) {
 		VertexLayout layout = VertexLayout::CreateLit();
 		layout.Finalize();
 
 		ShaderVariantKey key;
-		key.baseName = MaterialTypeToShaderName(type);
+		key.baseName = ShadingModels::Name(model);
 		key.vertexLayoutHash = GenerateVertexLayoutHash(layout);
 		key.actualLayout = layout;
-		key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), type);
+		key.featureFlags = CombineFeatures(AnalyzeVertexLayout(layout), model, false);
 
 		CreateShaderVariant(key);
 	}
@@ -660,40 +645,10 @@ namespace DXEngine
 			return false;
 		}
 	}
-	std::pair<std::string, std::string> ShaderCache::GetShaderPaths(MaterialType materialType) {
-		std::string basePath = m_Config.shaderDirectory;
-
-		switch (materialType) {
-		case MaterialType::Lit:
-			return { basePath + "Lit.vs.hlsl", basePath + "Lit.ps.hlsl" };
-		case MaterialType::PBR:
-			return { basePath + "PBR.vs.hlsl", basePath + "PBR.ps.hlsl" };
-		case MaterialType::Unlit:
-			return { basePath + "Unlit.vs.hlsl", basePath + "Unlit.ps.hlsl" };
-		case MaterialType::Transparent:
-			return { basePath + "Transparent.vs.hlsl", basePath + "Transparent.ps.hlsl" };
-		case MaterialType::Emissive:
-			return { basePath + "Emissive.vs.hlsl", basePath + "Emissive.ps.hlsl" };
-		case MaterialType::Skybox:
-			return { basePath + "Skybox.vs.hlsl", basePath + "Skybox.ps.hlsl" };
-		case MaterialType::UI:
-			return { basePath + "UI.vs.hlsl", basePath + "UI.ps.hlsl" };
-		default:
-			return { basePath + "Lit.vs.hlsl", basePath + "Lit.ps.hlsl" };
-		}
-	}
-
-	std::string ShaderCache::MaterialTypeToShaderName(MaterialType type) const {
-		switch (type) {
-		case MaterialType::Lit: return "Lit";
-		case MaterialType::PBR: return "PBR";
-		case MaterialType::Unlit: return "Unlit";
-		case MaterialType::Transparent: return "Transparent";
-		case MaterialType::Emissive: return "Emissive";
-		case MaterialType::Skybox: return "Skybox";
-		case MaterialType::UI: return "UI";
-		default: return "Lit";
-		}
+	std::pair<std::string, std::string> ShaderCache::GetShaderPaths(ShadingModel model) {
+		// the file names live in ONE table (ShadingModels in MaterialTypes.cpp)
+		const ShadingModelInfo& info = ShadingModels::Info(model);
+		return { m_Config.shaderDirectory + info.vertexShader, m_Config.shaderDirectory + info.pixelShader };
 	}
 
 	std::string ShaderCache::LoadShaderSource(const std::string& path) {
@@ -794,6 +749,7 @@ namespace DXEngine
 			if (HasFeature(flags, ShaderFeature::Fog)) featureNames.push_back("Fog");
 			if (HasFeature(flags, ShaderFeature::Instancing)) featureNames.push_back("Instancing");
 			if (HasFeature(flags, ShaderFeature::AlphaTest)) featureNames.push_back("AlphaTest");
+			if (HasFeature(flags, ShaderFeature::Blended)) featureNames.push_back("Blended");
 
 			if (featureNames.empty()) {
 				return "None";

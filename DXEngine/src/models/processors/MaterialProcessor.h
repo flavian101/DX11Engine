@@ -9,7 +9,6 @@
 namespace DXEngine
 { 
 	class Material;
-	enum class MaterialType;
 	class TextureLoader;
 
 	class MaterialProcessor
@@ -22,7 +21,10 @@ namespace DXEngine
 			const std::string& directory,
 			const ModelLoadOptions& options);
 
-		MaterialType DetermineMaterialType(const aiMaterial* material) const;
+		// WHAT the pixels compute and HOW the surface is drawn are decided separately (see MaterialTypes.h): an imported
+		// material with opacity < 1 is a Lit material with a blended RenderState, not a different kind of material.
+		ShadingModel DetermineShadingModel(const aiMaterial* material) const;
+		RenderState  DetermineRenderState(const aiMaterial* material) const;
 
 		size_t GetMaterialsProcessed() const { return m_MaterialsProcessed; }
 		void ResetStats() { m_MaterialsProcessed = 0; }

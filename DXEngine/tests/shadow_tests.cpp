@@ -374,7 +374,7 @@ static std::shared_ptr<Mesh> MakeCube(float size = 2.0f)
 
 static std::shared_ptr<Material> MakeMaterial(bool transparent = false)
 {
-    auto m = std::make_shared<Material>("m", transparent ? MaterialType::Transparent : MaterialType::Lit);
+    auto m = std::make_shared<Material>("m", ShadingModel::Lit);
     if (transparent) m->SetBlendMode(RHI::BlendMode::AlphaBlend);
     return m;
 }

@@ -56,15 +56,13 @@ namespace DXEngine
         PipelineKey key;
         key.program          = program.get();
         key.vertexLayoutHash = HashLayout(layout);
-        key.cullMode         = material.GetCullMode();
-        key.blendMode        = material.GetBlendMode();
-        key.depthTest        = material.GetDepthTest();
+        const RenderState& state = material.GetRenderState();      // HOW this material is drawn
+        key.cullMode         = state.cull;
+        key.blendMode        = state.blend;
+        key.depthTest        = state.depthTest;
         key.topology         = resource->GetTopology();
         key.wireframe        = m_Wireframe;
-        // Blended geometry must not write depth, otherwise whatever is drawn behind it
-        // (back-to-front order) gets rejected by the depth test.
-        key.depthWrite       = key.blendMode == RHI::BlendMode::Opaque &&
-                               key.depthTest != RHI::DepthTestMode::None;
+        key.depthWrite       = ResolveDepthWrite(state);                 // (blended geometry does not write depth: see RenderState)
 
         if (auto it = m_Pipelines.find(key); it != m_Pipelines.end())
             return it->second.pipeline;                       // cache hit

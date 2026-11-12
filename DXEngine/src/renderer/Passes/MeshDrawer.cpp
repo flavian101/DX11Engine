@@ -205,7 +205,7 @@ namespace DXEngine
         const VertexLayout& layout = resource->GetVertexData()->GetLayout();
         std::shared_ptr<ShaderProgram> program = svc.shaders->GetShaderForMaterial(layout, &material);
         if (!program || !program->IsValid())
-            program = svc.shaders->GetFallbackShader(material.GetType());
+            program = svc.shaders->GetFallbackShader(material.GetShadingModel());
 
         std::shared_ptr<RHI::IPipeline> pipeline = svc.resources->GetPipeline(material, mesh, program);
         if (!pipeline) return;

@@ -36,8 +36,9 @@ namespace DXEngine
 		if (name.empty())
 			name = "Material_" + std::to_string(m_MaterialsProcessed);
 
-		MaterialType type = DetermineMaterialType(aiMaterial);
-		auto material = std::make_shared<Material>(name, type);
+		const ShadingModel model = DetermineShadingModel(aiMaterial);
+		auto material = std::make_shared<Material>(name, model);
+		material->SetRenderState(DetermineRenderState(aiMaterial));
 
 		LoadBasicProperties(material, aiMaterial);
 
@@ -52,42 +53,39 @@ namespace DXEngine
 
 #ifdef DX_DEBUG
 		OutputDebugStringA(("MaterialProcessor: Processed material '" + name +
-			"' (Type: " + std::to_string(static_cast<int>(type)) + ")\n").c_str());
+			"' (Model: " + ShadingModels::Name(model) + ")\n").c_str());
 #endif
 
 		return material;
 	}
 
-	MaterialType MaterialProcessor::DetermineMaterialType(const aiMaterial* material) const
+	ShadingModel MaterialProcessor::DetermineShadingModel(const aiMaterial* material) const
 	{
 		if (!material)
 		{
 			OutputDebugStringA("MaterialProcessor: aiMaterial is null\n");
-			return MaterialType::Unlit;
+			return ShadingModel::Unlit;
 		}
 
-		// Check for transparency
+		// A material the artist marked "no shading" stays unlit.
+		int assimpShading = 0;
+		if (material->Get(AI_MATKEY_SHADING_MODEL, assimpShading) == AI_SUCCESS && assimpShading == aiShadingMode_NoShading)
+			return ShadingModel::Unlit;
+
+		// Everything else is Lit. The old importer also produced "PBR" (when the model had metalness / roughness textures:
+		// the same shader), "Emissive" (when the emissive colour was bright: a flat glow that ignored every light) and
+		// "Transparent" (opacity < 1: that is a render STATE, see DetermineRenderState). The Lit model reads the emissive
+		// colour and map itself, so a glowing part of a model is lit AND glowing.
+		return ShadingModel::Lit;
+	}
+
+	RenderState MaterialProcessor::DetermineRenderState(const aiMaterial* material) const
+	{
+		RenderState state;
 		float opacity = 1.0f;
-		if (material->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS && opacity < 1.0f)
-		{
-			return MaterialType::Transparent;
-		}
-
-		// Check for emissive properties
-		aiColor3D emissive(0.0f, 0.0f, 0.0f);
-		if (material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive) == AI_SUCCESS) {
-			if (emissive.r > 0.1f || emissive.g > 0.1f || emissive.b > 0.1f) {
-				return MaterialType::Emissive;
-			}
-		}
-
-		// Check for PBR workflow
-		if (material->GetTextureCount(aiTextureType_METALNESS) > 0 ||
-			material->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS) > 0) {
-			return MaterialType::PBR;
-		}
-
-		return MaterialType::Lit;
+		if (material && material->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS && opacity < 1.0f)
+			state = RenderState::Blended();
+		return state;
 	}
 
 	void MaterialProcessor::LoadBasicProperties(std::shared_ptr<Material> mat, const aiMaterial* aiMat)
@@ -113,7 +111,9 @@ namespace DXEngine
 		aiMat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
 
 		// Set material properties
-		mat->SetDiffuseColor({ diffuse.r, diffuse.g, diffuse.b, opacity });
+		// The opacity goes into `alpha` ONLY. It used to go into the diffuse colour's alpha as well, and the shaders multiplied
+		// both: a 50% transparent model came out 25% opaque.
+		mat->SetDiffuseColor({ diffuse.r, diffuse.g, diffuse.b, 1.0f });
 		mat->SetSpecularColor({ specular.r, specular.g, specular.b, 1.0f });
 		mat->SetEmissiveColor({ emissive.r, emissive.g, emissive.b, 1.0f });
 		mat->SetShininess(std::clamp(shininess, 1.0f, 128.0f));
@@ -200,8 +200,7 @@ namespace DXEngine
 
 	void MaterialProcessor::ConfigureMaterialFromTextures(std::shared_ptr<Material> mat)
 	{
-		// (The old Lit -> PBR promotion is gone: a material's type is fixed at construction now and
-		// DetermineMaterialType() already picks PBR when the model has metalness/roughness textures.)
+		// (A material's shading model is fixed at construction: nothing here, and no setter, changes it.)
 
 		// Parallax mapping: the shader switch (ENABLE_PARALLAX_MAPPING) follows from the height map being bound; only the
 		// strength is configured here.

@@ -32,7 +32,7 @@ static std::shared_ptr<Mesh> MakeCube(float size = 2.0f)
 
 static std::shared_ptr<Material> MakeMaterial(const char* name, bool transparent = false)
 {
-    auto m = std::make_shared<Material>(name, transparent ? MaterialType::Transparent : MaterialType::Lit);
+    auto m = std::make_shared<Material>(name, ShadingModel::Lit);
     if (transparent) m->SetBlendMode(RHI::BlendMode::AlphaBlend);
     return m;
 }
@@ -166,6 +166,41 @@ static void TestMaterialResolution()
     CHECK(withMesh == 1 && withOverride == 1);
 }
 
+static void TestBucketComesFromTheMaterialsRenderState()
+{
+    Scene scene;
+    auto mesh = MakeCube();
+    const auto cam = MakeCamera({ 0, 0, -10 }, { 0, 0, 0 });
+
+    auto opaque = MakeMaterial("opaque");
+    auto glass  = std::make_shared<Material>("glass", ShadingModel::Lit);      // transparent = Lit + a blended state
+    glass->SetRenderState(RenderState::Blended());
+    auto hologram = std::make_shared<Material>("hologram", ShadingModel::Unlit);   // ANY shading model can be blended
+    hologram->SetRenderState(RenderState::Blended());
+    auto backdrop = std::make_shared<Material>("backdrop", ShadingModel::Unlit);   // an explicit queue, no SkyboxComponent needed
+    backdrop->GetRenderState().queue = RenderQueue::Background;
+    auto hud = MaterialFactory::CreateUIMaterial();                             // UI materials belong to the UI pass
+
+    AddMesh(scene, "a", { 0, 0, 0 },  mesh, opaque);
+    AddMesh(scene, "b", { 1, 0, 0 },  mesh, glass);
+    AddMesh(scene, "c", { -1, 0, 0 }, mesh, hologram);
+    AddMesh(scene, "d", { 0, 1, 0 },  mesh, backdrop);
+    AddMesh(scene, "e", { 0, -1, 0 }, mesh, hud);
+    Entity sky = AddMesh(scene, "f", { 0, 0, 3 }, mesh, MakeMaterial("sky-lit"));
+    sky.Add<SkyboxComponent>();                                                // the component still forces the background bucket
+
+    auto r = Run(scene, cam);
+    CHECK(r.q.opaque.size() == 1);                       // only "a"
+    CHECK(r.q.transparent.size() == 2);                  // glass and the unlit hologram: blended = transparent, whatever the model
+    CHECK(r.q.background.size() == 2);                   // the explicit-queue material and the SkyboxComponent entity
+    CHECK(r.q.opaque.size() + r.q.transparent.size() + r.q.background.size() == 5);   // the UI-queue material is not a 3D draw
+
+    // a material whose state CHANGES moves bucket on the next extraction: nothing was cached
+    glass->SetBlendMode(RHI::BlendMode::Opaque);
+    r = Run(scene, cam);
+    CHECK(r.q.opaque.size() == 2 && r.q.transparent.size() == 1);
+}
+
 static void TestSkinnedBonesAreOptionalAndSafe()
 {
     Scene scene;
@@ -211,6 +246,7 @@ int main()
         { "extraction: transparent / opaque ordering",         TestTransparentAndOpaqueOrdering },
         { "extraction: hidden entities, culling switch",       TestHiddenAndConfig },
         { "extraction: material resolution",                   TestMaterialResolution },
+        { "extraction: bucket follows the material's state",   TestBucketComesFromTheMaterialsRenderState },
         { "extraction: skinned bones optional and safe",       TestSkinnedBonesAreOptionalAndSafe },
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
     };
