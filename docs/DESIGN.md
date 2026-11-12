@@ -130,6 +130,16 @@ Everything below sits on top of the scene: the editor is a loop over components,
 * Code that **polls** input (`Input::IsKeyPressed`, used by the Sandbox shortcuts and the camera) does not see events, so it asks: `ImGuiLayer::WantsTextInput()` (a text field is being edited) before reacting to keys.
 * The renderer owns its settings (environment, wireframe, culling). Anything that shows or changes them reads the live value first (`Renderer::GetEnvironment`, `IsWireframeEnabled`), so a key and a panel cannot undo each other.
 
+**Editor logic is separate from the UI** (`editor/`, tested in `editor_tests` with no GPU and no ImGui): `EditorSelection` (an `Entity` value, so a destroyed entity is simply "nothing selected"),
+`HierarchyModel` (the tree flattened into the visible rows, O(entities), ordered by entity id so rows do not shuffle), `SceneEditing` (duplicate a subtree, **reparent without moving the entity**, create lights, write a world matrix back as local TRS),
+`TransformEditing` (Euler <-> quaternion and a cache that keeps the angles the user typed), `ViewportMath` (panel size -> texture size, mouse -> texture pixel, world point -> pixels).
+The panels only call these. `Scene::SetParent` alone keeps the *local* transform, so an editor that used it directly would make entities jump: the editor goes through `SceneEditing::Reparent`.
+
+**Gizmo foundations, no gizmo yet.** The editor talks to a gizmo only through `IGizmo` (`editor/GizmoTypes.h`): `GizmoSettings` (tool, local / world, snapping), a `GizmoView` (DirectXMath matrices + the viewport rectangle) and
+`Manipulate(view, settings, world)` which takes the selected entity's world matrix and returns true when the user changed it; `SceneEditing::ApplyWorldMatrix` turns that into the local position / rotation / scale, parent-aware.
+`NullGizmo` is installed, so the tool buttons say "no gizmo backend" and nothing else changes. Plugging ImGuizmo in later means one class that implements `IGizmo` and converts the matrix convention in one place
+(not done: it needs the ImGuizmo sources, and its handedness behaviour must be checked on a real run).
+
 **Debug panel first** (`editor/RendererPanel`): frame time, the renderer's statistics (with the "must be zero" counters in red), wireframe / culling toggles, the environment and every shadow setting.
 
 ## Assets and animation (milestone 6)

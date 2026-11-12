@@ -269,6 +269,24 @@
     <ClInclude Include="src\editor\RendererPanel.h">
       <Filter>editor</Filter>
     </ClInclude>
+    <ClInclude Include="src\editor\EditorSelection.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\GizmoTypes.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\HierarchyModel.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\SceneEditing.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\TransformEditing.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\ViewportMath.h">
+      <Filter>editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -434,6 +452,12 @@
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\RendererPanel.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\SceneEditing.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\HierarchyModel.cpp">
       <Filter>editor</Filter>
     </ClCompile>
   </ItemGroup>

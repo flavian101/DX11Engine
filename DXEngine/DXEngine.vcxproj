@@ -200,6 +200,12 @@
     <ClInclude Include="src\utils\ImageMips.h" />
     <ClInclude Include="src\Core\ImGuiLayer.h" />
     <ClInclude Include="src\editor\RendererPanel.h" />
+    <ClInclude Include="src\editor\EditorSelection.h" />
+    <ClInclude Include="src\editor\GizmoTypes.h" />
+    <ClInclude Include="src\editor\HierarchyModel.h" />
+    <ClInclude Include="src\editor\SceneEditing.h" />
+    <ClInclude Include="src\editor\TransformEditing.h" />
+    <ClInclude Include="src\editor\ViewportMath.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Cache\ResourceCache.cpp" />
@@ -282,6 +288,8 @@
     </ClCompile>
     <ClCompile Include="src\Core\ImGuiLayer.cpp" />
     <ClCompile Include="src\editor\RendererPanel.cpp" />
+    <ClCompile Include="src\editor\SceneEditing.cpp" />
+    <ClCompile Include="src\editor\HierarchyModel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

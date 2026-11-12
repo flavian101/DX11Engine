@@ -95,3 +95,17 @@ target_include_directories(material_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(material_tests PRIVATE cxx_std_17)
 add_test(NAME material_tests COMMAND material_tests)
+
+# Editor logic that needs no UI: selection, the hierarchy rows, duplicate / reparent (keeps the world position) / gizmo
+# write-back, Euler editing, viewport maths, the gizmo interface.
+add_executable(editor_tests
+    editor_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/SceneEditing.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyModel.cpp)
+target_include_directories(editor_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/DXEngine/src
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
+target_compile_features(editor_tests PRIVATE cxx_std_17)
+add_test(NAME editor_tests COMMAND editor_tests)
