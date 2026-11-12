@@ -1,40 +1,16 @@
+// Unlit.ps.hlsl: colour x texture (+ emission), no lights. Still linear light: the result is encoded for the display, so
+// at the neutral gamma an unlit texture comes out exactly as it is in the file.
+
 #include "common.hlsli"
+#include "surface.hlsli"
 
 float4 main(StandardVertexOutput input) : SV_Target
 {
-    float4 baseColor = diffuseColor;
-    float opacityValue = 1.0;
-    
-    // Sample diffuse texture if available
-#if HAS_DIFFUSE_TEXTURE && HAS_TEXCOORDS_ATTRIBUTE
-    float4 texColor = SampleDiffuseTexture(input.texCoord);
-    baseColor *= texColor;
-    opacityValue = SampleOpacityMap(input.texCoord);
-#endif
-    
-    // Modulate with vertex colors if available
-#if HAS_VERTEX_COLOR_ATTRIBUTE
-    baseColor *= input.color;
-#endif
-    
-    // Add emissive contribution if available
-#if (HAS_EMISSIVE_MAP && HAS_TEXCOORDS_ATTRIBUTE) || ENABLE_EMISSIVE
-    float3 emissiveSample = float3(0.0, 0.0, 0.0);
-    
-#if HAS_EMISSIVE_MAP && HAS_TEXCOORDS_ATTRIBUTE
-    emissiveSample = SampleEmissiveMap(input.texCoord);
-#endif
-    
-    baseColor.rgb += emissiveColor.rgb * emissiveSample;
-#endif
-    
-    // Apply material alpha
-    baseColor.a *= alpha * opacityValue;
+    const Surface surface = EvaluateSurface(input, normalize(input.viewDir));
+
 #if ENABLE_ALPHA_TEST
-    clip(baseColor.a - 0.5);
+    clip(surface.alpha - ALPHA_TEST_THRESHOLD);
 #endif
-    
-    // Unlit still works in linear light (the texture arrives linear, the colour is linear): encode it for the display.
-    // At the neutral gamma this reproduces the texture exactly as it is in the file.
-    return float4(ApplyGamma(baseColor.rgb, gamma), baseColor.a);
+
+    return float4(ApplyGamma(surface.baseColor + surface.emissive, gamma), surface.alpha);
 }

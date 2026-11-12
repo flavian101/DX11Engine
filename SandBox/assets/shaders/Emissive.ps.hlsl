@@ -1,124 +1,51 @@
+// Emissive.ps.hlsl: a glowing, stylised surface (lamps, markers, screens). Not lit by the scene's lights: the emission
+// dominates, with a soft rim glow and a boosted exposure. The material is read by EvaluateSurface() like every other.
+
 #include "common.hlsli"
+#include "surface.hlsli"
 
 float4 main(StandardVertexOutput input) : SV_Target
 {
-    // ========================================================================
-    // TEXTURE SAMPLING
-    // ========================================================================
-    
-    float4 diffuseSample = float4(1.0, 1.0, 1.0, 1.0);
-    float3 emissiveSample = float3(0.0, 0.0, 0.0);
-    
-#if HAS_TEXCOORDS_ATTRIBUTE
-    diffuseSample = SampleDiffuseTexture(input.texCoord);
-    
-#if HAS_EMISSIVE_MAP
-        emissiveSample = SampleEmissiveMap(input.texCoord);
-#endif
-#endif
-    
-    // ========================================================================
-    // BASE COLOR CALCULATION
-    // ========================================================================
-    
-    float3 baseColor = diffuseColor.rgb * diffuseSample.rgb;
-    
+    const float3 V = normalize(input.viewDir);
+    const Surface surface = EvaluateSurface(input, V);
+
+    float3 finalEmissive = surface.emissive;
 #if HAS_VERTEX_COLOR_ATTRIBUTE
-    baseColor *= input.color.rgb;
-#endif
-    
-    // ========================================================================
-    // EMISSIVE CALCULATION
-    // ========================================================================
-    
-    // Combine material emissive with texture
-    float3 finalEmissive = emissiveColor.rgb;
-    
-#if HAS_EMISSIVE_MAP
-    finalEmissive *= emissiveSample;
-#endif
-    
-#if HAS_VERTEX_COLOR_ATTRIBUTE
-    // Allow vertex colors to modulate emissive intensity
+    // vertex colours may modulate the emission strength (their alpha also drives the coverage, see EvaluateSurface)
     finalEmissive *= (1.0 + input.color.a);
 #endif
-    
-    finalEmissive *= emissiveIntensity;
-    
-    // ========================================================================
-    // RIM LIGHTING - Subtle glow effect
-    // ========================================================================
-    
-    float3 rimContribution = float3(0.0, 0.0, 0.0);
-    
+
+    // ---------------- rim glow: the emissive colour brightens toward the silhouette ----------------
+    float3 rim = float3(0.0, 0.0, 0.0);
 #if HAS_NORMAL_ATTRIBUTE
-    float3 worldNormal = normalize(input.normal);
-    float3 viewDir = normalize(input.viewDir);
-    
-    // Fresnel-like rim effect
-    float rimDot = 1.0 - saturate(dot(viewDir, worldNormal));
-    float rimPower = 3.0; // Sharper falloff
-    float rimIntensity = pow(rimDot, rimPower);
-    
-    // Use emissive color for rim to create coherent glow
-    rimContribution = finalEmissive * rimIntensity * 0.3;
+    const float rimDot = 1.0 - saturate(dot(V, surface.normal));
+    rim = finalEmissive * pow(rimDot, 3.0) * 0.3;
 #endif
-    
-    // ========================================================================
-    // FINAL COLOR COMBINATION
-    // ========================================================================
-    
-    // Calculate emissive strength for blending
-    float emissiveStrength = dot(finalEmissive, float3(0.299, 0.587, 0.114)); // Luminance
-    
-    // Blend between base color and emissive based on emissive strength
-    float3 finalColor;
-    
+
+    // ---------------- emission vs. base colour: a strong emitter hides its own base colour ----------------
+    const float emissiveStrength = dot(finalEmissive, float3(0.299, 0.587, 0.114));     // luminance
+    float3 color;
     if (emissiveStrength > 0.1)
     {
-        // Strong emissive: emissive dominates
-        float baseMix = saturate(1.0 - emissiveStrength * 0.5);
-        finalColor = lerp(finalEmissive, baseColor * 0.2 + finalEmissive, baseMix);
+        const float baseMix = saturate(1.0 - emissiveStrength * 0.5);
+        color = lerp(finalEmissive, surface.baseColor * 0.2 + finalEmissive, baseMix);
     }
     else
     {
-        // Weak emissive: base color dominates
-        finalColor = baseColor + finalEmissive;
+        color = surface.baseColor + finalEmissive;
     }
-    
-    // Add rim glow
-    finalColor += rimContribution;
-    
-    // Apply metallic tint (subtle)
-    float metallicInfluence = saturate(metallic * 0.3);
-    finalColor = lerp(finalColor, finalColor * specularColor.rgb, metallicInfluence);
-    
-    // ========================================================================
-    // POST-PROCESSING
-    // ========================================================================
-    
-    // Tone mapping with higher exposure for emissive materials
-    float emissiveExposure = exposure * (1.0 + emissiveStrength * 0.5);
-    finalColor = ToneMapExposure(finalColor, emissiveExposure);
-    
-    // Gamma correction
-    finalColor = ApplyGamma(finalColor, gamma);
-    
-    // ========================================================================
-    // ALPHA
-    // ========================================================================
-    
-    float finalAlpha = diffuseSample.a * alpha;
-    
-#if HAS_VERTEX_COLOR_ATTRIBUTE
-    finalAlpha *= input.color.a;
-#endif
-    
-    finalAlpha = saturate(finalAlpha);
-    
+    color += rim;
+
+    // a little metallic tint from the specular colour
+    color = lerp(color, color * specularColor.rgb, saturate(metallic * 0.3));
+
+    // emitters get a higher exposure so they stay bright next to lit surfaces
+    color = ToneMapExposure(color, exposure * (1.0 + emissiveStrength * 0.5));
+    color = ApplyGamma(color, gamma);
+
+    const float finalAlpha = saturate(surface.alpha);
 #if ENABLE_ALPHA_TEST
-    clip(finalAlpha - 0.5);
+    clip(finalAlpha - ALPHA_TEST_THRESHOLD);
 #endif
-    
-    return float4(finalColor, finalAlpha);
+    return float4(color, finalAlpha);
 }
