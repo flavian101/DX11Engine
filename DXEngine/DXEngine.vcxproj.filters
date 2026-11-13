@@ -287,6 +287,24 @@
     <ClInclude Include="src\editor\ViewportMath.h">
       <Filter>editor</Filter>
     </ClInclude>
+    <ClInclude Include="src\editor\Editor.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\EditorContext.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\EntityBounds.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\HierarchyPanel.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\InspectorPanel.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\ViewportPanel.h">
+      <Filter>editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -458,6 +476,24 @@
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\HierarchyModel.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\EditorContext.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\Editor.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\EntityBounds.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\HierarchyPanel.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\InspectorPanel.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\ViewportPanel.cpp">
       <Filter>editor</Filter>
     </ClCompile>
   </ItemGroup>

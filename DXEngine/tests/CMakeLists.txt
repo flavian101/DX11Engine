@@ -97,15 +97,61 @@ target_compile_features(material_tests PRIVATE cxx_std_17)
 add_test(NAME material_tests COMMAND material_tests)
 
 # Editor logic that needs no UI: selection, the hierarchy rows, duplicate / reparent (keeps the world position) / gizmo
-# write-back, Euler editing, viewport maths, the gizmo interface.
+# write-back, Euler editing, viewport maths, the gizmo interface, entity bounds, picking (the ray follows the camera).
 add_executable(editor_tests
     editor_tests.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/SceneEditing.cpp
-    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyModel.cpp)
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyModel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EntityBounds.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/ScenePicking.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/picking/Ray.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/camera/Camera.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialTypes.cpp)
 target_include_directories(editor_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(editor_tests PRIVATE cxx_std_17)
 add_test(NAME editor_tests COMMAND editor_tests)
+
+# The editor panels run through real ImGui frames with no window and no GPU (ImGui's assertions are the oracle:
+# unbalanced Begin/End, push/pop, ...). Links the ImGui core; the renderer is not linked (two functions are stubbed in the test).
+add_executable(editor_ui_tests
+    editor_ui_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/ScenePicking.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/picking/Ray.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/camera/Camera.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/camera/CameraController.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/camera/FreeLookBehavior.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/camera/MovementBehavior.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/SceneEditing.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyModel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EntityBounds.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EditorContext.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyPanel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/InspectorPanel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/ViewportPanel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialTypes.cpp)
+target_include_directories(editor_ui_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/DXEngine/src
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
+target_link_libraries(editor_ui_tests PRIVATE ImGui)
+target_compile_features(editor_ui_tests PRIVATE cxx_std_17)
+add_test(NAME editor_ui_tests COMMAND editor_ui_tests)

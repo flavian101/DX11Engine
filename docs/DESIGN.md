@@ -140,6 +140,23 @@ The panels only call these. `Scene::SetParent` alone keeps the *local* transform
 `NullGizmo` is installed, so the tool buttons say "no gizmo backend" and nothing else changes. Plugging ImGuizmo in later means one class that implements `IGizmo` and converts the matrix convention in one place
 (not done: it needs the ImGuizmo sources, and its handedness behaviour must be checked on a real run).
 
+**The editor** (`editor/Editor`): a dockspace with a main menu and four panels, one call from a layer's `OnUIRender`. The layout is kept in `editor_layout.ini` (Window > Reset layout restores the default).
+* **Viewport** shows the scene as a texture: every frame it asks `Renderer::SetSceneTargetSize` for the size of the panel (applied at the next `BeginScene`, so a resize shows one frame late), keeps the camera's aspect ratio equal to the panel's
+  (`CameraController::SetFollowWindowAspect(false)`: the window's shape is irrelevant), and draws the outline of the selection with the draw list. Left click picks, `F` frames the selection, `Q W E R` choose the tool, `Del` / `Ctrl+D` delete / duplicate.
+  Middle button flies the camera, as before; the camera only listens while that is held (`CameraController::SetInputEnabled`), so typing in a field cannot move it.
+* **Hierarchy** shows the visible rows through `HierarchyModel` and a list clipper (2000 entities draw like 30). Drag an entity onto another to parent it (it stays where it is), onto the empty area to unparent; right click: create child, duplicate, unparent, delete.
+  Structural changes are collected while the rows are drawn and applied after the loop.
+* **Inspector** edits name, transform (rotation in degrees through `EulerCache`), mesh renderer flags, materials (through `Material`'s setters, which mark the GPU copy outdated; materials are shared assets and the panel says so), and lights; "Add component" adds a light.
+* **Renderer** is the debug panel below.
+* Play mode: `Editor::SetEnabled(false)` puts the scene back into the window and hides everything.
+
+**Tested without a window** (`editor_ui_tests`): the panels run through real ImGui frames with no backend and no GPU; ImGui's own assertions (unbalanced `Begin`/`End`, push/pop, `BeginDisabled`) are the oracle, and the test also clicks in the viewport (a pick), clicks on empty space, checks a click while flying does nothing, and presses `F`.
+It cannot say whether the UI *looks* right: that needs a run.
+
+**Picking was wrong, and is fixed.** `RayIntersection::ProjectRay` was written for OpenGL's -Z convention; the camera is a Direct3D left-handed one, so the ray pointed BEHIND the camera and a click found what was behind it. It now unprojects the near and far points under the cursor, and `editor_tests`
+checks it against the projection (clicking where an entity is drawn picks it, left/right and up/down included, a camera looking away picks nothing, a non-window-shaped viewport works).
+Also fixed on the way: `CameraBehavior::m_IsActive` was never initialised (and `SetActive` did nothing) although `Camera::Update` reads it.
+
 **Debug panel first** (`editor/RendererPanel`): frame time, the renderer's statistics (with the "must be zero" counters in red), wireframe / culling toggles, the environment and every shadow setting.
 
 ## Assets and animation (milestone 6)

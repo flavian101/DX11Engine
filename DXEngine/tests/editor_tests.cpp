@@ -2,12 +2,17 @@
 // transform editing and viewport maths. No GPU, no window, no ImGui: plain asserts so they run anywhere.
 //   build: see DXEngine/tests/CMakeLists.txt  (cmake -DDXENGINE_BUILD_TESTS=ON)
 #include "editor/EditorSelection.h"
+#include "editor/EntityBounds.h"
 #include "editor/GizmoTypes.h"
 #include "editor/HierarchyModel.h"
 #include "editor/SceneEditing.h"
 #include "editor/TransformEditing.h"
 #include "editor/ViewportMath.h"
+#include "camera/Camera.h"
+#include "scene/ScenePicking.h"
 #include "scene/TransformSystem.h"
+#include "utils/Mesh/Mesh.h"
+#include "utils/Mesh/Resource/MeshResource.h"
 #include <cmath>
 #include <cstdio>
 
@@ -534,6 +539,119 @@ static void TestProjectToViewport()
     CHECK(!ProjectToViewport({ 0, 0, -10 }, view, proj, 800, 400, p));   // at the camera
 }
 
+// ------------------------------------------------------------ bounds (outline + frame selection)
+static void TestEntityBounds()
+{
+    Scene scene;
+    Entity box = scene.CreateEntity("box");
+    MeshRendererComponent mr;
+    mr.mesh = std::make_shared<Mesh>(std::shared_ptr<MeshResource>(MeshResource::CreateCube("cube", 2.0f)), nullptr);
+    box.Add<MeshRendererComponent>(mr);
+    box.Get<TransformComponent>().position = { 5, 0, 0 };
+    box.Get<TransformComponent>().scale = { 3, 3, 3 };
+    TransformSystem::Update(scene);
+
+    const DXEngine::BoundingBox& lb = mr.mesh->GetBoundingBox();
+    const float half = 0.5f * std::sqrt((lb.max.x - lb.min.x) * (lb.max.x - lb.min.x) +
+                                        (lb.max.y - lb.min.y) * (lb.max.y - lb.min.y) +
+                                        (lb.max.z - lb.min.z) * (lb.max.z - lb.min.z));
+
+    const EntityBounds b = ComputeEntityBounds(box);
+    CHECK(b.hasBox);
+    CHECK(Near(b.center.x, 5, 0.01f) && Near(b.center.y, 0, 0.01f) && Near(b.center.z, 0, 0.01f));
+    CHECK(Near(b.radius, half * 3.0f, 0.01f));                      // the scale applies
+    float minX = 1e9f, maxX = -1e9f;
+    for (const XMFLOAT3& c : b.corners) { minX = std::min(minX, c.x); maxX = std::max(maxX, c.x); }
+    CHECK(Near((maxX - minX), (lb.max.x - lb.min.x) * 3.0f, 0.01f));   // 8 distinct corners spanning the scaled box
+
+    // moving the entity moves the box with it
+    box.Get<TransformComponent>().position = { 0, 10, 0 };
+    TransformSystem::Update(scene);
+    CHECK(Near(ComputeEntityBounds(box).center.y, 10, 0.01f));
+
+    // no mesh: a marker at the entity's position
+    Entity empty = scene.CreateEntity("empty");
+    empty.Get<TransformComponent>().position = { 1, 2, 3 };
+    TransformSystem::Update(scene);
+    const EntityBounds m = ComputeEntityBounds(empty);
+    CHECK(!m.hasBox && Near(m.center.x, 1) && Near(m.center.y, 2) && Near(m.center.z, 3) && m.radius > 0.0f);
+
+    // a mesh renderer without a mesh is the same
+    Entity hollow = scene.CreateEntity("hollow");
+    hollow.Add<MeshRendererComponent>();
+    CHECK(!ComputeEntityBounds(hollow).hasBox);
+
+    CHECK(!ComputeEntityBounds(Entity()).hasBox);                   // an invalid entity does not crash
+}
+
+// ------------------------------------------------------------ picking: the ray must go where the camera looks
+static Entity MakeBox(Scene& scene, const char* name, XMFLOAT3 position)
+{
+    Entity e = scene.CreateEntity(name);
+    MeshRendererComponent mr;
+    mr.mesh = std::make_shared<Mesh>(std::shared_ptr<MeshResource>(MeshResource::CreateCube("cube", 1.0f)), nullptr);
+    e.Add<MeshRendererComponent>(mr);
+    e.Get<TransformComponent>().position = position;
+    return e;
+}
+
+static void TestPickingFollowsTheCamera()
+{
+    Scene scene;
+    Entity middle = MakeBox(scene, "middle", { 0, 0, 0 });
+    Entity side   = MakeBox(scene, "side",   { 3, 0, 0 });
+    Entity high   = MakeBox(scene, "high",   { 0, 2, -5 });
+    Entity distant = MakeBox(scene, "distant", { 0, -4, -40 });
+    Entity behind  = MakeBox(scene, "behind",  { 0, 0, -20 });      // exactly behind 'middle' on the centre ray
+    TransformSystem::Update(scene);
+
+    // the engine's camera sits at +Z looking toward -Z (Camera::GetForwardVector)
+    const int W = 1280, H = 720;
+    Camera camera;
+    camera.SetProjectionParams(XM_PIDIV4, float(W) / float(H), 0.5f, 1000.0f);
+    camera.SetPosition({ 0, 0, 10 });
+    camera.Update(0.0f);
+    CHECK(camera.GetForwardVector().z < -0.99f);
+
+    XMFLOAT4X4 view = camera.GetViewMatrix4X4(), proj = camera.GetProjection4X4();
+
+    // clicking where an entity is DRAWN picks that entity: the ray and the projection agree, left/right and up/down included
+    struct { Entity e; XMFLOAT3 at; } cases[] = {
+        { middle, { 0, 0, 0 } }, { side, { 3, 0, 0 } }, { high, { 0, 2, -5 } }, { distant, { 0, -4, -40 } } };
+    for (auto& c : cases)
+    {
+        XMFLOAT2 px;
+        CHECK(ViewportMath::ProjectToViewport(c.at, view, proj, float(W), float(H), px));
+        const PickResult hit = ScenePicking::Pick(scene, camera, px.x, px.y, W, H);
+        CHECK(hit && hit.entity == c.e);
+    }
+
+    // empty space picks nothing
+    CHECK(!ScenePicking::Pick(scene, camera, 20.0f, 20.0f, W, H));
+
+    // the nearest of two entities on the same ray wins ('middle' is in front of 'behind' from here)
+    const PickResult front = ScenePicking::Pick(scene, camera, W / 2.0f, H / 2.0f, W, H);
+    CHECK(front && front.entity == middle && front.entity != behind && front.distance < 15.0f);
+
+    // looking AWAY from everything picks nothing (the ray used to point backwards and find them)
+    camera.SetPosition({ 0, 0, 100 });
+    camera.SetRotation({ 0, XM_PI, 0 });                           // turned around: looks toward +Z
+    camera.Update(0.0f);
+    CHECK(camera.GetForwardVector().z > 0.99f);
+    CHECK(!ScenePicking::Pick(scene, camera, W / 2.0f, H / 2.0f, W, H));
+
+    // and an editor viewport that is not the window's shape: pixels are relative to the picture, aspect is the picture's
+    camera.SetRotation({ 0, 0, 0 });
+    camera.SetPosition({ 0, 0, 10 });
+    camera.SetAspectRatio(1.0f);                                   // a square panel
+    camera.Update(0.0f);
+    view = camera.GetViewMatrix4X4(); proj = camera.GetProjection4X4();
+    XMFLOAT2 px;
+    CHECK(ViewportMath::ProjectToViewport({ 3, 0, 0 }, view, proj, 500.0f, 500.0f, px));
+    const PickResult sq = ScenePicking::Pick(scene, camera, px.x, px.y, 500, 500);
+    CHECK(sq && sq.entity == side);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -556,6 +674,8 @@ int main()
         { "viewport: texture size from the panel",          TestChooseTargetSize },
         { "viewport: mouse -> texture pixel",               TestScreenToTarget },
         { "viewport: world point -> pixels",                TestProjectToViewport },
+        { "bounds: world box, marker, invalid",             TestEntityBounds },
+        { "picking: the ray goes where the camera looks",   TestPickingFollowsTheCamera },
     };
     for (auto& t : tests)
     {

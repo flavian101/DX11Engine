@@ -47,6 +47,13 @@ namespace DXEngine
 		dispatcher.Dispatch<MouseMovedEvent>(DX_BIND_EVENT_FN(CameraController::OnMouseMoveEvent));
 	}
 
+	void CameraController::SetInputEnabled(bool enabled)
+	{
+		m_InputEnabled = enabled;
+		m_FreeLookBehavior->SetActive(enabled);
+		m_MovementBehavior->SetActive(enabled);
+	}
+
 	void CameraController::OnResize(float width, float height)
 	{
 		float aspectRatio = (float)width / (float)height;
@@ -55,11 +62,14 @@ namespace DXEngine
 
 	bool CameraController::OnWindowResizeEvent(WindowResizeEvent& event)
 	{
+		if (!m_FollowWindowAspect || event.GetWidth() == 0 || event.GetHeight() == 0)    // (minimizing gives 0 x 0: the aspect would be NaN)
+			return false;
 		OnResize((float)event.GetWidth(), (float)event.GetHeight());
 		return false;
 	}
 	bool CameraController::OnMouseMoveEvent(MouseMovedEvent& event)
 	{
+		if (!m_InputEnabled) return false;       // do not accumulate look deltas nobody will use: they would jump the view later
 		m_FreeLookBehavior->HandleMouseInput(event.GetX(), event.GetY(),event.GetIsCaptured());
 		return false;
 	}

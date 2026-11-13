@@ -9,31 +9,27 @@ namespace DXEngine {
 
     Ray RayIntersection::ProjectRay(const Camera& camera, float screenX, float screenY, int screenWidth, int screenHeight)
     {
-        // Convert screen coordinates to normalized device coordinates [-1, 1]
-        float x = (2.0f * screenX) / screenWidth - 1.0f;
-        float y = 1.0f - (2.0f * screenY) / screenHeight;
+        using namespace DirectX;
 
-        DirectX::XMVECTOR rayClip = DirectX::XMVectorSet(x, y, -1.0f, 1.0f); // clip space
+        // Screen pixels -> normalised device coordinates (x to the right, y up, both in [-1, 1]).
+        const float x = (2.0f * screenX) / screenWidth - 1.0f;
+        const float y = 1.0f - (2.0f * screenY) / screenHeight;
 
-        // Transform to eye space
-        DirectX::XMMATRIX invProj = DirectX::XMMatrixInverse(nullptr, camera.GetProjectionMatrix());
-        DirectX::XMVECTOR rayEye = DirectX::XMVector4Transform(rayClip, invProj);
-        rayEye = DirectX::XMVectorSet(DirectX::XMVectorGetX(rayEye), DirectX::XMVectorGetY(rayEye), -1.0f, 0.0f);
+        // Direct3D clip space is LEFT-handed with depth running from 0 (near plane) to 1 (far plane). The ray goes from the
+        // point under the cursor on the near plane to the one on the far plane, both brought back to world space.
+        // (This used to be written for OpenGL's -Z convention: the ray pointed BEHIND the camera, so a click picked what was
+        // behind it and mirrored front to back.)
+        const XMMATRIX view = camera.GetViewMatrix();
+        const XMMATRIX invViewProj = XMMatrixInverse(nullptr, view * camera.GetProjectionMatrix());
+        const XMVECTOR nearPoint = XMVector3TransformCoord(XMVectorSet(x, y, 0.0f, 1.0f), invViewProj);   // TransformCoord divides by w
+        const XMVECTOR farPoint  = XMVector3TransformCoord(XMVectorSet(x, y, 1.0f, 1.0f), invViewProj);
+        const XMVECTOR direction = XMVector3Normalize(farPoint - nearPoint);
 
-        // Transform to world space
-        DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, camera.GetViewMatrix());
-        DirectX::XMVECTOR rayWorld = DirectX::XMVector4Transform(rayEye, invView);
-        rayWorld = DirectX::XMVector3Normalize(rayWorld);
+        // The ray starts at the camera: anything between the eye and the near plane can still be hit.
+        const XMMATRIX invView = XMMatrixInverse(nullptr, view);
+        const XMVECTOR origin = XMVectorSet(XMVectorGetX(invView.r[3]), XMVectorGetY(invView.r[3]), XMVectorGetZ(invView.r[3]), 1.0f);
 
-        // Ray origin is camera position 
-        DirectX::XMVECTOR rayOrigin = DirectX::XMVectorSet(
-            DirectX::XMVectorGetX(invView.r[3]),
-            DirectX::XMVectorGetY(invView.r[3]),
-            DirectX::XMVectorGetZ(invView.r[3]),
-            1.0f
-        );
-
-        return Ray(rayOrigin, rayWorld);
+        return Ray(origin, direction);
     }
 
     HitInfo RayIntersection::IntersectSphere(const Ray& ray, const DirectX::XMVECTOR& center, DirectX::XMVECTOR& radius, void* objectPtr)

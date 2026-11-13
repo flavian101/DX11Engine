@@ -206,6 +206,12 @@
     <ClInclude Include="src\editor\SceneEditing.h" />
     <ClInclude Include="src\editor\TransformEditing.h" />
     <ClInclude Include="src\editor\ViewportMath.h" />
+    <ClInclude Include="src\editor\Editor.h" />
+    <ClInclude Include="src\editor\EditorContext.h" />
+    <ClInclude Include="src\editor\EntityBounds.h" />
+    <ClInclude Include="src\editor\HierarchyPanel.h" />
+    <ClInclude Include="src\editor\InspectorPanel.h" />
+    <ClInclude Include="src\editor\ViewportPanel.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Cache\ResourceCache.cpp" />
@@ -290,6 +296,12 @@
     <ClCompile Include="src\editor\RendererPanel.cpp" />
     <ClCompile Include="src\editor\SceneEditing.cpp" />
     <ClCompile Include="src\editor\HierarchyModel.cpp" />
+    <ClCompile Include="src\editor\EditorContext.cpp" />
+    <ClCompile Include="src\editor\Editor.cpp" />
+    <ClCompile Include="src\editor\EntityBounds.cpp" />
+    <ClCompile Include="src\editor\HierarchyPanel.cpp" />
+    <ClCompile Include="src\editor\InspectorPanel.cpp" />
+    <ClCompile Include="src\editor\ViewportPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
