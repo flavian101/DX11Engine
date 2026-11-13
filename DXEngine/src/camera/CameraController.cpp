@@ -37,6 +37,9 @@ namespace DXEngine
 
 	void CameraController::Update(float dt)
 	{
+		const bool listening = IsInputEnabled();
+		m_FreeLookBehavior->SetActive(listening);
+		m_MovementBehavior->SetActive(listening);
 		m_Camera->Update(dt);
 	}
 
@@ -45,13 +48,6 @@ namespace DXEngine
 		EventDispatcher dispatcher(event);
 		dispatcher.Dispatch<WindowResizeEvent>(DX_BIND_EVENT_FN(CameraController::OnWindowResizeEvent));
 		dispatcher.Dispatch<MouseMovedEvent>(DX_BIND_EVENT_FN(CameraController::OnMouseMoveEvent));
-	}
-
-	void CameraController::SetInputEnabled(bool enabled)
-	{
-		m_InputEnabled = enabled;
-		m_FreeLookBehavior->SetActive(enabled);
-		m_MovementBehavior->SetActive(enabled);
 	}
 
 	void CameraController::OnResize(float width, float height)
@@ -69,7 +65,7 @@ namespace DXEngine
 	}
 	bool CameraController::OnMouseMoveEvent(MouseMovedEvent& event)
 	{
-		if (!m_InputEnabled) return false;       // do not accumulate look deltas nobody will use: they would jump the view later
+		if (!IsInputEnabled()) return false;     // do not accumulate look deltas nobody will use: they would jump the view later
 		m_FreeLookBehavior->HandleMouseInput(event.GetX(), event.GetY(),event.GetIsCaptured());
 		return false;
 	}

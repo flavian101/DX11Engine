@@ -305,9 +305,18 @@ namespace DXEngine {
 	void Window::CaptureCursor()
 	{
 		if (m_IsCursorCaptured) return;      // ShowCursor counts calls: an unbalanced pair would leave the cursor hidden / shown for good
+		GetCursorPos(&m_SavedCursor);
 		SetCapture(hwnd);
 		ShowCursor(FALSE);
 		m_IsCursorCaptured = true;
+
+		// Start from the centre: mouse look reads the distance from the centre, so from anywhere else the first move
+		// would be a huge jump of the view.
+		RECT rect;
+		GetClientRect(hwnd, &rect);
+		POINT center = { rect.right / 2, rect.bottom / 2 };
+		ClientToScreen(hwnd, &center);
+		SetCursorPos(center.x, center.y);
 	}
 	void Window::ReleaseCursor()
 	{
@@ -315,6 +324,7 @@ namespace DXEngine {
 		ReleaseCapture();
 		ShowCursor(TRUE);
 		m_IsCursorCaptured = false;
+		SetCursorPos(m_SavedCursor.x, m_SavedCursor.y);      // the pointer comes back where it was, not at the window's centre
 
 	}
 }

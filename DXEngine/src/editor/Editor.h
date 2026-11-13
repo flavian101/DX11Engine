@@ -12,12 +12,12 @@ namespace DXEngine
     //
     //     Editor editor;                                   // a member of the game's layer
     //     editor.SetScene(&scene);                         // the host owns both; the editor edits them
-    //     editor.SetCamera(cameraController);
+    //     editor.SetCamera(cameraController);              // also decides when the camera listens (while it is flown)
     //     ...
     //     void MyLayer::OnUIRender() { editor.OnImGui(); }
-    //     void MyLayer::OnUpdate(dt) {                     // keys that would also type into a text field:
-    //         cameraController->SetInputEnabled(editor.IsFlying());
-    //         if (editor.AcceptsGameInput()) DetectInput(dt);
+    //     void MyLayer::OnUpdate(dt) {
+    //         if (editor.AcceptsGameInput()) PolledShortcuts(dt);   // keys that would also type into a text field
+    //         ...
     //     }
     //
     // While the editor is enabled the scene is drawn into a texture shown in the Viewport panel (Renderer::SetSceneTargetSize)
@@ -26,6 +26,11 @@ namespace DXEngine
     class Editor
     {
     public:
+        Editor() = default;
+        ~Editor();
+        Editor(const Editor&) = delete;
+        Editor& operator=(const Editor&) = delete;
+
         void SetScene(Scene* scene) { m_Ctx.scene = scene; }
         void SetCamera(std::shared_ptr<CameraController> camera);
         void SetGizmo(std::unique_ptr<IGizmo> gizmo);          // default: NullGizmo (see GizmoTypes.h)

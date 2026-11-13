@@ -8,6 +8,7 @@
 #include "editor/SceneEditing.h"
 #include "editor/TransformEditing.h"
 #include "editor/ViewportMath.h"
+#include "Core/UiInputBlocking.h"
 #include "camera/Camera.h"
 #include "scene/ScenePicking.h"
 #include "scene/TransformSystem.h"
@@ -652,6 +653,34 @@ static void TestPickingFollowsTheCamera()
     CHECK(sq && sq.entity == side);
 }
 
+// ------------------------------------------------------------ when the UI keeps an input event from the application
+static void TestUiInputBlocking()
+{
+    UiInputState s;
+    CHECK(!ShouldBlockMouseEvent(s) && !ShouldBlockKeyboardEvent(s));     // no UI backend: nothing is ever blocked
+
+    s.active = true;
+    CHECK(!ShouldBlockMouseEvent(s));                                     // the UI does not want the mouse: the scene gets it
+    s.wantMouse = true;
+    CHECK(ShouldBlockMouseEvent(s));                                      // over a panel: the UI keeps it
+
+    s.blockMouseEvents = false;                                           // the host handed the mouse to the scene (cursor over the viewport)
+    CHECK(!ShouldBlockMouseEvent(s));
+    s.blockMouseEvents = true;
+
+    // THE camera bug: the middle button went down over the viewport, so ImGui keeps reporting WantCaptureMouse for as long
+    // as it is held. The camera owns the mouse then (mouseEnabled = false) and must still get every move.
+    s.mouseEnabled = false;
+    s.wantMouse = true;
+    CHECK(!ShouldBlockMouseEvent(s));
+
+    // the keyboard is independent of all that
+    s.wantKeyboard = true;
+    CHECK(ShouldBlockKeyboardEvent(s));
+    s.active = false;
+    CHECK(!ShouldBlockKeyboardEvent(s));
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -676,6 +705,7 @@ int main()
         { "viewport: world point -> pixels",                TestProjectToViewport },
         { "bounds: world box, marker, invalid",             TestEntityBounds },
         { "picking: the ray goes where the camera looks",   TestPickingFollowsTheCamera },
+        { "ui input: the mouse belongs to a camera in use", TestUiInputBlocking },
     };
     for (auto& t : tests)
     {

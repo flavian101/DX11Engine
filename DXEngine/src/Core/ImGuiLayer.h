@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Layer.h"
+#include "Core/UiInputBlocking.h"
 #include <string>
 
 namespace DXEngine
@@ -49,12 +50,16 @@ namespace DXEngine
         // The UI ignores the mouse completely (and does not touch the cursor). The editor uses it while the camera
         // owns the mouse (cursor captured): the pointer is re-centred every move and must not click or hover panels.
         void SetMouseEnabled(bool enabled);
+        bool IsMouseEnabled() const { return m_MouseEnabled; }
 
     private:
         void ApplyStyle();
 
         bool m_Active = false;
+        UiInputState State() const;
+
         bool m_BlockMouseEvents = true;
+        bool m_MouseEnabled = true;
         // ImGui keeps the POINTER to the ini file name, so it needs storage that outlives the context.
         std::string m_IniFile = "editor_layout.ini";
     };

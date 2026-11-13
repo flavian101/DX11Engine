@@ -81,14 +81,29 @@ namespace DXEngine
         ImGui::DestroyContext();
     }
 
+    UiInputState ImGuiLayer::State() const
+    {
+        UiInputState s;
+        s.active = m_Active;
+        s.blockMouseEvents = m_BlockMouseEvents;
+        s.mouseEnabled = m_MouseEnabled;
+        if (m_Active)
+        {
+            const ImGuiIO& io = ImGui::GetIO();
+            s.wantMouse = io.WantCaptureMouse;
+            s.wantKeyboard = io.WantCaptureKeyboard;
+        }
+        return s;
+    }
+
     void ImGuiLayer::OnEvent(Event& e)
     {
         if (!m_Active) return;
 
-        const ImGuiIO& io = ImGui::GetIO();
-        if (m_BlockMouseEvents && e.IsInCategory(EventCategoryMouse) && io.WantCaptureMouse)
+        const UiInputState state = State();
+        if (e.IsInCategory(EventCategoryMouse) && ShouldBlockMouseEvent(state))
             e.Handled = true;
-        if (e.IsInCategory(EventCategoryKeyboard) && io.WantCaptureKeyboard)
+        if (e.IsInCategory(EventCategoryKeyboard) && ShouldBlockKeyboardEvent(state))
             e.Handled = true;
     }
 
@@ -117,12 +132,13 @@ namespace DXEngine
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
 
-    bool ImGuiLayer::WantsMouse() const    { return m_Active && m_BlockMouseEvents && ImGui::GetIO().WantCaptureMouse; }
-    bool ImGuiLayer::WantsKeyboard() const { return m_Active && ImGui::GetIO().WantCaptureKeyboard; }
+    bool ImGuiLayer::WantsMouse() const    { return ShouldBlockMouseEvent(State()); }
+    bool ImGuiLayer::WantsKeyboard() const { return ShouldBlockKeyboardEvent(State()); }
     bool ImGuiLayer::WantsTextInput() const{ return m_Active && ImGui::GetIO().WantTextInput; }
 
     void ImGuiLayer::SetMouseEnabled(bool enabled)
     {
+        m_MouseEnabled = enabled;      // what events and WantsMouse() go by: ImGui's own flags do not stop WantCaptureMouse (see UiInputBlocking.h)
         if (!m_Active) return;
         ImGuiIO& io = ImGui::GetIO();
         const ImGuiConfigFlags off = ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoMouseCursorChange;

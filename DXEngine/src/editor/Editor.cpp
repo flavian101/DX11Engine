@@ -10,9 +10,21 @@
 
 namespace DXEngine
 {
+    Editor::~Editor()
+    {
+        if (m_Ctx.camera) m_Ctx.camera->SetInputGate(nullptr);        // the gate points at this editor
+    }
+
     void Editor::SetCamera(std::shared_ptr<CameraController> camera)
     {
+        if (m_Ctx.camera) m_Ctx.camera->SetInputGate(nullptr);
         m_Ctx.camera = std::move(camera);
+        if (m_Ctx.camera)
+        {
+            // In the editor the camera listens only while it is flown (middle button held over the viewport): the keys
+            // that move it are the ones a text field needs. In play mode it always listens. Asked live, per event.
+            m_Ctx.camera->SetInputGate([this] { return !m_Enabled || IsFlying(); });
+        }
         ApplyCameraMode();
     }
 

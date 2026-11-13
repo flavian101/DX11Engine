@@ -46,6 +46,7 @@ namespace DXEngine {
 		int m_Width;
 		int m_Height;
 		EventCallbackFn m_EventCallback;
+		POINT m_SavedCursor{ 0, 0 };         // where the cursor was when it was captured (screen coordinates)
 		NativeMessageHook m_NativeMessageHook;
 		bool m_IsCursorCaptured;
 

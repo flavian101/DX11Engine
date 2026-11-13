@@ -126,7 +126,10 @@ Everything below sits on top of the scene: the editor is a loop over components,
 
 **Input rules** (these are easy to get wrong, so they are written down):
 * `ImGuiLayer` is the top overlay, so it sees events first and marks the mouse / keyboard events the UI wants as handled. A click on a panel never also picks an entity. Mouse blocking can be switched off (`SetBlockMouseEvents(false)`): the editor does that while the cursor is over its viewport.
-* Middle mouse = look around (cursor captured). It only starts when the UI does not want the mouse, and while it runs the UI ignores the mouse completely (the pointer is re-centred every move).
+* Middle mouse = look around (cursor captured). It only starts when the UI does not want the mouse. While it runs the camera owns the mouse: `ImGuiLayer::SetMouseEnabled(false)` makes the UI let every mouse event through.
+  This is NOT left to ImGui's own flags: `io.WantCaptureMouse` stays true for as long as a button that went down over a panel is held, wherever the pointer goes, even with `ImGuiConfigFlags_NoMouse`
+  (pinned down by `editor_ui_tests`), which used to swallow every mouse-move the camera needed. The cursor is re-centred when the capture starts (no jump) and put back where it was when it ends.
+* The camera asks, per event and per frame, whether it may listen (`CameraController::SetInputGate`; `Editor::SetCamera` installs "play mode, or being flown"): there is no flag that is updated a frame late.
 * Code that **polls** input (`Input::IsKeyPressed`, used by the Sandbox shortcuts and the camera) does not see events, so it asks: `ImGuiLayer::WantsTextInput()` (a text field is being edited) before reacting to keys.
 * The renderer owns its settings (environment, wireframe, culling). Anything that shows or changes them reads the live value first (`Renderer::GetEnvironment`, `IsWireframeEnabled`), so a key and a panel cannot undo each other.
 

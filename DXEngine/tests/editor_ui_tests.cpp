@@ -10,6 +10,8 @@
 #include "camera/Camera.h"
 #include "camera/CameraController.h"
 #include "Core/Input.h"
+#include "Core/UiInputBlocking.h"
+#include "Event/MouseEvent.h"
 #include "renderer/Renderer.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
@@ -319,6 +321,84 @@ static void TestViewportWithCamera()
     CHECK(after < before * 0.2f && after > 1.0f);
 }
 
+// Why the camera did not turn: ImGui keeps WantCaptureMouse true for as long as a button that went down over a window is
+// held, wherever the pointer goes and even with ImGuiConfigFlags_NoMouse. This pins that behaviour down (if a newer ImGui
+// changes it, the workaround in ImGuiLayer can go).
+static void TestImGuiCapturesWhileAButtonIsHeld()
+{
+    UiEnv env;
+    ImGuiIO& io = ImGui::GetIO();
+    auto frame = [&] { Frame([] { ImGui::SetNextWindowPos(ImVec2(100, 100)); ImGui::SetNextWindowSize(ImVec2(400, 300)); ImGui::Begin("w"); ImGui::End(); }); };
+
+    io.AddMousePosEvent(200, 200);
+    frame(); frame();
+    CHECK(io.WantCaptureMouse);                                 // over the window
+
+    io.AddMousePosEvent(900, 650);
+    frame();
+    CHECK(!io.WantCaptureMouse);                                // outside, nothing held
+
+    io.AddMousePosEvent(200, 200);
+    frame();
+    io.AddMouseButtonEvent(2, true);                            // the middle button goes down over the window ...
+    frame();
+    io.ConfigFlags |= ImGuiConfigFlags_NoMouse;                 // ... the camera takes the mouse ...
+    io.AddMousePosEvent(900, 650);                              // ... and it is moved far away (re-centred every move)
+    frame(); frame();
+    CHECK(io.WantCaptureMouse);                                 // STILL true: the button is held
+
+    UiInputState state;
+    state.active = true;
+    state.mouseEnabled = false;                                 // what ImGuiLayer tracks for a camera in use
+    state.wantMouse = io.WantCaptureMouse;
+    CHECK(!ShouldBlockMouseEvent(state));                       // so the events reach the camera anyway
+
+    io.AddMouseButtonEvent(2, false);
+    io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+    frame(); frame();
+    CHECK(!io.WantCaptureMouse);                                // released: back to normal
+}
+
+// The camera listens only when its gate says so, asked per event and per frame.
+static void TestCameraInputGate()
+{
+    static NoInput noInput;
+    Input::Init(&noInput);
+
+    CameraController controller;
+    bool listening = false;
+    controller.SetInputGate([&] { return listening; });
+    Camera& camera = *controller.GetCamera();
+    camera.SetPosition({ 0, 0, 0 });
+    camera.Update(0.0f);
+    const DirectX::XMFLOAT3 start = camera.GetForwardVector();
+
+    auto look = [&](float dx)
+    {
+        MouseMovedEvent e(dx, 0.0f);
+        e.SetIsCaptured(true);
+        controller.OnEvent(e);
+        controller.Update(0.016f);
+    };
+
+    look(200.0f);
+    DirectX::XMFLOAT3 now = camera.GetForwardVector();
+    CHECK(Distance(start, now) < 1e-4f);                        // gate shut: the mouse does nothing
+
+    listening = true;                                           // flips with no frame in between: the very next event counts
+    look(200.0f);
+    now = camera.GetForwardVector();
+    CHECK(Distance(start, now) > 0.01f);                        // gate open: the view turns
+
+    // and the deltas that arrived while it was shut were not saved up for later (that would be a jump)
+    listening = false;
+    look(500.0f);
+    const DirectX::XMFLOAT3 held = camera.GetForwardVector();
+    listening = true;
+    controller.Update(0.016f);
+    CHECK(Distance(held, camera.GetForwardVector()) < 1e-4f);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -326,6 +406,8 @@ int main()
         { "inspector panel: every entity kind",             TestInspectorPanel },
         { "viewport panel: size request, tools, hidden",    TestViewportPanel },
         { "viewport panel: camera, outline, pick, frame",   TestViewportWithCamera },
+        { "imgui: captures while a button is held",         TestImGuiCapturesWhileAButtonIsHeld },
+        { "camera: input gate",                             TestCameraInputGate },
     };
     for (auto& t : tests)
     {

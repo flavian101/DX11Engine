@@ -144,10 +144,7 @@ void Sandbox::OnUpdate(float dt)
 		m_Editor.SetEnabled(!m_Editor.IsEnabled());
 	m_F1WasDown = f1Down;
 
-	// In the editor the camera only listens while it is being flown (middle button held): the keys that move it are the
-	// same ones a text field needs. In play mode it always listens, as before.
-	m_CameraController->SetInputEnabled(!m_Editor.IsEnabled() || m_Editor.IsFlying());
-	m_CameraController->Update(dt);
+	m_CameraController->Update(dt);                   // (the editor decides when the camera listens: Editor::SetCamera)
 
 	// The shortcuts below are polled too: only when the viewport has focus (edit) or always (play).
 	if (m_Editor.AcceptsGameInput())
