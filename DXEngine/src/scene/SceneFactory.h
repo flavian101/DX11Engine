@@ -26,6 +26,9 @@ namespace DXEngine
         Entity CreateSphere(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, const std::string& name,
                             float radius, uint32_t segments, std::shared_ptr<Material> material = nullptr);
 
+        Entity CreateCube(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, const std::string& name,
+                          float size, std::shared_ptr<Material> material = nullptr);
+
         Entity CreatePlane(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, const std::string& name,
                            float width, float depth, std::shared_ptr<Material> material = nullptr);
 

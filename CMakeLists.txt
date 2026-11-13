@@ -17,9 +17,9 @@ add_subdirectory(DXEngine/vendor/assimp)
 include(cmake/ImGui.cmake)
 
 
-#Add engine and sandbox
+#Add engine and the editor application
 add_subdirectory(DXEngine)
-add_subdirectory(Sandbox)
+add_subdirectory(Editor)
 
 # Engine tests (no GPU needed):  cmake -DDXENGINE_BUILD_TESTS=ON ..  then  ctest --output-on-failure
 option(DXENGINE_BUILD_TESTS "Build the engine tests" OFF)

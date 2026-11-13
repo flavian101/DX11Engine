@@ -89,7 +89,7 @@ add_executable(material_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialTypes.cpp)
-target_compile_definitions(material_tests PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/SandBox/assets/shaders/")
+target_compile_definitions(material_tests PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/Editor/assets/shaders/")
 target_include_directories(material_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)

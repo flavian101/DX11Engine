@@ -1,6 +1,6 @@
 # DX11Engine
 
-A DirectX 11-based rendering engine built in C++ with HLSL shaders, designed for experimenting with graphics programming, physically-based rendering (PBR), and sandbox visualization.
+A DirectX 11-based rendering engine built in C++ with HLSL shaders, designed for experimenting with graphics programming, physically-based rendering (PBR), and scene editing.
 
 ## Overview
 
@@ -9,7 +9,7 @@ DX11Engine is a modular graphics rendering framework built from the ground up us
 ## Features
 
 - **Physically Based Rendering (PBR)** – Industry-standard shaders implementing metallic and roughness workflows
-- **Sandbox Environment** – Dedicated testing ground for experimenting with graphics features and shader variations
+- **Editor** – A docked editor (hierarchy, inspector, viewport, renderer settings) to build and tweak scenes, with a transform gizmo
 - **ImGui Integration** – Real-time debugging interface using ImGui's docking branch for flexible UI layouts
 - **Asset Pipeline** – Built-in support for importing 3D models and textures via Assimp
 - **Modular Architecture** – Clean separation of concerns with organized engine modules
@@ -56,19 +56,19 @@ DX11Engine is a modular graphics rendering framework built from the ground up us
 
 ## Usage
 
-### Running the Sandbox
+### Running the Editor
 
-After a successful build, launch the **Sandbox** project to start experimenting:
+After a successful build, launch the **Editor** project:
 
 1. Navigate to the build output directory
-2. Execute the Sandbox application
-3. Use the ImGui interface to interact with rendering features
+2. Execute the Editor application
+3. Build the scene with the docked panels. Hold the **middle mouse button** over the viewport and use **W A S D** to fly, **F1** to switch between editing and playing
 
 ### Experimenting with Shaders
 
 - HLSL shader files are located in the `shaders/` directory
 - Modify shader code and rebuild to see changes immediately
-- The Sandbox provides real-time visualization of your shader modifications
+- The Editor provides real-time visualization of your shader modifications
 
 ### Exploring Engine Modules
 
@@ -107,6 +107,6 @@ This project is licensed under the **BSD-3-Clause License**. See the [LICENSE](L
 
 ---
 
-**Getting Started?** Check out the [Sandbox](src/Sandbox/) directory for example usage and rendering features.
+**Getting Started?** Check out the [Editor](Editor/) directory for example usage and rendering features.
 
 Have questions or found a bug? Open an [Issue](https://github.com/flavian101/DX11Engine/issues) to let us know!

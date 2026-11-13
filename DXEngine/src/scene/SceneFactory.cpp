@@ -26,6 +26,12 @@ namespace DXEngine
             return CreateMesh(scene, name, Mesh::CreateSphere(device, radius, segments), std::move(material));
         }
 
+        Entity CreateCube(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, const std::string& name,
+                          float size, std::shared_ptr<Material> material)
+        {
+            return CreateMesh(scene, name, Mesh::CreateCube(device, size), std::move(material));
+        }
+
         Entity CreatePlane(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, const std::string& name,
                            float width, float depth, std::shared_ptr<Material> material)
         {
