@@ -4,6 +4,7 @@
 [submodule "DXEngine/vendor/imgui"]
 	path = DXEngine/vendor/imgui
 	url = https://github.com/flavian101/imgui.git
+	branch = docking
 [submodule "DXEngine/vendor/entt"]
 	path = DXEngine/vendor/entt
 	url = https://github.com/skypjack/entt.git

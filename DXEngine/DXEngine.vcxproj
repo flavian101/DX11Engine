@@ -272,6 +272,12 @@
     <ClCompile Include="src\utils\material\MaterialSlots.cpp" />
     <ClCompile Include="src\utils\ImageMips.cpp" />
     <ClCompile Include="src\utils\material\MaterialTypes.cpp" />
+    <ClCompile Include="vendor\imgui\backends\imgui_impl_win32.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\backends\imgui_impl_dx11.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

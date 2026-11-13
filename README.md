@@ -31,7 +31,13 @@ DX11Engine is a modular graphics rendering framework built from the ground up us
    cd DX11Engine
    ```
 
-2. **Generate project files:**
+2. **Fetch the submodules** (ImGui follows the `docking` branch of the fork, see `.gitmodules`):
+   ```bash
+   git submodule update --init --recursive
+   ```
+   After pulling a commit that moves a submodule, run the same command again.
+
+3. **Generate project files:**
    
    **Option A: Using the batch script**
    ```bash
@@ -43,7 +49,7 @@ DX11Engine is a modular graphics rendering framework built from the ground up us
    premake5.exe vs2022
    ```
 
-3. **Build the project:**
+4. **Build the project:**
    - Open `DX11Engine.sln` in Visual Studio
    - Select your desired configuration (Debug/Release)
    - Build the solution (Ctrl+Shift+B)

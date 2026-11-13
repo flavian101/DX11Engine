@@ -14,7 +14,7 @@ set(BUILD_SHARED_LIBS OFF)
 
 #Add vendor libraries
 add_subdirectory(DXEngine/vendor/assimp)
-add_subdirectory(DXEngine/vendor/imgui)
+include(cmake/ImGui.cmake)
 
 
 #Add engine and sandbox

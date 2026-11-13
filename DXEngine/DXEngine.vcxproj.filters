@@ -49,6 +49,9 @@
     <Filter Include="windows">
       <UniqueIdentifier>{70CAFEC8-DCA9-7D64-E5C1-083B5120E4C5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="imgui_backends">
+      <UniqueIdentifier>{A26F55DF-0329-4351-8524-682529B9CE4B}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Animation\AnimationClip.h">
@@ -411,6 +414,12 @@
     </ClCompile>
     <ClCompile Include="src\utils\material\MaterialTypes.cpp">
       <Filter>utils\material</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>imgui_backends</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\backends\imgui_impl_dx11.cpp">
+      <Filter>imgui_backends</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
