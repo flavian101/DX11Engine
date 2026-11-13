@@ -36,8 +36,9 @@ namespace DXEngine
         // Build all the windows for this frame. Call from a Layer's OnUIRender.
         void OnImGui();
 
-        // The camera owns the mouse (middle button held, cursor captured): the moment to let it move.
-        bool IsFlying() const { return m_Ctx.flying; }
+        // The camera owns the mouse (middle button held, cursor captured): the moment to let it move. Asked of the window
+        // itself, so it is right even in the frame the button went down.
+        bool IsFlying() const;
         // The cursor is over the scene picture / the viewport panel has focus.
         bool IsViewportHovered() const { return m_Ctx.viewportHovered; }
         bool IsViewportFocused() const { return m_Ctx.viewportFocused; }

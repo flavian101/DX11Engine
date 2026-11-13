@@ -47,6 +47,11 @@ namespace DXEngine
         }
     }
 
+    bool Editor::IsFlying() const
+    {
+        return Application::HasInstance() && Application::Get().GetWindow().IsCursorCaptured();
+    }
+
     bool Editor::AcceptsGameInput() const
     {
         if (!m_Enabled) return true;
@@ -59,7 +64,7 @@ namespace DXEngine
         ImGuiLayer& ui = Application::Get().GetImGuiLayer();
         if (!ui.IsActive()) return;                     // no UI backend (not D3D11): the scene simply stays in the window
 
-        m_Ctx.flying = Application::Get().GetWindow().IsCursorCaptured();
+        m_Ctx.flying = IsFlying();
 
         DrawMainMenu();
         DrawDockspace();

@@ -157,6 +157,9 @@ It cannot say whether the UI *looks* right: that needs a run.
 checks it against the projection (clicking where an entity is drawn picks it, left/right and up/down included, a camera looking away picks nothing, a non-window-shaped viewport works).
 Also fixed on the way: `CameraBehavior::m_IsActive` was never initialised (and `SetActive` did nothing) although `Camera::Update` reads it.
 
+**Controls.** Middle button held: look around, `W A S D` fly (editor and play mode). `F1`: edit <-> play (play = the scene fills the window, no UI). In the editor, with the viewport focused: left click picks, `F` frames the selection, `Q W E R` tool (when a gizmo exists),
+`Del` / `Ctrl+D` delete / duplicate, and the Sandbox shortcuts (`T` wireframe, `L` light culling, `K` stress lights, `H` shadows, `J` PCF, `I` statistics, `N` animation clip, ...).
+
 **Debug panel first** (`editor/RendererPanel`): frame time, the renderer's statistics (with the "must be zero" counters in red), wireframe / culling toggles, the environment and every shadow setting.
 
 ## Assets and animation (milestone 6)
@@ -178,7 +181,12 @@ Also fixed on the way: `CameraBehavior::m_IsActive` was never initialised (and `
   **Open until it has run on a GPU:** the bias values (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` in `ShadowSettings`) were chosen by reasoning, not by looking at acne / peter-panning in the Sandbox; tune them with **J** and the three light types. The HLSL was compile-checked with DXC (shader model 6, with and without `ENABLE_SHADOWS`), the C++ was syntax-checked against the Windows headers, the CPU logic is tested; nothing of it has been run through D3D11 and FXC.
 * **Milestone 4, implemented** (patches 0071 to 0075): one texture slot table (generated defines + HLSL declarations, derived texture mask); the linear workflow (sRGB / linear textures, linear-light mips, exact sRGB encode); one shared surface evaluation in HLSL; shading model and render state split (`MaterialType` removed).
   **Open until it has run on a GPU:** none of the D3D11 / FXC path has been executed. The HLSL was compile-checked with DXC (shader model 6; 203 variants across texture masks x vertex defines x render defines, built exactly the way `ShaderCache` builds them), the C++ was syntax-checked against the Windows headers, and the CPU logic is tested. Look at the Sandbox for: the ground / moon / ship textures (colour should look right, not washed out or dark), the night sky, the lamp glow, and a transparent imported model.
-* Tests that need no GPU: `scene_tests` (9), `render_tests` (10), `light_tests` (10), `cluster_tests` (11), `shadow_tests` (29), `material_tests` (28) and `rhi_tests` (5), built with `-DDXENGINE_BUILD_TESTS=ON`.
+* **Milestone 5, implemented** (patches 0076 to 0081): ImGui on the docking branch in both build systems; the renderer can draw the scene into a texture and `Present()` is its own call; the `ImGuiLayer` with the input rules; the Renderer debug panel;
+  the editor (dockspace, Hierarchy, Inspector, Viewport) over GPU-free logic (selection, hierarchy rows, duplicate, reparent that keeps the world position, Euler editing, viewport maths); the Sandbox runs inside it (F1: edit / play). The **gizmo is not implemented**, only its foundation (`IGizmo`, settings, snapping, the world -> local write-back).
+  Two existing bugs were fixed because the editor needs them: picking aimed behind the camera (`ProjectRay`), and `CameraBehavior::m_IsActive` was uninitialised.
+  **Open until it has run on a GPU:** none of this has been executed with a window. The C++ was syntax-checked against the Windows headers (MinGW), the logic is tested, and the panels were run through real ImGui frames headlessly (assertions on), but NOT looked at:
+  check the layout, the viewport image (colours should match the old full-window view), that a middle-button fly works and the cursor comes back, that picking selects what is under the cursor, that the Inspector's material edits show up, and that dragging an entity onto another keeps it in place.
+* Tests that need no GPU: `scene_tests` (9), `render_tests` (11), `light_tests` (10), `cluster_tests` (11), `shadow_tests` (29), `material_tests` (28), `rhi_tests` (5), `editor_tests` (21) and `editor_ui_tests` (4), built with `-DDXENGINE_BUILD_TESTS=ON`.
 * Also removed along the way: `FrameTime` passed by value as if it were a number (now a plain float of seconds).
 
 ## Order of work
@@ -189,5 +197,5 @@ Also fixed on the way: `CameraBehavior::m_IsActive` was never initialised (and `
 | 2 | Lights as components, clustered forward | arbitrary light counts |
 | 3 | Shadows (implemented, see Status) | directional + spot + point shadows |
 | 4 | Material/shader redesign (implemented, see Status) | one slot table, sRGB, shared surface function |
-| 5 | Debug panel, then editor | inspectable, editable scenes |
+| 5 | Debug panel, then editor (implemented, see Status; gizmo pending) | inspectable, editable scenes |
 | 6 | Asset pipeline, animation review | loader emits assets |

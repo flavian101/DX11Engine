@@ -29,6 +29,7 @@ private:
 	std::shared_ptr<DXEngine::CameraController> m_CameraController;
 
 	DXEngine::Scene m_Scene;                       // the world
+	DXEngine::Editor m_Editor;                     // edits m_Scene and the camera (F1: edit / play)
 	DXEngine::Entity m_LionHead;                   // kept because the sample spins it
 	DXEngine::Entity m_Moon;
 
@@ -48,7 +49,7 @@ private:
 	float m_LastMouseY = 0.0f;
 	bool m_WireframeMode = false;
 	bool mDX_DEBUGMode = false;
-	bool m_ShowRendererPanel = true;
+	bool m_F1WasDown = false;
 
 	int m_CurrentAnimationIndex = 0;
 	bool m_IsAnimationPaused = false;

@@ -124,6 +124,10 @@ void Sandbox::OnAttach()
 		Entity animated = SceneFactory::Instantiate(m_Scene, m_AnimatedSpider, "AnimatedCube");
 		if (animated) animated.Get<TransformComponent>().position = { 0.0f, 0.0f, -10.0f };
 	}
+
+	// ---- the editor edits this scene through this camera
+	m_Editor.SetScene(&m_Scene);
+	m_Editor.SetCamera(m_CameraController);
 }
 
 void Sandbox::OnDetach()
@@ -134,8 +138,19 @@ void Sandbox::OnUpdate(float dt)
 {
 	Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
 
+	// F1: edit <-> play. (Polled, so not while a text field is being edited.)
+	const bool f1Down = Input::IsKeyPressed(VK_F1);
+	if (f1Down && !m_F1WasDown && !Application::Get().GetImGuiLayer().WantsTextInput())
+		m_Editor.SetEnabled(!m_Editor.IsEnabled());
+	m_F1WasDown = f1Down;
+
+	// In the editor the camera only listens while it is being flown (middle button held): the keys that move it are the
+	// same ones a text field needs. In play mode it always listens, as before.
+	m_CameraController->SetInputEnabled(!m_Editor.IsEnabled() || m_Editor.IsFlying());
 	m_CameraController->Update(dt);
-	if (!Application::Get().GetImGuiLayer().WantsTextInput())      // the keys below are polled: not while typing in a UI field
+
+	// The shortcuts below are polled too: only when the viewport has focus (edit) or always (play).
+	if (m_Editor.AcceptsGameInput())
 		DetectInput(dt);
 
 	// gameplay: only things that actually change are touched
@@ -157,7 +172,7 @@ void Sandbox::OnUpdate(float dt)
 
 void Sandbox::OnUIRender()
 {
-	RendererPanel::OnImGui(&m_ShowRendererPanel);
+	m_Editor.OnImGui();
 }
 
 void Sandbox::OnEvent(DXEngine::Event& event)
@@ -170,7 +185,8 @@ void Sandbox::OnEvent(DXEngine::Event& event)
 bool Sandbox::OnMouseButtonPressed(DXEngine::MouseButtonPressedEvent& e)
 {
 
-	if (e.GetMouseButton() == VK_LBUTTON)
+	// (in edit mode the editor's viewport picks, and selects)
+	if (e.GetMouseButton() == VK_LBUTTON && !m_Editor.IsEnabled())
 	{
 		m_LastMouseX = DXEngine::Input::GetMouseX();
 		m_LastMouseY = DXEngine::Input::GetMouseY();
@@ -438,9 +454,10 @@ void Sandbox::HandlePicking(float mouseX, float mouseY)
 	if (!m_CameraController->GetCamera())
 		return;
 
-	// TODO: ask the window for its real size (the old code hard-coded this too)
-	const int screenWidth = 1270;
-	const int screenHeight = 720;
+	const int screenWidth = Application::Get().GetWindow().GetWidth();
+	const int screenHeight = Application::Get().GetWindow().GetHeight();
+	if (screenWidth <= 0 || screenHeight <= 0)
+		return;
 
 	// which ENTITY is under the cursor? (replaces PickingManager + dynamic_cast on Model subclasses)
 	PickResult pick = ScenePicking::Pick(m_Scene, *m_CameraController->GetCamera(), mouseX, mouseY, screenWidth, screenHeight);
