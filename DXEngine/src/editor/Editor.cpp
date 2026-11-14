@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "Editor.h"
+#include "ImGuizmoGizmo.h"
 #include "SceneEditing.h"
 #include "Application.h"
 #include "camera/Camera.h"
@@ -10,6 +11,11 @@
 
 namespace DXEngine
 {
+    Editor::Editor()
+    {
+        m_Ctx.gizmo = std::make_unique<ImGuizmoGizmo>();
+    }
+
     Editor::~Editor()
     {
         if (m_Ctx.camera) m_Ctx.camera->SetInputGate(nullptr);        // the gate points at this editor

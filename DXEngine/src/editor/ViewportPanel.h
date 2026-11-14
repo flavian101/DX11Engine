@@ -27,6 +27,10 @@ namespace DXEngine
         // the size of the scene texture last asked for (what picking maps the mouse to)
         ViewportMath::Size TargetSize() const { return m_Size; }
 
+        // where the picture was drawn last frame, in screen pixels (tests aim the mouse with it)
+        struct Rect { float x = 0, y = 0, width = 0, height = 0; };
+        Rect ImageRect() const { return m_ImageRect; }
+
     private:
         void DrawToolbar(EditorContext& ctx, float x, float y);
         void DrawSelectionOutline(EditorContext& ctx, float imageX, float imageY, float imageW, float imageH);
@@ -34,5 +38,6 @@ namespace DXEngine
         void FrameSelection(EditorContext& ctx);
 
         ViewportMath::Size m_Size;
+        Rect m_ImageRect;
     };
 }

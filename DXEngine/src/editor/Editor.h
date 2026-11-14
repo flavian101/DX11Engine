@@ -26,14 +26,14 @@ namespace DXEngine
     class Editor
     {
     public:
-        Editor() = default;
+        Editor();                                   // installs the ImGuizmo gizmo (SetGizmo replaces it)
         ~Editor();
         Editor(const Editor&) = delete;
         Editor& operator=(const Editor&) = delete;
 
         void SetScene(Scene* scene) { m_Ctx.scene = scene; }
         void SetCamera(std::shared_ptr<CameraController> camera);
-        void SetGizmo(std::unique_ptr<IGizmo> gizmo);          // default: NullGizmo (see GizmoTypes.h)
+        void SetGizmo(std::unique_ptr<IGizmo> gizmo);          // default: ImGuizmo (see GizmoTypes.h); null = no gizmo
 
         void SetEnabled(bool enabled);
         bool IsEnabled() const { return m_Enabled; }

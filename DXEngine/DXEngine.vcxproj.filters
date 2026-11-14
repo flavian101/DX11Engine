@@ -305,6 +305,9 @@
     <ClInclude Include="src\editor\ViewportPanel.h">
       <Filter>editor</Filter>
     </ClInclude>
+    <ClInclude Include="src\editor\ImGuizmoGizmo.h">
+      <Filter>editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -494,6 +497,12 @@
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\ViewportPanel.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\src\ImGuizmo.cpp">
+      <Filter>imgui_backends</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\ImGuizmoGizmo.cpp">
       <Filter>editor</Filter>
     </ClCompile>
   </ItemGroup>

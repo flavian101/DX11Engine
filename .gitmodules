@@ -8,3 +8,6 @@
 [submodule "DXEngine/vendor/entt"]
 	path = DXEngine/vendor/entt
 	url = https://github.com/skypjack/entt.git
+[submodule "DXEngine/vendor/ImGuizmo"]
+	path = DXEngine/vendor/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git

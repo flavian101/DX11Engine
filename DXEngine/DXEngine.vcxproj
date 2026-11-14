@@ -58,7 +58,7 @@
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\ImGuizmo\src;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -81,7 +81,7 @@
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\ImGuizmo\src;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -212,6 +212,7 @@
     <ClInclude Include="src\editor\HierarchyPanel.h" />
     <ClInclude Include="src\editor\InspectorPanel.h" />
     <ClInclude Include="src\editor\ViewportPanel.h" />
+    <ClInclude Include="src\editor\ImGuizmoGizmo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Cache\ResourceCache.cpp" />
@@ -302,6 +303,10 @@
     <ClCompile Include="src\editor\HierarchyPanel.cpp" />
     <ClCompile Include="src\editor\InspectorPanel.cpp" />
     <ClCompile Include="src\editor\ViewportPanel.cpp" />
+    <ClCompile Include="vendor\ImGuizmo\src\ImGuizmo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\editor\ImGuizmoGizmo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

@@ -22,3 +22,9 @@ else()
         target_link_libraries(ImGui PUBLIC d3d11 d3dcompiler dxgi dwmapi)
     endif()
 endif()
+
+# ImGuizmo (submodule): the transform gizmo of the editor. Built on top of the ImGui target above.
+set(IMGUIZMO_DIR ${CMAKE_SOURCE_DIR}/DXEngine/vendor/ImGuizmo)
+add_library(ImGuizmo STATIC ${IMGUIZMO_DIR}/src/ImGuizmo.cpp)
+target_include_directories(ImGuizmo PUBLIC ${IMGUIZMO_DIR}/src)
+target_link_libraries(ImGuizmo PUBLIC ImGui)

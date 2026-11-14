@@ -68,6 +68,7 @@ namespace DXEngine
         const bool overImage = ImGui::IsItemHovered();
         const ImVec2 imageMin = ImGui::GetItemRectMin();
         const ImVec2 imageSize = ImGui::GetItemRectSize();
+        m_ImageRect = { imageMin.x, imageMin.y, imageSize.x, imageSize.y };
 
         // ---- gizmo, outline, toolbar ----
         bool gizmoBusy = false;

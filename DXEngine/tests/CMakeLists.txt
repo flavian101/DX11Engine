@@ -141,6 +141,7 @@ add_executable(editor_ui_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyPanel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/InspectorPanel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/ViewportPanel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/ImGuizmoGizmo.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
@@ -152,6 +153,6 @@ add_executable(editor_ui_tests
 target_include_directories(editor_ui_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
-target_link_libraries(editor_ui_tests PRIVATE ImGui)
+target_link_libraries(editor_ui_tests PRIVATE ImGui ImGuizmo)
 target_compile_features(editor_ui_tests PRIVATE cxx_std_17)
 add_test(NAME editor_ui_tests COMMAND editor_ui_tests)

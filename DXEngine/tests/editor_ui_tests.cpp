@@ -4,6 +4,8 @@
 // every code path that draws a widget was executed. (What it cannot say: whether it LOOKS right. That needs eyes.)
 //   build: see DXEngine/tests/CMakeLists.txt  (links the ImGui core files, not the backends)
 #include "editor/EditorContext.h"
+#include "editor/ImGuizmoGizmo.h"
+#include "editor/ViewportMath.h"
 #include "editor/HierarchyPanel.h"
 #include "editor/InspectorPanel.h"
 #include "editor/ViewportPanel.h"
@@ -399,6 +401,206 @@ static void TestCameraInputGate()
     CHECK(Distance(held, camera.GetForwardVector()) < 1e-4f);
 }
 
+// ---- the gizmo, driven like a user would with the ENGINE's camera (left-handed, +Z forward in view space)
+struct GizmoRig
+{
+    Camera camera;
+    ImGuizmoGizmo gizmo;
+    GizmoSettings settings;
+    DirectX::XMFLOAT4X4 world;
+    GizmoView view{};
+    bool changedLastFrame = false;
+
+    static constexpr float kX = 100, kY = 100, kW = 800, kH = 500;
+
+    // 'diagonal': seen from a corner, so no axis points at the lens (ImGuizmo hides an axis that does)
+    explicit GizmoRig(bool diagonal = false)
+    {
+        camera.SetProjectionParams(DirectX::XM_PIDIV4, kW / kH, 0.5f, 1000.0f);
+        if (!diagonal)
+        {
+            camera.SetPosition({ 0.0f, 6.0f, 20.0f });
+            camera.SetRotation({ -0.18f, 0.0f, 0.0f });
+        }
+        else
+        {
+            camera.SetPosition({ 14.0f, 12.0f, 14.0f });
+            camera.SetRotation({ -0.5f, 0.78f, 0.0f });
+            camera.Update(0.0f);
+            const DirectX::XMFLOAT3 f = camera.GetForwardVector();            // yaw turns which way? make it face the origin
+            if (f.x * 14.0f + f.z * 14.0f > 0.0f)
+                camera.SetRotation({ -0.5f, -0.78f, 0.0f });
+        }
+        camera.Update(0.0f);
+        DirectX::XMStoreFloat4x4(&world, DirectX::XMMatrixTranslation(0.0f, 1.4f, 0.0f));
+        view.view = camera.GetViewMatrix4X4();
+        view.projection = camera.GetProjection4X4();
+        view.x = kX; view.y = kY; view.width = kW; view.height = kH;
+    }
+
+    void Frame1()
+    {
+        Frame([&]
+        {
+            ImGui::SetNextWindowPos(ImVec2(kX, kY));
+            ImGui::SetNextWindowSize(ImVec2(kW, kH));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+            ImGui::Begin("vp", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
+            ImGui::PopStyleVar();
+            changedLastFrame = gizmo.Manipulate(view, settings, world);
+            ImGui::End();
+        });
+    }
+
+    // where a world point is on screen (absolute pixels)
+    ImVec2 Screen(DirectX::XMFLOAT3 p) const
+    {
+        DirectX::XMFLOAT2 s;
+        ViewportMath::ProjectToViewport(p, view.view, view.projection, kW, kH, s);
+        return ImVec2(kX + s.x, kY + s.y);
+    }
+
+    DirectX::XMFLOAT3 Position() const { return { world._41, world._42, world._43 }; }
+
+    // press on 'start', drag to 'end', release; a frame between every step so ImGui sees each state
+    void Drag(ImVec2 start, ImVec2 end)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddMousePosEvent(start.x, start.y);
+        Frame1(); Frame1();
+        io.AddMouseButtonEvent(0, true);
+        Frame1();
+        for (int i = 1; i <= 8; ++i)
+        {
+            io.AddMousePosEvent(start.x + (end.x - start.x) * i / 8.0f, start.y + (end.y - start.y) * i / 8.0f);
+            Frame1();
+        }
+        io.AddMouseButtonEvent(0, false);
+        Frame1(); Frame1();
+    }
+};
+
+// Dragging a handle must move the entity along THAT axis, toward where the mouse went. This is also what proves the
+// matrices of a left-handed D3D camera mean the same thing to ImGuizmo as they do to the engine.
+static void TestGizmoTranslatesAlongTheDraggedAxis()
+{
+    UiEnv env;
+    const DirectX::XMFLOAT3 axes[3] = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
+    const char* names[3] = { "X", "Y", "Z" };
+
+    for (int diagonal = 0; diagonal < 2; ++diagonal)
+        for (int a = 0; a < 3; ++a)
+        {
+            if (!diagonal && a == 2) continue;                 // seen from the front the Z axis points at the lens: ImGuizmo hides it
+
+            GizmoRig rig(diagonal != 0);
+            rig.settings.operation = GizmoOperation::Translate;
+            rig.settings.space = GizmoSpace::World;
+            rig.Frame1();
+            const DirectX::XMFLOAT3 start = rig.Position();
+
+            // the handle's direction on screen: from the entity toward one unit along the axis
+            const ImVec2 o = rig.Screen(start);
+            const ImVec2 t = rig.Screen({ start.x + axes[a].x, start.y + axes[a].y, start.z + axes[a].z });
+            ImVec2 d(t.x - o.x, t.y - o.y);
+            const float len = std::sqrt(d.x * d.x + d.y * d.y);
+            d.x /= len; d.y /= len;
+
+            // press on the arm of the handle (30 px out), drag 60 px further along it
+            rig.Drag(ImVec2(o.x + d.x * 30.0f, o.y + d.y * 30.0f), ImVec2(o.x + d.x * 90.0f, o.y + d.y * 90.0f));
+
+            const DirectX::XMFLOAT3 end = rig.Position();
+            const float moved[3] = { end.x - start.x, end.y - start.y, end.z - start.z };
+            std::printf("    %s camera, axis %s: moved (%.2f, %.2f, %.2f)\n", diagonal ? "diagonal" : "front", names[a], moved[0], moved[1], moved[2]);
+            const float along = moved[0] * axes[a].x + moved[1] * axes[a].y + moved[2] * axes[a].z;
+            CHECK(along > 0.2f);                                                   // it moved, toward the drag
+            for (int k = 0; k < 3; ++k)
+                if (k != a) CHECK(std::fabs(moved[k]) < 0.25f * std::fabs(along));  // and (almost) nowhere else
+        }
+}
+
+// The whole path a user takes: select an entity UNDER A SCALED, ROTATED PARENT, drag its gizmo handle in the viewport panel.
+// The entity must land where the gizmo put it (in the world), and what is stored is its LOCAL transform.
+static void TestViewportGizmoMovesAChildUnderATransformedParent()
+{
+    static NoInput noInput;
+    Input::Init(&noInput);
+
+    UiEnv env;
+    Scene scene; EditorContext ctx; ctx.scene = &scene;
+    ctx.gizmo = std::make_unique<ImGuizmoGizmo>();
+    ctx.camera = std::make_shared<CameraController>();
+    ctx.camera->SetFollowWindowAspect(false);
+
+    Entity parent = scene.CreateEntity("parent");
+    parent.Get<TransformComponent>().position = { 4, 0, -3 };
+    parent.Get<TransformComponent>().scale = { 2, 2, 2 };
+    parent.Get<TransformComponent>().SetEulerDegrees(0, 50, 0);
+    Entity child = scene.CreateEntity("child", parent);
+    child.Get<TransformComponent>().position = { 0.5f, 0.7f, 0.0f };
+    TransformSystem::Update(scene);
+    ctx.selection.Set(child);
+    ctx.gizmoSettings.operation = GizmoOperation::Translate;
+    ctx.gizmoSettings.space = GizmoSpace::World;
+
+    Camera& camera = *ctx.camera->GetCamera();
+    camera.SetPosition({ 14.0f, 12.0f, 14.0f });
+    camera.SetRotation({ -0.5f, 0.78f, 0.0f });
+    camera.Update(0.0f);
+    const DirectX::XMFLOAT3 f = camera.GetForwardVector();
+    if (f.x * 14.0f + f.z * 14.0f > 0.0f) camera.SetRotation({ -0.5f, -0.78f, 0.0f });
+    camera.Update(0.0f);
+
+    ViewportPanel panel;
+    bool open = true;
+    ImGuiIO& io = ImGui::GetIO();
+    auto draw = [&]
+    {
+        ImGui::SetNextWindowPos(ImVec2(100, 100));
+        ImGui::SetNextWindowSize(ImVec2(800, 500));
+        panel.OnImGui(ctx, &open);
+        TransformSystem::Update(scene);                     // what the application does every frame
+    };
+    for (int i = 0; i < 3; ++i) Frame(draw);                // the panel sizes the camera's aspect to its picture
+
+    const ViewportPanel::Rect img = panel.ImageRect();
+    CHECK(img.width > 700 && img.height > 400);
+    DirectX::XMFLOAT4X4 view = camera.GetViewMatrix4X4(), proj = camera.GetProjection4X4();
+    auto screen = [&](DirectX::XMFLOAT3 p)
+    {
+        DirectX::XMFLOAT2 s;
+        ViewportMath::ProjectToViewport(p, view, proj, img.width, img.height, s);
+        return ImVec2(img.x + s.x, img.y + s.y);
+    };
+
+    const DirectX::XMFLOAT3 before = child.Get<TransformComponent>().WorldPosition();
+    const ImVec2 o = screen(before);
+    const ImVec2 t = screen({ before.x + 1.0f, before.y, before.z });        // the WORLD x axis
+    ImVec2 d(t.x - o.x, t.y - o.y);
+    const float len = std::sqrt(d.x * d.x + d.y * d.y);
+    d.x /= len; d.y /= len;
+
+    io.AddMousePosEvent(o.x + d.x * 30.0f, o.y + d.y * 30.0f);
+    Frame(draw); Frame(draw);
+    io.AddMouseButtonEvent(0, true);
+    Frame(draw);
+    for (int i = 1; i <= 8; ++i)
+    {
+        io.AddMousePosEvent(o.x + d.x * (30.0f + 7.5f * i), o.y + d.y * (30.0f + 7.5f * i));
+        Frame(draw);
+    }
+    io.AddMouseButtonEvent(0, false);
+    Frame(draw); Frame(draw);
+
+    const DirectX::XMFLOAT3 after = child.Get<TransformComponent>().WorldPosition();
+    std::printf("    child world position moved (%.2f, %.2f, %.2f)\n", after.x - before.x, after.y - before.y, after.z - before.z);
+    CHECK(after.x - before.x > 0.2f);                                          // along the dragged WORLD axis ...
+    CHECK(std::fabs(after.y - before.y) < 0.05f && std::fabs(after.z - before.z) < 0.05f);   // ... and only along it, though the parent is rotated and scaled
+    CHECK(ctx.selection.Is(child));                                            // grabbing the handle did not pick something else
+    CHECK(!ctx.flying);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -408,6 +610,8 @@ int main()
         { "viewport panel: camera, outline, pick, frame",   TestViewportWithCamera },
         { "imgui: captures while a button is held",         TestImGuiCapturesWhileAButtonIsHeld },
         { "camera: input gate",                             TestCameraInputGate },
+        { "gizmo: a drag moves along the dragged axis",     TestGizmoTranslatesAlongTheDraggedAxis },
+        { "gizmo: a child under a rotated, scaled parent",  TestViewportGizmoMovesAChildUnderATransformedParent },
     };
     for (auto& t : tests)
     {

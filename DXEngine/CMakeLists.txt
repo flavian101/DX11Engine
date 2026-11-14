@@ -25,6 +25,7 @@ target_include_directories(DXEngine PUBLIC
 target_link_libraries(DXEngine
 	PUBLIC
 	  ImGui
+	  ImGuizmo
 	  assimp
 )
 
