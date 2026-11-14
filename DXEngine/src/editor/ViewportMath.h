@@ -46,6 +46,21 @@ namespace DXEngine
             return true;
         }
 
+        // Where a new entity appears: straight ahead of the camera, so it is on screen and not inside the ground or the camera.
+        inline DirectX::XMFLOAT3 PointInFront(const DirectX::XMFLOAT3& cameraPosition, const DirectX::XMFLOAT3& cameraForward, float distance)
+        {
+            return { cameraPosition.x + cameraForward.x * distance,
+                     cameraPosition.y + cameraForward.y * distance,
+                     cameraPosition.z + cameraForward.z * distance };
+        }
+
+        // Fly speed after 'notches' of mouse wheel (positive = faster): 20 % per notch, kept between 0.5 and 400.
+        inline float AdjustFlySpeed(float speed, float notches)
+        {
+            const float adjusted = speed * std::pow(1.2f, notches);
+            return adjusted < 0.5f ? 0.5f : (adjusted > 400.0f ? 400.0f : adjusted);
+        }
+
         // A world point -> pixels inside a viewport of (width x height) (origin top-left, y down).
         // Matrices are row-vector (clip = world * view * projection). Returns false for a point behind the camera.
         inline bool ProjectToViewport(const DirectX::XMFLOAT3& world,

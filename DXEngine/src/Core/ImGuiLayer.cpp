@@ -148,25 +148,8 @@ namespace DXEngine
 
     void ImGuiLayer::ApplyStyle()
     {
+        // A neutral base. How the editor looks is EditorTheme's business (it is applied when the editor draws its first frame),
+        // so there is one place to change.
         ImGui::StyleColorsDark();
-        ImGuiStyle& style = ImGui::GetStyle();
-        style.WindowRounding   = 0.0f;
-        style.FrameRounding    = 3.0f;
-        style.GrabRounding     = 3.0f;
-        style.TabRounding      = 3.0f;
-        style.WindowBorderSize = 1.0f;
-        style.FramePadding     = ImVec2(6.0f, 3.0f);
-        style.ItemSpacing      = ImVec2(8.0f, 5.0f);
-
-        // a darker, flatter look than the default, and a clear dock-drop highlight
-        ImVec4* c = style.Colors;
-        c[ImGuiCol_WindowBg]       = ImVec4(0.11f, 0.11f, 0.12f, 1.00f);
-        c[ImGuiCol_ChildBg]        = ImVec4(0.11f, 0.11f, 0.12f, 1.00f);
-        c[ImGuiCol_TitleBg]        = ImVec4(0.08f, 0.08f, 0.09f, 1.00f);
-        c[ImGuiCol_TitleBgActive]  = ImVec4(0.08f, 0.08f, 0.09f, 1.00f);
-        c[ImGuiCol_Tab]            = ImVec4(0.12f, 0.12f, 0.13f, 1.00f);
-        c[ImGuiCol_TabHovered]     = ImVec4(0.26f, 0.42f, 0.70f, 1.00f);
-        c[ImGuiCol_TabSelected]    = ImVec4(0.20f, 0.33f, 0.56f, 1.00f);
-        c[ImGuiCol_DockingPreview] = ImVec4(0.26f, 0.52f, 0.96f, 0.45f);
     }
 }

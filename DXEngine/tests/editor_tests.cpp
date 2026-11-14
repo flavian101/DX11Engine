@@ -1,6 +1,7 @@
 // Editor logic tests: selection, the hierarchy rows, scene operations (duplicate, reparent, gizmo write-back),
 // transform editing and viewport maths. No GPU, no window, no ImGui: plain asserts so they run anywhere.
 //   build: see DXEngine/tests/CMakeLists.txt  (cmake -DDXENGINE_BUILD_TESTS=ON)
+#include "editor/EditorPrefs.h"
 #include "editor/EditorSelection.h"
 #include "editor/EntityBounds.h"
 #include "editor/GizmoTypes.h"
@@ -681,6 +682,111 @@ static void TestUiInputBlocking()
     CHECK(!ShouldBlockKeyboardEvent(s));
 }
 
+// ------------------------------------------------------------ uniform scale lock
+static void TestUniformScaleEdit()
+{
+    // the user drags X from 2 to 4: all three double
+    XMFLOAT3 r = TransformEditing::ApplyUniformScaleEdit({ 2, 3, 4 }, { 4, 3, 4 });
+    CHECK(Near(r.x, 4) && Near(r.y, 6) && Near(r.z, 8));
+    // Y halved
+    r = TransformEditing::ApplyUniformScaleEdit({ 2, 4, 6 }, { 2, 2, 6 });
+    CHECK(Near(r.x, 1) && Near(r.y, 2) && Near(r.z, 3));
+    // a reset click on one axis (to 1) shrinks the others in proportion
+    r = TransformEditing::ApplyUniformScaleEdit({ 2, 2, 2 }, { 2, 2, 1 });
+    CHECK(Near(r.x, 1) && Near(r.y, 1) && Near(r.z, 1));
+    // an axis that was 0 has no ratio: all take the new value
+    r = TransformEditing::ApplyUniformScaleEdit({ 0, 5, 5 }, { 3, 5, 5 });
+    CHECK(Near(r.x, 3) && Near(r.y, 3) && Near(r.z, 3));
+    // nothing changed: nothing changes
+    r = TransformEditing::ApplyUniformScaleEdit({ 1, 2, 3 }, { 1, 2, 3 });
+    CHECK(Near(r.x, 1) && Near(r.y, 2) && Near(r.z, 3));
+    // the axis that moved MOST is the edited one
+    r = TransformEditing::ApplyUniformScaleEdit({ 1, 1, 1 }, { 1.01f, 3, 1 });
+    CHECK(Near(r.x, 3) && Near(r.y, 3) && Near(r.z, 3));
+}
+
+// ------------------------------------------------------------ spawn point and fly speed
+static void TestSpawnAndFlySpeed()
+{
+    const XMFLOAT3 p = ViewportMath::PointInFront({ 1, 2, 3 }, { 0, 0, -1 }, 8.0f);
+    CHECK(Near(p.x, 1) && Near(p.y, 2) && Near(p.z, -5));
+
+    CHECK(Near(ViewportMath::AdjustFlySpeed(20.0f, 0.0f), 20.0f));
+    CHECK(ViewportMath::AdjustFlySpeed(20.0f, 1.0f) > 20.0f && Near(ViewportMath::AdjustFlySpeed(20.0f, 1.0f), 24.0f));    // +20 % a notch
+    CHECK(Near(ViewportMath::AdjustFlySpeed(24.0f, -1.0f), 20.0f));
+    CHECK(Near(ViewportMath::AdjustFlySpeed(1.0f, -50.0f), 0.5f));          // never stops
+    CHECK(Near(ViewportMath::AdjustFlySpeed(300.0f, 50.0f), 400.0f));       // never absurd
+}
+
+// ------------------------------------------------------------ preferences file
+static void TestEditorPrefs()
+{
+    EditorPrefs p;
+    CHECK(Near(p.uiScale, 1.0f) && Near(p.flySpeed, 20.0f));                  // defaults
+
+    // round trip
+    p.uiScale = 1.3f; p.flySpeed = 55.5f;
+    const EditorPrefs back = ParseEditorPrefs(FormatEditorPrefs(p));
+    CHECK(Near(back.uiScale, 1.3f) && Near(back.flySpeed, 55.5f));
+
+    // forgiving: junk lines, unknown keys, spaces, windows line endings
+    const EditorPrefs mixed = ParseEditorPrefs("# comment\r\nnonsense\r\n  ui_scale = 1.5 \r\nfuture_key=3\r\nfly_speed=abc\r\n");
+    CHECK(Near(mixed.uiScale, 1.5f) && Near(mixed.flySpeed, 20.0f));          // the bad fly_speed keeps its default
+
+    // out-of-range and non-numbers never get in
+    const EditorPrefs bad = ParseEditorPrefs("ui_scale=50\nfly_speed=-3\n");
+    CHECK(Near(bad.uiScale, 1.0f) && Near(bad.flySpeed, 20.0f));
+    const EditorPrefs nan = ParseEditorPrefs("ui_scale=nan\nfly_speed=1.5abc\n");
+    CHECK(Near(nan.uiScale, 1.0f) && Near(nan.flySpeed, 20.0f));
+    CHECK(Near(ParseEditorPrefs("").uiScale, 1.0f));
+
+    // files: a missing file is the defaults, a saved one comes back
+    CHECK(Near(LoadEditorPrefs("no_such_file_for_the_test.ini").uiScale, 1.0f));
+    SaveEditorPrefs(p, "editor_prefs_test.ini");
+    const EditorPrefs file = LoadEditorPrefs("editor_prefs_test.ini");
+    CHECK(Near(file.uiScale, 1.3f) && Near(file.flySpeed, 55.5f));
+    std::remove("editor_prefs_test.ini");
+}
+
+// ------------------------------------------------------------ creating things
+static void TestPrimitivesAndStressLights()
+{
+    Scene scene;
+    Entity holder = scene.CreateEntity("holder");
+
+    for (SceneEditing::Primitive prim : { SceneEditing::Primitive::Cube, SceneEditing::Primitive::Sphere, SceneEditing::Primitive::Plane })
+    {
+        Entity e = SceneEditing::CreatePrimitive(scene, nullptr, prim, holder);
+        CHECK(e.IsValid() && e.Has<MeshRendererComponent>() && scene.GetParent(e) == holder);
+        const MeshRendererComponent& mr = e.Get<MeshRendererComponent>();
+        CHECK(mr.mesh && mr.materials.size() == 1 && mr.materials[0]);
+        CHECK(mr.mesh->GetVertexCount() > 0);
+    }
+    // each primitive owns its material: changing one must not recolour another
+    Entity a = SceneEditing::CreatePrimitive(scene, nullptr, SceneEditing::Primitive::Cube);
+    Entity b = SceneEditing::CreatePrimitive(scene, nullptr, SceneEditing::Primitive::Cube);
+    CHECK(a.Get<MeshRendererComponent>().materials[0] != b.Get<MeshRendererComponent>().materials[0]);
+    CHECK(NameOf(a) == "Cube");
+
+    // the stress test: one parent, a thousand lights below it, deterministic, removable with one delete
+    const size_t before = scene.EntityCount();
+    Entity group = SceneEditing::AddStressLights(scene, 1000, 240.0f, 7);
+    CHECK(scene.EntityCount() == before + 1001);
+    CHECK(scene.GetChildren(group).size() == 1000);
+    Entity first = scene.GetChildren(group)[0];
+    CHECK(first.Has<LightComponent>() && first.Get<LightComponent>().type == LightType::Point);
+    for (Entity c : scene.GetChildren(group))
+    {
+        const XMFLOAT3 pos = c.Get<TransformComponent>().position;
+        CHECK(std::fabs(pos.x) <= 120.0f && std::fabs(pos.z) <= 120.0f && pos.y >= 1.0f && pos.y <= 9.0f);
+    }
+    Scene again;
+    Entity group2 = SceneEditing::AddStressLights(again, 1000, 240.0f, 7);          // same seed: the same scene
+    CHECK(Near(again.GetChildren(group2)[5].Get<TransformComponent>().position.x, scene.GetChildren(group)[5].Get<TransformComponent>().position.x));
+    scene.DestroyEntity(group);
+    CHECK(scene.EntityCount() == before);                                           // one delete removed all of it
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -706,6 +812,10 @@ int main()
         { "bounds: world box, marker, invalid",             TestEntityBounds },
         { "picking: the ray goes where the camera looks",   TestPickingFollowsTheCamera },
         { "ui input: the mouse belongs to a camera in use", TestUiInputBlocking },
+        { "transform: uniform scale lock",                  TestUniformScaleEdit },
+        { "viewport: spawn point, fly speed",               TestSpawnAndFlySpeed },
+        { "preferences: parse, format, files",              TestEditorPrefs },
+        { "create: primitives and the stress test",         TestPrimitivesAndStressLights },
     };
     for (auto& t : tests)
     {

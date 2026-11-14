@@ -96,6 +96,22 @@ namespace DXEngine
         };
 
         // ------------------------------------------------------------------
+        // Uniform scale lock: the user edited ONE component of the scale ('before' -> 'after'); returns the scale where all three
+        // moved by the same factor. When the edited component was 0 there is no factor, so all three take its new value.
+        // ------------------------------------------------------------------
+        inline DirectX::XMFLOAT3 ApplyUniformScaleEdit(const DirectX::XMFLOAT3& before, const DirectX::XMFLOAT3& after)
+        {
+            const float d[3] = { std::fabs(after.x - before.x), std::fabs(after.y - before.y), std::fabs(after.z - before.z) };
+            const int axis = d[0] >= d[1] && d[0] >= d[2] ? 0 : (d[1] >= d[2] ? 1 : 2);
+            const float b[3] = { before.x, before.y, before.z };
+            const float a[3] = { after.x, after.y, after.z };
+            if (d[axis] == 0.0f) return after;                       // nothing changed
+            if (std::fabs(b[axis]) < 1e-6f) return { a[axis], a[axis], a[axis] };
+            const float factor = a[axis] / b[axis];
+            return { before.x * factor, before.y * factor, before.z * factor };
+        }
+
+        // ------------------------------------------------------------------
         // The local position / rotation / scale that put an entity at 'world' under a parent at 'parentWorld'
         // (identity for a root): local = world * inverse(parentWorld). Used when reparenting without moving the entity
         // and when a gizmo hands back a new WORLD matrix. Writes position, rotation and scale only.

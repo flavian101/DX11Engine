@@ -15,16 +15,6 @@ namespace DXEngine
     {
         constexpr ImU32 kOutline = IM_COL32(255, 166, 26, 255);
 
-        void ToolButton(EditorContext& ctx, const char* label, const char* tooltip, GizmoOperation op)
-        {
-            const bool active = ctx.gizmoSettings.operation == op;
-            if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-            if (ImGui::Button(label, ImVec2(26, 0)))
-                ctx.gizmoSettings.operation = op;
-            if (active) ImGui::PopStyleColor();
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                ImGui::SetTooltip("%s", tooltip);
-        }
     }
 
     void ViewportPanel::OnImGui(EditorContext& ctx, bool* open)
@@ -90,7 +80,7 @@ namespace DXEngine
                 gizmoBusy = ctx.gizmo->IsUsing() || ctx.gizmo->IsOver();
             }
         }
-        DrawToolbar(ctx, imageMin.x + 8.0f, imageMin.y + 8.0f);
+        DrawFlyHud(ctx, imageMin.x, imageMin.y, imageSize.x);
 
         // hovered = over the picture and not over a toolbar widget (those have an id, the picture has none)
         ctx.viewportHovered = overImage && !ImGui::IsAnyItemHovered();
@@ -121,33 +111,18 @@ namespace DXEngine
         ImGui::End();
     }
 
-    void ViewportPanel::DrawToolbar(EditorContext& ctx, float x, float y)
+    void ViewportPanel::DrawFlyHud(EditorContext& ctx, float imageX, float imageY, float imageW)
     {
-        ImGui::SetCursorScreenPos(ImVec2(x, y));
-        ImGui::BeginGroup();
-
-        const bool gizmoAvailable = ctx.gizmo->IsAvailable();
-        if (ImGui::Button("Q", ImVec2(26, 0)))
-            ctx.gizmoSettings.operation = GizmoOperation::None;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Select (Q)");
-
-        ImGui::BeginDisabled(!gizmoAvailable);
-        ImGui::SameLine(); ToolButton(ctx, "W", "Move (W)",   GizmoOperation::Translate);
-        ImGui::SameLine(); ToolButton(ctx, "E", "Rotate (E)", GizmoOperation::Rotate);
-        ImGui::SameLine(); ToolButton(ctx, "R", "Scale (R)",  GizmoOperation::Scale);
-        ImGui::SameLine();
-        if (ImGui::Button(ctx.gizmoSettings.space == GizmoSpace::World ? "World" : "Local"))
-            ctx.gizmoSettings.space = ctx.gizmoSettings.space == GizmoSpace::World ? GizmoSpace::Local : GizmoSpace::World;
-        ImGui::SameLine();
-        ImGui::Checkbox("Snap", &ctx.gizmoSettings.snap);
-        ImGui::EndDisabled();
-
-        if (!gizmoAvailable)
-        {
-            ImGui::SameLine();
-            ImGui::TextDisabled("(no gizmo installed)");
-        }
-        ImGui::EndGroup();
+        if (!ctx.flying || !ctx.camera) return;
+        char text[96];
+        snprintf(text, sizeof(text), "Fly speed %.1f   (mouse wheel to change)", ctx.camera->GetMoveSpeed());
+        const ImVec2 size = ImGui::CalcTextSize(text);
+        const float pad = 8.0f;
+        const ImVec2 min(imageX + (imageW - size.x) * 0.5f - pad, imageY + 12.0f);
+        const ImVec2 max(min.x + size.x + pad * 2.0f, min.y + size.y + pad);
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->AddRectFilled(min, max, IM_COL32(12, 14, 20, 200), 6.0f);
+        dl->AddText(ImVec2(min.x + pad, min.y + pad * 0.5f), IM_COL32(230, 232, 238, 255), text);
     }
 
     void ViewportPanel::DrawSelectionOutline(EditorContext& ctx, float imageX, float imageY, float imageW, float imageH)

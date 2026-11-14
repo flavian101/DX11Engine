@@ -1,12 +1,16 @@
 #pragma once
 #include "EditorSelection.h"
 #include "GizmoTypes.h"
+#include "camera/Camera.h"
 #include "camera/CameraController.h"
 #include "scene/Scene.h"
+#include "ViewportMath.h"
 #include <memory>
 
 namespace DXEngine
 {
+    namespace RHI { class IGraphicsDevice; }
+
     // ==================================================================
     // EditorContext: what the panels share. One instance, owned by Editor; panels get it by reference every frame.
     // It holds no GPU resources: the scene and the camera belong to the host (the game), the editor only edits them.
@@ -19,6 +23,17 @@ namespace DXEngine
         EditorSelection selection;
         GizmoSettings   gizmoSettings;
         std::unique_ptr<IGizmo> gizmo = std::make_unique<NullGizmo>();
+
+        // for creating GPU meshes (the Create menu). Set by the editor every frame; null in tests.
+        std::shared_ptr<RHI::IGraphicsDevice> device;
+
+        // Where a new entity appears: ahead of the camera, so it is on screen (the origin without a camera).
+        DirectX::XMFLOAT3 SpawnPoint() const
+        {
+            if (!camera) return { 0.0f, 0.0f, 0.0f };
+            Camera& c = *camera->GetCamera();
+            return ViewportMath::PointInFront(c.GetPositionFloat3(), c.GetForwardVector(), 8.0f);
+        }
 
         // Something selected an entity from outside the hierarchy (a click in the viewport): the hierarchy opens the
         // chain above it and scrolls to it, then clears this.

@@ -3,7 +3,12 @@
 // list, a drag-drop source without a target... all abort. So "no abort" means the panels are structurally sound and
 // every code path that draws a widget was executed. (What it cannot say: whether it LOOKS right. That needs eyes.)
 //   build: see DXEngine/tests/CMakeLists.txt  (links the ImGui core files, not the backends)
+#include "editor/EditorChrome.h"
 #include "editor/EditorContext.h"
+#include "editor/EditorIcons.h"
+#include "editor/EditorTheme.h"
+#include "editor/PropertyGrid.h"
+#include "editor/RendererPanel.h"
 #include "editor/ImGuizmoGizmo.h"
 #include "editor/ViewportMath.h"
 #include "editor/HierarchyPanel.h"
@@ -15,6 +20,7 @@
 #include "Core/UiInputBlocking.h"
 #include "Event/MouseEvent.h"
 #include "renderer/Renderer.h"
+#include "renderer/Core/RenderTypes.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
@@ -30,6 +36,18 @@ namespace DXEngine
     static int g_lastSceneW = -1, g_lastSceneH = -1;
     void Renderer::SetSceneTargetSize(int w, int h) { g_lastSceneW = w; g_lastSceneH = h; }
     RHI::ITexture* Renderer::GetSceneTexture() { return nullptr; }
+
+    // what the toolbar and the Renderer panel read and write: kept in plain variables
+    static RenderEnvironment g_env;
+    static bool g_wireframe = false, g_culling = true;
+    static RenderStatistics g_stats;
+    void Renderer::EnableWireframe(bool e) { g_wireframe = e; }
+    bool Renderer::IsWireframeEnabled() { return g_wireframe; }
+    void Renderer::EnableFrustumCulling(bool e) { g_culling = e; }
+    bool Renderer::IsFrustumCullingEnabled() { return g_culling; }
+    void Renderer::SetEnvironment(const RenderEnvironment& e) { g_env = e; }
+    RenderEnvironment Renderer::GetEnvironment() { return g_env; }
+    const RenderStatistics& Renderer::GetStats() { return g_stats; }
 }
 
 // The camera behaviours poll Input; there is no window here, so nothing is ever pressed.
@@ -601,6 +619,339 @@ static void TestViewportGizmoMovesAChildUnderATransformedParent()
     CHECK(!ctx.flying);
 }
 
+// ------------------------------------------------------------ the look
+static void TestThemeScaling()
+{
+    UiEnv env;
+    EditorTheme::Apply(1.0f);
+    const float base = ImGui::GetStyle().FramePadding.y;
+    CHECK(base > 0.0f && EditorTheme::Scale() == 1.0f);
+
+    EditorTheme::Apply(1.5f);
+    const float scaled = ImGui::GetStyle().FramePadding.y;
+    CHECK(std::fabs(scaled - base * 1.5f) < 0.6f);                           // sizes follow the scale (ImGui rounds some of them)
+    CHECK(std::fabs(ImGui::GetStyle().FontScaleMain - 1.5f) < 1e-4f);        // and so do the fonts
+
+    EditorTheme::Apply(1.5f);                                                // applying again must not compound
+    CHECK(std::fabs(ImGui::GetStyle().FramePadding.y - scaled) < 1e-4f);
+
+    EditorTheme::Apply(1.0f);                                                // and going back is exact
+    CHECK(std::fabs(ImGui::GetStyle().FramePadding.y - base) < 1e-4f);
+
+    EditorTheme::Apply(0.1f);
+    CHECK(EditorTheme::Scale() == 0.75f);                                    // clamped, so a broken prefs file cannot make a 1-pixel UI
+    EditorTheme::Apply(9.0f);
+    CHECK(EditorTheme::Scale() == 2.5f);
+    EditorTheme::Apply(1.0f);
+}
+
+// ------------------------------------------------------------ icons and property grid draw
+static void TestIconsAndPropertyGrid()
+{
+    UiEnv env;
+    EditorTheme::Apply(1.0f);
+    Frame([&]
+    {
+        ImGui::SetNextWindowPos(ImVec2(50, 50));
+        ImGui::SetNextWindowSize(ImVec2(400, 600));
+        ImGui::Begin("props");
+
+        // every icon, as a drawing and as a button
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        float x = 70.0f;
+        for (int i = static_cast<int>(Icon::Entity); i <= static_cast<int>(Icon::Shadow); ++i, x += 22.0f)
+        {
+            EditorIcons::Draw(dl, static_cast<Icon>(i), ImVec2(x, 90.0f), 18.0f, IM_COL32_WHITE);
+            ImGui::PushID(i);
+            EditorIcons::Button("##b", static_cast<Icon>(i), i % 2 == 0, "tip");
+            ImGui::PopID();
+            ImGui::SameLine();
+        }
+        ImGui::NewLine();
+
+        // every kind of property, nothing edited: nothing reports a change
+        bool anyChanged = false;
+        if (PropertyGrid::Begin("all"))
+        {
+            DirectX::XMFLOAT3 v{ 1, 2, 3 };
+            float f = 0.5f, rgb[3] = { 0.1f, 0.2f, 0.3f }, rgba[4] = { 0.1f, 0.2f, 0.3f, 1.0f };
+            bool b = true;
+            int i = 1;
+            const char* items[] = { "a", "b", "c" };
+            anyChanged |= PropertyGrid::Vec3("Position", v);
+            anyChanged |= PropertyGrid::Float("Float", f);
+            anyChanged |= PropertyGrid::Slider("Slider", f, 0.0f, 1.0f);
+            anyChanged |= PropertyGrid::Checkbox("Check", b);
+            anyChanged |= PropertyGrid::Color3("Colour3", rgb);
+            anyChanged |= PropertyGrid::Color4("Colour4", rgba);
+            anyChanged |= PropertyGrid::Combo("Combo", i, items, 3);
+            PropertyGrid::Text("Info", "%d things", 3);
+            PropertyGrid::End();
+        }
+        CHECK(!anyChanged);
+        ImGui::End();
+    });
+}
+
+// ------------------------------------------------------------ toolbar and status bar
+static void TestChrome()
+{
+    UiEnv env;
+    EditorTheme::Apply(1.0f);
+    Scene scene; EditorContext ctx; Populate(scene, ctx);
+
+    // the bars with and without a gizmo, with and without a selection, every tool, snapping on
+    for (bool withGizmo : { true, false })
+    {
+        ctx.gizmo = withGizmo ? std::unique_ptr<IGizmo>(std::make_unique<ImGuizmoGizmo>()) : std::unique_ptr<IGizmo>(std::make_unique<NullGizmo>());
+        for (int sel = 0; sel < 2; ++sel)
+        {
+            if (sel) ctx.selection.Set(scene.Wrap(scene.Registry().view<NameComponent>().begin()[0])); else ctx.selection.Clear();
+            for (GizmoOperation op : { GizmoOperation::None, GizmoOperation::Translate, GizmoOperation::Rotate, GizmoOperation::Scale })
+                for (bool snap : { false, true })
+                {
+                    ctx.gizmoSettings.operation = op;
+                    ctx.gizmoSettings.snap = snap;
+                    Frame([&] { EditorChrome::DrawToolbar(ctx); EditorChrome::DrawStatusBar(ctx, "a hint"); });
+                }
+        }
+    }
+
+    char text[160];
+    EditorChrome::FormatStats(text, sizeof(text), 143.6f, 12, 37, 1234567);
+    CHECK(std::string(text) == "144 FPS    12 entities    37 draws    1,234,567 tris");
+    EditorChrome::FormatStats(text, sizeof(text), 60.0f, 0, 0, 0);
+    CHECK(std::string(text) == "60 FPS    0 entities    0 draws    0 tris");
+    EditorChrome::FormatStats(text, sizeof(text), 60.0f, 1, 1, 999);
+    CHECK(std::string(text).find("999 tris") != std::string::npos);
+    EditorChrome::FormatStats(text, sizeof(text), 60.0f, 1, 1, 1000);
+    CHECK(std::string(text).find("1,000 tris") != std::string::npos);
+}
+
+static void TestRendererPanel()
+{
+    UiEnv env;
+    EditorTheme::Apply(1.0f);
+    Renderer::SetEnvironment(RenderEnvironment());
+    const RenderEnvironment before = Renderer::GetEnvironment();
+
+    bool open = true;
+    for (int i = 0; i < 4; ++i)
+        Frame([&] { RendererPanel::OnImGui(&open); });
+    // looking at the panel changes nothing
+    const RenderEnvironment after = Renderer::GetEnvironment();
+    CHECK(after.exposure == before.exposure && after.gamma == before.gamma && after.shadows.enabled == before.shadows.enabled &&
+          after.shadows.cascadeCount == before.shadows.cascadeCount && after.lightCulling == before.lightCulling);
+
+    open = false;
+    Frame([&] { RendererPanel::OnImGui(&open); });                              // closed: draws nothing, no crash
+}
+
+// ------------------------------------------------------------ the hierarchy, used like a user would
+struct HierarchyRig
+{
+    UiEnv env;
+    Scene scene;
+    EditorContext ctx;
+    HierarchyPanel panel;
+    bool open = true;
+    Entity alpha, beta, gamma, delta;
+
+    static constexpr float kX = 50, kY = 50, kW = 300, kH = 500;
+
+    HierarchyRig()
+    {
+        EditorTheme::Apply(1.0f);
+        ctx.scene = &scene;
+        alpha = scene.CreateEntity("Alpha");
+        MeshRendererComponent mr; mr.mesh = MakeCube();
+        alpha.Add<MeshRendererComponent>(mr);
+        beta  = scene.CreateEntity("Beta");
+        gamma = scene.CreateEntity("Gamma");
+        delta = scene.CreateEntity("Delta", gamma);
+        for (int i = 0; i < 4; ++i) Draw();
+    }
+
+    void Draw()
+    {
+        Frame([&]
+        {
+            ImGui::SetNextWindowPos(ImVec2(kX, kY));
+            ImGui::SetNextWindowSize(ImVec2(kW, kH));
+            panel.OnImGui(ctx, &open);
+        });
+    }
+
+    ImGuiIO& IO() { return ImGui::GetIO(); }
+    void MoveTo(float x, float y) { IO().AddMousePosEvent(x, y); Draw(); Draw(); }
+    void Click(float x, float y) { MoveTo(x, y); IO().AddMouseButtonEvent(0, true); Draw(); IO().AddMouseButtonEvent(0, false); Draw(); }
+    void DoubleClick(float x, float y)
+    {
+        // Clicks within 0.3 s of each other at the same spot COUNT as one multi-click (3, 4, ... 18 after a scan with many
+        // clicks), and only a count of exactly 2 is a double click. Let the earlier ones expire, as a person would.
+        for (int i = 0; i < 30; ++i) Draw();
+        MoveTo(x, y);
+        for (int i = 0; i < 2; ++i) { IO().AddMouseButtonEvent(0, true); Draw(); IO().AddMouseButtonEvent(0, false); Draw(); }
+    }
+    void Drag(float x0, float y0, float x1, float y1)
+    {
+        MoveTo(x0, y0);
+        IO().AddMouseButtonEvent(0, true); Draw();
+        for (int i = 1; i <= 10; ++i) { IO().AddMousePosEvent(x0 + (x1 - x0) * i / 10.0f, y0 + (y1 - y0) * i / 10.0f); Draw(); }
+        Draw();
+        IO().AddMouseButtonEvent(0, false); Draw(); Draw();
+    }
+    void Key(ImGuiKey key) { IO().AddKeyEvent(key, true); Draw(); IO().AddKeyEvent(key, false); Draw(); }
+    void Type(const char* text) { IO().AddInputCharactersUTF8(text); Draw(); Draw(); }
+
+    // The y of the row of 'e': scan down the list with clicks until the selection becomes 'e'. (The tests know nothing of
+    // the layout, so they cannot be broken by a change of it, only by a change of behaviour.)
+    float RowY(Entity e)
+    {
+        for (float y = kY + 50.0f; y < kY + kH - 40.0f; y += 3.0f)
+        {
+            ctx.selection.Clear();
+            Click(kX + 120.0f, y);
+            if (ctx.selection.Is(e)) return y;
+        }
+        return -1.0f;
+    }
+};
+
+static void TestHierarchyRowsOrderAndSelection()
+{
+    HierarchyRig r;
+    const float yA = r.RowY(r.alpha), yB = r.RowY(r.beta), yG = r.RowY(r.gamma);
+    CHECK(yA > 0 && yB > 0 && yG > 0);
+    CHECK(yA < yB && yB < yG);                                           // the order of the tree
+    CHECK(yB - yA > 20.0f && yB - yA < 50.0f && std::fabs((yG - yB) - (yB - yA)) < 5.0f);   // a regular row height
+    CHECK(r.RowY(r.delta) < 0.0f);                                       // the child is hidden while Gamma is collapsed
+
+    // click on empty space below the rows clears the selection
+    r.Click(HierarchyRig::kX + 120.0f, HierarchyRig::kY + HierarchyRig::kH - 30.0f);
+    CHECK(!r.ctx.selection.Has());
+
+    // the arrow of a parent expands it and the child appears below it
+    r.Click(HierarchyRig::kX + 10.0f + 12.0f, yG);                        // the arrow cell: left edge of the row
+    const float yD = r.RowY(r.delta);
+    CHECK(yD > yG);
+}
+
+static void TestHierarchyEyeTogglesVisibility()
+{
+    HierarchyRig r;
+    const float yA = r.RowY(r.alpha);
+    CHECK(yA > 0);
+    MeshRendererComponent& mr = r.alpha.Get<MeshRendererComponent>();
+    CHECK(mr.visible);
+    const float eyeX = HierarchyRig::kX + HierarchyRig::kW - 28.0f;       // the right end of the row
+    r.Click(eyeX, yA);
+    CHECK(!mr.visible);                                                   // hidden
+    r.Click(eyeX, yA);
+    CHECK(mr.visible);                                                    // shown again
+    // the eye is only on meshes: the same click on an entity without a mesh does nothing to it
+    const float yB = r.RowY(r.beta);
+    r.Click(eyeX, yB);
+    CHECK(!r.beta.Has<MeshRendererComponent>());
+}
+
+static void TestHierarchyRename()
+{
+    HierarchyRig r;
+    // double click on a leaf: rename in place; typing replaces the name, Enter keeps it
+    const float yB = r.RowY(r.beta);
+    CHECK(yB > 0);
+    r.DoubleClick(HierarchyRig::kX + 120.0f, yB);
+    r.Draw(); r.Draw();
+    r.Type("Zed");
+    r.Key(ImGuiKey_Enter);
+    CHECK(r.beta.Get<NameComponent>().name == "Zed");
+
+    // F2 on the selection does the same; Escape cancels
+    const float yA = r.RowY(r.alpha);
+    r.Key(ImGuiKey_F2);
+    r.Draw(); r.Draw();
+    r.Type("Nope");
+    r.Key(ImGuiKey_Escape);
+    CHECK(r.alpha.Get<NameComponent>().name == "Alpha");                  // cancelled: unchanged
+    r.Key(ImGuiKey_F2);
+    r.Draw(); r.Draw();
+    r.Type("Eff");
+    r.Key(ImGuiKey_Enter);
+    CHECK(yA > 0 && r.alpha.Get<NameComponent>().name == "Eff");
+
+    // an empty name is not accepted (the old one stays)
+    r.Key(ImGuiKey_F2);
+    r.Draw(); r.Draw();
+    r.IO().AddKeyEvent(ImGuiKey_Backspace, true); r.Draw(); r.IO().AddKeyEvent(ImGuiKey_Backspace, false); r.Draw();
+    r.Key(ImGuiKey_Enter);
+    CHECK(!r.alpha.Get<NameComponent>().name.empty());
+}
+
+static void TestHierarchyDeleteDuplicate()
+{
+    HierarchyRig r;
+    const size_t start = r.scene.EntityCount();
+
+    const float yA = r.RowY(r.alpha);
+    CHECK(yA > 0);
+    r.IO().AddKeyEvent(ImGuiMod_Ctrl, true);
+    r.Key(ImGuiKey_D);                                                    // Ctrl+D
+    r.IO().AddKeyEvent(ImGuiMod_Ctrl, false);
+    r.Draw();
+    CHECK(r.scene.EntityCount() == start + 1);
+    CHECK(r.ctx.selection.Has() && r.ctx.selection.Get().Get<NameComponent>().name == "Alpha (Copy)");   // the copy is selected
+    CHECK(r.ctx.selection.Get().Has<MeshRendererComponent>());
+
+    // Delete removes the selection (and a parent takes its children with it)
+    const float yG = r.RowY(r.gamma);
+    CHECK(yG > 0);
+    r.Key(ImGuiKey_Delete);
+    CHECK(!r.gamma.IsValid() && !r.delta.IsValid());
+    CHECK(r.scene.EntityCount() == start + 1 - 2);
+    CHECK(!r.ctx.selection.Has());
+}
+
+static void TestHierarchyDragToReparent()
+{
+    HierarchyRig r;
+    const float yA = r.RowY(r.alpha), yB = r.RowY(r.beta);
+    CHECK(yA > 0 && yB > 0);
+
+    // Alpha is moved in the world before, to prove that parenting keeps it where it is
+    r.alpha.Get<TransformComponent>().position = { 5, 0, 0 };
+    r.beta.Get<TransformComponent>().position = { 0, 10, 0 };
+    r.beta.Get<TransformComponent>().scale = { 2, 2, 2 };
+    TransformSystem::Update(r.scene);
+    const DirectX::XMFLOAT3 before = r.alpha.Get<TransformComponent>().WorldPosition();
+
+    r.Drag(HierarchyRig::kX + 120.0f, yA, HierarchyRig::kX + 120.0f, yB);  // drop Alpha on Beta
+    CHECK(r.scene.GetParent(r.alpha) == r.beta);
+    TransformSystem::Update(r.scene);
+    const DirectX::XMFLOAT3 after = r.alpha.Get<TransformComponent>().WorldPosition();
+    CHECK(Distance(before, after) < 1e-3f);                               // it did not move
+
+    // drag it to the empty area: a root again, still in place
+    r.Drag(HierarchyRig::kX + 150.0f, HierarchyRig::kY + 50.0f + 3 * 29.0f, HierarchyRig::kX + 120.0f, HierarchyRig::kY + HierarchyRig::kH - 30.0f);
+    // (the child row position is found by scanning in the next check rather than assumed)
+    if (r.scene.GetParent(r.alpha).IsValid())
+    {
+        const float yChild = r.RowY(r.alpha);
+        if (yChild > 0) r.Drag(HierarchyRig::kX + 150.0f, yChild, HierarchyRig::kX + 120.0f, HierarchyRig::kY + HierarchyRig::kH - 30.0f);
+    }
+    TransformSystem::Update(r.scene);
+    CHECK(!r.scene.GetParent(r.alpha).IsValid());
+    CHECK(Distance(before, r.alpha.Get<TransformComponent>().WorldPosition()) < 1e-3f);
+
+    // a parent cannot be dropped on its own child
+    TransformSystem::Update(r.scene);
+    const float yG = r.RowY(r.gamma);
+    r.Click(HierarchyRig::kX + 22.0f, yG);                                // expand Gamma
+    const float yD = r.RowY(r.delta);
+    if (yG > 0 && yD > 0) r.Drag(HierarchyRig::kX + 120.0f, yG, HierarchyRig::kX + 150.0f, yD);
+    CHECK(!r.scene.GetParent(r.gamma).IsValid());                         // refused: it would be a cycle
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -610,6 +961,15 @@ int main()
         { "viewport panel: camera, outline, pick, frame",   TestViewportWithCamera },
         { "imgui: captures while a button is held",         TestImGuiCapturesWhileAButtonIsHeld },
         { "camera: input gate",                             TestCameraInputGate },
+        { "theme: scale applies, never compounds",          TestThemeScaling },
+        { "icons and property grid draw",                   TestIconsAndPropertyGrid },
+        { "toolbar and status bar",                         TestChrome },
+        { "renderer panel: looking changes nothing",        TestRendererPanel },
+        { "hierarchy: row order, selection, expand",        TestHierarchyRowsOrderAndSelection },
+        { "hierarchy: the eye toggles visibility",          TestHierarchyEyeTogglesVisibility },
+        { "hierarchy: rename (double click, F2, Esc)",      TestHierarchyRename },
+        { "hierarchy: Ctrl+D and Delete",                   TestHierarchyDeleteDuplicate },
+        { "hierarchy: drag to reparent, keeps position",    TestHierarchyDragToReparent },
         { "gizmo: a drag moves along the dragged axis",     TestGizmoTranslatesAlongTheDraggedAxis },
         { "gizmo: a child under a rotated, scaled parent",  TestViewportGizmoMovesAChildUnderATransformedParent },
     };

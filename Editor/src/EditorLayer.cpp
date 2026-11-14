@@ -140,5 +140,6 @@ void EditorLayer::OnUIRender()
 
 void EditorLayer::OnEvent(DXEngine::Event& event)
 {
-	m_CameraController->OnEvent(event);
+	if (!m_Editor.OnEvent(event))                     // the mouse wheel sets the fly speed while flying ...
+		m_CameraController->OnEvent(event);           // ... everything else is the camera's
 }

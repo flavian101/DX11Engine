@@ -1,9 +1,11 @@
 #include "dxpch.h"
 #include "HierarchyPanel.h"
+#include "EditorIcons.h"
+#include "EditorTheme.h"
 #include "SceneEditing.h"
 
 #include "imgui.h"
-#include "imgui_internal.h"      // RenderArrow
+#include "imgui_internal.h"      // RenderTextClipped
 
 namespace DXEngine
 {
@@ -11,14 +13,14 @@ namespace DXEngine
     {
         const char* kPayload = "DX_ENTITY";
 
-        std::string EntityLabel(Entity e)
+        EditorIcons::Kind KindOf(Entity e)
         {
-            const char* kind = e.Has<LightComponent>()        ? "[L] "
-                             : e.Has<SkyboxComponent>()       ? "[S] "
-                             : e.Has<MeshRendererComponent>() ? "[M] "
-                                                              : "    ";
-            const NameComponent* name = e.TryGet<NameComponent>();
-            return std::string(kind) + (name ? name->name : std::string("(unnamed)"));
+            const EditorTheme::Palette& p = EditorTheme::Colors();
+            if (const LightComponent* l = e.TryGet<LightComponent>())
+                return { l->type == LightType::Directional ? Icon::Sun : l->type == LightType::Spot ? Icon::Spot : Icon::Light, p.kindLight };
+            if (e.Has<SkyboxComponent>())       return { Icon::Sky, p.kindSky };
+            if (e.Has<MeshRendererComponent>()) return { Icon::Mesh, p.kindMesh };
+            return { Icon::Entity, p.kindEmpty };
         }
 
         Entity FromPayload(Scene& scene, const ImGuiPayload* payload)
@@ -27,6 +29,14 @@ namespace DXEngine
             const entt::entity id = static_cast<entt::entity>(*static_cast<const uint32_t*>(payload->Data));
             return scene.Registry().valid(id) ? scene.Wrap(id) : Entity();
         }
+    }
+
+    void HierarchyPanel::BeginRename(Entity e)
+    {
+        if (!e.IsValid()) return;
+        m_RenameEntity = e;
+        snprintf(m_RenameBuffer, sizeof(m_RenameBuffer), "%s", e.Get<NameComponent>().name.c_str());
+        m_RenameFocus = true;
     }
 
     void HierarchyPanel::OnImGui(EditorContext& ctx, bool* open)
@@ -44,18 +54,37 @@ namespace DXEngine
             return;
         }
         Scene& scene = *ctx.scene;
+        const EditorTheme::Palette& pal = EditorTheme::Colors();
 
-        // ---- top bar: create + search ----
-        if (ImGui::Button("+"))
-            ImGui::OpenPopup("##create");
-        if (ImGui::BeginPopup("##create"))
+        // ---- top bar: search (with a clear button) and add ----
+        const float button = ImGui::GetFrameHeight();
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
         {
-            DrawCreateMenu(ctx, Entity());
-            ImGui::EndPopup();
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - button - spacing);
+            ImGui::InputTextWithHint("##filter", "Search...", m_Filter, sizeof(m_Filter));
+            const ImVec2 min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
+            if (m_Filter[0])      // a clear button inside the field's right edge
+            {
+                ImGui::SetCursorScreenPos(ImVec2(max.x - button, min.y));
+                if (EditorIcons::Button("##clearfilter", Icon::Close, false, "Clear", button))
+                    m_Filter[0] = '\0';
+                ImGui::SetCursorScreenPos(ImVec2(max.x + spacing, min.y));
+            }
+            else
+            {
+                EditorIcons::Draw(ImGui::GetWindowDrawList(), Icon::Search, ImVec2(max.x - button * 0.5f, (min.y + max.y) * 0.5f), button * 0.5f,
+                                  ImGui::ColorConvertFloat4ToU32(pal.textDim));
+                ImGui::SameLine();
+            }
+            if (EditorIcons::Button("##add", Icon::Plus, false, "Create", button))
+                ImGui::OpenPopup("##create");
+            if (ImGui::BeginPopup("##create"))
+            {
+                DrawCreateMenu(ctx, Entity());
+                ImGui::EndPopup();
+            }
         }
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputTextWithHint("##filter", "Search", m_Filter, sizeof(m_Filter));
+        ImGui::Spacing();
 
         // a pick in the viewport selected something: open the chain above it (and drop the filter that may hide it)
         if (ctx.revealSelection)
@@ -74,7 +103,15 @@ namespace DXEngine
         ImGui::BeginChild("##rows", ImVec2(0, 0), ImGuiChildFlags_None);
 
         const std::vector<HierarchyRow>& rows = m_Model.Rows();
-        const float rowHeight = ImGui::GetTextLineHeightWithSpacing();
+        const float rowHeight = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
+
+        if (rows.empty())
+        {
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Text, pal.textDim);
+            ImGui::TextWrapped(m_Model.IsFiltering() ? "Nothing is called like that." : "The scene is empty.\nUse + or right click to create something.");
+            ImGui::PopStyleColor();
+        }
 
         if (m_ScrollToSelection)
         {
@@ -94,12 +131,17 @@ namespace DXEngine
                 DrawRow(ctx, rows[static_cast<size_t>(i)]);
         clipper.End();
 
-        // the empty area below the rows: a click clears the selection, a drop makes the entity a root
+        // the empty area below the rows: a click clears the selection, a drop makes the entity a root, right click creates
         ImVec2 rest = ImGui::GetContentRegionAvail();
         rest.y = std::max(rest.y, 32.0f);
         ImGui::InvisibleButton("##empty", rest);
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
             ctx.selection.Clear();
+        if (ImGui::BeginPopupContextItem("##emptyctx"))
+        {
+            DrawCreateMenu(ctx, Entity());
+            ImGui::EndPopup();
+        }
         if (ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload(kPayload))
@@ -122,6 +164,8 @@ namespace DXEngine
         {
             if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
                 m_PendingDelete = ctx.selection.Get();
+            if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
+                BeginRename(ctx.selection.Get());
             if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false) && SceneEditing::CanDuplicate(scene, ctx.selection.Get()))
                 m_PendingDuplicate = ctx.selection.Get();
         }
@@ -133,47 +177,107 @@ namespace DXEngine
     void HierarchyPanel::DrawRow(EditorContext& ctx, const HierarchyRow& row)
     {
         Scene& scene = *ctx.scene;
-        const Entity e = row.entity;
+        Entity e = row.entity;
+        const EditorTheme::Palette& pal = EditorTheme::Colors();
 
         ImGui::PushID(static_cast<int>(entt::to_integral(e.Id())));
 
-        const float lineHeight = ImGui::GetTextLineHeight();
-        if (!m_Model.IsFiltering())
-            ImGui::Indent(static_cast<float>(row.depth) * 16.0f);
+        const float rowH = ImGui::GetFrameHeight();
+        const float indent = m_Model.IsFiltering() ? 0.0f : static_cast<float>(row.depth) * rowH * 0.8f;
+        const float eyeW = rowH;
+        const bool hasRenderer = e.Has<MeshRendererComponent>();
+        const bool selected = ctx.selection.Is(e);
 
-        // expand arrow (or a spacer of the same width, so names line up)
+        const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+        const float rowW = ImGui::GetContentRegionAvail().x;
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+
+        // 1. the arrow (or nothing, keeping the names aligned)
+        ImGui::Dummy(ImVec2(indent, rowH));
+        ImGui::SameLine(0.0f, 0.0f);
+        const ImVec2 arrowPos = ImGui::GetCursorScreenPos();
+        bool arrowHit = false;
         if (row.hasChildren && !m_Model.IsFiltering())
+            arrowHit = ImGui::InvisibleButton("##arrow", ImVec2(rowH, rowH));
+        else
+            ImGui::Dummy(ImVec2(rowH, rowH));
+        ImGui::SameLine(0.0f, 0.0f);
+        if (arrowHit)
+            m_Model.Toggle(e);
+
+        // 2. the row: one button for selecting / dragging / dropping / the context menu
+        const float mainW = std::max(1.0f, rowW - indent - rowH - (hasRenderer ? eyeW : 0.0f));
+        const ImVec2 mainPos = ImGui::GetCursorScreenPos();
+        const bool renaming = m_RenameEntity == e;
+
+        // background first, so the text drawn later is on top of it
+        const ImVec2 bgMax(rowMin.x + rowW, rowMin.y + rowH);
+        bool hovered = false, clicked = false;
+        if (!renaming)
         {
-            const ImVec2 pos = ImGui::GetCursorScreenPos();
-            if (ImGui::InvisibleButton("##arrow", ImVec2(lineHeight, lineHeight)))
-                m_Model.Toggle(e);
-            ImGui::RenderArrow(ImGui::GetWindowDrawList(), pos, ImGui::GetColorU32(ImGuiCol_Text),
-                               row.expanded ? ImGuiDir_Down : ImGuiDir_Right, 0.8f);
+            clicked = ImGui::InvisibleButton("##row", ImVec2(mainW, rowH));
+            hovered = ImGui::IsItemHovered();
+        }
+        if (selected)
+            dl->AddRectFilled(rowMin, bgMax, ImGui::ColorConvertFloat4ToU32(ImVec4(pal.accent.x, pal.accent.y, pal.accent.z, 0.30f)), 3.0f);
+        else if (hovered)
+            dl->AddRectFilled(rowMin, bgMax, IM_COL32(255, 255, 255, 14), 3.0f);
+
+        // arrow glyph
+        if (row.hasChildren && !m_Model.IsFiltering())
+            ImGui::RenderArrow(dl, ImVec2(arrowPos.x + rowH * 0.2f, arrowPos.y + rowH * 0.2f), ImGui::GetColorU32(ImGuiCol_Text),
+                               row.expanded ? ImGuiDir_Down : ImGuiDir_Right, 0.6f);
+
+        // icon, then the name
+        const EditorIcons::Kind kind = KindOf(e);
+        const float iconSize = rowH * 0.62f;
+        EditorIcons::Draw(dl, kind.icon, ImVec2(mainPos.x + rowH * 0.5f, mainPos.y + rowH * 0.5f), iconSize, ImGui::ColorConvertFloat4ToU32(kind.color));
+
+        const NameComponent* nameComponent = e.TryGet<NameComponent>();
+        const char* name = nameComponent ? nameComponent->name.c_str() : "(unnamed)";
+        const bool hidden = hasRenderer && !e.Get<MeshRendererComponent>().visible;
+        const ImVec2 textMin(mainPos.x + rowH + 2.0f, mainPos.y);
+
+        if (renaming)
+        {
+            ImGui::SetCursorScreenPos(textMin);
+            ImGui::SetNextItemWidth(std::max(1.0f, mainW - rowH - 2.0f));
+            if (m_RenameFocus) { ImGui::SetKeyboardFocusHere(); m_RenameFocus = false; }
+            const bool entered = ImGui::InputText("##rename", m_RenameBuffer, sizeof(m_RenameBuffer),
+                                                  ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+            const bool escaped = ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+            if (entered && m_RenameBuffer[0])
+                e.Get<NameComponent>().name = m_RenameBuffer;
+            if (entered || escaped || (!ImGui::IsItemActive() && !m_RenameFocus && ImGui::IsItemDeactivated()))
+                m_RenameEntity = Entity();
         }
         else
-            ImGui::Dummy(ImVec2(lineHeight, lineHeight));
-        ImGui::SameLine(0.0f, 2.0f);
-
-        // the entity itself
-        const std::string label = EntityLabel(e);
-        if (ImGui::Selectable(label.c_str(), ctx.selection.Is(e), ImGuiSelectableFlags_AllowDoubleClick))
         {
-            ctx.selection.Set(e);
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && row.hasChildren)
-                m_Model.Toggle(e);
+            ImGui::PushStyleColor(ImGuiCol_Text, hidden ? pal.textDim : pal.text);
+            ImGui::RenderTextClipped(textMin, ImVec2(mainPos.x + mainW, mainPos.y + rowH), name, nullptr, nullptr, ImVec2(0.0f, 0.5f));
+            ImGui::PopStyleColor();
         }
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+
+        // 3. select / rename / expand
+        if (clicked)
+            ctx.selection.Set(e);
+        if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+            if (row.hasChildren) m_Model.Toggle(e);
+            else                 BeginRename(e);
+        }
+        if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
             ctx.selection.Set(e);
 
-        // drag it onto another entity to make it a child
-        if (ImGui::BeginDragDropSource())
+        // 4. drag it onto another entity to make it a child
+        if (!renaming && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
         {
             const uint32_t id = entt::to_integral(e.Id());
             ImGui::SetDragDropPayload(kPayload, &id, sizeof(id));
-            ImGui::TextUnformatted(label.c_str());
+            ImGui::Text("%s", name);
             ImGui::EndDragDropSource();
         }
-        if (ImGui::BeginDragDropTarget())
+        if (!renaming && ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload(kPayload))
             {
@@ -188,13 +292,17 @@ namespace DXEngine
             ImGui::EndDragDropTarget();
         }
 
-        if (ImGui::BeginPopupContextItem("##ctx"))
+        // 5. the context menu
+        if (!renaming && ImGui::BeginPopupContextItem("##ctx", ImGuiPopupFlags_MouseButtonRight))
         {
             if (ImGui::BeginMenu("Create child"))
             {
                 DrawCreateMenu(ctx, e);
                 ImGui::EndMenu();
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Rename", "F2"))
+                BeginRename(e);
             const bool canDuplicate = SceneEditing::CanDuplicate(scene, e);
             if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, canDuplicate))
                 m_PendingDuplicate = e;
@@ -212,8 +320,19 @@ namespace DXEngine
             ImGui::EndPopup();
         }
 
-        if (!m_Model.IsFiltering())
-            ImGui::Unindent(static_cast<float>(row.depth) * 16.0f);
+        // 6. the eye: show / hide a mesh
+        if (hasRenderer)
+        {
+            ImGui::SetCursorScreenPos(ImVec2(rowMin.x + rowW - eyeW, rowMin.y));
+            MeshRendererComponent& mr = e.Get<MeshRendererComponent>();
+            if (EditorIcons::Button("##eye", mr.visible ? Icon::Eye : Icon::EyeOff, false, mr.visible ? "Hide" : "Show", rowH))
+                mr.visible = !mr.visible;
+        }
+
+        // The next row starts exactly one row height below this one, whatever the widgets above did to the cursor
+        // (the list clipper relies on every row having the same height).
+        ImGui::SetCursorScreenPos(rowMin);
+        ImGui::Dummy(ImVec2(rowW, rowH));
         ImGui::PopID();
     }
 

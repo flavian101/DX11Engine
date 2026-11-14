@@ -16,6 +16,8 @@ namespace DXEngine
     //   Q W E R           select / move / rotate / scale tool          (while the viewport has focus, not flying)
     //   F                 bring the selection into view
     //   Del, Ctrl+D       delete, duplicate the selection
+    // The tool buttons live in the toolbar (EditorChrome); the viewport itself stays clean: the picture, the outline, the gizmo
+    // and, while flying, the camera speed.
     //
     // It writes ctx.viewportHovered / viewportFocused for the host and the other panels.
     // ==================================================================
@@ -27,15 +29,17 @@ namespace DXEngine
         // the size of the scene texture last asked for (what picking maps the mouse to)
         ViewportMath::Size TargetSize() const { return m_Size; }
 
+        // Moves the camera back along its view direction until the selection is in view (the F key and Edit > Frame selected).
+        void FrameSelection(EditorContext& ctx);
+
         // where the picture was drawn last frame, in screen pixels (tests aim the mouse with it)
         struct Rect { float x = 0, y = 0, width = 0, height = 0; };
         Rect ImageRect() const { return m_ImageRect; }
 
     private:
-        void DrawToolbar(EditorContext& ctx, float x, float y);
         void DrawSelectionOutline(EditorContext& ctx, float imageX, float imageY, float imageW, float imageH);
         void HandleShortcuts(EditorContext& ctx);
-        void FrameSelection(EditorContext& ctx);
+        void DrawFlyHud(EditorContext& ctx, float imageX, float imageY, float imageW);
 
         ViewportMath::Size m_Size;
         Rect m_ImageRect;

@@ -2,6 +2,9 @@
 #include "SceneEditing.h"
 #include "TransformEditing.h"
 #include "scene/TransformSystem.h"
+#include "utils/Mesh/Mesh.h"
+#include "utils/material/Material.h"
+#include <random>
 
 namespace DXEngine
 {
@@ -95,6 +98,43 @@ namespace DXEngine
         Entity CreateEmpty(Scene& scene, const std::string& name, Entity parent)
         {
             return parent.IsValid() ? scene.CreateEntity(name, parent) : scene.CreateEntity(name);
+        }
+
+        Entity CreatePrimitive(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Primitive primitive, Entity parent)
+        {
+            const char* name = primitive == Primitive::Cube ? "Cube" : primitive == Primitive::Sphere ? "Sphere" : "Plane";
+            std::shared_ptr<Mesh> mesh = primitive == Primitive::Cube   ? Mesh::CreateCube(device, 1.0f)
+                                       : primitive == Primitive::Sphere ? Mesh::CreateSphere(device, 0.5f, 32)
+                                                                        : Mesh::CreatePlane(device, 10.0f, 10.0f);
+            auto material = MaterialFactory::CreateLitMaterial(std::string(name) + " Material");
+            material->SetDiffuseColor({ 0.80f, 0.80f, 0.82f, 1.0f });
+            material->SetRoughness(0.6f);
+
+            Entity e = CreateEmpty(scene, name, parent);
+            auto& renderer = e.Add<MeshRendererComponent>();
+            renderer.mesh = std::move(mesh);
+            renderer.materials = { std::move(material) };
+            return e;
+        }
+
+        Entity AddStressLights(Scene& scene, int count, float extent, unsigned seed)
+        {
+            Entity group = scene.CreateEntity("Stress Test Lights");
+            std::mt19937 rng(seed);
+            std::uniform_real_distribution<float> spread(-0.5f * extent, 0.5f * extent), height(1.0f, 9.0f),
+                                                  range(8.0f, 16.0f), channel(0.2f, 1.0f);
+            for (int i = 0; i < count; ++i)
+            {
+                Entity e = scene.CreateEntity("Stress Light " + std::to_string(i + 1), group);
+                e.Get<TransformComponent>().position = { spread(rng), height(rng), spread(rng) };
+                LightComponent light;
+                light.type = LightType::Point;
+                light.color = { channel(rng), channel(rng), channel(rng) };
+                light.intensity = 60.0f;
+                light.range = range(rng);
+                e.Add<LightComponent>(light);
+            }
+            return group;
         }
 
         Entity CreateLight(Scene& scene, LightType type, Entity parent)

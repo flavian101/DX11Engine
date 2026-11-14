@@ -213,6 +213,11 @@
     <ClInclude Include="src\editor\InspectorPanel.h" />
     <ClInclude Include="src\editor\ViewportPanel.h" />
     <ClInclude Include="src\editor\ImGuizmoGizmo.h" />
+    <ClInclude Include="src\editor\EditorTheme.h" />
+    <ClInclude Include="src\editor\EditorIcons.h" />
+    <ClInclude Include="src\editor\PropertyGrid.h" />
+    <ClInclude Include="src\editor\EditorPrefs.h" />
+    <ClInclude Include="src\editor\EditorChrome.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Cache\ResourceCache.cpp" />
@@ -307,6 +312,11 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\editor\ImGuizmoGizmo.cpp" />
+    <ClCompile Include="src\editor\EditorTheme.cpp" />
+    <ClCompile Include="src\editor\EditorIcons.cpp" />
+    <ClCompile Include="src\editor\PropertyGrid.cpp" />
+    <ClCompile Include="src\editor\EditorPrefs.cpp" />
+    <ClCompile Include="src\editor\EditorChrome.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">

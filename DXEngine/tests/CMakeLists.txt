@@ -105,6 +105,7 @@ add_executable(editor_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/SceneEditing.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyModel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EntityBounds.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EditorPrefs.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/ScenePicking.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/picking/Ray.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/camera/Camera.cpp
@@ -142,6 +143,11 @@ add_executable(editor_ui_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/InspectorPanel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/ViewportPanel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/ImGuizmoGizmo.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EditorTheme.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EditorIcons.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/PropertyGrid.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EditorChrome.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/RendererPanel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp

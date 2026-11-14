@@ -28,6 +28,10 @@ namespace DXEngine
 		// Keyboard movement and mouse look. Off = the camera stays where it is and ignores the mouse.
 		void SetInputEnabled(bool enabled) { m_InputEnabled = enabled; }
 
+		// How fast WASD flies (units per second).
+		void  SetMoveSpeed(float speed) { m_MovementBehavior->SetMoveSpeed(speed); }
+		float GetMoveSpeed() const { return m_MovementBehavior->GetMoveSpeed(); }
+
 		// A question asked LIVE (every frame and for every mouse event) on top of SetInputEnabled: the camera listens only
 		// when both say yes. An editor passes "the camera is being flown", so typing in a text field cannot move it and the
 		// first mouse move after the button went down is not lost to a flag that updates a frame later.

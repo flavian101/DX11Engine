@@ -143,17 +143,34 @@ The panels only call these. `Scene::SetParent` alone keeps the *local* transform
 Handedness is not an option of ImGuizmo, so it is *measured*, not assumed: `editor_ui_tests` drives it with the engine's left-handed camera (front and diagonal views) and checks that dragging the X, Y, Z handle moves the entity along that axis, toward the mouse, and nowhere else,
 and that the whole path works for a child under a rotated, scaled parent. (Rotation and scale handles are not driven by a test: only drawn.) A different widget is a different `IGizmo`; `NullGizmo` (no gizmo) is still there.
 
-**The editor** (`editor/Editor`): a dockspace with a main menu and four panels, one call from a layer's `OnUIRender`. The layout is kept in `editor_layout.ini` (Window > Reset layout restores the default).
-* **Viewport** shows the scene as a texture: every frame it asks `Renderer::SetSceneTargetSize` for the size of the panel (applied at the next `BeginScene`, so a resize shows one frame late), keeps the camera's aspect ratio equal to the panel's
-  (`CameraController::SetFollowWindowAspect(false)`: the window's shape is irrelevant), and draws the outline of the selection with the draw list. Left click picks, `F` frames the selection, `Q W E R` choose the tool, `Del` / `Ctrl+D` delete / duplicate.
-  Middle button flies the camera, as before; the camera only listens while that is held (`CameraController::SetInputEnabled`), so typing in a field cannot move it.
-* **Hierarchy** shows the visible rows through `HierarchyModel` and a list clipper (2000 entities draw like 30). Drag an entity onto another to parent it (it stays where it is), onto the empty area to unparent; right click: create child, duplicate, unparent, delete.
-  Structural changes are collected while the rows are drawn and applied after the loop.
-* **Inspector** edits name, transform (rotation in degrees through `EulerCache`), mesh renderer flags, materials (through `Material`'s setters, which mark the GPU copy outdated; materials are shared assets and the panel says so), and lights; "Add component" adds a light.
-* **Renderer** is the debug panel below.
-* Play mode: `Editor::SetEnabled(false)` puts the scene back into the window and hides everything.
+**The editor** (`editor/Editor`): a main menu, a toolbar, a status bar, a dock space and four panels, driven by one call from a layer's `OnUIRender`. The dock layout is kept in `editor_layout.ini`
+(View > Reset layout restores the default: hierarchy over renderer on the left, inspector on the right, viewport in the middle); UI scale and fly speed are kept in `editor_prefs.ini`.
 
-**Tested without a window** (`editor_ui_tests`): the panels run through real ImGui frames with no backend and no GPU; ImGui's own assertions (unbalanced `Begin`/`End`, push/pop, `BeginDisabled`) are the oracle, and the test also clicks in the viewport (a pick), clicks on empty space, checks a click while flying does nothing, and presses `F`.
+*Design rules* (what the screens are built on, so new panels look and behave the same):
+* **One look.** `EditorTheme` owns every colour, spacing and rounding (flat dark, one blue accent, roomy 5 px frame padding so controls are easy to hit); the axis colours (X red, Y green, Z blue) and the entity-kind colours live there too.
+  `Apply(scale)` rebuilds the style from scratch, so the View > UI scale (85 % .. 200 %) can be changed any time and never compounds.
+* **One way to show a property.** `PropertyGrid`: a label column and a control column, one row per property, the label column is shared and draggable. `Vec3` has coloured X / Y / Z buttons (click = reset that axis). No panel lays out its own rows.
+* **Icons without assets.** `EditorIcons` draws every icon with the draw list (no font, no texture): they stay sharp at any scale.
+* **Tools where the work is.** The toolbar has select / move / rotate / scale, world / local, snapping (with its step), wireframe and shadows, and Play. The status bar shows the selection, a hint for what the mouse is over, and FPS / entities / draw calls / triangles.
+  The viewport itself stays clean: the picture, the selection outline, the gizmo, and while flying the camera speed.
+* **Empty states say what to do** (an empty hierarchy, nothing selected). Anything destructive is reachable by menu and by shortcut; long lists are clipped.
+
+*Panels*
+* **Viewport** shows the scene as a texture: every frame it asks `Renderer::SetSceneTargetSize` for the size of the panel (applied at the next `BeginScene`, so a resize shows one frame late), keeps the camera's aspect ratio equal to the panel's
+  (`CameraController::SetFollowWindowAspect(false)`), and draws the outline of the selection with the draw list. Left click picks, `F` frames the selection, `Q W E R` choose the tool, `Del` / `Ctrl+D` delete / duplicate.
+  Middle button flies the camera; the mouse wheel then changes the fly speed (kept between runs). The camera only listens while it is flown (`CameraController::SetInputGate`), so typing in a field cannot move it.
+* **Hierarchy** shows the visible rows through `HierarchyModel` and a list clipper (2000 entities draw like 30), each with a kind icon and, for meshes, an eye that shows / hides them. Double click or `F2` renames in place (Enter keeps, Esc cancels, an empty name is refused).
+  Drag an entity onto another to parent it (it stays where it is), onto the empty area to unparent; right click: create child, rename, duplicate, unparent, delete. The search box shows a flat list of matches. Structural changes are collected while the rows are drawn and applied after the loop.
+* **Inspector**: the header holds the kind icon, the name and "Add component"; below, Transform (position, rotation in degrees through `EulerCache`, scale with an optional uniform lock), Mesh renderer (flags, mesh info, the materials with a colour swatch each), Light.
+  Materials are shared assets and the panel says so; their edits go through `Material`'s setters (which mark the GPU copy outdated).
+* **Renderer**: display switches, lighting, shadows, last-frame statistics (the "must be zero" counters are red).
+* **Create** (menu, hierarchy `+`, right click): empty, cube / sphere / plane (each with a material of its own), point / spot / directional light. New root objects appear 8 units ahead of the camera, children at their parent's origin. Tools > Stress test adds 1000 point lights under one parent (one delete removes them all).
+* Play mode: the Play button or `F1` puts the scene back into the window and hides every panel for as long as you play (a hint fades out after 4 seconds); `F1` returns.
+
+*Not there yet, on purpose*: undo / redo, multi-selection, saving and loading a scene, importing models and textures. The last two are the asset milestone; the first two are the next thing the editor needs after it.
+
+**Tested without a window** (`editor_ui_tests`): the panels run through real ImGui frames with no backend and no GPU; ImGui's own assertions (unbalanced `Begin`/`End`, push/pop, `BeginDisabled`) are the oracle. The tests also *use* the UI the way a person does with injected mouse and key events:
+click-pick in the viewport, drag a gizmo handle, select rows, expand, toggle the eye, rename (double click, `F2`, Esc), `Ctrl+D`, `Delete`, drag-and-drop parenting (the world position stays), the theme's scale, the toolbar and status bar in every state.
 It cannot say whether the UI *looks* right: that needs a run.
 
 **Picking was wrong, and is fixed.** `RayIntersection::ProjectRay` was written for OpenGL's -Z convention; the camera is a Direct3D left-handed one, so the ray pointed BEHIND the camera and a click found what was behind it. It now unprojects the near and far points under the cursor, and `editor_tests`
@@ -184,12 +201,13 @@ Also fixed on the way: `CameraBehavior::m_IsActive` was never initialised (and `
   **Open until it has run on a GPU:** the bias values (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` in `ShadowSettings`) were chosen by reasoning, not by looking at acne / peter-panning in the Sandbox; tune them with **J** and the three light types. The HLSL was compile-checked with DXC (shader model 6, with and without `ENABLE_SHADOWS`), the C++ was syntax-checked against the Windows headers, the CPU logic is tested; nothing of it has been run through D3D11 and FXC.
 * **Milestone 4, implemented** (patches 0071 to 0075): one texture slot table (generated defines + HLSL declarations, derived texture mask); the linear workflow (sRGB / linear textures, linear-light mips, exact sRGB encode); one shared surface evaluation in HLSL; shading model and render state split (`MaterialType` removed).
   **Open until it has run on a GPU:** none of the D3D11 / FXC path has been executed. The HLSL was compile-checked with DXC (shader model 6; 203 variants across texture masks x vertex defines x render defines, built exactly the way `ShaderCache` builds them), the C++ was syntax-checked against the Windows headers, and the CPU logic is tested. Look at the Sandbox for: the ground / moon / ship textures (colour should look right, not washed out or dark), the night sky, the lamp glow, and a transparent imported model.
-* **Milestone 5, implemented** (patches 0076 to 0081): ImGui on the docking branch in both build systems; the renderer can draw the scene into a texture and `Present()` is its own call; the `ImGuiLayer` with the input rules; the Renderer debug panel;
-  the editor (dockspace, Hierarchy, Inspector, Viewport) over GPU-free logic (selection, hierarchy rows, duplicate, reparent that keeps the world position, Euler editing, viewport maths); the Sandbox runs inside it (F1: edit / play). The gizmo is ImGuizmo (added in the follow-up patches).
-  Two existing bugs were fixed because the editor needs them: picking aimed behind the camera (`ProjectRay`), and `CameraBehavior::m_IsActive` was uninitialised.
-  **Open until it has run on a GPU:** none of this has been executed with a window. The C++ was syntax-checked against the Windows headers (MinGW), the logic is tested, and the panels were run through real ImGui frames headlessly (assertions on), but NOT looked at:
-  check the layout, the viewport image (colours should match the old full-window view), that a middle-button fly works and the cursor comes back, that picking selects what is under the cursor, that the Inspector's material edits show up, and that dragging an entity onto another keeps it in place.
-* Tests that need no GPU: `scene_tests` (9), `render_tests` (11), `light_tests` (10), `cluster_tests` (11), `shadow_tests` (29), `material_tests` (28), `rhi_tests` (5), `editor_tests` (21) and `editor_ui_tests` (4), built with `-DDXENGINE_BUILD_TESTS=ON`.
+* **Milestone 5, implemented** (patches 0076 to 0085): ImGui on the docking branch in both build systems; the renderer can draw the scene into a texture and `Present()` is its own call; the `ImGuiLayer` with the input rules; the editor (menu, toolbar, status bar,
+  dock space, Hierarchy / Inspector / Viewport / Renderer panels) over GPU-free logic; ImGuizmo as the transform gizmo; the application is the **Editor** (it was the Sandbox) and starts from primitives only: no model is loaded, the ground stays (F1: edit / play).
+  Existing bugs fixed on the way, because the editor needs them: picking aimed behind the camera (`ProjectRay`), `CameraBehavior::m_IsActive` was uninitialised, and the camera did not turn in the editor (ImGui keeps `WantCaptureMouse` true while a button pressed over a panel is held).
+  **Open until it has run on a GPU:** none of this has been executed with a window. The C++ was syntax-checked against the Windows headers (MinGW), the logic is tested, and the panels were run through real ImGui frames headlessly and *used* with injected mouse and key events (assertions on), but NOT looked at.
+  Check: the look (spacing, colours, the icons), the viewport image (colours should match the old full-window view), a middle-button fly (the view turns, the wheel changes the speed, the cursor comes back where it was), a click picks what is under it, the gizmo handles, materials edits show up, the UI scale, play mode and back.
+* The start-up time: no model is loaded, and the ground uses the small grass textures (the big 'grass_with_mud_and_stones' set is 80 MB of JPEG). What is left is the sky (6 PNGs) and the 8k moon texture; the asset system should stream those.
+* Tests that need no GPU: `scene_tests` (9), `render_tests` (11), `light_tests` (10), `cluster_tests` (11), `shadow_tests` (29), `material_tests` (28), `rhi_tests` (5), `editor_tests` (25) and `editor_ui_tests` (17), built with `-DDXENGINE_BUILD_TESTS=ON`.
 * Also removed along the way: `FrameTime` passed by value as if it were a number (now a plain float of seconds).
 
 ## Order of work

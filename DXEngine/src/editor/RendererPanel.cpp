@@ -1,5 +1,7 @@
 #include "dxpch.h"
 #include "RendererPanel.h"
+#include "EditorTheme.h"
+#include "PropertyGrid.h"
 #include "renderer/Renderer.h"
 #include "renderer/Core/RenderTypes.h"
 
@@ -10,13 +12,15 @@ namespace DXEngine
     namespace
     {
         // Resolutions the renderer rounds to anyway (powers of two).
-        bool ResolutionCombo(const char* label, uint32_t& value)
+        bool ResolutionRow(const char* label, uint32_t& value)
         {
             static const uint32_t kSizes[] = { 128, 256, 512, 1024, 2048, 4096 };
+            PropertyGrid::Label(label);
+            ImGui::PushID(label);
             bool changed = false;
             char preview[16];
             snprintf(preview, sizeof(preview), "%u", value);
-            if (ImGui::BeginCombo(label, preview))
+            if (ImGui::BeginCombo("##v", preview))
             {
                 for (uint32_t size : kSizes)
                 {
@@ -26,31 +30,48 @@ namespace DXEngine
                 }
                 ImGui::EndCombo();
             }
+            ImGui::PopID();
             return changed;
         }
 
-        // A red line for the counters that must be zero in a healthy scene.
-        void WarnIfNonZero(const char* text, uint32_t count)
+        bool IntSlider(const char* label, uint32_t& value, int min, int max)
         {
-            if (count > 0)
-                ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.3f, 1.0f), "%s: %u", text, count);
+            PropertyGrid::Label(label);
+            ImGui::PushID(label);
+            int v = static_cast<int>(value);
+            const bool changed = ImGui::SliderInt("##v", &v, min, max);
+            if (changed) value = static_cast<uint32_t>(v);
+            ImGui::PopID();
+            return changed;
+        }
+
+        // a counter that must be zero in a healthy scene: red when it is not
+        void Warn(const char* label, uint32_t count)
+        {
+            if (count == 0) return;
+            PropertyGrid::Label(label);
+            ImGui::TextColored(EditorTheme::Colors().danger, "%u", count);
         }
 
         bool DrawEnvironment(RenderEnvironment& env)
         {
             bool changed = false;
-            changed |= ImGui::ColorEdit3("Ambient colour", &env.ambientColor.x);
-            changed |= ImGui::SliderFloat("Ambient intensity", &env.ambientIntensity, 0.0f, 2.0f);
-            changed |= ImGui::SliderFloat("IBL intensity", &env.iblIntensity, 0.0f, 4.0f);
-            changed |= ImGui::SliderFloat("Exposure", &env.exposure, 0.05f, 4.0f);
-            changed |= ImGui::SliderFloat("Gamma", &env.gamma, 1.0f, 3.0f);
-
-            static const char* kModes[] = { "None (every pixel loops all lights)", "Clustered", "Cluster heat map" };
-            int mode = static_cast<int>(env.lightCulling);
-            if (ImGui::Combo("Light culling", &mode, kModes, 3))
+            if (PropertyGrid::Begin("environment"))
             {
-                env.lightCulling = static_cast<LightCullingMode>(mode);
-                changed = true;
+                changed |= PropertyGrid::Color3("Ambient colour", &env.ambientColor.x);
+                changed |= PropertyGrid::Slider("Ambient", env.ambientIntensity, 0.0f, 2.0f);
+                changed |= PropertyGrid::Slider("IBL", env.iblIntensity, 0.0f, 4.0f);
+                changed |= PropertyGrid::Slider("Exposure", env.exposure, 0.05f, 4.0f);
+                changed |= PropertyGrid::Slider("Gamma", env.gamma, 1.0f, 3.0f);
+
+                static const char* kModes[] = { "None (every pixel loops all lights)", "Clustered", "Cluster heat map" };
+                int mode = static_cast<int>(env.lightCulling);
+                if (PropertyGrid::Combo("Light culling", mode, kModes, 3))
+                {
+                    env.lightCulling = static_cast<LightCullingMode>(mode);
+                    changed = true;
+                }
+                PropertyGrid::End();
             }
             return changed;
         }
@@ -58,40 +79,48 @@ namespace DXEngine
         bool DrawShadows(ShadowSettings& sh)
         {
             bool changed = false;
-            changed |= ImGui::Checkbox("Shadows enabled", &sh.enabled);
+            if (PropertyGrid::Begin("shadows"))
+            {
+                changed |= PropertyGrid::Checkbox("Enabled", sh.enabled);
+                PropertyGrid::Text("Atlas", "%u x %u (set in code)", sh.atlasSize, sh.atlasSize);
+                PropertyGrid::End();
+            }
             ImGui::BeginDisabled(!sh.enabled);
 
-            ImGui::TextDisabled("Atlas %ux%u (set in code: changing it reallocates the depth texture)", sh.atlasSize, sh.atlasSize);
+            ImGui::SeparatorText("Directional (cascades)");
+            if (PropertyGrid::Begin("cascades"))
+            {
+                changed |= IntSlider("Cascades", sh.cascadeCount, 1, 4);
+                changed |= ResolutionRow("Resolution", sh.cascadeResolution);
+                changed |= PropertyGrid::Float("Max distance", sh.maxDistance, 1.0f, 5.0f, 500.0f, "%.0f m");
+                changed |= PropertyGrid::Slider("Split lambda", sh.cascadeLambda, 0.0f, 1.0f);
+                changed |= PropertyGrid::Slider("Fade", sh.fadeFraction, 0.0f, 0.5f);
+                changed |= PropertyGrid::Checkbox("Snap to texels", sh.snapToTexels);
+                PropertyGrid::End();
+            }
 
-            if (ImGui::TreeNodeEx("Directional (cascades)", ImGuiTreeNodeFlags_DefaultOpen))
+            ImGui::SeparatorText("Local lights");
+            if (PropertyGrid::Begin("local"))
             {
-                int cascades = static_cast<int>(sh.cascadeCount);
-                if (ImGui::SliderInt("Cascades", &cascades, 1, 4)) { sh.cascadeCount = static_cast<uint32_t>(cascades); changed = true; }
-                changed |= ResolutionCombo("Cascade resolution", sh.cascadeResolution);
-                changed |= ImGui::SliderFloat("Max distance", &sh.maxDistance, 5.0f, 500.0f);
-                changed |= ImGui::SliderFloat("Split lambda", &sh.cascadeLambda, 0.0f, 1.0f);
-                changed |= ImGui::SliderFloat("Fade fraction", &sh.fadeFraction, 0.0f, 0.5f);
-                changed |= ImGui::Checkbox("Snap to texels", &sh.snapToTexels);
-                ImGui::TreePop();
+                changed |= IntSlider("Max shadowed", sh.maxShadowedLocalLights, 0, 32);
+                changed |= ResolutionRow("Spot resolution", sh.spotResolution);
+                changed |= ResolutionRow("Point resolution", sh.pointFaceResolution);
+                PropertyGrid::End();
             }
-            if (ImGui::TreeNodeEx("Local lights", ImGuiTreeNodeFlags_DefaultOpen))
+
+            ImGui::SeparatorText("Quality and bias");
+            if (PropertyGrid::Begin("bias"))
             {
-                int maxLocal = static_cast<int>(sh.maxShadowedLocalLights);
-                if (ImGui::SliderInt("Max shadowed lights", &maxLocal, 0, 32)) { sh.maxShadowedLocalLights = static_cast<uint32_t>(maxLocal); changed = true; }
-                changed |= ResolutionCombo("Spot resolution", sh.spotResolution);
-                changed |= ResolutionCombo("Point face resolution", sh.pointFaceResolution);
-                ImGui::TreePop();
-            }
-            if (ImGui::TreeNodeEx("Quality / bias", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                int pcf = static_cast<int>(sh.pcfRadius);
-                if (ImGui::SliderInt("PCF radius", &pcf, 0, 3)) { sh.pcfRadius = static_cast<uint32_t>(pcf); changed = true; }
-                changed |= ImGui::SliderFloat("Normal bias (texels)", &sh.normalBias, 0.0f, 5.0f);
-                changed |= ImGui::SliderFloat("Constant bias (texels)", &sh.constantBias, 0.0f, 10.0f);
-                changed |= ImGui::SliderInt("Raster depth bias", &sh.rasterDepthBias, 0, 2000);
-                changed |= ImGui::SliderFloat("Raster slope bias", &sh.rasterSlopeBias, 0.0f, 8.0f);
-                changed |= ImGui::SliderFloat("Caster extent", &sh.casterExtent, 10.0f, 500.0f);
-                ImGui::TreePop();
+                changed |= IntSlider("PCF radius", sh.pcfRadius, 0, 3);
+                changed |= PropertyGrid::Slider("Normal bias", sh.normalBias, 0.0f, 5.0f);
+                changed |= PropertyGrid::Slider("Constant bias", sh.constantBias, 0.0f, 10.0f);
+                PropertyGrid::Label("Raster depth bias");
+                ImGui::PushID("rdb");
+                changed |= ImGui::SliderInt("##v", &sh.rasterDepthBias, 0, 2000);
+                ImGui::PopID();
+                changed |= PropertyGrid::Slider("Raster slope bias", sh.rasterSlopeBias, 0.0f, 8.0f);
+                changed |= PropertyGrid::Float("Caster extent", sh.casterExtent, 1.0f, 10.0f, 500.0f, "%.0f m");
+                PropertyGrid::End();
             }
             ImGui::EndDisabled();
             return changed;
@@ -107,42 +136,46 @@ namespace DXEngine
             return;
         }
 
-        // ---- frame ----
-        const float fps = ImGui::GetIO().Framerate;
-        ImGui::Text("%.1f FPS  (%.2f ms)", fps, fps > 0.0f ? 1000.0f / fps : 0.0f);
-
-        // ---- toggles (the renderer owns the state: ask it, so a key that flips the same switch stays in sync) ----
-        bool wireframe = Renderer::IsWireframeEnabled();
-        if (ImGui::Checkbox("Wireframe", &wireframe)) Renderer::EnableWireframe(wireframe);
-        ImGui::SameLine();
-        bool culling = Renderer::IsFrustumCullingEnabled();
-        if (ImGui::Checkbox("Frustum culling", &culling)) Renderer::EnableFrustumCulling(culling);
-
-        // ---- statistics of the last finished frame ----
-        if (ImGui::CollapsingHeader("Statistics", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            const RenderStatistics& st = Renderer::GetStats();
-            ImGui::Text("Objects   %u submitted, %u culled", st.objectsSubmitted, st.objectsCulled);
-            ImGui::Text("Draw calls %u   Triangles %u", st.drawCalls, st.trianglesRendered);
-            ImGui::Text("Pipeline changes %u   Material changes %u", st.pipelineChanges, st.materialChanges);
-            ImGui::Text("Lights    %u directional, %u local", st.directionalLights, st.localLights);
-            WarnIfNonZero("Lights dropped (over the limit)", st.lightsDropped);
-            if (st.clusterAssignments)
-                ImGui::Text("Clusters  %u assignments, at most %u lights in one", st.clusterAssignments, st.clusterMaxLights);
-            WarnIfNonZero("Cluster pairs dropped (index list full)", st.clusterDropped);
-            if (st.shadowViews || st.shadowLightsDropped)
-                ImGui::Text("Shadows   %u directional, %u local, %u views, %u caster draws",
-                            st.shadowedDirectional, st.shadowedLocal, st.shadowViews, st.shadowCasterDraws);
-            WarnIfNonZero("Shadow lights dropped (over budget / atlas full)", st.shadowLightsDropped);
-        }
-
-        // ---- environment + shadows: read the live values, write back only when something was edited ----
         RenderEnvironment env = Renderer::GetEnvironment();
         bool changed = false;
-        if (ImGui::CollapsingHeader("Environment", ImGuiTreeNodeFlags_DefaultOpen))
+
+        if (ImGui::CollapsingHeader("Display", ImGuiTreeNodeFlags_DefaultOpen) && PropertyGrid::Begin("display"))
+        {
+            bool wireframe = Renderer::IsWireframeEnabled();
+            if (PropertyGrid::Checkbox("Wireframe", wireframe)) Renderer::EnableWireframe(wireframe);
+            bool culling = Renderer::IsFrustumCullingEnabled();
+            if (PropertyGrid::Checkbox("Frustum culling", culling)) Renderer::EnableFrustumCulling(culling);
+            PropertyGrid::End();
+        }
+
+        if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
             changed |= DrawEnvironment(env);
+
         if (ImGui::CollapsingHeader("Shadows"))
             changed |= DrawShadows(env.shadows);
+
+        if (ImGui::CollapsingHeader("Statistics (last frame)"))
+        {
+            const RenderStatistics& st = Renderer::GetStats();
+            if (PropertyGrid::Begin("stats"))
+            {
+                PropertyGrid::Text("Frame", "%.1f FPS  (%.2f ms)", ImGui::GetIO().Framerate, ImGui::GetIO().Framerate > 0.0f ? 1000.0f / ImGui::GetIO().Framerate : 0.0f);
+                PropertyGrid::Text("Objects", "%u drawn, %u culled", st.objectsSubmitted, st.objectsCulled);
+                PropertyGrid::Text("Draw calls", "%u", st.drawCalls);
+                PropertyGrid::Text("Triangles", "%u", st.trianglesRendered);
+                PropertyGrid::Text("State changes", "%u pipeline, %u material", st.pipelineChanges, st.materialChanges);
+                PropertyGrid::Text("Lights", "%u directional, %u local", st.directionalLights, st.localLights);
+                if (st.clusterAssignments)
+                    PropertyGrid::Text("Clusters", "%u assignments, max %u in one", st.clusterAssignments, st.clusterMaxLights);
+                if (st.shadowViews)
+                    PropertyGrid::Text("Shadows", "%u directional, %u local, %u views", st.shadowedDirectional, st.shadowedLocal, st.shadowViews);
+                Warn("Lights dropped", st.lightsDropped);
+                Warn("Cluster pairs dropped", st.clusterDropped);
+                Warn("Shadow lights dropped", st.shadowLightsDropped);
+                PropertyGrid::End();
+            }
+        }
+
         if (changed)
             Renderer::SetEnvironment(env);
 

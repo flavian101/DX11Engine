@@ -1,6 +1,9 @@
 #pragma once
 #include "scene/Scene.h"
+#include <memory>
 #include <string>
+
+namespace DXEngine { namespace RHI { class IGraphicsDevice; } }
 
 namespace DXEngine
 {
@@ -35,5 +38,16 @@ namespace DXEngine
         // New entities. All are named, have a transform, and go under 'parent' when it is valid.
         Entity CreateEmpty(Scene& scene, const std::string& name, Entity parent = Entity());
         Entity CreateLight(Scene& scene, LightType type, Entity parent = Entity());
+
+        // A mesh entity with a default grey lit material of its own (materials are shared assets: a new object must not
+        // change the look of the ones already in the scene). Cube 1 x 1 x 1, sphere of diameter 1, plane 10 x 10.
+        // 'device' uploads the mesh to the GPU; null keeps it on the CPU (tests do that).
+        enum class Primitive { Cube, Sphere, Plane };
+        Entity CreatePrimitive(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Primitive primitive, Entity parent = Entity());
+
+        // A light stress test: 'count' point lights scattered over a square of 'extent' units around the origin, under one
+        // parent entity ("Stress Test Lights"), so it shows as ONE row in the hierarchy and one Delete removes it all.
+        // The same seed gives the same scene, so frame times of two runs compare. Returns the parent.
+        Entity AddStressLights(Scene& scene, int count = 1000, float extent = 240.0f, unsigned seed = 1234);
     }
 }

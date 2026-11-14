@@ -308,6 +308,21 @@
     <ClInclude Include="src\editor\ImGuizmoGizmo.h">
       <Filter>editor</Filter>
     </ClInclude>
+    <ClInclude Include="src\editor\EditorTheme.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\EditorIcons.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\PropertyGrid.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\EditorPrefs.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\EditorChrome.h">
+      <Filter>editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
@@ -503,6 +518,21 @@
       <Filter>imgui_backends</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\ImGuizmoGizmo.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\EditorTheme.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\EditorIcons.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\PropertyGrid.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\EditorPrefs.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\EditorChrome.cpp">
       <Filter>editor</Filter>
     </ClCompile>
   </ItemGroup>
