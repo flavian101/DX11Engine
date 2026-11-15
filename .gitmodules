@@ -11,3 +11,6 @@
 [submodule "DXEngine/vendor/ImGuizmo"]
 	path = DXEngine/vendor/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "DXEngine/vendor/meshoptimizer"]
+	path = DXEngine/vendor/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
