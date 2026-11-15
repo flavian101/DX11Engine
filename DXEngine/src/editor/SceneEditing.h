@@ -43,6 +43,13 @@ namespace DXEngine
         // change the look of the ones already in the scene). Cube 1 x 1 x 1, sphere of diameter 1, plane 10 x 10.
         // 'device' uploads the mesh to the GPU; null keeps it on the CPU (tests do that).
         enum class Primitive { Cube, Sphere, Plane };
+        const char* PrimitiveName(Primitive primitive);
+
+        // Gives an EXISTING entity a mesh renderer showing a primitive (same default material rules as CreatePrimitive).
+        // This is what "Add component > Mesh renderer" does. Returns false and changes nothing when the entity is
+        // invalid, belongs to another scene, or already has a mesh renderer.
+        bool AddMeshRenderer(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Entity entity, Primitive primitive);
+
         Entity CreatePrimitive(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Primitive primitive, Entity parent = Entity());
 
         // A light stress test: 'count' point lights scattered over a square of 'extent' units around the origin, under one

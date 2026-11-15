@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "IndexData.h"
+#include "MeshOptimizer.h"
 
 
 namespace DXEngine
@@ -283,157 +284,22 @@ namespace DXEngine
         }
     }
 
-    void IndexData::OptimizeForCache()
+    bool IndexData::OptimizeForCache(size_t vertexCount, size_t firstIndex, size_t indexCount)
     {
-        // Basic vertex cache optimization using a simplified version of Tom Forsyth's algorithm
-        // This is a simplified implementation - for production use, consider using meshoptimizer library
+        const size_t total = GetIndexCount();
+        if (firstIndex > total) return false;
+        indexCount = std::min(indexCount, total - firstIndex);
 
-        size_t indexCount = GetIndexCount();
-        if (indexCount < 3 || indexCount % 3 != 0)
-        {
-            return; // Need complete triangles
-        }
-
-        size_t triangleCount = indexCount / 3;
-
-        // Create a copy of the current indices
-        std::vector<uint32_t> originalIndices;
-        originalIndices.reserve(indexCount);
+        // work on a copy: a range that cannot be optimised (not whole triangles, an index past the vertex count)
+        // must leave the buffer exactly as it was
+        std::vector<uint32_t> range(indexCount);
         for (size_t i = 0; i < indexCount; ++i)
-        {
-            originalIndices.push_back(GetIndex(i));
-        }
-
-        // Find the maximum vertex index to determine vertex count
-        uint32_t maxVertex = 0;
-        for (uint32_t idx : originalIndices)
-        {
-            maxVertex = std::max(maxVertex, idx);
-        }
-        size_t vertexCount = maxVertex + 1;
-
-        // Build adjacency information
-        std::vector<std::vector<size_t>> vertexTriangles(vertexCount);
-        for (size_t tri = 0; tri < triangleCount; ++tri)
-        {
-            for (int v = 0; v < 3; ++v)
-            {
-                uint32_t vertex = originalIndices[tri * 3 + v];
-                vertexTriangles[vertex].push_back(tri);
-            }
-        }
-
-        // Simple greedy optimization
-        std::vector<bool> processedTriangles(triangleCount, false);
-        std::vector<uint32_t> optimizedIndices;
-        optimizedIndices.reserve(indexCount);
-
-        // Simple cache simulation (typical cache size is 16-32 vertices)
-        const size_t CACHE_SIZE = 24;
-        std::vector<uint32_t> cache;
-
-        // Start with triangle 0
-        size_t currentTriangle = 0;
-
-        while (optimizedIndices.size() < indexCount)
-        {
-            // Find next best triangle if current is processed
-            if (processedTriangles[currentTriangle])
-            {
-                size_t bestTriangle = triangleCount;
-                int bestScore = -1;
-
-                // Look for unprocessed triangles that share vertices with cache
-                for (uint32_t cacheVertex : cache)
-                {
-                    for (size_t tri : vertexTriangles[cacheVertex])
-                    {
-                        if (!processedTriangles[tri])
-                        {
-                            // Count how many vertices of this triangle are in cache
-                            int score = 0;
-                            for (int v = 0; v < 3; ++v)
-                            {
-                                uint32_t vertex = originalIndices[tri * 3 + v];
-                                auto it = std::find(cache.begin(), cache.end(), vertex);
-                                if (it != cache.end())
-                                {
-                                    score += (CACHE_SIZE - std::distance(cache.begin(), it));
-                                }
-                            }
-
-                            if (score > bestScore)
-                            {
-                                bestScore = score;
-                                bestTriangle = tri;
-                            }
-                        }
-                    }
-                }
-
-                // If no connected triangle found, pick any unprocessed triangle
-                if (bestTriangle == triangleCount)
-                {
-                    for (size_t tri = 0; tri < triangleCount; ++tri)
-                    {
-                        if (!processedTriangles[tri])
-                        {
-                            bestTriangle = tri;
-                            break;
-                        }
-                    }
-                }
-
-                currentTriangle = bestTriangle;
-            }
-
-            if (currentTriangle >= triangleCount)
-                break;
-
-            // Add triangle to optimized list
-            processedTriangles[currentTriangle] = true;
-
-            for (int v = 0; v < 3; ++v)
-            {
-                uint32_t vertex = originalIndices[currentTriangle * 3 + v];
-                optimizedIndices.push_back(vertex);
-
-                // Update cache (LRU)
-                auto it = std::find(cache.begin(), cache.end(), vertex);
-                if (it != cache.end())
-                {
-                    cache.erase(it);
-                }
-                cache.insert(cache.begin(), vertex);
-
-                if (cache.size() > CACHE_SIZE)
-                {
-                    cache.pop_back();
-                }
-            }
-
-            // Find next triangle (prefer one that shares vertices)
-            currentTriangle = triangleCount;
-        }
-
-        // Update the indices with optimized order
-        Clear();
-        if (m_IndexType == IndexType::UInt16)
-        {
-            std::vector<uint16_t> indices16;
-            indices16.reserve(optimizedIndices.size());
-            for (uint32_t idx : optimizedIndices)
-            {
-                indices16.push_back(static_cast<uint16_t>(std::min(idx, static_cast<uint32_t>(UINT16_MAX))));
-            }
-            SetIndices(indices16);
-        }
-        else
-        {
-            SetIndices(optimizedIndices);
-        }
-
-        OutputDebugStringA("IndexData::OptimizeForCache - Vertex cache optimization completed\n");
+            range[i] = GetIndex(firstIndex + i);
+        if (!MeshOpt::OptimizeVertexCache(range.data(), range.size(), vertexCount))
+            return false;
+        for (size_t i = 0; i < indexCount; ++i)
+            SetIndex(firstIndex + i, range[i]);
+        return true;
     }
 
     // void IndexData::GenerateAdjacency(const VertexData& vertices, std::vector<uint32_t>& adjacency)

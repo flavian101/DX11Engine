@@ -113,8 +113,12 @@ namespace DXEngine
 		void GenerateTangents();
 		void GenerateBounds();
 
-		// Optimization
-		void OptimizeForRendering();
+		// Import-time optimisation with meshoptimizer: (1) the triangles of every submesh (the whole index buffer when
+		// there are none) are reordered for the GPU's vertex cache, submesh ranges stay where they are, so materials and
+		// draws are unaffected; (2) the vertices are moved into the order the triangles first use them, and unused
+		// vertices are dropped (the submeshes' vertexStart / vertexCount are recomputed). The picture is unchanged.
+		// Returns true when index or vertex data changed (so a GPU copy of it is outdated).
+		bool OptimizeForRendering();
 
 		// Debug/Statistics
 		size_t GetMemoryUsage() const;

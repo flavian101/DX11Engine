@@ -8,6 +8,7 @@
 #include "MaterialSystem.h"
 #include "ShaderCache.h"
 #include "Passes/ClearPass.h"
+#include "Passes/DepthPrepass.h"
 #include "Passes/ForwardPass.h"
 #include "Passes/ShadowPass.h"
 #include "Passes/UIPass.h"
@@ -143,6 +144,7 @@ namespace DXEngine
         // 3) the frame: passes run in the order they are added
         g->graph.AddPass<ShadowPass>("shadow");          // first: every lit draw below samples the atlas it fills
         g->clearPass = g->graph.AddPass<ClearPass>("clear");
+        g->graph.AddPass<DepthPrepass>("depth prepass"); // after the clear (it needs the cleared depth), before every colour pass
         g->graph.AddPass<ForwardPass>("background",  ForwardPass::Queue::Background);
         g->graph.AddPass<ForwardPass>("opaque",      ForwardPass::Queue::Opaque);
         g->graph.AddPass<ForwardPass>("transparent", ForwardPass::Queue::Transparent);

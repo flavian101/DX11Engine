@@ -1,6 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="meshoptimizer">
+      <UniqueIdentifier>{91c73027-f6d0-43c5-8e62-e3023ba05aac}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Animation">
       <UniqueIdentifier>{859E00A2-F108-B518-3A47-66BEA6F0926D}</UniqueIdentifier>
     </Filter>
@@ -139,6 +142,9 @@
     <ClInclude Include="src\utils\Mesh\Utils\IndexData.h">
       <Filter>utils\Mesh\Utils</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Utils\MeshOptimizer.h">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClInclude>
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h">
       <Filter>utils\Mesh\Utils</Filter>
     </ClInclude>
@@ -239,6 +245,7 @@
     <ClInclude Include="src\renderer\Core\RenderTypes.h" />
     <ClInclude Include="src\renderer\Core\RenderPass.h" />
     <ClInclude Include="src\renderer\Core\FrameContext.h" />
+    <ClInclude Include="src\renderer\Passes\DepthPrepass.h" />
     <ClInclude Include="src\renderer\Passes\ForwardPass.h" />
     <ClInclude Include="src\renderer\Passes\MeshDrawer.h" />
     <ClInclude Include="src\renderer\Passes\ClearPass.h" />
@@ -371,6 +378,24 @@
     <ClCompile Include="src\utils\Mesh\Utils\IndexData.cpp">
       <Filter>utils\Mesh\Utils</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils\Mesh\Utils\MeshOptimizer.cpp">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\meshoptimizer\src\allocator.cpp">
+      <Filter>meshoptimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\meshoptimizer\src\indexanalyzer.cpp">
+      <Filter>meshoptimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\meshoptimizer\src\indexgenerator.cpp">
+      <Filter>meshoptimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\meshoptimizer\src\vcacheoptimizer.cpp">
+      <Filter>meshoptimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\meshoptimizer\src\vfetchoptimizer.cpp">
+      <Filter>meshoptimizer</Filter>
+    </ClCompile>
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp">
       <Filter>utils\Mesh\Utils</Filter>
     </ClCompile>
@@ -453,6 +478,7 @@
     <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\Core\RenderGraph.cpp" />
+    <ClCompile Include="src\renderer\Passes\DepthPrepass.cpp" />
     <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
     <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />
     <ClCompile Include="src\renderer\Passes\UIPass.cpp" />

@@ -45,7 +45,8 @@ namespace DXEngine
 
     std::shared_ptr<RHI::IPipeline> ResourceCache::GetPipeline(const Material& material,
                                                                const Mesh& mesh,
-                                                               const std::shared_ptr<ShaderProgram>& program)
+                                                               const std::shared_ptr<ShaderProgram>& program,
+                                                               bool afterPrepass)
     {
         const auto& resource = mesh.GetResource();
         if (!program || !program->IsValid() || !resource || !resource->GetVertexData())
@@ -63,6 +64,11 @@ namespace DXEngine
         key.topology         = resource->GetTopology();
         key.wireframe        = m_Wireframe;
         key.depthWrite       = ResolveDepthWrite(state);                 // (blended geometry does not write depth: see RenderState)
+        if (afterPrepass)
+        {
+            key.depthTest  = RHI::DepthTestMode::LessEqual;               // the pre-pass wrote this very surface's depth
+            key.depthWrite = false;
+        }
 
         if (auto it = m_Pipelines.find(key); it != m_Pipelines.end())
             return it->second.pipeline;                       // cache hit
@@ -84,6 +90,66 @@ namespace DXEngine
         if (!pipeline || !pipeline->IsValid())
         {
             OutputDebugStringA(("ERROR: ResourceCache: pipeline creation failed for " + material.GetName() + "\n").c_str());
+            return nullptr;
+        }
+
+        m_Pipelines.emplace(key, PipelineEntry{ pipeline, program });
+        return pipeline;
+    }
+
+    std::shared_ptr<RHI::IPipeline> ResourceCache::GetPrepassPipeline(const Material& material,
+                                                                      const Mesh& mesh,
+                                                                      const std::shared_ptr<ShaderProgram>& program)
+    {
+        const auto& resource = mesh.GetResource();
+        if (!program || !program->IsValid() || !resource || !resource->GetVertexData())
+            return nullptr;
+
+        const VertexLayout& layout = resource->GetVertexData()->GetLayout();
+        const RenderState& state = material.GetRenderState();
+
+        PipelineKey key;
+        key.program          = program.get();
+        key.vertexLayoutHash = HashLayout(layout);
+        key.cullMode         = state.cull;
+        key.blendMode        = RHI::BlendMode::Opaque;
+        key.depthTest        = state.depthTest;
+        key.topology         = resource->GetTopology();
+        key.depthWrite       = true;
+        key.wireframe        = false;
+        key.depthOnly        = true;
+        key.depthBias        = kPrepassDepthBias;
+        key.slopeBias        = 0.0f;
+        key.scissor          = false;
+
+        if (auto it = m_Pipelines.find(key); it != m_Pipelines.end())
+            return it->second.pipeline;
+
+        RHI::PipelineDesc desc;
+        desc.vertexShader         = program->GetVertexShader();   // the colour pass's own vertex shader
+        desc.pixelShader          = nullptr;                      // depth only
+        desc.inputLayout          = layout.GetAttributes();
+        desc.rasterizer.cullMode  = key.cullMode;
+        desc.rasterizer.depthBias = key.depthBias;
+        desc.depthTest            = key.depthTest;
+        desc.depthWrite           = true;
+        desc.blendMode            = RHI::BlendMode::Opaque;
+        desc.topology             = key.topology;
+        desc.debugName            = "Prepass_" + material.GetName();
+
+        std::shared_ptr<RHI::IPipeline> pipeline;
+        try
+        {
+            pipeline = m_Device->CreatePipeline(desc);
+        }
+        catch (const std::exception& e)
+        {
+            OutputDebugStringA((std::string("ERROR: ResourceCache: pre-pass pipeline creation failed for ") + material.GetName() + ": " + e.what() + "\n").c_str());
+            return nullptr;
+        }
+        if (!pipeline || !pipeline->IsValid())
+        {
+            OutputDebugStringA(("ERROR: ResourceCache: pre-pass pipeline creation failed for " + material.GetName() + "\n").c_str());
             return nullptr;
         }
 

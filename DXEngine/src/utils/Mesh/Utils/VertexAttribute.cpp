@@ -225,6 +225,24 @@ namespace DXEngine
         }
     }
 
+    void VertexData::Remap(const std::vector<uint32_t>& remap, size_t newCount)
+    {
+        if (remap.size() != m_VertexCount)
+            return;                                                   // a table for some other vertex buffer: do not touch ours
+        for (auto& [slot, data] : m_Data)
+        {
+            const size_t stride = m_Layout.GetStride(slot);
+            if (stride == 0 || data.size() != m_VertexCount * stride)
+                continue;
+            std::vector<uint8_t> moved(newCount * stride);
+            for (size_t old = 0; old < remap.size(); ++old)
+                if (remap[old] < newCount)                            // kUnusedVertex is ~0u: never below newCount
+                    std::memcpy(moved.data() + remap[old] * stride, data.data() + old * stride, stride);
+            data.swap(moved);
+        }
+        m_VertexCount = newCount;
+    }
+
     void VertexData::Clear()
     {
         for (auto& [slot, data] : m_Data)

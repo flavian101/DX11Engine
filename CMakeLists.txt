@@ -14,6 +14,12 @@ set(BUILD_SHARED_LIBS OFF)
 
 #Add vendor libraries
 add_subdirectory(DXEngine/vendor/assimp)
+
+# meshoptimizer (zeux/meshoptimizer, MIT): vertex cache + vertex fetch optimisation of imported meshes
+set(MESHOPT_BUILD_DEMO OFF CACHE BOOL "" FORCE)
+set(MESHOPT_BUILD_GLTFPACK OFF CACHE BOOL "" FORCE)
+set(MESHOPT_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(DXEngine/vendor/meshoptimizer)
 include(cmake/ImGui.cmake)
 
 

@@ -31,6 +31,8 @@ namespace DXEngine
 
         float distanceToCamera = 0.0f;           // used for sorting only
         bool  receivesShadows  = true;           // MeshRendererComponent::receivesShadows: skips the shadow lookup when false
+        bool  depthPrepassed   = false;          // written by DepthPrepass when it drew this item: the forward pass then only
+                                                 // shades the pixels that stayed visible (depth test LessEqual, no depth write)
 
         bool IsInstanced() const { return instanceTransforms && instanceTransforms->size() > 1; }
         bool IsSkinned()   const { return boneMatrices && !boneMatrices->empty(); }
@@ -106,6 +108,10 @@ namespace DXEngine
         float exposure         = 0.4f;
         float gamma            = 2.2f;
         LightCullingMode lightCulling = LightCullingMode::Clustered;
+        // Draw the opaque geometry once, depth only, before shading it: the expensive lit pixel shader then runs once per
+        // visible pixel instead of once per covering triangle. Costs a second vertex pass, so it pays off in scenes with
+        // overdraw and many lights (the default); a trivial scene may prefer it off.
+        bool             depthPrepass = true;
         ShadowSettings   shadows;
     };
 
@@ -130,6 +136,7 @@ namespace DXEngine
         uint32_t shadowLightsDropped = 0;  // lights that wanted shadows but were over budget / did not fit the atlas
         uint32_t shadowViews         = 0;  // depth renders this frame (cascades + spot views + point faces)
         uint32_t shadowCasterDraws   = 0;  // draw calls of the shadow pass                    (written by ShadowPass)
+        uint32_t depthPrepassDraws   = 0;  // draw calls of the depth pre-pass                 (written by DepthPrepass)
 
         void Reset() { *this = RenderStatistics{}; }
 
@@ -141,7 +148,10 @@ namespace DXEngine
                 << "  draw calls " << drawCalls << ", triangles " << trianglesRendered << "\n"
                 << "  pipeline changes " << pipelineChanges
                 << ", material changes " << materialChanges << "\n"
-                << "  ui elements " << uiElementsRendered << "\n"
+                << "  ui elements " << uiElementsRendered << "\n";
+            if (depthPrepassDraws)
+                oss << "  depth pre-pass: " << depthPrepassDraws << " draws\n";
+            oss
                 << "  lights: " << directionalLights << " directional, " << localLights << " local";
             if (lightsDropped) oss << " (" << lightsDropped << " DROPPED: over the limit)";
             oss << "\n";

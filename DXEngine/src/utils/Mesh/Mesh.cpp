@@ -32,6 +32,14 @@ namespace DXEngine {
         }
     }
 
+    bool Mesh::OptimizeForRendering()
+    {
+        if (!m_Resource || !m_Resource->OptimizeForRendering())
+            return false;
+        InvalidateGPUResources();
+        return true;
+    }
+
     bool Mesh::EnsureGPUResources() const
     {
         if (!m_GPUResourcesDirty && m_Buffers.IsValid())
@@ -294,19 +302,6 @@ namespace DXEngine {
                 resource->GenerateTangents();
             }
             return resource;
-        }
-
-        void OptimizeVertexCache(IndexData& indices)
-        {
-            indices.OptimizeForCache();
-        }
-
-        void OptimizeVertexFetch(VertexData& vertices, IndexData& indices)
-        {
-            // This is a complex optimization that would typically use external libraries
-            // like meshoptimizer. For now, we'll just do basic vertex cache optimization
-            OptimizeVertexCache(indices);
-            OutputDebugStringA("MeshUtils::OptimizeVertexFetch - Basic optimization applied\n");
         }
 
         bool ValidateMesh(const MeshResource& resource, std::string& errorMessage)

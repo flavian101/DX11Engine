@@ -71,6 +71,9 @@ namespace DXEngine
                     env.lightCulling = static_cast<LightCullingMode>(mode);
                     changed = true;
                 }
+                // Draws the opaque geometry depth-only first so the lit pixel shader runs once per visible pixel.
+                // Costs a second vertex pass: worth it with overdraw and many lights, not for a near-empty scene.
+                changed |= PropertyGrid::Checkbox("Depth pre-pass", env.depthPrepass);
                 PropertyGrid::End();
             }
             return changed;

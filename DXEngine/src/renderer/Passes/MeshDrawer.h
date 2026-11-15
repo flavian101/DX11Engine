@@ -9,6 +9,7 @@ namespace DXEngine
 {
     class Mesh;
     class Material;
+    class ShaderProgram;
     namespace RHI { class IBuffer; class IPipeline; }
 
     // ==================================================================
@@ -24,7 +25,8 @@ namespace DXEngine
     //   t32.. engine-wide: lights, clusters, shadow atlas (t35) + shadow views (t36)
     //
     // The same drawer also draws shadow CASTERS (BeginDepthPass / DrawDepth): depth only, through the shadow caster
-    // vertex shader, with the light's view-projection standing in for the camera.
+    // vertex shader, with the light's view-projection standing in for the camera. And the depth PRE-pass (BeginPrepass /
+    // DrawPrepass): depth only with the camera, through the same vertex shader the colour pass uses.
     // ==================================================================
     class MeshDrawer
     {
@@ -33,8 +35,16 @@ namespace DXEngine
         void BeginPass(FrameContext& ctx);           // per-pass state: camera matrices, sampler, lights
 
         void Draw(FrameContext& ctx, const DrawItem& item);                       // 3D item
+        // 'afterPrepass': the depth pre-pass already drew this surface (see GetPipeline's flag)
         void DrawMesh(FrameContext& ctx, Mesh& mesh, Material& material,
-                      uint32_t submeshIndex);                                     // pipeline+material+geometry only
+                      uint32_t submeshIndex, bool afterPrepass = false);          // pipeline+material+geometry only
+
+        // ---- depth pre-pass: the opaque items once, depth only, through the colour pass's own vertex shaders ----
+        // BeginPrepass binds what those vertex shaders read (b0 with the CAMERA's matrices, b1 bones): no material, no light.
+        // DrawPrepass returns true when the item was drawn; the pass then marks it, and only then does the colour pass
+        // rely on the depth buffer for that item.
+        void BeginPrepass(FrameContext& ctx);
+        bool DrawPrepass(FrameContext& ctx, const DrawItem& item);
 
         // ---- shadow pass: depth-only drawing ----
         // BeginDepthPass binds only what the caster shader reads (b0, b1). depthBias / slopeBias are the rasterizer's.
@@ -51,7 +61,11 @@ namespace DXEngine
         void UploadBones(const DrawItem& item);
         void BindMaterial(FrameContext& ctx, Material& material);
         void IssueDraw(FrameContext& ctx, Mesh& mesh, uint32_t submeshIndex);
+        // bones, then the item's transform(s) and the draw(s): what both depth-only paths do after the pipeline is set
+        void SubmitGeometry(FrameContext& ctx, const DrawItem& item);
+        std::shared_ptr<ShaderProgram> ResolveProgram(FrameContext& ctx, Mesh& mesh, Material& material);
         RHI::IPipeline* DepthPipelineFor(FrameContext& ctx, Mesh& mesh, RHI::CullMode cull);
+        RHI::IPipeline* PrepassPipelineFor(FrameContext& ctx, Mesh& mesh, Material& material);
 
         std::shared_ptr<RHI::IBuffer> m_TransformCB;
         std::shared_ptr<RHI::IBuffer> m_BoneCB;
@@ -68,12 +82,21 @@ namespace DXEngine
         float               m_ReceiveShadows = 1.0f;     // per draw: DrawItem::receivesShadows
         RHI::ICommandBuffer* m_Cmd = nullptr;
 
+        // what the draws of this pass are counted as: scene draws, shadow caster draws or depth pre-pass draws
+        enum class DrawKind { Scene, ShadowCaster, Prepass };
+        DrawKind            m_Kind = DrawKind::Scene;
+
         // depth-only drawing (shadow pass)
-        bool                m_DepthPass = false;         // draws are counted as shadow caster draws, not as scene draws
         int32_t             m_DepthBias = 0;
         float               m_SlopeBias = 0.0f;
         const Mesh*         m_DepthMesh = nullptr;       // the pipeline below was built for this mesh + cull mode
         RHI::CullMode       m_DepthCull = RHI::CullMode::Back;
         RHI::IPipeline*     m_DepthPipeline = nullptr;   // owned by the ResourceCache
+
+        // the depth pre-pass pipeline of the last (material, mesh): items arrive sorted by exactly that, so the shader
+        // lookup (a string key) happens once per run of equal items, not once per draw
+        const Material*     m_PrepassMaterial = nullptr;
+        const Mesh*         m_PrepassMesh = nullptr;
+        RHI::IPipeline*     m_PrepassPipeline = nullptr; // owned by the ResourceCache
     };
 }

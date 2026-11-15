@@ -76,6 +76,13 @@ namespace DXEngine
         return IsBlended(state) ? RenderQueue::Transparent : RenderQueue::Opaque;
     }
 
+    bool UsesDepthPrepass(const RenderState& state)
+    {
+        return ResolveRenderQueue(state) == RenderQueue::Opaque &&
+               ResolveDepthWrite(state) &&
+               (state.depthTest == RHI::DepthTestMode::Less || state.depthTest == RHI::DepthTestMode::LessEqual);
+    }
+
     bool ResolveDepthWrite(const RenderState& state)
     {
         switch (state.depthWrite)

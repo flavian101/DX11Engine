@@ -100,9 +100,17 @@ namespace DXEngine
             return parent.IsValid() ? scene.CreateEntity(name, parent) : scene.CreateEntity(name);
         }
 
-        Entity CreatePrimitive(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Primitive primitive, Entity parent)
+        const char* PrimitiveName(Primitive primitive)
         {
-            const char* name = primitive == Primitive::Cube ? "Cube" : primitive == Primitive::Sphere ? "Sphere" : "Plane";
+            return primitive == Primitive::Cube ? "Cube" : primitive == Primitive::Sphere ? "Sphere" : "Plane";
+        }
+
+        bool AddMeshRenderer(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Entity entity, Primitive primitive)
+        {
+            if (!entity.IsValid() || entity.GetScene() != &scene || entity.Has<MeshRendererComponent>())
+                return false;
+
+            const char* name = PrimitiveName(primitive);
             std::shared_ptr<Mesh> mesh = primitive == Primitive::Cube   ? Mesh::CreateCube(device, 1.0f)
                                        : primitive == Primitive::Sphere ? Mesh::CreateSphere(device, 0.5f, 32)
                                                                         : Mesh::CreatePlane(device, 10.0f, 10.0f);
@@ -110,10 +118,16 @@ namespace DXEngine
             material->SetDiffuseColor({ 0.80f, 0.80f, 0.82f, 1.0f });
             material->SetRoughness(0.6f);
 
-            Entity e = CreateEmpty(scene, name, parent);
-            auto& renderer = e.Add<MeshRendererComponent>();
+            auto& renderer = entity.Add<MeshRendererComponent>();
             renderer.mesh = std::move(mesh);
             renderer.materials = { std::move(material) };
+            return true;
+        }
+
+        Entity CreatePrimitive(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Primitive primitive, Entity parent)
+        {
+            Entity e = CreateEmpty(scene, PrimitiveName(primitive), parent);
+            AddMeshRenderer(scene, device, e, primitive);
             return e;
         }
 

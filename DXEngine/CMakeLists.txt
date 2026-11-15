@@ -27,6 +27,7 @@ target_link_libraries(DXEngine
 	  ImGui
 	  ImGuizmo
 	  assimp
+	  meshoptimizer
 )
 
 target_compile_definitions(DXEngine PUBLIC

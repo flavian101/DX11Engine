@@ -741,7 +741,8 @@ static void TestRendererPanel()
     // looking at the panel changes nothing
     const RenderEnvironment after = Renderer::GetEnvironment();
     CHECK(after.exposure == before.exposure && after.gamma == before.gamma && after.shadows.enabled == before.shadows.enabled &&
-          after.shadows.cascadeCount == before.shadows.cascadeCount && after.lightCulling == before.lightCulling);
+          after.shadows.cascadeCount == before.shadows.cascadeCount && after.lightCulling == before.lightCulling &&
+          after.depthPrepass == before.depthPrepass);
 
     open = false;
     Frame([&] { RendererPanel::OnImGui(&open); });                              // closed: draws nothing, no crash

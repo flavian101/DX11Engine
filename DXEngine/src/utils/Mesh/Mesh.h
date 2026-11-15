@@ -21,6 +21,10 @@ namespace DXEngine {
         const std::shared_ptr<MeshResource>& GetResource() const { return m_Resource; }
         void SetResource(std::shared_ptr<MeshResource> resource);
 
+        // Reorders the triangles for the GPU's vertex cache (see MeshResource::OptimizeForRendering) and marks the GPU
+        // copy outdated, so it is uploaded again before the next draw. Returns true when something changed.
+        bool OptimizeForRendering();
+
         // GPU resources
         bool EnsureGPUResources()const;
         void ReleaseGPUResources();
@@ -98,9 +102,6 @@ namespace DXEngine {
             void ComputeTangents(VertexData& vertices, const IndexData& indices);
             void ComputeBounds(const VertexData& vertices, BoundingBox& box, BoundingSphere& sphere);
 
-            // Mesh optimization
-            void OptimizeVertexCache(IndexData& indices);
-            void OptimizeVertexFetch(VertexData& vertices, IndexData& indices);
 
             // Validation
             bool ValidateMesh(const MeshResource& resource, std::string& errorMessage);

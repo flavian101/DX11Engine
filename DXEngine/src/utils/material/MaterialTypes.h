@@ -95,4 +95,9 @@ namespace DXEngine
     bool        IsBlended(const RenderState& state);              // blend != Opaque
     RenderQueue ResolveRenderQueue(const RenderState& state);     // an explicit queue wins; else Transparent when blended, else Opaque
     bool        ResolveDepthWrite(const RenderState& state);      // On / Off win; Auto = Opaque blend && a depth test
+
+    // Does a draw with this state take part in the depth pre-pass? Only solid geometry that writes depth with the normal
+    // "nearer wins" test: opaque queue, depth write on, depth test Less or LessEqual. Everything else (blended, no depth
+    // write, no depth test, a reversed test, the sky, UI) draws exactly as it did without a pre-pass.
+    bool        UsesDepthPrepass(const RenderState& state);
 }

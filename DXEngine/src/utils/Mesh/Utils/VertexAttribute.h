@@ -65,6 +65,11 @@ namespace DXEngine
 		void Resize(size_t vertexCount);
 		void Clear();
 
+		// Moves every vertex to the place 'remap' gives it (old index -> new index, MeshOpt::kUnusedVertex = drop it) in
+		// EVERY slot, so a vertex stays one vertex whatever streams it is spread over. 'newCount' is the number of vertices
+		// that remain. The caller rewrites the indices with the same table.
+		void Remap(const std::vector<uint32_t>& remap, size_t newCount);
+
 		// Add vertex data
 		template<typename T>
 		void SetAttribute(size_t vertexIndex, RHI::VertexAttributeType type, const T& value, uint32_t slot = 0);

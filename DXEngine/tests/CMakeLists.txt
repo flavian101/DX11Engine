@@ -21,6 +21,7 @@ add_executable(render_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshOptimizer.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
@@ -29,6 +30,7 @@ target_include_directories(render_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(render_tests PRIVATE cxx_std_17)
+target_link_libraries(render_tests PRIVATE meshoptimizer)
 add_test(NAME render_tests COMMAND render_tests)
 
 # Light packing: Scene lights -> the GPU light data (directional block + structured local lights).
@@ -71,6 +73,7 @@ add_executable(shadow_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshOptimizer.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
@@ -79,6 +82,7 @@ target_include_directories(shadow_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(shadow_tests PRIVATE cxx_std_17)
+target_link_libraries(shadow_tests PRIVATE meshoptimizer)
 add_test(NAME shadow_tests COMMAND shadow_tests)
 
 # Materials: the texture slot table (generated #defines / HLSL declarations / colour spaces), Material's derived texture mask
@@ -113,6 +117,7 @@ add_executable(editor_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshOptimizer.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
@@ -121,6 +126,7 @@ target_include_directories(editor_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
 target_compile_features(editor_tests PRIVATE cxx_std_17)
+target_link_libraries(editor_tests PRIVATE meshoptimizer)
 add_test(NAME editor_tests COMMAND editor_tests)
 
 # The editor panels run through real ImGui frames with no window and no GPU (ImGui's assertions are the oracle:
@@ -152,6 +158,7 @@ add_executable(editor_ui_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshOptimizer.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
@@ -159,6 +166,14 @@ add_executable(editor_ui_tests
 target_include_directories(editor_ui_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
-target_link_libraries(editor_ui_tests PRIVATE ImGui ImGuizmo)
+target_link_libraries(editor_ui_tests PRIVATE ImGui ImGuizmo meshoptimizer)
 target_compile_features(editor_ui_tests PRIVATE cxx_std_17)
 add_test(NAME editor_ui_tests COMMAND editor_ui_tests)
+
+# MeshOptimizer: the engine's wrapper around meshoptimizer, tested against the real library (no engine types, no GPU).
+add_executable(mesh_optimizer_tests
+    mesh_optimizer_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshOptimizer.cpp)
+target_include_directories(mesh_optimizer_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
+target_link_libraries(mesh_optimizer_tests PRIVATE meshoptimizer)
+add_test(NAME mesh_optimizer_tests COMMAND mesh_optimizer_tests)

@@ -490,6 +490,46 @@ static void TestDepthWriteResolution()
     CHECK(!ResolveDepthWrite(RenderState::Blended()) && !ResolveDepthWrite(RenderState::Overlay()));
 }
 
+// Which draws take part in the depth pre-pass: ONLY solid geometry that writes depth with the normal "nearer wins" test.
+// The pre-pass and the colour pass both rely on this one predicate staying right: a draw that wrongly took part would lose
+// its blending / its reversed depth test, a draw that wrongly stayed out would just not be accelerated.
+static void TestDepthPrepassParticipation()
+{
+    CHECK(UsesDepthPrepass(RenderState::Opaque()));                      // the default: yes
+
+    RenderState lessEqual; lessEqual.depthTest = RHI::DepthTestMode::LessEqual;
+    CHECK(UsesDepthPrepass(lessEqual));
+
+    CHECK(!UsesDepthPrepass(RenderState::Blended()));                    // blended: back-to-front, never writes depth
+    CHECK(!UsesDepthPrepass(RenderState::Sky()));                        // Background queue
+    CHECK(!UsesDepthPrepass(RenderState::Overlay()));                    // UI: no depth test
+
+    RenderState noWrite;  noWrite.depthWrite = DepthWriteMode::Off;      CHECK(!UsesDepthPrepass(noWrite));
+    RenderState noTest;   noTest.depthTest = RHI::DepthTestMode::None;   CHECK(!UsesDepthPrepass(noTest));
+    RenderState reversed; reversed.depthTest = RHI::DepthTestMode::Greater; CHECK(!UsesDepthPrepass(reversed));
+    RenderState equal;    equal.depthTest = RHI::DepthTestMode::Equal;   CHECK(!UsesDepthPrepass(equal));
+
+    RenderState forcedTransparent; forcedTransparent.queue = RenderQueue::Transparent;
+    CHECK(!UsesDepthPrepass(forcedTransparent));                         // an explicit queue wins
+    RenderState forcedWrite = RenderState::Blended(); forcedWrite.depthWrite = DepthWriteMode::On;
+    CHECK(!UsesDepthPrepass(forcedWrite));                               // blended stays in the transparent queue
+
+    // exhaustive: it is exactly "opaque queue && depth write && Less/LessEqual", whatever the combination
+    const RHI::BlendMode blends[] = { RHI::BlendMode::Opaque, RHI::BlendMode::AlphaBlend };
+    const RHI::DepthTestMode tests[] = { RHI::DepthTestMode::None, RHI::DepthTestMode::Less, RHI::DepthTestMode::LessEqual,
+                                         RHI::DepthTestMode::Greater, RHI::DepthTestMode::GreaterEqual, RHI::DepthTestMode::Equal,
+                                         RHI::DepthTestMode::NotEqual, RHI::DepthTestMode::Always };
+    for (auto b : blends)
+        for (auto t : tests)
+            for (auto w : { DepthWriteMode::Auto, DepthWriteMode::On, DepthWriteMode::Off })
+            {
+                RenderState st; st.blend = b; st.depthTest = t; st.depthWrite = w;
+                const bool expected = ResolveRenderQueue(st) == RenderQueue::Opaque && ResolveDepthWrite(st) &&
+                                      (t == RHI::DepthTestMode::Less || t == RHI::DepthTestMode::LessEqual);
+                CHECK(UsesDepthPrepass(st) == expected);
+            }
+}
+
 static void TestMaterialModelIsFixed()
 {
     // The old Material turned itself from Lit into PBR when a metallic or roughness value was set: the importer set
@@ -579,6 +619,7 @@ int main()
         { "state: defaults and presets",                            TestRenderStateDefaultsAndPresets },
         { "state: render queue is derived, explicit wins",          TestRenderQueueResolution },
         { "state: depth write == the old pipeline rule",            TestDepthWriteResolution },
+        { "state: who takes part in the depth pre-pass",            TestDepthPrepassParticipation },
         { "material: the shading model never changes",              TestMaterialModelIsFixed },
         { "material: render state is the source of truth",          TestMaterialRenderStateIsTheSourceOfTruth },
         { "material: factories produce the right model + state",    TestFactories },

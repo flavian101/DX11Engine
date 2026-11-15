@@ -6,8 +6,11 @@
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
+#include "utils/Mesh/Resource/MeshResource.h"
+#include <array>
 #include <cmath>
 #include <cstdio>
+#include <set>
 
 using namespace DXEngine;
 using namespace DirectX;
@@ -263,6 +266,66 @@ static void TestSceneTargetSize()
     CHECK(ResolveSceneTargetSize(640, 480, 16384) != ResolveSceneTargetSize(641, 480, 16384));
 }
 
+// Import-time optimisation (meshoptimizer): triangles are reordered for the GPU's vertex cache and the vertices move into
+// the order the triangles use them. The picture must not change: every triangle still has the same three vertex POSITIONS
+// in the same winding, inside the same submesh, and the submesh ranges stay where they are.
+using PosTri = std::array<std::array<float, 3>, 3>;
+
+static std::multiset<PosTri> PositionTriangles(const MeshResource& res, size_t first, size_t count)
+{
+    std::multiset<PosTri> s;
+    for (size_t i = first; i + 2 < first + count; i += 3)
+    {
+        PosTri t;
+        for (size_t k = 0; k < 3; ++k)
+        {
+            const XMFLOAT3 p = res.GetVertexData()->GetAttribute<XMFLOAT3>(res.GetIndexData()->GetIndex(i + k), RHI::VertexAttributeType::Position);
+            t[k] = { p.x, p.y, p.z };
+        }
+        s.insert(t);
+    }
+    return s;
+}
+
+static void TestOptimizeKeepsTrianglesAndSubmeshes()
+{
+    auto resource = std::shared_ptr<MeshResource>(MeshResource::CreateSphere("sphere", 1.0f, 24));
+    const size_t total = resource->GetIndexData()->GetIndexCount();
+    CHECK(total > 600 && total % 3 == 0);
+
+    // two submeshes at a triangle boundary: each must keep its own triangles
+    const uint32_t split = static_cast<uint32_t>((total / 6) * 3);
+    resource->AddSubMesh("first", 0, split, 0);
+    resource->AddSubMesh("second", split, static_cast<uint32_t>(total) - split, 1);
+    const auto firstBefore  = PositionTriangles(*resource, 0, split);
+    const auto secondBefore = PositionTriangles(*resource, split, total - split);
+    const size_t verticesBefore = resource->GetVertexData()->GetVertexCount();
+
+    Mesh mesh(resource, nullptr);
+    mesh.OptimizeForRendering();                          // (true or false: a sphere may already be well ordered)
+
+    const MeshResource& res = *resource;
+    CHECK(res.GetIndexData()->GetIndexCount() == total);
+    CHECK(res.GetVertexData()->GetVertexCount() <= verticesBefore);
+    CHECK(PositionTriangles(res, 0, split) == firstBefore);
+    CHECK(PositionTriangles(res, split, total - split) == secondBefore);
+    CHECK(res.GetSubMesh(0).indexStart == 0 && res.GetSubMesh(0).indexCount == split);
+    CHECK(res.GetSubMesh(1).indexStart == split);
+
+    // the submeshes' vertex ranges follow the new vertex order and stay inside the vertex buffer
+    for (uint32_t s = 0; s < 2; ++s)
+    {
+        const SubMesh& sm = res.GetSubMesh(s);
+        CHECK(sm.vertexCount > 0 && size_t(sm.vertexStart) + sm.vertexCount <= res.GetVertexData()->GetVertexCount());
+    }
+
+    // running it again is safe (the cache optimiser does not promise the same order twice, but never a different picture)
+    mesh.OptimizeForRendering();
+    CHECK(res.GetIndexData()->GetIndexCount() == total);
+    CHECK(PositionTriangles(res, 0, split) == firstBefore);
+    CHECK(PositionTriangles(res, split, total - split) == secondBefore);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -277,6 +340,7 @@ int main()
         { "extraction: skinned bones optional and safe",       TestSkinnedBonesAreOptionalAndSafe },
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
         { "scene target: size resolution",                     TestSceneTargetSize },
+        { "mesh: cache optimisation keeps triangles + submeshes", TestOptimizeKeepsTrianglesAndSubmeshes },
     };
     for (auto& t : tests)
     {

@@ -787,6 +787,31 @@ static void TestPrimitivesAndStressLights()
     CHECK(scene.EntityCount() == before);                                           // one delete removed all of it
 }
 
+// "Add component > Mesh renderer": gives an existing entity a mesh, once, and only inside its own scene
+static void TestAddMeshRendererToExistingEntity()
+{
+    Scene scene, other;
+    Entity empty = SceneEditing::CreateEmpty(scene, "Thing");
+    const XMFLOAT3 where = { 1, 2, 3 };
+    empty.Get<TransformComponent>().position = where;
+
+    CHECK(SceneEditing::AddMeshRenderer(scene, nullptr, empty, SceneEditing::Primitive::Sphere));
+    CHECK(empty.Has<MeshRendererComponent>());
+    const MeshRendererComponent& mr = empty.Get<MeshRendererComponent>();
+    CHECK(mr.mesh && mr.mesh->GetVertexCount() > 0 && mr.materials.size() == 1 && mr.materials[0]);
+    CHECK(NameOf(empty) == "Thing");                                           // the entity keeps its identity
+    CHECK(Near(empty.Get<TransformComponent>().position.x, where.x));          // and where it is
+
+    const auto firstMesh = mr.mesh;
+    CHECK(!SceneEditing::AddMeshRenderer(scene, nullptr, empty, SceneEditing::Primitive::Cube));   // already has one
+    CHECK(empty.Get<MeshRendererComponent>().mesh == firstMesh);                                  // untouched
+
+    Entity foreign = SceneEditing::CreateEmpty(other, "Foreign");
+    CHECK(!SceneEditing::AddMeshRenderer(scene, nullptr, foreign, SceneEditing::Primitive::Cube)); // another scene
+    CHECK(!foreign.Has<MeshRendererComponent>());
+    CHECK(!SceneEditing::AddMeshRenderer(scene, nullptr, Entity(), SceneEditing::Primitive::Cube)); // nothing
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -803,6 +828,7 @@ int main()
         { "reparent: cycles and foreign entities refused",  TestReparentRejectsCyclesAndForeignEntities },
         { "gizmo write-back: world matrix -> local TRS",    TestApplyWorldMatrix },
         { "create: lights and empties",                     TestCreateLights },
+        { "add component: mesh renderer on an entity",      TestAddMeshRendererToExistingEntity },
         { "euler: round trip, conventions, gimbal",         TestEulerRoundTrip },
         { "euler: cache keeps what the user typed",         TestEulerCacheKeepsWhatTheUserTyped },
         { "gizmo: settings, snapping, null gizmo",          TestGizmoSettingsAndNullGizmo },

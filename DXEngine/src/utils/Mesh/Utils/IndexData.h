@@ -44,7 +44,11 @@ namespace DXEngine
 		void SetIndex(size_t index, uint32_t value);
 
 		// Optimization
-		void OptimizeForCache();  // Vertex cache optimization
+		// Reorders the triangles of indices [firstIndex, firstIndex + indexCount) so neighbouring triangles reuse the
+		// vertices the GPU just transformed (VertexCacheOptimizer.h). Only the triangle order changes. 'vertexCount' is
+		// the number of vertices the indices point into. Returns false, and changes nothing, when the range is not whole
+		// triangles or an index points past the vertices.
+		bool OptimizeForCache(size_t vertexCount, size_t firstIndex = 0, size_t indexCount = SIZE_MAX);
 		void GenerateAdjacency(const VertexData& vertices, std::vector<uint32_t>& adjacency);
 
 	private:

@@ -195,7 +195,16 @@ namespace DXEngine
                     }
                 ImGui::EndMenu();
             }
-            ImGui::TextDisabled("(meshes come with the asset system)");
+            if (ImGui::BeginMenu("Mesh renderer", !e.Has<MeshRendererComponent>()))
+            {
+                // the primitives are the meshes the engine can make itself; imported models arrive with the asset milestone
+                static const SceneEditing::Primitive kPrimitives[] = {
+                    SceneEditing::Primitive::Cube, SceneEditing::Primitive::Sphere, SceneEditing::Primitive::Plane };
+                for (SceneEditing::Primitive p : kPrimitives)
+                    if (ImGui::MenuItem(SceneEditing::PrimitiveName(p)) && ctx.scene)
+                        SceneEditing::AddMeshRenderer(*ctx.scene, ctx.device, e, p);
+                ImGui::EndMenu();
+            }
             ImGui::EndPopup();
         }
 

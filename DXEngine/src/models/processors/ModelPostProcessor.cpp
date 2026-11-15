@@ -67,21 +67,15 @@ namespace DXEngine {
         if (!model)
             return;
 
-        OutputDebugStringA("ModelPostProcessor: Optimizing model...\n");
-
+        size_t reordered = 0;
         for (size_t i = 0; i < model->GetMeshCount(); i++) {
             auto mesh = model->GetMesh(i);
-            if (!mesh || !mesh->IsValid())
-                continue;
-
-            auto meshResource = mesh->GetResource();
-            if (meshResource) {
-                // Optimize index order for better cache utilization
-              //  meshResource->OptimizeForRendering();
-            }
+            if (mesh && mesh->IsValid() && mesh->OptimizeForRendering())
+                ++reordered;
         }
 
-        OutputDebugStringA("ModelPostProcessor: Optimization complete\n");
+        OutputDebugStringA(("ModelPostProcessor: vertex cache order improved for " +
+            std::to_string(reordered) + " of " + std::to_string(model->GetMeshCount()) + " meshes\n").c_str());
     }
 
     void ModelPostProcessor::ValidateModel(std::shared_ptr<Model> model)

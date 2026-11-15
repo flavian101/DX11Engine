@@ -21,6 +21,10 @@ namespace DXEngine
     // ONE shared instance per variant. (The cache entry below keeps the program
     // alive, so its address cannot be reused while the pipeline exists.)
     // ==================================================================
+    // Rasterizer depth bias of the depth pre-pass, in depth-buffer units (D24: 1 unit = 2^-24). A few units is far below
+    // anything visible and only has to absorb rounding between two compilations of the same vertex shader.
+    constexpr int32_t kPrepassDepthBias = 4;
+
     struct PipelineKey
     {
         const ShaderProgram*   program = nullptr;
@@ -88,9 +92,20 @@ namespace DXEngine
 
         // The ONE place a pipeline is described. Material = render state, Mesh = vertex
         // layout + topology, Program = shaders. Returns nullptr if the inputs are unusable.
+        // 'afterPrepass': the item was already drawn by the depth pre-pass, so its colour pass uses LessEqual and does
+        // not write depth (the depth buffer already holds the nearest surface).
         std::shared_ptr<RHI::IPipeline> GetPipeline(const Material& material,
                                                     const Mesh& mesh,
-                                                    const std::shared_ptr<ShaderProgram>& program);
+                                                    const std::shared_ptr<ShaderProgram>& program,
+                                                    bool afterPrepass = false);
+
+        // The depth pre-pass twin of GetPipeline: the SAME vertex shader as the colour pass (so a vertex lands on exactly
+        // the same depth), no pixel shader, no colour target, the material's cull mode.
+        // A tiny rasterizer depth bias pushes these depths a hair away from the camera, so the colour pass's LessEqual
+        // test cannot lose a pixel to rounding between two compilations of the same vertex shader.
+        std::shared_ptr<RHI::IPipeline> GetPrepassPipeline(const Material& material,
+                                                           const Mesh& mesh,
+                                                           const std::shared_ptr<ShaderProgram>& program);
 
         // A pipeline that only writes DEPTH: a vertex shader, no pixel shader, no colour target. Used by the shadow
         // pass. 'program' must be depth-only (ShaderProgram::CreateDepthOnly). The rasterizer bias is part of the

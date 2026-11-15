@@ -34,7 +34,7 @@ namespace DXEngine
         m_LastMaterial = nullptr;
         m_LastMesh     = nullptr;
         m_Time         = ctx.totalTime;
-        m_DepthPass    = false;
+        m_Kind         = DrawKind::Scene;
         m_ReceiveShadows = 1.0f;
 
         if (ctx.camera)
@@ -84,7 +84,7 @@ namespace DXEngine
         m_LastPipeline = nullptr;
         m_LastMaterial = nullptr;
         m_LastMesh     = nullptr;
-        m_DepthPass    = true;
+        m_Kind         = DrawKind::ShadowCaster;
         m_DepthBias    = depthBias;
         m_SlopeBias    = slopeBias;
         m_DepthMesh    = nullptr;
@@ -141,6 +141,12 @@ namespace DXEngine
             m_LastPipeline = pipeline;
         }
 
+        SubmitGeometry(ctx, item);
+        return true;
+    }
+
+    void MeshDrawer::SubmitGeometry(FrameContext& ctx, const DrawItem& item)
+    {
         if (item.IsSkinned())
             UploadBones(item);
 
@@ -154,11 +160,71 @@ namespace DXEngine
                 UploadTransform(world);
                 IssueDraw(ctx, *item.mesh, item.submeshIndex);
             }
-            return true;
+            return;
         }
 
         UploadTransform(item.world);
         IssueDraw(ctx, *item.mesh, item.submeshIndex);
+    }
+
+    // ------------------------------------------------------------------
+    // Depth pre-pass
+    // ------------------------------------------------------------------
+    void MeshDrawer::BeginPrepass(FrameContext& ctx)
+    {
+        m_Cmd          = ctx.cmd;
+        m_LastPipeline = nullptr;
+        m_LastMaterial = nullptr;
+        m_LastMesh     = nullptr;
+        m_Kind         = DrawKind::Prepass;
+        m_Time         = ctx.totalTime;
+        m_ReceiveShadows = 0.0f;
+        m_PrepassMaterial = nullptr;
+        m_PrepassMesh     = nullptr;
+        m_PrepassPipeline = nullptr;
+
+        // the colour pass uploads exactly these matrices: the same inputs to the same vertex shader give the same depth
+        if (ctx.camera)
+        {
+            XMStoreFloat4x4(&m_View, ctx.camera->GetViewMatrix());
+            XMStoreFloat4x4(&m_Proj, ctx.camera->GetProjectionMatrix());
+            m_CameraPos = ctx.camera->GetPositionFloat3();
+        }
+
+        m_Cmd->SetConstantBuffer(m_TransformCB.get(), CB_Transform, RHI::ShaderStage::Vertex);
+        m_Cmd->SetConstantBuffer(m_BoneCB.get(),      CB_Bones,     RHI::ShaderStage::Vertex);
+    }
+
+    RHI::IPipeline* MeshDrawer::PrepassPipelineFor(FrameContext& ctx, Mesh& mesh, Material& material)
+    {
+        if (&material == m_PrepassMaterial && &mesh == m_PrepassMesh)
+            return m_PrepassPipeline;
+
+        m_PrepassMaterial = &material;
+        m_PrepassMesh     = &mesh;
+        m_PrepassPipeline = nullptr;
+
+        std::shared_ptr<ShaderProgram> program = ResolveProgram(ctx, mesh, material);
+        if (!program) return nullptr;
+        std::shared_ptr<RHI::IPipeline> pipeline = ctx.services->resources->GetPrepassPipeline(material, mesh, program);
+        m_PrepassPipeline = pipeline.get();                           // the ResourceCache keeps it alive
+        return m_PrepassPipeline;
+    }
+
+    bool MeshDrawer::DrawPrepass(FrameContext& ctx, const DrawItem& item)
+    {
+        if (!item.mesh || !item.material || !m_Cmd) return false;
+
+        RHI::IPipeline* pipeline = PrepassPipelineFor(ctx, *item.mesh, *item.material);
+        if (!pipeline) return false;
+
+        if (pipeline != m_LastPipeline)
+        {
+            m_Cmd->SetPipeline(pipeline);
+            m_LastPipeline = pipeline;
+        }
+
+        SubmitGeometry(ctx, item);
         return true;
     }
 
@@ -184,30 +250,41 @@ namespace DXEngine
                 XMFLOAT4X4 world;
                 XMStoreFloat4x4(&world, XMLoadFloat4x4(&inst) * model);
                 UploadTransform(world);
-                DrawMesh(ctx, *item.mesh, *item.material, item.submeshIndex);
+                DrawMesh(ctx, *item.mesh, *item.material, item.submeshIndex, item.depthPrepassed);
             }
             return;
         }
 
         UploadTransform(item.world);
-        DrawMesh(ctx, *item.mesh, *item.material, item.submeshIndex);
+        DrawMesh(ctx, *item.mesh, *item.material, item.submeshIndex, item.depthPrepassed);
     }
 
-    void MeshDrawer::DrawMesh(FrameContext& ctx, Mesh& mesh, Material& material, uint32_t submeshIndex)
+    // The shader variant of a material on a mesh: the colour pass and the depth pre-pass must pick the SAME program, so
+    // they both come through here.
+    //    PERF NOTE: GetShaderForMaterial builds a string key per call. Fine for hundreds of draws; the pre-pass calls it
+    //    once per run of equal (material, mesh) items. If the profiler ever points here, cache the program on the Material.
+    std::shared_ptr<ShaderProgram> MeshDrawer::ResolveProgram(FrameContext& ctx, Mesh& mesh, Material& material)
     {
-        auto& svc = *ctx.services;
         const auto& resource = mesh.GetResource();
-        if (!resource || !resource->GetVertexData()) return;
+        if (!resource || !resource->GetVertexData()) return nullptr;
 
-        // 1) shader variant -> pipeline (both cached)
-        //    PERF NOTE: GetShaderForMaterial builds a string key per call. Fine for hundreds of
-        //    draws; if the profiler ever points here, cache the program on the Material.
+        auto& svc = *ctx.services;
         const VertexLayout& layout = resource->GetVertexData()->GetLayout();
         std::shared_ptr<ShaderProgram> program = svc.shaders->GetShaderForMaterial(layout, &material);
         if (!program || !program->IsValid())
             program = svc.shaders->GetFallbackShader(material.GetShadingModel());
+        return program;
+    }
 
-        std::shared_ptr<RHI::IPipeline> pipeline = svc.resources->GetPipeline(material, mesh, program);
+    void MeshDrawer::DrawMesh(FrameContext& ctx, Mesh& mesh, Material& material, uint32_t submeshIndex, bool afterPrepass)
+    {
+        auto& svc = *ctx.services;
+
+        // 1) shader variant -> pipeline (both cached)
+        std::shared_ptr<ShaderProgram> program = ResolveProgram(ctx, mesh, material);
+        if (!program) return;
+
+        std::shared_ptr<RHI::IPipeline> pipeline = svc.resources->GetPipeline(material, mesh, program, afterPrepass);
         if (!pipeline) return;
 
         if (pipeline.get() != m_LastPipeline)
@@ -303,17 +380,21 @@ namespace DXEngine
                 count = sm.indexCount;              // submesh indices are absolute -> baseVertex 0
             }
             m_Cmd->DrawIndexed(count, start, 0);
-            if (!m_DepthPass) ctx.stats.trianglesRendered += count / 3;
+            if (m_Kind == DrawKind::Scene) ctx.stats.trianglesRendered += count / 3;
         }
         else
         {
             const uint32_t vertices = static_cast<uint32_t>(res.GetVertexData()->GetVertexCount());
             m_Cmd->Draw(vertices, 0);
-            if (!m_DepthPass) ctx.stats.trianglesRendered += vertices / 3;
+            if (m_Kind == DrawKind::Scene) ctx.stats.trianglesRendered += vertices / 3;
         }
-        // shadow caster draws are their own number: they are not scene draw calls, and adding them would hide
-        // what the scene itself costs
-        if (m_DepthPass) ++ctx.stats.shadowCasterDraws;
-        else             ++ctx.stats.drawCalls;
+        // shadow caster and pre-pass draws are their own numbers: they are not scene draw calls, and adding them would
+        // hide what the scene itself costs
+        switch (m_Kind)
+        {
+        case DrawKind::ShadowCaster: ++ctx.stats.shadowCasterDraws; break;
+        case DrawKind::Prepass:      ++ctx.stats.depthPrepassDraws; break;
+        default:                     ++ctx.stats.drawCalls;         break;
+        }
     }
 }

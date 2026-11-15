@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "MeshResource.h"
+#include "../Utils/MeshOptimizer.h"
 #include <algorithm>
 #include <sstream>
 #include <cassert>
@@ -395,19 +396,68 @@ namespace DXEngine
         ComputeBounds();
     }
 
-    void MeshResource::OptimizeForRendering()
+    bool MeshResource::OptimizeForRendering()
     {
-        if (m_IndexData)
+        if (!m_IndexData || !m_VertexData || m_IndexData->GetIndexCount() == 0)
+            return false;
+
+        const size_t vertexCount = m_VertexData->GetVertexCount();
+        bool changed = false;
+
+        // 1) triangle order, for the GPU's vertex cache
+        if (m_SubMeshes.empty())
         {
-            m_IndexData->OptimizeForCache();
+            changed = m_IndexData->OptimizeForCache(vertexCount);
+        }
+        else
+        {
+            // a triangle must stay inside its own submesh: it carries the material
+            for (const SubMesh& submesh : m_SubMeshes)
+                changed |= m_IndexData->OptimizeForCache(vertexCount, submesh.indexStart, submesh.indexCount);
         }
 
-        // Additional optimizations could be added here:
-        // - Vertex deduplication
-        // - Vertex fetch optimization
-        // - LOD generation
+        // 2) vertex order, so the GPU reads vertex memory front to back (after 1: it follows the new triangle order)
+        const size_t indexCount = m_IndexData->GetIndexCount();
+        std::vector<uint32_t> indices(indexCount);
+        for (size_t i = 0; i < indexCount; ++i)
+            indices[i] = m_IndexData->GetIndex(i);
 
-        OnDataChanged();
+        std::vector<uint32_t> remap;
+        const size_t remaining = MeshOpt::BuildVertexFetchRemap(indices.data(), indexCount, vertexCount, remap);
+        if (remaining > 0)
+        {
+            bool moved = remaining != vertexCount;
+            for (size_t v = 0; v < remap.size() && !moved; ++v)
+                moved = remap[v] != v;
+            if (moved)
+            {
+                for (size_t i = 0; i < indexCount; ++i)
+                    m_IndexData->SetIndex(i, indices[i]);
+                m_VertexData->Remap(remap, remaining);
+
+                // the vertex range of a submesh follows its (absolute) indices
+                for (SubMesh& submesh : m_SubMeshes)
+                {
+                    uint32_t lowest = UINT32_MAX, highest = 0;
+                    const size_t end = std::min<size_t>(size_t(submesh.indexStart) + submesh.indexCount, indexCount);
+                    for (size_t i = submesh.indexStart; i < end; ++i)
+                    {
+                        lowest = std::min(lowest, indices[i]);
+                        highest = std::max(highest, indices[i]);
+                    }
+                    submesh.vertexStart = lowest == UINT32_MAX ? 0 : lowest;
+                    submesh.vertexCount = lowest == UINT32_MAX ? 0 : highest - lowest + 1;
+                }
+
+                if (remaining != vertexCount)
+                    ComputeBounds();                     // vertices nobody used are gone: the box may be smaller
+                changed = true;
+            }
+        }
+
+        if (changed)
+            OnDataChanged();
+        return changed;
     }
 
     size_t MeshResource::GetMemoryUsage() const
