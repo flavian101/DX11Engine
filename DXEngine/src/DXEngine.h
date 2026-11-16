@@ -2,6 +2,7 @@
 #include "Application.h"
 #include "renderer/ShaderCache.h"
 #include "picking/Ray.h"
+#include "models/ModelAsset.h"
 #include "models/ModelLoader.h"
 #include "utils/Mesh/Mesh.h"
 #include "camera/Camera.h"

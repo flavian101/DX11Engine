@@ -4,6 +4,7 @@
 #include "EditorTheme.h"
 #include "PropertyGrid.h"
 #include "SceneEditing.h"
+#include "scene/AnimationSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
 
@@ -131,12 +132,18 @@ namespace DXEngine
         DrawTransform(e);
         if (e.Has<MeshRendererComponent>()) DrawMeshRenderer(e);
         if (e.Has<LightComponent>())        DrawLight(e);
+        if (e.Has<AnimatorComponent>())     DrawAnimator(e);
 
         const EditorTheme::Palette& pal = EditorTheme::Colors();
         ImGui::PushStyleColor(ImGuiCol_Text, pal.textDim);
         if (e.Has<SkyboxComponent>())            ImGui::TextUnformatted("Skybox: not editable yet");
-        if (e.Has<SkinnedMeshComponent>())       ImGui::TextUnformatted("Skinned mesh: not editable yet");
-        if (e.Has<AnimationUpdateComponent>())   ImGui::TextUnformatted("Animation: not editable yet");
+        if (e.Has<SkinnedMeshComponent>())
+        {
+            // its bones come from the Animator above it: say whose
+            const AnimatorComponent* animator = AnimationSystem::FindAnimator(*e.GetScene(), e.Id());
+            ImGui::TextUnformatted(animator ? "Skinned mesh: drawn with the bones of the Animator above it"
+                                            : "Skinned mesh: no Animator above it, drawn without bones");
+        }
         ImGui::PopStyleColor();
 
         // removals requested by the section headers' close buttons: after everything was drawn
@@ -313,6 +320,63 @@ namespace DXEngine
             PropertyGrid::Checkbox("Casts shadows", l.castsShadows);
             PropertyGrid::End();
         }
+        ImGui::TreePop();
+    }
+
+    // The Animator: which clip plays, how fast, how it repeats, and where it is. The buttons and fields only change the
+    // component; AnimationSystem applies them on the next update (so this also works while the scene is paused).
+    void InspectorPanel::DrawAnimator(Entity e)
+    {
+        if (!Section("Animator", nullptr))
+            return;
+
+        AnimatorComponent& a = e.Get<AnimatorComponent>();
+        if (PropertyGrid::Begin("animator"))
+        {
+            if (a.clips.empty())
+            {
+                PropertyGrid::Text("Clip", "this model has no animation");
+            }
+            else
+            {
+                std::vector<std::string> names;
+                names.reserve(a.clips.size());
+                for (size_t i = 0; i < a.clips.size(); ++i)
+                    names.push_back(a.clips[i] && !a.clips[i]->GetName().empty() ? a.clips[i]->GetName() : "Clip " + std::to_string(i));
+                std::vector<const char*> items;
+                for (const std::string& n : names) items.push_back(n.c_str());
+
+                int clip = std::clamp(a.clip, 0, static_cast<int>(items.size()) - 1);
+                if (PropertyGrid::Combo("Clip", clip, items.data(), static_cast<int>(items.size())))
+                    AnimationSystem::SetClip(a, clip);
+            }
+
+            PropertyGrid::Float("Speed", a.speed, 0.01f, -4.0f, 4.0f, "%.2fx");
+
+            static const char* kModes[] = { "Once", "Loop", "Ping-pong" };
+            int mode = static_cast<int>(a.mode);
+            if (PropertyGrid::Combo("Repeat", mode, kModes, 3))
+                a.mode = static_cast<PlaybackMode>(mode);
+
+            if (a.clip >= 0 && static_cast<size_t>(a.clip) < a.clips.size() && a.clips[a.clip])
+            {
+                const float duration = a.clips[a.clip]->GetDurationSeconds();
+                float time = a.time;
+                if (duration > 0.0f && PropertyGrid::Slider("Time", time, 0.0f, duration, "%.2f"))
+                    a.time = time;                           // scrubbing: the system follows it
+            }
+            if (a.skeleton)
+                PropertyGrid::Text("Bones", "%zu", a.skeleton->GetBoneCount());
+            PropertyGrid::End();
+        }
+
+        if (ImGui::Button(a.playing ? "Pause" : "Play"))
+        {
+            if (a.playing) AnimationSystem::Pause(a); else AnimationSystem::Play(a);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Stop"))
+            AnimationSystem::Stop(a);
         ImGui::TreePop();
     }
 }

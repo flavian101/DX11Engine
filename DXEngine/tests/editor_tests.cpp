@@ -12,6 +12,7 @@
 #include "Core/UiInputBlocking.h"
 #include "camera/Camera.h"
 #include "scene/ScenePicking.h"
+#include "scene/AnimationSystem.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
@@ -224,23 +225,19 @@ static void TestDuplicateSubtree()
     CHECK(scene.GetChildren(thing).size() == 1 && scene.GetChildren(thing)[0] == part);
 }
 
-static void TestDuplicateRefusesSkinnedAndSky()
+static void TestDuplicateRefusesOnlyTheSky()
 {
     Scene scene;
-    Entity skinned = scene.CreateEntity("skinned");
-    skinned.Add<SkinnedMeshComponent>();
     Entity holder = scene.CreateEntity("holder");
-    scene.CreateEntity("animated child", holder).Add<AnimationUpdateComponent>();
-    Entity sky = scene.CreateEntity("sky");
+    Entity sky = scene.CreateEntity("sky", holder);
     sky.Add<SkyboxComponent>();
     Entity plain = scene.CreateEntity("plain");
 
     const size_t before = scene.EntityCount();
-    CHECK(!SceneEditing::CanDuplicate(scene, skinned));
-    CHECK(!SceneEditing::CanDuplicate(scene, holder));       // a refused descendant refuses the whole subtree
     CHECK(!SceneEditing::CanDuplicate(scene, sky));
+    CHECK(!SceneEditing::CanDuplicate(scene, holder));       // a refused descendant refuses the whole subtree
     CHECK(SceneEditing::CanDuplicate(scene, plain));
-    CHECK(!SceneEditing::Duplicate(scene, skinned).IsValid());
+    CHECK(!SceneEditing::Duplicate(scene, sky).IsValid());
     CHECK(!SceneEditing::Duplicate(scene, holder).IsValid());
     CHECK(scene.EntityCount() == before);                    // nothing half-copied
     CHECK(!SceneEditing::Duplicate(scene, Entity()).IsValid());
@@ -819,6 +816,42 @@ static void TestAddMeshRendererToExistingEntity()
     CHECK(!SceneEditing::AddMeshRenderer(scene, nullptr, Entity(), SceneEditing::Primitive::Cube)); // nothing
 }
 
+// Duplicating an animated model: the copy has its own Animator (own playback state), its skinned meshes find THE COPY's
+// Animator, and the original keeps playing untouched.
+static void TestDuplicateAnimatedModel()
+{
+    Scene scene;
+    Entity rig = scene.CreateEntity("Rig");
+    auto& animator = rig.Add<AnimatorComponent>();
+    animator.skeleton = std::make_shared<Skeleton>();
+    Bone b; b.Name = "root"; animator.skeleton->AddBone(b);
+    auto clip = std::make_shared<AnimationClip>("c", 2.0f);
+    clip->SetTicksPerSecond(1.0f);
+    animator.clips = { clip };
+    animator.time = 0.75f; animator.speed = 2.0f;
+    Entity skin = scene.CreateEntity("Skin", rig);
+    skin.Add<MeshRendererComponent>().mesh = Mesh::CreateCube(nullptr, 1.0f);
+    skin.Add<SkinnedMeshComponent>();
+
+    CHECK(SceneEditing::CanDuplicate(scene, rig));                      // animated models used to be refused
+    Entity copy = SceneEditing::Duplicate(scene, rig);
+    CHECK(copy.IsValid() && copy != rig && copy.Has<AnimatorComponent>());
+
+    const AnimatorComponent& c = copy.Get<AnimatorComponent>();
+    CHECK(c.clips.size() == 1 && c.skeleton == animator.skeleton);      // the data is shared ...
+    CHECK(Near(c.time, 0.75f) && Near(c.speed, 2.0f));                  // ... the settings are copied ...
+    CHECK(!c.runtime.controller);                                       // ... and the playback is its own
+
+    auto kids = scene.GetChildren(copy);
+    CHECK(kids.size() == 1 && kids[0].Has<SkinnedMeshComponent>() && kids[0].Has<MeshRendererComponent>());
+    CHECK(AnimationSystem::FindAnimator(scene, kids[0].Id()) == &copy.Get<AnimatorComponent>());   // the copy's, not the original's
+    CHECK(AnimationSystem::FindAnimator(scene, skin.Id()) == &rig.Get<AnimatorComponent>());
+
+    Entity sky = scene.CreateEntity("Sky");
+    sky.Add<SkyboxComponent>();
+    CHECK(!SceneEditing::CanDuplicate(scene, sky));                     // the one thing that still refuses
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -829,12 +862,13 @@ int main()
         { "hierarchy: filter and reveal",                   TestHierarchyFilterAndReveal },
         { "hierarchy: 2000 roots",                          TestHierarchyManyRoots },
         { "duplicate: subtree, components, parent",         TestDuplicateSubtree },
-        { "duplicate: refuses skinned / sky, copies nothing", TestDuplicateRefusesSkinnedAndSky },
+        { "duplicate: only the sky is refused, nothing half-copied", TestDuplicateRefusesOnlyTheSky },
         { "reparent: world position is kept",               TestReparentKeepsWorld },
         { "reparent: the subtree follows",                  TestReparentSubtreeFollows },
         { "reparent: cycles and foreign entities refused",  TestReparentRejectsCyclesAndForeignEntities },
         { "gizmo write-back: world matrix -> local TRS",    TestApplyWorldMatrix },
         { "create: lights and empties",                     TestCreateLights },
+        { "duplicate: an animated model gets its own Animator", TestDuplicateAnimatedModel },
         { "add component: mesh renderer on an entity",      TestAddMeshRendererToExistingEntity },
         { "euler: round trip, conventions, gimbal",         TestEulerRoundTrip },
         { "euler: cache keeps what the user typed",         TestEulerCacheKeepsWhatTheUserTyped },

@@ -1,6 +1,8 @@
 #pragma once
 #include "AnimationClip.h"
 #include "AnimationEvaluator.h"
+#include <algorithm>
+#include <cmath>
 #include <memory>
 #include "FrameTime.h"
 
@@ -32,6 +34,13 @@ namespace DXEngine
 			m_CurrentClip = clip;
 			m_CurrentTime = 0.0f;
 			m_IsReversed = false;
+		}
+
+		// Jumps to 'seconds' (clamped to the clip). Used when something scrubs the animation.
+		void SetTime(float seconds)
+		{
+			const float duration = m_CurrentClip ? m_CurrentClip->GetDurationSeconds() : 0.0f;
+			m_CurrentTime = duration > 0.0f ? std::clamp(seconds, 0.0f, duration) : 0.0f;
 		}
 
 		//playback controls
@@ -67,7 +76,12 @@ namespace DXEngine
 			float direction = m_IsReversed ? -1.0f : 1.0f;
 			m_CurrentTime += deltatime * m_PlaybackSpeed * direction;
 
-			float duration = m_CurrentClip->GetDuration();
+			float duration = m_CurrentClip->GetDurationSeconds();   // seconds, like m_CurrentTime (GetDuration() is in ticks)
+			if (!(duration > 0.0f))                       // a clip with no length has nothing to play (fmod by 0 is NaN)
+			{
+				m_CurrentTime = 0.0f;
+				return;
+			}
 
 			//Handle Different playback modes
 			switch (m_Mode)
@@ -131,7 +145,8 @@ namespace DXEngine
 		float GetCurrentTime() const { return m_CurrentTime; }
 		float GetNormalizedTime() const
 		{
-			return m_CurrentClip ? (m_CurrentTime / m_CurrentClip->GetDuration()) : 0.0f;
+			const float duration = m_CurrentClip ? m_CurrentClip->GetDurationSeconds() : 0.0f;
+			return duration > 0.0f ? m_CurrentTime / duration : 0.0f;
 		}
 
 		const std::shared_ptr<AnimationClip>& GetCurrentClip() const { return m_CurrentClip; }

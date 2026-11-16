@@ -1,7 +1,7 @@
 #include "dxpch.h"
 #include "ModelLoader.h"
 #include "utils/Mesh/Utils/VertexAttribute.h"
-#include "models/Model.h"
+#include "models/ModelAsset.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
 #include "utils/material/Material.h"
@@ -48,6 +48,9 @@ namespace DXEngine
         m_PostProcessor = std::make_shared<ModelPostProcessor>();
 
         m_Importer->importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, 4);
+        // The engine's unit is the METRE: with aiProcess_GlobalScale (see BuildProcessingFlags) assimp rescales a file by
+        // its own unit (an FBX in centimetres by 0.01; glTF is already in metres), to this many units per metre.
+        m_Importer->importer.SetPropertyFloat(AI_CONFIG_GLOBAL_SCALE_FACTOR_KEY, 1.0f);
     }
 
     ModelLoader::~ModelLoader()
@@ -55,7 +58,7 @@ namespace DXEngine
         delete m_Importer;
     }
 
-    std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filepath, const ModelLoadOptions& options)
+    std::shared_ptr<ModelAsset> ModelLoader::LoadModel(const std::string& filepath, const ModelLoadOptions& options)
     {
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -111,7 +114,10 @@ namespace DXEngine
 
         if (model)
         {
-            // Post-process the model
+            model->sourcePath = filepath;
+            model->name = std::filesystem::path(filepath).filename().string();
+
+            // Post-process the model (its problems are listed in model->warnings)
             m_PostProcessor->PostProcess(model, options);
 
             // Update statistics
@@ -184,154 +190,125 @@ namespace DXEngine
         return animations;
     }
 
-    std::shared_ptr<Model> ModelLoader::ProcessScene(
+    std::shared_ptr<ModelAsset> ModelLoader::ProcessScene(
         const aiScene* scene,
         const std::string& directory,
         const ModelLoadOptions& options)
     {
-        // Reset current skeleton for new model
+        // Reset per-model state
         m_CurrentSkeleton.reset();
+        m_MaterialCache.clear();
 
-        bool hasAnimations = scene->HasAnimations() && options.loadAnimations;
-        bool hasSkinning = false;
+        auto asset = std::make_shared<ModelAsset>();
 
-        // FIX: First pass - detect if ANY mesh has bones
+        // ---- skeleton: the mesh with the most bones has the most complete one
+        const bool hasAnimations = scene->HasAnimations() && options.loadAnimations;
+        const aiMesh* bestSkeletonMesh = nullptr;
+        unsigned int maxBones = 0;
         for (unsigned int i = 0; i < scene->mNumMeshes; i++)
         {
-            if (scene->mMeshes[i]->HasBones())
+            const aiMesh* mesh = scene->mMeshes[i];
+            if (mesh->HasBones() && mesh->mNumBones > maxBones)
             {
-                hasSkinning = true;
-                break;
+                maxBones = mesh->mNumBones;
+                bestSkeletonMesh = mesh;
             }
         }
-
-        auto model = std::make_shared<Model>();
-
-        // FIX: Process skeleton ONLY if skinning detected
-        if (hasSkinning)
+        if (bestSkeletonMesh)
         {
-            // Find the mesh with the most bones (most complete skeleton)
-            const aiMesh* bestSkeletonMesh = nullptr;
-            unsigned int maxBones = 0;
-
-            for (unsigned int i = 0; i < scene->mNumMeshes; i++)
-            {
-                const aiMesh* mesh = scene->mMeshes[i];
-                if (mesh->HasBones() && mesh->mNumBones > maxBones)
-                {
-                    maxBones = mesh->mNumBones;
-                    bestSkeletonMesh = mesh;
-                }
-            }
-
-            if (bestSkeletonMesh)
-            {
-                m_CurrentSkeleton = m_SkeletonProcessor->ProcessSkeleton(scene, bestSkeletonMesh);
-
-                if (!m_CurrentSkeleton) {
-                    OutputDebugStringA("Warning: Model has skinning data but skeleton creation failed\n");
-                    hasSkinning = false; // Disable skinning if skeleton failed
-                }
-                else {
-#ifdef DX_DEBUG
-                    OutputDebugStringA(("Skeleton created with " +
-                        std::to_string(m_CurrentSkeleton->GetBoneCount()) +
-                        " bones from mesh with " + std::to_string(maxBones) +
-                        " bone references\n").c_str());
-#endif
-                }
-            }
+            m_CurrentSkeleton = m_SkeletonProcessor->ProcessSkeleton(scene, bestSkeletonMesh);
+            if (!m_CurrentSkeleton)
+                asset->warnings.push_back("The model has skinning data but its skeleton could not be built: it is drawn without bones");
         }
+        asset->skeleton = m_CurrentSkeleton;
 
-        // Enable skinning on model if we have a valid skeleton
-        if (m_CurrentSkeleton)
-        {
-            model->EnableSkinning(m_CurrentSkeleton);
-        }
+        // ---- node tree and meshes (a mesh used by several nodes is built once)
+        std::unordered_map<unsigned int, uint32_t> meshOfAssimpMesh;
+        BuildNodes(*asset, scene->mRootNode, -1, scene, directory, options, meshOfAssimpMesh);
 
-        // Process meshes (will now correctly handle skinned vs non-skinned)
-        ProcessNode(model, scene->mRootNode, scene, directory, options);
-
-        // Load Animations (only if we have both animations AND a skeleton)
+        // ---- animations: only with a skeleton to drive
         if (hasAnimations && m_CurrentSkeleton)
         {
-            auto animations = m_AnimationProcessor->ProcessAnimations(scene, m_CurrentSkeleton);
-
-            for (const auto& clip : animations)
-            {
-                model->AddAnimationClip(clip);
-            }
-
-#ifdef DX_DEBUG
-            OutputDebugStringA(("Loaded " + std::to_string(animations.size()) +
-                " animation(s) for model\n").c_str());
-#endif
-
-            if (!animations.empty())
-            {
-                auto controller = std::make_shared<AnimationController>(m_CurrentSkeleton);
-                controller->SetClip(animations[0]);
-                controller->SetPlaybackMode(PlaybackMode::Loop);
-                controller->Play();
-                model->SetAnimationController(controller);
-            }
-        }
-        else if (hasSkinning && !m_CurrentSkeleton)
-        {
-            OutputDebugStringA("Warning: Model has skinning data but no skeleton was created\n");
+            asset->clips = m_AnimationProcessor->ProcessAnimations(scene, m_CurrentSkeleton);
         }
         else if (hasAnimations && !m_CurrentSkeleton)
         {
-            OutputDebugStringA("Warning: Model has animations but no skeleton - animations will be ignored\n");
+            asset->warnings.push_back("The file has animation but no skeleton: the animation was ignored");
         }
 
-        // Apply global scale
-        if (options.globalScale != 1.0f) {
-            DirectX::XMFLOAT3 scale(options.globalScale, options.globalScale, options.globalScale);
-            model->SetScale(scale);
-        }
-
-        return model;
+        return asset;
     }
 
-    void ModelLoader::ProcessNode(std::shared_ptr<Model> model,const aiNode* node,const aiScene* scene,const std::string& directory,const ModelLoadOptions& options)
+    uint32_t ModelLoader::BuildNodes(ModelAsset& asset, const aiNode* node, int parent, const aiScene* scene,
+        const std::string& directory, const ModelLoadOptions& options,
+        std::unordered_map<unsigned int, uint32_t>& meshOfAssimpMesh)
     {
-        // Process all meshes in this node
-        for (unsigned int i = 0; i < node->mNumMeshes; i++) {
-            const aiMesh* aiMesh = scene->mMeshes[node->mMeshes[i]];
+        std::string nodeName = node->mName.C_Str();
+        if (nodeName.empty())
+            nodeName = parent < 0 ? "Root" : "Node_" + std::to_string(asset.nodes.size());
 
-            // Process mesh geometry using MeshProcessor
+        const uint32_t index = asset.AddNode(nodeName, parent, ConvertMatrix(node->mTransformation));
+
+        for (unsigned int i = 0; i < node->mNumMeshes; i++)
+        {
+            const unsigned int assimpIndex = node->mMeshes[i];
+            auto known = meshOfAssimpMesh.find(assimpIndex);
+            if (known != meshOfAssimpMesh.end())
+            {
+                asset.AttachMesh(index, known->second);
+                continue;
+            }
+
+            const aiMesh* aiMesh = scene->mMeshes[assimpIndex];
             std::shared_ptr<MeshResource> meshResource =
                 m_MeshProcessor->ProcessMesh(aiMesh, scene, m_CurrentSkeleton, options);
-
-            if (meshResource) {
-                auto meshObject = std::make_shared<Mesh>(meshResource, m_Device);
-
-                // Process material using MaterialProcessor
-                if (options.loadMaterials && aiMesh->mMaterialIndex >= 0) {
-                    auto material = m_MaterialProcessor->ProcessMaterial(
-                        scene->mMaterials[aiMesh->mMaterialIndex],
-                        directory,
-                        options);
-
-                    if (material) {
-                        meshObject->SetMaterial(material);
-                    }
-                }
-
-                // Add mesh to model
-                std::string meshName = aiMesh->mName.C_Str();
-                if (meshName.empty())
-                    meshName = "Mesh_" + std::to_string(model->GetMeshCount());
-
-                model->AddMesh(meshObject, meshName);
+            if (!meshResource)
+            {
+                asset.warnings.push_back("Mesh '" + std::string(aiMesh->mName.C_Str()) + "' could not be imported and is missing");
+                continue;
             }
+
+            auto meshObject = std::make_shared<Mesh>(meshResource, m_Device);
+
+            // one Material per assimp material: meshes that use the same one share it
+            if (options.loadMaterials)
+            {
+                auto material = GetMaterial(scene, aiMesh->mMaterialIndex, directory, options, asset);
+                if (material)
+                    meshObject->SetMaterial(material);
+            }
+
+            std::string meshName = aiMesh->mName.C_Str();
+            if (meshName.empty())
+                meshName = "Mesh_" + std::to_string(asset.meshes.size());
+
+            const uint32_t meshIndex = asset.AddMesh(meshName, std::move(meshObject));
+            meshOfAssimpMesh[assimpIndex] = meshIndex;
+            asset.AttachMesh(index, meshIndex);
         }
 
-        // Process child nodes recursively
-        for (unsigned int i = 0; i < node->mNumChildren; i++) {
-            ProcessNode(model, node->mChildren[i], scene, directory, options);
-        }
+        for (unsigned int i = 0; i < node->mNumChildren; i++)
+            BuildNodes(asset, node->mChildren[i], static_cast<int>(index), scene, directory, options, meshOfAssimpMesh);
+        return index;
+    }
+
+    std::shared_ptr<Material> ModelLoader::GetMaterial(const aiScene* scene, unsigned int materialIndex,
+        const std::string& directory, const ModelLoadOptions& options, ModelAsset& asset)
+    {
+        if (materialIndex >= scene->mNumMaterials)
+            return nullptr;
+
+        auto cached = m_MaterialCache.find(materialIndex);
+        if (cached != m_MaterialCache.end())
+            return cached->second;
+
+        auto material = m_MaterialProcessor->ProcessMaterial(scene->mMaterials[materialIndex], directory, options);
+        if (!material)
+            asset.warnings.push_back("Material " + std::to_string(materialIndex) + " could not be imported: its meshes use a default material");
+        else
+            asset.materials.push_back(material);
+        m_MaterialCache[materialIndex] = material;
+        return material;
     }
 
     bool ModelLoader::ValidateFile(const std::string& filePath)
@@ -406,7 +383,7 @@ namespace DXEngine
 
     unsigned int ModelLoader::BuildProcessingFlags(const ModelLoadOptions& options) const
     {
-        unsigned int flags = aiProcess_ValidateDataStructure;
+        unsigned int flags = aiProcess_ValidateDataStructure | aiProcess_GlobalScale;   // GlobalScale: the file's unit -> metres
 
         if (options.makeLeftHanded)
             flags |= aiProcess_ConvertToLeftHanded;
@@ -436,8 +413,16 @@ namespace DXEngine
         const std::string& filePath,
         const ModelLoadOptions& options)
     {
-        return filePath + "_" + std::to_string(
-            options.generateNormals + options.generateTangents * 2 + options.flipUVs * 4);
+        // EVERY option that changes the result is part of the key (it used to be three of them: a model loaded with
+        // different options came back from the cache as the first one)
+        std::string key = std::filesystem::absolute(filePath).lexically_normal().string() + "|";
+        for (bool flag : { options.makeLeftHanded, options.generateNormals, options.generateTangents, options.flipUVs,
+                           options.optimizeMeshes, options.validateDataStructure, options.triangulate, options.loadAnimations,
+                           options.loadMaterials, options.loadTextures, options.joinIdenticalVertices,
+                           options.removeRedundantMaterials, options.fixInfacingNormals, options.limitBoneWeights })
+            key += flag ? '1' : '0';
+        key += "|" + std::to_string(options.globalScale) + "|" + std::to_string(options.maxBoneWeights);
+        return key;
     }
 
     void ModelLoader::SetError(const std::string& error)

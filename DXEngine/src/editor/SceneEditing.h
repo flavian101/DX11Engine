@@ -16,9 +16,9 @@ namespace DXEngine
         // "Cube" -> "Cube (Copy)"
         std::string CopyName(const std::string& name);
 
-        // Whether Duplicate would work on this entity and everything below it. Skinned meshes and animation hooks are
-        // bound to the imported model that owns their skeleton, a copy would share (and double-advance) it: those
-        // subtrees cannot be duplicated yet. A skybox is a singleton: neither.
+        // Whether Duplicate would work on this entity and everything below it. Only a sky refuses: there is one sky, and a
+        // copy would be a second one. (An animated model can be duplicated: its playback state is plain data in the
+        // Animator, and the copy gets a playback of its own.)
         bool CanDuplicate(Scene& scene, Entity entity);
 
         // Copies the entity and all its descendants next to the original (same parent). The root of the copy is named

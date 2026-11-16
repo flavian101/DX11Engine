@@ -5,11 +5,12 @@
 //
 //   a visible object   = Transform + MeshRenderer
 //   a lamp             = Transform + Light            (+ a MeshRenderer if it should be visible)
-//   a skinned character= Transform + MeshRenderer + (later) Skinned
+//   a skinned character= Transform + MeshRenderer + Skinned, under an entity with an Animator
 //
 // This replaces the Model class, which mixed all of this in one object using flags
 // plus optional pointers that could disagree (the crash in Model::Update).
 // ============================================================================
+#include "Animation/AnimationController.h"
 #include <DirectXMath.h>
 #include <cmath>
 #include <entt/entt.hpp>
@@ -113,21 +114,45 @@ namespace DXEngine
     };
 
     // ------------------------------------------------------------------
-    // Skinned meshes (bridge): where this mesh's bone matrices come from. The function is asked EVERY frame and
-    // may return nullptr (no bones yet), so a missing skeleton is a normal case instead of a null read.
-    // Transitional: the model importer still produces a Model that owns the skeleton and the animation
-    // controller; this lets the scene draw it until the loader emits proper assets.
+    // Animator: plays the animation clips of one skeleton and holds the bone matrices the skinned meshes UNDER it draw
+    // with. It sits on the root of an instantiated model; AnimationSystem advances it once per frame.
+    //
+    // The skeleton and the clips are asset data (shared by every instance). The settings (clip, speed, mode, playing, time)
+    // are plain values the inspector edits; the system reads them every frame, so changing one is all it takes. The
+    // controller that does the stepping is a cache the system builds when it is missing: copying an Animator (duplicating
+    // an entity) gives the copy its own controller, never a shared one.
     // ------------------------------------------------------------------
-    struct SkinnedMeshComponent
+    struct AnimatorRuntime
     {
-        std::function<const std::vector<DirectX::XMFLOAT4X4>*()> boneMatrices;
+        std::shared_ptr<AnimationController> controller;
+        int   clipIndex = -1;        // the clip the controller was set to (-1 = not set yet)
+        float lastTime  = 0.0f;      // the time the system wrote last: a different 'time' means someone scrubbed
+        bool  restart   = false;     // SetClip asked for the clip to start from 0
+
+        AnimatorRuntime() = default;
+        AnimatorRuntime(const AnimatorRuntime&) {}                                  // a copy starts without a controller
+        AnimatorRuntime& operator=(const AnimatorRuntime&) { controller.reset(); clipIndex = -1; lastTime = 0.0f; restart = false; return *this; }
     };
 
-    // Per-frame update hook for things the scene does not own yet (the same bridge: advances a Model's animation).
-    struct AnimationUpdateComponent
+    struct AnimatorComponent
     {
-        std::function<void(float deltaSeconds)> update;
+        std::shared_ptr<Skeleton>                   skeleton;
+        std::vector<std::shared_ptr<AnimationClip>> clips;
+
+        int          clip    = 0;                    // index into 'clips'; out of range = nothing plays
+        float        speed   = 1.0f;                 // 1 = as authored, negative plays backwards
+        PlaybackMode mode    = PlaybackMode::Loop;
+        bool         playing = true;
+        float        time    = 0.0f;                 // seconds into the clip; the system keeps it current, writing it scrubs
+
+        std::vector<DirectX::XMFLOAT4X4> boneMatrices;   // output: one matrix per bone, empty until the first update
+
+        AnimatorRuntime runtime;
     };
+
+    // A mesh drawn with bones: it uses the bone matrices of the nearest Animator among its ancestors (found when it is
+    // drawn, so reparenting or duplicating a model never leaves a dangling reference). No Animator above = drawn unskinned.
+    struct SkinnedMeshComponent {};
 
     // The sky: drawn first, follows the camera, never culled.
     struct SkyboxComponent {};

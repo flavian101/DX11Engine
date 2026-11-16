@@ -21,7 +21,7 @@
 namespace DXEngine {
 
     // Forward declarations
-    class Model;
+    class ModelAsset;
     class Mesh;
     class Material;
     class MeshResource;
@@ -46,7 +46,7 @@ namespace DXEngine {
         ~ModelLoader();
 
         // Main loading methods
-        std::shared_ptr<Model> LoadModel(const std::string& filePath,
+        std::shared_ptr<ModelAsset> LoadModel(const std::string& filePath,
             const ModelLoadOptions& options = ModelLoadOptions{});
 
         std::vector<std::shared_ptr<AnimationClip>> LoadAnimations(const std::string& filepath);
@@ -90,11 +90,17 @@ namespace DXEngine {
         const LoadStatistics& GetLastLoadStats() const { return m_Stats; }
     private:
         // Core processing methods
-        std::shared_ptr<Model> ProcessScene(const aiScene* scene, const std::string& directory,
+        std::shared_ptr<ModelAsset> ProcessScene(const aiScene* scene, const std::string& directory,
             const ModelLoadOptions& options);
 
-        void ProcessNode(std::shared_ptr<Model> model, const aiNode* node, const aiScene* scene,
-            const std::string& directory, const ModelLoadOptions& options);
+        // Adds 'node' and its subtree to the asset (parents before children) and returns the node's index.
+        uint32_t BuildNodes(ModelAsset& asset, const aiNode* node, int parent, const aiScene* scene,
+            const std::string& directory, const ModelLoadOptions& options,
+            std::unordered_map<unsigned int, uint32_t>& meshOfAssimpMesh);
+
+        // The Material of an assimp material, made once per model.
+        std::shared_ptr<Material> GetMaterial(const aiScene* scene, unsigned int materialIndex,
+            const std::string& directory, const ModelLoadOptions& options, ModelAsset& asset);
  
         // Utility methods
         std::string GetTextureFilename(const aiMaterial* material, aiTextureType type,
@@ -133,7 +139,8 @@ namespace DXEngine {
         std::shared_ptr<Skeleton> m_CurrentSkeleton;
 
         // Cache
-        std::unordered_map<std::string, std::weak_ptr<Model>> m_ModelCache;
+        std::unordered_map<std::string, std::weak_ptr<ModelAsset>> m_ModelCache;
+        std::unordered_map<unsigned int, std::shared_ptr<Material>> m_MaterialCache;   // per model being imported
         bool m_CachingEnabled = true;
         mutable std::mutex m_CacheMutex;
 

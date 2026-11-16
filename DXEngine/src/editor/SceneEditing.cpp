@@ -14,8 +14,8 @@ namespace DXEngine
         {
             bool SubtreeAllows(Scene& scene, Entity e)
             {
-                if (e.Has<SkinnedMeshComponent>() || e.Has<AnimationUpdateComponent>() || e.Has<SkyboxComponent>())
-                    return false;
+                if (e.Has<SkyboxComponent>())
+                    return false;                                 // there is one sky: a copy would be a second one
                 for (Entity child : scene.GetChildren(e))
                     if (!SubtreeAllows(scene, child))
                         return false;
@@ -32,12 +32,17 @@ namespace DXEngine
                 const MeshRendererComponent renderer = hasRenderer ? source.Get<MeshRendererComponent>() : MeshRendererComponent{};
                 const bool hasLight = source.Has<LightComponent>();
                 const LightComponent light = hasLight ? source.Get<LightComponent>() : LightComponent{};
+                const bool hasAnimator = source.Has<AnimatorComponent>();
+                const AnimatorComponent animator = hasAnimator ? source.Get<AnimatorComponent>() : AnimatorComponent{};   // the copy gets its own playback (see AnimatorRuntime)
+                const bool isSkinned = source.Has<SkinnedMeshComponent>();
                 const std::vector<Entity> children = scene.GetChildren(source);
 
                 Entity copy = scene.CreateEntity(name, parent);
                 copy.Get<TransformComponent>() = transform;       // local TRS and the current world matrix
                 if (hasRenderer) copy.Add<MeshRendererComponent>(renderer);
                 if (hasLight)    copy.Add<LightComponent>(light);
+                if (hasAnimator) copy.Add<AnimatorComponent>(animator);
+                if (isSkinned)   copy.Add<SkinnedMeshComponent>();
 
                 for (Entity child : children)
                     CloneSubtree(scene, child, copy, child.Get<NameComponent>().name);

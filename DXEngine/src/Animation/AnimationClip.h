@@ -93,7 +93,10 @@ namespace DXEngine
 		}
 		// Properties
 		const std::string& GetName() const { return m_Name; }
+		// The length in TICKS (the unit the keyframe time stamps are in: what a model file stores) ...
 		float GetDuration() const { return m_Duration; }
+		// ... and in SECONDS (what a controller plays with): ticks / ticks-per-second. 0 when the clip has no length.
+		float GetDurationSeconds() const { return (m_TicksPerSecond > 0.0f && m_Duration > 0.0f) ? m_Duration / m_TicksPerSecond : 0.0f; }
 		float GetTicksPerSecond() const { return m_TicksPerSecond; }
 		void SetTicksPerSecond(float tps) { m_TicksPerSecond = tps; }
 

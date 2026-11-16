@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "SceneExtraction.h"
+#include "scene/AnimationSystem.h"
 #include "scene/Scene.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
@@ -95,9 +96,9 @@ namespace DXEngine
             const float dx = center.x - camera.position.x, dy = center.y - camera.position.y, dz = center.z - camera.position.z;
             const float distance = isSky ? 0.0f : std::sqrt(dx * dx + dy * dy + dz * dz);
 
-            const SkinnedMeshComponent* skin = reg.try_get<SkinnedMeshComponent>(entity);
-            const std::vector<XMFLOAT4X4>* bones = (skin && skin->boneMatrices) ? skin->boneMatrices() : nullptr;
-            if (bones && bones->empty()) bones = nullptr;
+            // a skinned mesh draws with the bones of the Animator above it (none, or none yet: drawn unskinned)
+            const AnimatorComponent* animator = reg.all_of<SkinnedMeshComponent>(entity) ? AnimationSystem::FindAnimator(scene, entity) : nullptr;
+            const std::vector<XMFLOAT4X4>* bones = (animator && !animator->boneMatrices.empty()) ? &animator->boneMatrices : nullptr;
 
             const size_t submeshCount = std::max<size_t>(1, renderer.mesh->GetSubmeshCount());
             for (size_t si = 0; si < submeshCount; ++si)
@@ -148,9 +149,9 @@ namespace DXEngine
             DirectX::BoundingSphere sphere = WorldSphere(*renderer.mesh, transform.world);
             sphere.Radius *= m_Config.boundsMargin;
 
-            const SkinnedMeshComponent* skin = reg.try_get<SkinnedMeshComponent>(entity);
-            const std::vector<XMFLOAT4X4>* bones = (skin && skin->boneMatrices) ? skin->boneMatrices() : nullptr;
-            if (bones && bones->empty()) bones = nullptr;
+            // a skinned mesh draws with the bones of the Animator above it (none, or none yet: drawn unskinned)
+            const AnimatorComponent* animator = reg.all_of<SkinnedMeshComponent>(entity) ? AnimationSystem::FindAnimator(scene, entity) : nullptr;
+            const std::vector<XMFLOAT4X4>* bones = (animator && !animator->boneMatrices.empty()) ? &animator->boneMatrices : nullptr;
 
             const size_t submeshCount = std::max<size_t>(1, renderer.mesh->GetSubmeshCount());
             for (size_t si = 0; si < submeshCount; ++si)

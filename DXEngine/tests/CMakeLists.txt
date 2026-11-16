@@ -17,6 +17,7 @@ add_executable(render_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/SceneExtraction.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AnimationSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
@@ -65,6 +66,7 @@ add_executable(shadow_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/SceneExtraction.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AnimationSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightClustering.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/LightPacking.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Systems/ShadowMath.cpp
@@ -105,6 +107,7 @@ add_test(NAME material_tests COMMAND material_tests)
 add_executable(editor_tests
     editor_tests.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AnimationSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/SceneEditing.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyModel.cpp
@@ -147,6 +150,7 @@ add_executable(editor_ui_tests
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EditorContext.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/HierarchyPanel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/InspectorPanel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AnimationSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/ViewportPanel.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/ImGuizmoGizmo.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/EditorTheme.cpp
@@ -198,3 +202,51 @@ target_link_libraries(d3d11_device_tests PRIVATE d3d11 dxgi d3dcompiler dxguid)
 target_compile_features(d3d11_device_tests PRIVATE cxx_std_17)
 add_test(NAME d3d11_device_tests COMMAND d3d11_device_tests)
 set_tests_properties(d3d11_device_tests PROPERTIES LABELS gpu)
+
+# ModelAsset / Instantiate / Animator (no GPU: meshes are made without a device)
+add_executable(asset_tests
+    asset_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/models/ModelAsset.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AnimationSystem.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AssetInstantiation.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Mesh.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Resource/MeshResource.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/VertexAttribute.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/IndexData.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshOptimizer.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/Mesh/Utils/MeshBuffers.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialTypes.cpp)
+target_include_directories(asset_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
+target_link_libraries(asset_tests PRIVATE meshoptimizer)
+target_compile_features(asset_tests PRIVATE cxx_std_17)
+add_test(NAME asset_tests COMMAND asset_tests)
+
+# The importer on the REAL sample models (assimp, textures, GPU meshes), then Instantiate + Animator on the result. Needs a
+# D3D11 device: prints SKIPPED and passes without one. Run by hand with `ctest -L gpu`.
+set(SRC ${CMAKE_SOURCE_DIR}/DXEngine/src)
+add_executable(model_loader_tests
+    model_loader_tests.cpp
+    ${SRC}/models/ModelAsset.cpp ${SRC}/models/ModelLoader.cpp
+    ${SRC}/models/processors/AnimationProcessor.cpp ${SRC}/models/processors/AssimpContext.cpp
+    ${SRC}/models/processors/MaterialProcessor.cpp ${SRC}/models/processors/MeshProcessor.cpp
+    ${SRC}/models/processors/ModelPostProcessor.cpp ${SRC}/models/processors/SkeletonProcessor.cpp
+    ${SRC}/models/processors/TextureLoader.cpp
+    ${SRC}/utils/ImageLoader.cpp ${SRC}/utils/ImageMips.cpp ${SRC}/utils/TextureNaming.cpp
+    ${SRC}/scene/Scene.cpp ${SRC}/scene/TransformSystem.cpp ${SRC}/scene/AnimationSystem.cpp ${SRC}/scene/AssetInstantiation.cpp
+    ${SRC}/utils/Mesh/Mesh.cpp ${SRC}/utils/Mesh/Resource/MeshResource.cpp
+    ${SRC}/utils/Mesh/Utils/VertexAttribute.cpp ${SRC}/utils/Mesh/Utils/IndexData.cpp
+    ${SRC}/utils/Mesh/Utils/MeshOptimizer.cpp ${SRC}/utils/Mesh/Utils/MeshBuffers.cpp
+    ${SRC}/utils/material/Material.cpp ${SRC}/utils/material/MaterialSlots.cpp ${SRC}/utils/material/MaterialTypes.cpp
+    ${D3D11_SRC}/D3D11Device.cpp ${D3D11_SRC}/D3D11CommandBuffer.cpp ${D3D11_SRC}/D3D11Query.cpp
+    ${D3D11_SRC}/D3D11Pipeline.cpp ${D3D11_SRC}/D3D11Shader.cpp ${D3D11_SRC}/D3D11Buffer.cpp
+    ${D3D11_SRC}/D3D11Texture.cpp ${D3D11_SRC}/D3D11Sampler.cpp)
+target_include_directories(model_loader_tests PRIVATE ${SRC} ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src ${CMAKE_SOURCE_DIR}/DXEngine/vendor/stb)
+target_compile_definitions(model_loader_tests PRIVATE DX_ASSETS_DIR="${CMAKE_SOURCE_DIR}/Editor/assets")
+target_link_libraries(model_loader_tests PRIVATE assimp meshoptimizer d3d11 dxgi d3dcompiler dxguid ole32)
+target_compile_features(model_loader_tests PRIVATE cxx_std_17)
+add_test(NAME model_loader_tests COMMAND model_loader_tests)
+set_tests_properties(model_loader_tests PROPERTIES LABELS gpu)

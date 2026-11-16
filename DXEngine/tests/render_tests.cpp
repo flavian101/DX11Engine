@@ -3,6 +3,7 @@
 #include "renderer/Core/SceneTarget.h"
 #include "renderer/Systems/SceneExtraction.h"
 #include "scene/Scene.h"
+#include "scene/AnimationSystem.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
@@ -205,25 +206,33 @@ static void TestBucketComesFromTheMaterialsRenderState()
     CHECK(r.q.opaque.size() == 2 && r.q.transparent.size() == 1);
 }
 
+// A skinned mesh is drawn with the bones of the Animator ABOVE it. No Animator above it, or none published yet, means the
+// mesh is drawn unskinned instead of reading nothing; the items point at the Animator's own vector (no copy per frame).
 static void TestSkinnedBonesAreOptionalAndSafe()
 {
     Scene scene;
     auto material = MakeMaterial("lit");
-    std::vector<XMFLOAT4X4> bones(4, TransformComponent::Identity());
-    bool haveBones = false;
 
-    Entity e = AddMesh(scene, "skinned", { 0, 0, 0 }, MakeCube(), material);
-    e.Add<SkinnedMeshComponent>().boneMatrices = [&]() -> const std::vector<XMFLOAT4X4>* { return haveBones ? &bones : nullptr; };
-    Entity empty = AddMesh(scene, "no_callback", { 0, 0, 3 }, MakeCube(), material);
-    empty.Add<SkinnedMeshComponent>();                                    // component with NO callback: must not crash
+    Entity rig = scene.CreateEntity("rig");
+    auto& animator = rig.Add<AnimatorComponent>();
+    Entity body = AddMesh(scene, "skinned", { 0, 0, 0 }, MakeCube(), material);
+    scene.SetParent(body, rig);
+    body.Add<SkinnedMeshComponent>();
+    Entity loose = AddMesh(scene, "no_animator", { 0, 0, 3 }, MakeCube(), material);
+    loose.Add<SkinnedMeshComponent>();                                    // skinned, but nothing above it: must not crash
+    Entity plain = AddMesh(scene, "plain", { 0, 0, 6 }, MakeCube(), material);
+    scene.SetParent(plain, rig);                                          // under the Animator but not skinned
 
     auto r = Run(scene, MakeCamera({ 0, 0, -10 }, { 0, 0, 0 }));
-    CHECK(r.q.opaque.size() == 2 && !r.q.opaque[0].IsSkinned() && !r.q.opaque[1].IsSkinned());   // not available yet = static
+    CHECK(r.q.opaque.size() == 3);
+    for (auto& i : r.q.opaque) CHECK(!i.IsSkinned());                     // no bones published yet = static
 
-    haveBones = true;
+    animator.boneMatrices.assign(4, TransformComponent::Identity());
     r = Run(scene, MakeCamera({ 0, 0, -10 }, { 0, 0, 0 }));
-    int skinned = 0; for (auto& i : r.q.opaque) if (i.IsSkinned()) ++skinned;
-    CHECK(skinned == 1);
+    int skinned = 0;
+    for (auto& i : r.q.opaque)
+        if (i.IsSkinned()) { ++skinned; CHECK(i.boneMatrices == &animator.boneMatrices); }
+    CHECK(skinned == 1);                                                  // only the skinned mesh that has an Animator above it
 }
 
 static void TestExtractionReusesCapacity()

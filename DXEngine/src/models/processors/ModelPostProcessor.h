@@ -1,24 +1,24 @@
 #pragma once
 #include "ModelLoaderUtils.h"
+#include <memory>
 
 namespace DXEngine
 {
-	class Model;
+	class ModelAsset;
 
+	// The steps that run on an imported asset after the importer built it. Whatever goes wrong is written to
+	// ModelAsset::warnings (the editor shows them): nothing is dropped silently.
 	class ModelPostProcessor
 	{
 	public:
 		ModelPostProcessor() = default;
 
-		void PostProcess(std::shared_ptr<Model> model, const ModelLoadOptions& options);
+		void PostProcess(const std::shared_ptr<ModelAsset>& asset, const ModelLoadOptions& options);
 
 		// Individual operations
-		void OptimizeModel(std::shared_ptr<Model> model);
-		void ValidateModel(std::shared_ptr<Model> model);
-		void EnsureDefaultMaterials(std::shared_ptr<Model> model);
-		void ApplyGlobalScale(std::shared_ptr<Model> model, float scale);
-	private:
-		std::string m_LastError;
-		
+		void OptimizeModel(const std::shared_ptr<ModelAsset>& asset);        // meshoptimizer: see MeshResource::OptimizeForRendering
+		void ValidateModel(const std::shared_ptr<ModelAsset>& asset);        // structure problems -> warnings
+		void EnsureDefaultMaterials(const std::shared_ptr<ModelAsset>& asset);
+		void ApplyGlobalScale(const std::shared_ptr<ModelAsset>& asset, float scale);
 	};
 }

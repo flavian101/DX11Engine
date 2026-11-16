@@ -18,6 +18,7 @@ namespace DXEngine
         void DrawTransform(Entity e);
         void DrawMeshRenderer(Entity e);
         void DrawLight(Entity e);
+        void DrawAnimator(Entity e);
 
         TransformEditing::EulerCache m_Euler;
         Entity m_LastEntity;               // the entity the Euler cache belongs to

@@ -114,10 +114,7 @@
       <Filter>camera</Filter>
     </ClInclude>
     <ClInclude Include="src\dxpch.h" />
-    <ClInclude Include="src\models\Model.h">
-      <Filter>models</Filter>
-    </ClInclude>
-    <ClInclude Include="src\models\ModelFeatures.h">
+    <ClInclude Include="src\models\ModelAsset.h">
       <Filter>models</Filter>
     </ClInclude>
     <ClInclude Include="src\models\ModelLoader.h">
@@ -360,7 +357,7 @@
       <Filter>camera</Filter>
     </ClCompile>
     <ClCompile Include="src\dxpch.cpp" />
-    <ClCompile Include="src\models\Model.cpp">
+    <ClCompile Include="src\models\ModelAsset.cpp">
       <Filter>models</Filter>
     </ClCompile>
     <ClCompile Include="src\models\ModelLoader.cpp">
@@ -406,6 +403,9 @@
       <Filter>utils\Mesh\Utils</Filter>
     </ClCompile>
     <ClCompile Include="src\scene\Scene.cpp">
+      <Filter>scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene\AssetInstantiation.cpp">
       <Filter>scene</Filter>
     </ClCompile>
     <ClCompile Include="src\scene\AnimationSystem.cpp">

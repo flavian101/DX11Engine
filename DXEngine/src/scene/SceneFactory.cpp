@@ -1,7 +1,5 @@
 #include "dxpch.h"
 #include "SceneFactory.h"
-#include "models/Model.h"
-#include "models/ModelFeatures.h"
 #include "utils/ImageLoader.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
@@ -75,44 +73,6 @@ namespace DXEngine
             light.color = color;
             light.intensity = intensity;
             return entity;
-        }
-
-        Entity Instantiate(Scene& scene, const std::shared_ptr<Model>& model, const std::string& name)
-        {
-            if (!model) return Entity();
-
-            Entity root = scene.CreateEntity(name);
-            {
-                auto& t = root.Get<TransformComponent>();
-                DirectX::XMStoreFloat3(&t.position, model->GetTranslation());
-                DirectX::XMStoreFloat3(&t.scale, model->GetScale());
-                DirectX::XMStoreFloat4(&t.rotation, model->GetRotation());
-            }
-
-            // Skinned model: the Model still owns the skeleton and the animation controller. The scene keeps it alive
-            // (captured below) and asks for the bones every frame; a missing skeleton simply means "static".
-            const bool skinned = model->IsSkinned();
-            if (skinned)
-            {
-                root.Add<AnimationUpdateComponent>().update = [model](float dt) { model->Update(dt); };
-            }
-
-            for (size_t i = 0; i < model->GetMeshCount(); ++i)
-            {
-                std::shared_ptr<Mesh> mesh = model->GetMesh(i);
-                if (!mesh) continue;
-
-                // no material list: the mesh's own materials (assigned by the importer) are used
-                Entity child = CreateMesh(scene, name + "_mesh" + std::to_string(i), std::move(mesh), nullptr, root);
-                if (skinned)
-                {
-                    child.Add<SkinnedMeshComponent>().boneMatrices = [model]() -> const std::vector<DirectX::XMFLOAT4X4>* {
-                        const SkinningData* data = model->GetSkinningData();
-                        return (data && !data->boneMatrices.empty()) ? &data->boneMatrices : nullptr;
-                    };
-                }
-            }
-            return root;
         }
     }
 }

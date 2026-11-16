@@ -8,7 +8,7 @@ namespace DXEngine
 {
     class Mesh;
     class Material;
-    class Model;
+    class ModelAsset;
     namespace RHI { class IGraphicsDevice; }
 
     // ==================================================================
@@ -42,10 +42,11 @@ namespace DXEngine
         Entity CreateDirectionalLight(Scene& scene, const std::string& name, const DirectX::XMFLOAT3& direction,
                                       const DirectX::XMFLOAT3& color, float intensity);
 
-        // Bridge from the model importer: a loaded Model becomes a root entity (with the model's transform) and
-        // one child entity per mesh. Skinned models keep their animation: the root gets an AnimationUpdateComponent
-        // and the meshes a SkinnedMeshComponent that read the Model's bones. Transitional, see Components.h.
-        // Returns an invalid Entity if 'model' is null.
-        Entity Instantiate(Scene& scene, const std::shared_ptr<Model>& model, const std::string& name);
+        // An imported model becomes entities: the asset's node tree as a hierarchy (the root entity is named 'name' and
+        // carries the root node's transform), a MeshRenderer wherever a node has a mesh, and for a skinned model an
+        // Animator on the root plus a SkinnedMeshComponent on every skinned mesh. Meshes, materials, skeleton and clips are
+        // SHARED with the asset (and with every other instance); the playback state is the instance's own.
+        // Returns an invalid Entity if 'asset' is null or has no nodes.
+        Entity Instantiate(Scene& scene, const std::shared_ptr<ModelAsset>& asset, const std::string& name);
     }
 }

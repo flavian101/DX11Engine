@@ -158,8 +158,7 @@
     <ClInclude Include="src\camera\FreeLookBehavior.h" />
     <ClInclude Include="src\camera\MovementBehavior.h" />
     <ClInclude Include="src\dxpch.h" />
-    <ClInclude Include="src\models\Model.h" />
-    <ClInclude Include="src\models\ModelFeatures.h" />
+    <ClInclude Include="src\models\ModelAsset.h" />
     <ClInclude Include="src\models\ModelLoader.h" />
     <ClInclude Include="src\picking\Ray.h" />
     <ClInclude Include="src\resource.h" />
@@ -263,7 +262,7 @@
     <ClCompile Include="src\dxpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\models\Model.cpp" />
+    <ClCompile Include="src\models\ModelAsset.cpp" />
     <ClCompile Include="src\models\ModelLoader.cpp" />
     <ClCompile Include="src\picking\Ray.cpp" />
     <ClCompile Include="src\shaders\ShaderProgram.cpp" />
@@ -292,6 +291,7 @@
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
     <ClCompile Include="src\scene\Scene.cpp" />
     <ClCompile Include="src\scene\AnimationSystem.cpp" />
+    <ClCompile Include="src\scene\AssetInstantiation.cpp" />
     <ClCompile Include="src\scene\SceneFactory.cpp" />
     <ClCompile Include="src\scene\ScenePicking.cpp" />
     <ClCompile Include="src\renderer\Systems\LightPacking.cpp" />

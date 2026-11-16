@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include "AnimationClip.h"
 #include <DirectXMath.h>
 #include <vector>
@@ -56,8 +57,10 @@ namespace DXEngine
 			size_t boneCount = skeleton.GetBoneCount();
 			outBoneMatrices.resize(boneCount);
 
-			//Loop animation Time
-			float animTime = fmod(time * clip.GetTicksPerSecond(), clip.GetDuration());
+			// 'time' is in seconds, the keyframes are in ticks. The controller already loops / clamps the time in seconds, so
+			// this only converts and keeps it inside the clip (a time at the very end must show the LAST pose: wrapping it with
+			// fmod showed the first one, which made a clip that ends flash back to its start).
+			float animTime = std::clamp(time * clip.GetTicksPerSecond(), 0.0f, clip.GetDuration());
 
 			//calculate local transforms for each bone
 			std::vector<DirectX::XMMATRIX> localTransforms(boneCount);
