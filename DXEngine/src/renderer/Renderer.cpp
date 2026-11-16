@@ -8,6 +8,7 @@
 #include "MaterialSystem.h"
 #include "ShaderCache.h"
 #include "Passes/ClearPass.h"
+#include "Core/GpuProfiler.h"
 #include "Passes/DepthPrepass.h"
 #include "Passes/ForwardPass.h"
 #include "Passes/ShadowPass.h"
@@ -141,6 +142,11 @@ namespace DXEngine
         g->cmd = s.device->CreateCommandBuffer();
         g->frame.services = &g->services;
 
+        // GPU timing per pass (the render graph opens a scope for each). Optional: without queries the renderer runs the same.
+        s.profiler = std::make_shared<GpuProfiler>();
+        if (!s.profiler->Initialize(s.device))
+            Log("WARNING: Renderer::Init - GPU timing queries are not available\n");
+
         // 3) the frame: passes run in the order they are added
         g->graph.AddPass<ShadowPass>("shadow");          // first: every lit draw below samples the atlas it fills
         g->clearPass = g->graph.AddPass<ClearPass>("clear");
@@ -163,6 +169,7 @@ namespace DXEngine
     {
         if (!g) return;
         g->graph.Shutdown();
+        g->services.profiler.reset();
         g->sceneColor.reset();
         g->sceneDepth.reset();
         g->services.resources->Clear();
@@ -260,7 +267,10 @@ namespace DXEngine
         g->lights.Upload(f);                                                    // scene lights + environment -> lightBuffer
 
         // ---- GPU passes: read the blackboard
+        GpuProfiler& gpu = *g->services.profiler;
+        gpu.BeginFrame(*g->cmd);
         g->graph.Execute(f);
+        gpu.EndFrame(*g->cmd);
 
         g->cmd->End();
         g->services.device->Submit(g->cmd.get());
@@ -293,6 +303,37 @@ namespace DXEngine
     void Renderer::Present()
     {
         if (g) g->services.device->Present();
+    }
+
+    void Renderer::SetVSync(bool enabled)
+    {
+        if (g) g->services.device->SetVSync(enabled);
+    }
+
+    bool Renderer::IsVSyncEnabled()
+    {
+        return g && g->services.device->IsVSync();
+    }
+
+    void Renderer::SetGpuProfilingEnabled(bool enabled)
+    {
+        if (g && g->services.profiler) g->services.profiler->SetEnabled(enabled);
+    }
+
+    bool Renderer::IsGpuProfilingEnabled()
+    {
+        return g && g->services.profiler && g->services.profiler->IsEnabled();
+    }
+
+    bool Renderer::IsGpuProfilingAvailable()
+    {
+        return g && g->services.profiler && g->services.profiler->IsAvailable();
+    }
+
+    const GpuFrameTimings& Renderer::GetGpuTimings()
+    {
+        static const GpuFrameTimings kNone{};
+        return (g && g->services.profiler) ? g->services.profiler->GetTimings() : kNone;
     }
 
     void Renderer::EnableWireframe(bool enable)

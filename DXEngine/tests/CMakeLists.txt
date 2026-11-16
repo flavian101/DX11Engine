@@ -177,3 +177,24 @@ add_executable(mesh_optimizer_tests
 target_include_directories(mesh_optimizer_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
 target_link_libraries(mesh_optimizer_tests PRIVATE meshoptimizer)
 add_test(NAME mesh_optimizer_tests COMMAND mesh_optimizer_tests)
+
+# GpuTimingCollector: the GPU profiler's bookkeeping (header only, no GPU).
+add_executable(gpu_timings_tests gpu_timings_tests.cpp)
+target_include_directories(gpu_timings_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
+target_compile_features(gpu_timings_tests PRIVATE cxx_std_17)
+add_test(NAME gpu_timings_tests COMMAND gpu_timings_tests)
+
+# The RHI parts that need a real D3D11 device: queries, fences, V-Sync, the GPU profiler end to end. Prints SKIPPED and
+# passes where no device can be created; run by hand with `ctest -L gpu` after touching src/RHI or the profiler.
+set(D3D11_SRC ${CMAKE_SOURCE_DIR}/DXEngine/src/RHI/D3D11)
+add_executable(d3d11_device_tests
+    d3d11_device_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/renderer/Core/GpuProfiler.cpp
+    ${D3D11_SRC}/D3D11Device.cpp ${D3D11_SRC}/D3D11CommandBuffer.cpp ${D3D11_SRC}/D3D11Query.cpp
+    ${D3D11_SRC}/D3D11Pipeline.cpp ${D3D11_SRC}/D3D11Shader.cpp ${D3D11_SRC}/D3D11Buffer.cpp
+    ${D3D11_SRC}/D3D11Texture.cpp ${D3D11_SRC}/D3D11Sampler.cpp)
+target_include_directories(d3d11_device_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
+target_link_libraries(d3d11_device_tests PRIVATE d3d11 dxgi d3dcompiler dxguid)
+target_compile_features(d3d11_device_tests PRIVATE cxx_std_17)
+add_test(NAME d3d11_device_tests COMMAND d3d11_device_tests)
+set_tests_properties(d3d11_device_tests PROPERTIES LABELS gpu)

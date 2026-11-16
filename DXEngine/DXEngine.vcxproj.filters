@@ -239,12 +239,15 @@
     <ClInclude Include="src\ResourceManager\ResourceManager.h" />
     <ClInclude Include="src\renderer\MaterialSystem.h" />
     <ClInclude Include="src\renderer\ShaderCache.h" />
+    <ClInclude Include="src\RHI\D3D11\D3D11Query.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Sampler.h" />
     <ClInclude Include="src\renderer\Renderer.h" />
     <ClInclude Include="src\renderer\Core\RenderGraph.h" />
     <ClInclude Include="src\renderer\Core\RenderTypes.h" />
     <ClInclude Include="src\renderer\Core\RenderPass.h" />
     <ClInclude Include="src\renderer\Core\FrameContext.h" />
+    <ClInclude Include="src\renderer\Core\GpuProfiler.h" />
+    <ClInclude Include="src\renderer\Core\GpuTimings.h" />
     <ClInclude Include="src\renderer\Passes\DepthPrepass.h" />
     <ClInclude Include="src\renderer\Passes\ForwardPass.h" />
     <ClInclude Include="src\renderer\Passes\MeshDrawer.h" />
@@ -475,9 +478,11 @@
     <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
     <ClCompile Include="src\renderer\MaterialSystem.cpp" />
     <ClCompile Include="src\renderer\ShaderCache.cpp" />
+    <ClCompile Include="src\RHI\D3D11\D3D11Query.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Sampler.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\Core\RenderGraph.cpp" />
+    <ClCompile Include="src\renderer\Core\GpuProfiler.cpp" />
     <ClCompile Include="src\renderer\Passes\DepthPrepass.cpp" />
     <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
     <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />

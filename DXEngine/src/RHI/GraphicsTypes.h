@@ -483,6 +483,22 @@ namespace DXEngine::RHI
         PipelineStatistics
     };
 
+    // One slot of a PipelineStatistics query (the D3D11 counters, in the same order as D3D11_QUERY_DATA_PIPELINE_STATISTICS).
+    struct PipelineStatisticsData
+    {
+        uint64_t inputAssemblerVertices = 0;
+        uint64_t inputAssemblerPrimitives = 0;
+        uint64_t vertexShaderInvocations = 0;
+        uint64_t geometryShaderInvocations = 0;
+        uint64_t geometryShaderPrimitives = 0;
+        uint64_t clipperInvocations = 0;
+        uint64_t clipperPrimitives = 0;
+        uint64_t pixelShaderInvocations = 0;
+        uint64_t hullShaderInvocations = 0;
+        uint64_t domainShaderInvocations = 0;
+        uint64_t computeShaderInvocations = 0;
+    };
+
     struct QueryDesc
     {
         QueryType type;

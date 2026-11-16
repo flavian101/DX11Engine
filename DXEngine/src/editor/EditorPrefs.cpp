@@ -44,6 +44,7 @@ namespace DXEngine
             if (!ParseFloat(Trim(line.substr(eq + 1)), v)) continue;
             if (key == "ui_scale"  && v >= 0.75f && v <= 2.5f)   prefs.uiScale = v;
             if (key == "fly_speed" && v >= 0.5f  && v <= 400.0f) prefs.flySpeed = v;
+            if (key == "vsync"     && (v == 0.0f || v == 1.0f))  prefs.vsync = v == 1.0f;
         }
         return prefs;
     }
@@ -51,7 +52,7 @@ namespace DXEngine
     std::string FormatEditorPrefs(const EditorPrefs& prefs)
     {
         char buffer[128];
-        snprintf(buffer, sizeof(buffer), "ui_scale=%.3f\nfly_speed=%.3f\n", prefs.uiScale, prefs.flySpeed);
+        snprintf(buffer, sizeof(buffer), "ui_scale=%.3f\nfly_speed=%.3f\nvsync=%d\n", prefs.uiScale, prefs.flySpeed, prefs.vsync ? 1 : 0);
         return buffer;
     }
 

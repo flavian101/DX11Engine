@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "D3D11Device.h"
+#include "D3D11Query.h"
 #include "D3D11Pipeline.h"
 #include "D3D11Shader.h"
 #include "D3D11Buffer.h"
@@ -108,19 +109,20 @@ namespace DXEngine::RHI
 
 	std::shared_ptr<IFence> D3D11Device::CreateFence(const FenceDesc& desc)
 	{
-		//D3D11 does not have fences, but we can create a dummy implementation if needed
-		//that uses ID3D11Query for synchronization
-		OutputDebugStringA("D3D11Device::CreateFence - Creating stub fence (D3D11 limitation)\n");
-
-		// TODO: Implement D3D11Fence using ID3D11Query
-		return nullptr;
+		// D3D11 has no fences: an EVENT query is the equivalent (see D3D11Fence)
+		auto fence = std::make_shared<D3D11Fence>(m_Device.Get(), m_Context.Get(), desc);
+		return fence->IsValid() ? fence : nullptr;
 	}
 
 	std::shared_ptr<IQuery> D3D11Device::CreateQuery(const QueryDesc& desc)
 	{
-		// TODO: Implement D3D11Query using ID3D11Query
-		OutputDebugStringA("D3D11Device::CreateQuery - Not yet implemented\n");
-		return nullptr;
+		auto query = std::make_shared<D3D11Query>(m_Device.Get(), m_Context.Get(), desc);
+		if (!query->IsValid())
+		{
+			OutputDebugStringA("D3D11Device::CreateQuery - the device could not create the query\n");
+			return nullptr;
+		}
+		return query;
 	}
 
 
@@ -138,19 +140,14 @@ namespace DXEngine::RHI
 			Submit(cmds[i]); //call single submit for each command buffer
 		}
 
-		//signal Fence if provieded 
+		// the fence reaches its next value when the GPU has finished everything submitted so far
 		if (signalFence)
-		{
-			//D3D11 doesn't support fences natively(true fences), but we can signal completion
-			//since everything is immediate
-			signalFence->Signal(signalFence->GetCompletedValue() + 1);
-		}
+			signalFence->Signal(signalFence->GetLastSignaledValue() + 1);
 	}
 
 	void D3D11Device::Present()
 	{
-		//TO-Do add support for V-sync later
-		m_SwapChain->Present(0, 0);
+		m_SwapChain->Present(m_VSync ? 1 : 0, 0);
 	}
 
 	void D3D11Device::WaitIdle()
@@ -232,7 +229,8 @@ namespace DXEngine::RHI
 				// Wait for data
 			}
 
-			return disjointData.Frequency;
+			if (!disjointData.Disjoint && disjointData.Frequency != 0)
+				return disjointData.Frequency;
 		}
 
 		// Fallback: typical value is 10MHz

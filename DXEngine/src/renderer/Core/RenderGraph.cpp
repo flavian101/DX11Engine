@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "RenderGraph.h"
+#include "GpuProfiler.h"
 #include "RenderPass.h"
 #include "FrameContext.h"
 #include <sstream>
@@ -121,14 +122,19 @@ namespace DXEngine
     {
         if (!m_Compiled || !m_Initialized) return;
 
+        GpuProfiler* gpu = (ctx.services && ctx.cmd) ? ctx.services->profiler.get() : nullptr;
+
         for (size_t idx : m_Order)
         {
             RenderPass& pass = *m_Nodes[idx].pass;
             if (!pass.IsEnabled()) continue;
 
+            // every pass is one GPU timing scope, named like its node
+            if (gpu) gpu->BeginScope(*ctx.cmd, m_Nodes[idx].name);
             pass.Prepare(ctx);
             pass.Execute(ctx);
             pass.Finalize(ctx);
+            if (gpu) gpu->EndScope(*ctx.cmd);
         }
     }
 

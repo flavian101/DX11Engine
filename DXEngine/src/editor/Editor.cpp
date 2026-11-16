@@ -126,6 +126,20 @@ namespace DXEngine
             m_ThemeApplied = true;
             EditorTheme::Apply(m_Prefs.uiScale);
         }
+
+        // V-Sync is a renderer setting the panel changes directly: the saved choice is applied once, then the renderer
+        // leads and a change is saved (also while playing, where the panel is hidden but a key may change it)
+        if (!m_VSyncApplied)
+        {
+            m_VSyncApplied = true;
+            Renderer::SetVSync(m_Prefs.vsync);
+        }
+        else if (Renderer::IsVSyncEnabled() != m_Prefs.vsync)
+        {
+            m_Prefs.vsync = Renderer::IsVSyncEnabled();
+            SaveEditorPrefs(m_Prefs);
+        }
+
         if (!m_Enabled)
         {
             DrawPlayHint();

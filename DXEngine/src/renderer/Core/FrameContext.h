@@ -18,6 +18,7 @@ namespace DXEngine
     class ResourceCache;
     class ShaderCache;
     class MaterialSystem;
+    class GpuProfiler;
 
     namespace RHI
     {
@@ -38,6 +39,7 @@ namespace DXEngine
         std::shared_ptr<ResourceCache>        resources;
         std::shared_ptr<ShaderCache>          shaders;
         std::shared_ptr<MaterialSystem>       materials;
+        std::shared_ptr<GpuProfiler>          profiler;    // GPU time per pass; null or unavailable = no timing
     };
 
     // ==================================================================

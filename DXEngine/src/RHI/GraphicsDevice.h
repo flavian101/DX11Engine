@@ -135,9 +135,13 @@ namespace DXEngine::RHI
 	public:
 		virtual ~IFence() = default;
 
+		// Signal(value): the fence reaches 'value' when the GPU has finished everything submitted BEFORE this call.
+		// Values only go up. Wait(value, timeout): blocks until the fence has reached 'value' or 'timeout' NANOSECONDS have
+		// passed (UINT64_MAX = no limit); a value that was never signalled returns at once (there is nothing to wait for).
 		virtual void Signal(uint64_t value) = 0;
 		virtual void Wait(uint64_t value, uint64_t timeout = UINT64_MAX) = 0;
-		virtual uint64_t GetCompletedValue() const = 0;
+		virtual uint64_t GetCompletedValue() const = 0;     // the highest value the GPU has reached; never blocks
+		virtual uint64_t GetLastSignaledValue() const = 0;  // the highest value Signal() was called with
 	};
 
 	//Query Interface (for GPU profiling)
@@ -147,8 +151,16 @@ namespace DXEngine::RHI
 		virtual ~IQuery() = default;
 
 		virtual QueryType GetType() const = 0;
+
+		// A query holds QueryDesc::count slots. Result layout of GetData (dataSize must be at least the size below, else
+		// false; it also returns false, and writes nothing, while the GPU has not finished):
+		//   Timestamp           uint64_t[count + 1]: [0] = ticks per second (0 when the measurement was disjoint, e.g. the
+		//                       GPU clock changed: discard it), [1 + i] = the timestamp written to slot i (0 if never written).
+		//                       BeginQuery / EndQuery (slot 0) bracket the interval the timestamps are written in.
+		//   Occlusion           uint64_t[count]: samples that passed, per slot (BeginQuery/EndQuery(slot))
+		//   PipelineStatistics  PipelineStatisticsData[count], per slot (BeginQuery/EndQuery(slot))
 		virtual bool GetData(void* outData, size_t dataSize) = 0;
-		virtual bool IsReady() const = 0;
+		virtual bool IsReady() const = 0;                   // would GetData succeed now (never blocks)
 	};
 
 	//command Recording interface
@@ -288,6 +300,11 @@ namespace DXEngine::RHI
 
 		//Performance queries
 		virtual uint64_t GetTimestampFrequency() const = 0;  // For converting timestamps to time
+
+		// Presentation interval: true waits for the display's vertical blank (no tearing, frame rate capped to the refresh
+		// rate), false presents at once. Takes effect at the next Present().
+		virtual void SetVSync(bool enabled) = 0;
+		virtual bool IsVSync() const = 0;
 
 	};
 

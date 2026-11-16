@@ -740,6 +740,13 @@ static void TestEditorPrefs()
     CHECK(Near(nan.uiScale, 1.0f) && Near(nan.flySpeed, 20.0f));
     CHECK(Near(ParseEditorPrefs("").uiScale, 1.0f));
 
+    // V-Sync: off by default (an old file without the key keeps today's behaviour), 0 / 1 only, round trip
+    CHECK(!p.vsync && !ParseEditorPrefs("ui_scale=1.2\n").vsync);
+    CHECK(ParseEditorPrefs("vsync=1\n").vsync && !ParseEditorPrefs("vsync=0\n").vsync);
+    CHECK(!ParseEditorPrefs("vsync=2\n").vsync && !ParseEditorPrefs("vsync=yes\n").vsync && !ParseEditorPrefs("vsync=-1\n").vsync);
+    EditorPrefs on; on.vsync = true;
+    CHECK(ParseEditorPrefs(FormatEditorPrefs(on)).vsync);
+
     // files: a missing file is the defaults, a saved one comes back
     CHECK(Near(LoadEditorPrefs("no_such_file_for_the_test.ini").uiScale, 1.0f));
     SaveEditorPrefs(p, "editor_prefs_test.ini");

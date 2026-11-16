@@ -79,6 +79,7 @@ namespace DXEngine
 
         bool  m_Enabled = true;
         bool  m_ThemeApplied = false;
+        bool  m_VSyncApplied = false;     // the saved V-Sync choice reaches the renderer once; after that the renderer leads
         bool  m_ShowHierarchy = true;
         bool  m_ShowInspector = true;
         bool  m_ShowViewport  = true;

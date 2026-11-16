@@ -55,6 +55,9 @@ namespace DXEngine::RHI
 		MemoryStats GetMemoryStats() const override;
 		uint64_t GetTimestampFrequency() const override;
 
+		void SetVSync(bool enabled) override { m_VSync = enabled; }
+		bool IsVSync() const override { return m_VSync; }
+
 	private:
 		bool CreateDeviceAndSwapChain(void* windowHandle, uint32_t width, uint32_t height);
 		bool CreateBackBuffer();
@@ -72,6 +75,7 @@ namespace DXEngine::RHI
 		uint32_t m_Height = 0;
 		HWND m_WindowHandle = nullptr;
 		mutable MemoryStats m_MemoryStats;
+		bool m_VSync = false;                  // presentation interval: see IGraphicsDevice::SetVSync
 	};
 }
 

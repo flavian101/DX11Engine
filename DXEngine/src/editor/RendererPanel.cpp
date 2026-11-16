@@ -130,6 +130,42 @@ namespace DXEngine
         }
     }
 
+    // GPU milliseconds per pass, from timestamp queries read back a few frames late. The averages move slowly on purpose:
+    // they are what to compare when a setting is switched (the depth pre-pass, light culling, shadow resolution).
+    static void DrawGpuTimings()
+    {
+        if (!Renderer::IsGpuProfilingAvailable())
+        {
+            ImGui::TextDisabled("This device cannot create timestamp queries.");
+            return;
+        }
+
+        bool enabled = Renderer::IsGpuProfilingEnabled();
+        if (ImGui::Checkbox("Measure GPU time", &enabled)) Renderer::SetGpuProfilingEnabled(enabled);
+        if (!enabled) return;
+
+        const GpuFrameTimings& t = Renderer::GetGpuTimings();
+        if (!t.valid)
+        {
+            ImGui::TextDisabled("Waiting for the first measurement...");
+            return;
+        }
+
+        if (PropertyGrid::Begin("gpu"))
+        {
+            PropertyGrid::Text("Total", "%.2f ms  (avg %.2f)", t.totalMs, t.avgTotalMs);
+            for (const GpuScopeTiming& s : t.scopes)
+            {
+                char value[48];
+                snprintf(value, sizeof(value), "%.2f ms  (avg %.2f)", s.ms, s.avgMs);
+                PropertyGrid::Text(s.name.c_str(), "%s", value);
+            }
+            if (t.droppedScopes)
+                Warn("Scopes not timed", t.droppedScopes);
+            PropertyGrid::End();
+        }
+    }
+
     void RendererPanel::OnImGui(bool* open)
     {
         if (open && !*open) return;
@@ -148,6 +184,9 @@ namespace DXEngine
             if (PropertyGrid::Checkbox("Wireframe", wireframe)) Renderer::EnableWireframe(wireframe);
             bool culling = Renderer::IsFrustumCullingEnabled();
             if (PropertyGrid::Checkbox("Frustum culling", culling)) Renderer::EnableFrustumCulling(culling);
+            // waits for the display's refresh: no tearing and a capped frame rate; off shows what the GPU can really do
+            bool vsync = Renderer::IsVSyncEnabled();
+            if (PropertyGrid::Checkbox("V-Sync", vsync)) Renderer::SetVSync(vsync);
             PropertyGrid::End();
         }
 
@@ -178,6 +217,9 @@ namespace DXEngine
                 PropertyGrid::End();
             }
         }
+
+        if (ImGui::CollapsingHeader("GPU time"))
+            DrawGpuTimings();
 
         if (changed)
             Renderer::SetEnvironment(env);

@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "D3D11CommandBuffer.h"
+#include "D3D11Query.h"
 #include "D3D11Pipeline.h"
 #include "D3D11Shader.h"
 #include "D3D11Buffer.h"
@@ -460,20 +461,18 @@ namespace DXEngine::RHI
 	}
 	void D3D11CommandBuffer::BeginQuery(IQuery* query, uint32_t index)
 	{
-		// TODO: Implement when D3D11Query exists
-		OutputDebugStringA("Warning: BeginQuery not yet implemented\n");
+		if (query) static_cast<D3D11Query*>(query)->Begin(index);
 	}
 
 	void D3D11CommandBuffer::EndQuery(IQuery* query, uint32_t index)
 	{
-		// TODO: Implement when D3D11Query exists
-		OutputDebugStringA("Warning: EndQuery not yet implemented\n");
+		if (query) static_cast<D3D11Query*>(query)->End(index);
 	}
 
 	void D3D11CommandBuffer::WriteTimestamp(IQuery* query, PipelineStage stage, uint32_t index)
 	{
-		// TODO: Implement when D3D11Query exists
-		OutputDebugStringA("Warning: WriteTimestamp not yet implemented\n");
+		// D3D11 timestamps are written when the GPU reaches this point of the command stream: the stage has no meaning here
+		if (query) static_cast<D3D11Query*>(query)->WriteTimestamp(index);
 	}
 
 	void D3D11CommandBuffer::PushConstants(const void* data, uint32_t size, uint32_t offset)

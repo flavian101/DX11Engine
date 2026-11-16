@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/GpuTimings.h"
 #include "Core/RenderTypes.h"
 #include <memory>
 #include <string>
@@ -59,6 +60,18 @@ namespace DXEngine
         // End of the frame: shows what was drawn. (EndScene used to do this; it moved so that something can still be drawn
         // on top of the finished scene, like the ImGui layer.)
         static void Present();
+
+        // Presentation interval: on waits for the display's vertical blank (no tearing, capped to the refresh rate), off
+        // presents at once. Applied at the next Present().
+        static void SetVSync(bool enabled);
+        static bool IsVSyncEnabled();
+
+        // GPU time per pass (timestamp queries, read back a few frames late so nothing ever waits). Available when the
+        // device can create the queries; switching it off clears the numbers.
+        static void SetGpuProfilingEnabled(bool enabled);
+        static bool IsGpuProfilingEnabled();
+        static bool IsGpuProfilingAvailable();
+        static const GpuFrameTimings& GetGpuTimings();
 
         static void EnableWireframe(bool enable);
         static void EnableFrustumCulling(bool enable);
