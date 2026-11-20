@@ -93,7 +93,6 @@ namespace DXEngine::RHI
 		virtual void CopyBuffer(IBuffer* src, IBuffer* dst, uint32_t srcOffset, uint32_t dstOffset, uint32_t size)override;
 		virtual void CopyTexture(ITexture* src, ITexture* dst) override;
 		virtual void CopyBufferToTexture(IBuffer* src, ITexture* dst, uint32_t mipLevel = 0, uint32_t arraySlice = 0)override;
-		virtual void CopyTextureToBuffer(ITexture* src, IBuffer* dst, uint32_t mipLevel = 0, uint32_t arraySlice = 0)override;
 
 		//Compute shader dispatch
 		virtual void Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)override;

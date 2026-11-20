@@ -302,7 +302,7 @@ namespace DXEngine
         if (cached != m_MaterialCache.end())
             return cached->second;
 
-        auto material = m_MaterialProcessor->ProcessMaterial(scene->mMaterials[materialIndex], directory, options);
+        auto material = m_MaterialProcessor->ProcessMaterial(scene->mMaterials[materialIndex], directory, options, &asset.warnings);
         if (!material)
             asset.warnings.push_back("Material " + std::to_string(materialIndex) + " could not be imported: its meshes use a default material");
         else

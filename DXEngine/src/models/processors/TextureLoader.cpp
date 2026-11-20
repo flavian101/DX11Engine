@@ -10,12 +10,35 @@ namespace DXEngine
 {
     TextureLoader::TextureLoader(std::shared_ptr<RHI::IGraphicsDevice> device) : m_Device(std::move(device)) {}
 
+    namespace
+    {
+        // A model that names "x_nor_gl.exr" often has "x_nor_gl.png" next to it (an EXR the engine cannot decode, converted):
+        // the same stem with another image extension, in the same folder.
+        std::string FindAlternateImage(const std::string& filepath)
+        {
+            namespace fs = std::filesystem;
+            std::error_code ec;
+            const fs::path original(filepath);
+            for (const char* extension : { ".png", ".jpg", ".jpeg", ".tga", ".bmp" })
+            {
+                fs::path candidate = original;
+                candidate.replace_extension(extension);
+                if (candidate != original && fs::is_regular_file(candidate, ec))
+                    return candidate.string();
+            }
+            return {};
+        }
+    }
+
+    // Returns nullptr when the image cannot be had: NO substitute colour. A material with a missing map must be a material
+    // WITHOUT that map (it then uses its factor), not one with a white or grey stand-in that looks bound: a white "metallic"
+    // map made a whole model metal, a white "normal" map tilted every normal. The caller says what was missing.
     std::shared_ptr<RHI::ITexture> TextureLoader::LoadTexture(const std::string& filepath, aiTextureType type, TextureColorSpace colorSpace)
     {
         if (filepath.empty())
         {
             OutputDebugStringA("TextureLoader: Filepath is empty\n");
-            return CreateFallbackTexture(type);
+            return nullptr;
         }
 
         // Check if texture is embedded (starts with '*')
@@ -24,12 +47,11 @@ namespace DXEngine
             if (!m_CurrentScene)
             {
                 OutputDebugStringA("TextureLoader: Embedded texture detected but no scene provided\n");
-                return CreateFallbackTexture(type);
+                return nullptr;
             }
 
             // Not cached by name: "*0" means a different image in every model.
-            auto embedded = LoadEmbeddedTexture(m_CurrentScene, filepath, colorSpace);
-            return embedded ? embedded : CreateFallbackTexture(type);
+            return LoadEmbeddedTexture(m_CurrentScene, filepath, colorSpace);
         }
 
         // Check cache first. The colour space is part of the key (see LoadTexture in the header).
@@ -50,28 +72,34 @@ namespace DXEngine
             }
         }
 
-        // Check if file exists
-        if (!ModelLoaderUtils::FileExists(filepath))
-        {
-            OutputDebugStringA(("TextureLoader: Texture file not found: " + filepath + "\n").c_str());
-            return CreateFallbackTexture(type);
-        }
+        if (!m_Device)
+            return nullptr;
 
-        // Load from file (ImageLoader logs the reason and returns nullptr on failure)
-        if (m_Device)
+        // the file itself, then (when it is missing or cannot be decoded) a converted copy next to it
+        std::shared_ptr<RHI::ITexture> texture;
+        if (ModelLoaderUtils::FileExists(filepath))
+            texture = ImageLoader::LoadTexture2D(*m_Device, filepath, colorSpace);      // logs the reason on failure
+        else
+            OutputDebugStringA(("TextureLoader: Texture file not found: " + filepath + "\n").c_str());
+
+        if (!texture)
         {
-            if (auto texture = ImageLoader::LoadTexture2D(*m_Device, filepath, colorSpace))
+            const std::string alternate = FindAlternateImage(filepath);
+            if (!alternate.empty())
             {
-                if (m_CachingEnabled)
-                {
-                    m_TextureCache[cacheKey] = texture;
-                }
-                m_TexturesLoaded++;
-                return texture;
+                texture = ImageLoader::LoadTexture2D(*m_Device, alternate, colorSpace);
+                if (texture)
+                    OutputDebugStringA(("TextureLoader: using '" + alternate + "' instead of '" + filepath + "'\n").c_str());
             }
         }
 
-        return CreateFallbackTexture(type);
+        if (!texture)
+            return nullptr;
+
+        if (m_CachingEnabled)
+            m_TextureCache[cacheKey] = texture;
+        m_TexturesLoaded++;
+        return texture;
     }
 
     std::shared_ptr<RHI::ITexture> TextureLoader::LoadEmbeddedTexture(const aiScene* scene, const std::string& filepath, TextureColorSpace colorSpace)
@@ -79,7 +107,7 @@ namespace DXEngine
         if (!scene || filepath.empty() || filepath[0] != '*')
         {
             OutputDebugStringA("TextureLoader: Invalid embedded texture path\n");
-            return CreateSolidColorTexture(255, 255, 255, 255);
+            return nullptr;
         }
 
         int textureIndex = std::stoi(filepath.substr(1));
@@ -136,64 +164,7 @@ namespace DXEngine
 
         OutputDebugStringA(("TextureLoader: Failed to load embedded texture at index " +
             std::to_string(textureIndex) + "\n").c_str());
-        return CreateSolidColorTexture(255, 255, 255, 255);
-    }
-
-    std::shared_ptr<RHI::ITexture> TextureLoader::CreateFallbackTexture(aiTextureType type)
-    {
-#ifdef DX_DEBUG
-        OutputDebugStringA(("TextureLoader: Creating fallback texture for type: " +
-            GetTextureTypeName(type) + "\n").c_str());
-#endif
-
-        switch (type)
-        {
-        case aiTextureType_DIFFUSE:
-            return CreateSolidColorTexture(255, 255, 255, 255); // White
-
-        case aiTextureType_NORMALS:
-            return CreateSolidColorTexture(128, 128, 255, 255); // Flat normal (pointing up)
-
-        case aiTextureType_SPECULAR:
-            return CreateSolidColorTexture(128, 128, 128, 255); // Medium gray
-
-        case aiTextureType_METALNESS:
-            return CreateSolidColorTexture(0, 0, 0, 255); // Non-metallic
-
-        case aiTextureType_DIFFUSE_ROUGHNESS:
-            return CreateSolidColorTexture(128, 128, 128, 255); // Medium roughness
-
-        case aiTextureType_AMBIENT_OCCLUSION:
-            return CreateSolidColorTexture(255, 255, 255, 255); // No occlusion
-
-        case aiTextureType_HEIGHT:
-            return CreateSolidColorTexture(128, 128, 128, 255); // Flat height
-
-        case aiTextureType_EMISSIVE:
-            return CreateSolidColorTexture(0, 0, 0, 255); // No emission
-
-        case aiTextureType_OPACITY:
-            return CreateSolidColorTexture(255, 255, 255, 255); // Fully opaque
-
-        default:
-            return CreateSolidColorTexture(255, 0, 255, 255); // Magenta (error color)
-        }
-    }
-
-    std::shared_ptr<RHI::ITexture> TextureLoader::CreateSolidColorTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-    {
-        if (!m_Device) return nullptr;
-
-        const uint32_t key = (uint32_t(r) << 24) | (uint32_t(g) << 16) | (uint32_t(b) << 8) | uint32_t(a);
-        auto it = m_SolidColorCache.find(key);
-        if (it != m_SolidColorCache.end()) return it->second;
-
-        // Every fallback colour is either 0, 255 or a data value (flat normal, mid roughness): the neutral colours of the
-        // two COLOUR slots (white albedo, black emission) are the same number in sRGB and linear, so one linear texture
-        // serves all of them.
-        auto texture = ImageLoader::CreateSolidColor(*m_Device, r, g, b, a, TextureColorSpace::Linear);
-        if (texture) m_SolidColorCache[key] = texture;
-        return texture;
+        return nullptr;
     }
 
     std::string TextureLoader::GetTextureTypeName(aiTextureType type) const

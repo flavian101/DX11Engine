@@ -58,6 +58,8 @@ namespace DXEngine::RHI
 		void SetVSync(bool enabled) override { m_VSync = enabled; }
 		bool IsVSync() const override { return m_VSync; }
 
+		bool ReadTexture(ITexture* texture, uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& outPixels) override;
+
 	private:
 		bool CreateDeviceAndSwapChain(void* windowHandle, uint32_t width, uint32_t height);
 		bool CreateBackBuffer();

@@ -118,11 +118,18 @@ namespace DXEngine
 		DirectX::XMFLOAT4X4 OffsetMatrix;            // Transform from mesh space to bone space
 		DirectX::XMFLOAT4X4 LocalTransform;          // Local transform relative to parent
 
+		// Only for a ROOT bone (ParentIndex -1): the product of the transforms of the non-bone nodes above it, up to (not
+		// including) the model's root node: an FBX "Armature" (rotated 90 degrees, scaled 100), the unit-conversion nodes of a
+		// glTF. The offset (inverse bind) matrices are relative to a bone placed WITH them, so the bone's world transform must
+		// include them; without it the skinned mesh came out rotated and scaled wrongly (a horse with its head pointing down).
+		DirectX::XMFLOAT4X4 RootParentTransform;
+
 		Bone()
 			:ParentIndex(-1)
 		{
 			DirectX::XMStoreFloat4x4(&OffsetMatrix, DirectX::XMMatrixIdentity());
 			DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
+			DirectX::XMStoreFloat4x4(&RootParentTransform, DirectX::XMMatrixIdentity());
 		}
 	};
 

@@ -145,8 +145,9 @@ namespace DXEngine
 
 				if (bone.ParentIndex < 0)
 				{
-					// Root bone
-					outWorldTransforms[i] = localTransforms[i];
+					// Root bone: its own transform, then the nodes above it (see Bone::RootParentTransform)
+					outWorldTransforms[i] = DirectX::XMMatrixMultiply(
+						localTransforms[i], DirectX::XMLoadFloat4x4(&bone.RootParentTransform));
 				}
 				else
 				{

@@ -1,4 +1,5 @@
 #pragma once
+#include "../TextureColorSpace.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -63,7 +64,6 @@ namespace DXEngine
     // How the texel values are meant to be read.
     //   SRGB   : colours (albedo, emissive). Stored gamma-encoded; the GPU converts to linear when sampling.
     //   Linear : data (normals, roughness, AO, ...). The numbers ARE the values; converting them would corrupt them.
-    enum class TextureColorSpace : uint8_t { Linear, SRGB };
 
     struct SlotInfo
     {

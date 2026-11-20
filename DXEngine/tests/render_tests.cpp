@@ -8,6 +8,7 @@
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
 #include "utils/Mesh/Resource/MeshResource.h"
+#include "utils/Mesh/Utils/TangentMath.h"
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -335,6 +336,86 @@ static void TestOptimizeKeepsTrianglesAndSubmeshes()
     CHECK(PositionTriangles(res, split, total - split) == secondBefore);
 }
 
+// ------------------------------------------------------------ tangent frames (normal maps)
+// Two triangles of a quad in the XY plane facing +Z; 'flipU' mirrors the UVs of the second triangle (a mirrored UV island).
+static std::shared_ptr<MeshResource> TangentQuad(bool collapseSecond, bool mirrorSecond)
+{
+    auto vertices = std::make_unique<VertexData>(VertexLayout::CreateLit());
+    vertices->Resize(6);
+    const XMFLOAT3 pos[6] = { {0,0,0}, {1,0,0}, {0,1,0},   {2,0,0}, {3,0,0}, {2,1,0} };
+    // image-style UVs (v grows DOWNWARD, as the importer flips them): u right, v = 1 - y
+    XMFLOAT2 uv[6] = { {0,1}, {1,1}, {0,0},   {0,1}, {1,1}, {0,0} };
+    if (mirrorSecond) { uv[3].x = 1; uv[4].x = 0; uv[5].x = 1; }
+    if (collapseSecond) { uv[3] = uv[4] = uv[5] = { 0.5f, 0.5f }; }
+    for (size_t i = 0; i < 6; ++i)
+    {
+        vertices->SetAttribute(i, RHI::VertexAttributeType::Position, pos[i]);
+        vertices->SetAttribute(i, RHI::VertexAttributeType::Normal, XMFLOAT3{ 0, 0, -1 });   // LH: faces the camera at -Z
+        vertices->SetAttribute(i, RHI::VertexAttributeType::TexCoord0, uv[i]);
+    }
+    auto indices = std::make_unique<IndexData>(IndexType::UInt16);
+    indices->AddTriangle(0, 1, 2);
+    indices->AddTriangle(3, 4, 5);
+    auto resource = std::make_shared<MeshResource>("quad");
+    resource->SetVertexData(std::move(vertices));
+    resource->SetIndexData(std::move(indices));
+    resource->GenerateTangents();
+    return resource;
+}
+
+static XMFLOAT3 BitangentOf(const MeshResource& r, size_t vertex)
+{
+    const XMFLOAT3 n = r.GetVertexData()->GetAttribute<XMFLOAT3>(vertex, RHI::VertexAttributeType::Normal);
+    const XMFLOAT4 t = r.GetVertexData()->GetAttribute<XMFLOAT4>(vertex, RHI::VertexAttributeType::Tangent);
+    // what the shader builds: B = cross(N, T) * w
+    return { (n.y * t.z - n.z * t.y) * t.w, (n.z * t.x - n.x * t.z) * t.w, (n.x * t.y - n.y * t.x) * t.w };
+}
+
+static void TestGeneratedTangentsFollowTheUvs()
+{
+    auto r = TangentQuad(false, false);
+    const XMFLOAT4 t0 = r->GetVertexData()->GetAttribute<XMFLOAT4>(0, RHI::VertexAttributeType::Tangent);
+    CHECK(Near(t0.x, 1) && Near(t0.y, 0) && Near(t0.z, 0));               // T along +u (here +X)
+    const XMFLOAT3 b0 = BitangentOf(*r, 0);
+    CHECK(Near(b0.y, 1) && Near(b0.x, 0) && Near(b0.z, 0));               // B = image UP (+Y): where v DEcreases (OpenGL normal maps)
+    CHECK(Near(BitangentOf(*r, 3).y, 1));                                 // the same on the second triangle
+}
+
+static void TestMirroredUvIslandsGetTheOppositeHandedness()
+{
+    auto r = TangentQuad(false, true);                                    // the second triangle is mirrored in u
+    const XMFLOAT4 a = r->GetVertexData()->GetAttribute<XMFLOAT4>(0, RHI::VertexAttributeType::Tangent);
+    const XMFLOAT4 b = r->GetVertexData()->GetAttribute<XMFLOAT4>(3, RHI::VertexAttributeType::Tangent);
+    CHECK(a.w != b.w);                                                    // a constant w = 1 would light one of them upside down
+    // in BOTH islands the bitangent still points image-up (+Y): that is what makes the map work on a mirrored island
+    CHECK(Near(BitangentOf(*r, 0).y, 1) && Near(BitangentOf(*r, 3).y, 1));
+    // and the tangent follows u in each: +X on the first, -X on the second (u runs the other way there)
+    CHECK(a.x > 0.9f && b.x < -0.9f);
+}
+
+static void TestDegenerateUvsDoNotPoisonTheMesh()
+{
+    auto r = TangentQuad(true, false);                                    // the second triangle has collapsed UVs
+    for (size_t i = 0; i < 6; ++i)
+    {
+        const XMFLOAT4 t = r->GetVertexData()->GetAttribute<XMFLOAT4>(i, RHI::VertexAttributeType::Tangent);
+        CHECK(std::isfinite(t.x) && std::isfinite(t.y) && std::isfinite(t.z) && std::isfinite(t.w));
+        CHECK(Near(t.x * t.x + t.y * t.y + t.z * t.z, 1.0f, 1e-3f));      // a usable unit tangent (a fallback frame), never NaN
+    }
+    const XMFLOAT4 fallback = r->GetVertexData()->GetAttribute<XMFLOAT4>(3, RHI::VertexAttributeType::Tangent);
+    CHECK(std::fabs(fallback.z) < 1e-3f);                                 // perpendicular to the normal (-Z): lies in the XY plane
+}
+
+static void TestHandednessHelper()
+{
+    const XMFLOAT3 n = { 0, 0, 1 }, t = { 1, 0, 0 };
+    CHECK(TangentMath::Handedness(n, t, { 0, 1, 0 }) == 1.0f);            // cross(N, T) = +Y
+    CHECK(TangentMath::Handedness(n, t, { 0, -1, 0 }) == -1.0f);
+    CHECK(TangentMath::Handedness(n, t, { 0, 0, 0 }) == 1.0f);            // no bitangent: the default
+    const XMFLOAT3 p = TangentMath::AnyPerpendicular({ 0, 1, 0 });
+    CHECK(Near(p.x * p.x + p.y * p.y + p.z * p.z, 1.0f) && Near(p.y, 0.0f));
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -350,6 +431,10 @@ int main()
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
         { "scene target: size resolution",                     TestSceneTargetSize },
         { "mesh: cache optimisation keeps triangles + submeshes", TestOptimizeKeepsTrianglesAndSubmeshes },
+        { "tangents: generated ones follow the UVs (GL style)",   TestGeneratedTangentsFollowTheUvs },
+        { "tangents: a mirrored UV island gets the other handedness", TestMirroredUvIslandsGetTheOppositeHandedness },
+        { "tangents: collapsed UVs give a finite frame",           TestDegenerateUvsDoNotPoisonTheMesh },
+        { "tangents: handedness helper",                           TestHandednessHelper },
     };
     for (auto& t : tests)
     {

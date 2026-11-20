@@ -58,7 +58,7 @@
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\ImGuizmo\src;vendor\meshoptimizer\src;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\tinyexr;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\ImGuizmo\src;vendor\meshoptimizer\src;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -81,7 +81,7 @@
       <PrecompiledHeaderFile>dxpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ASSIMP_BUILD_STATIC;DX_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\stb;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\ImGuizmo\src;vendor\meshoptimizer\src;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\stb;vendor\tinyexr;vendor\entt\src;vendor\assimp\include;vendor\assimp\build\include;vendor\imgui;vendor\ImGuizmo\src;vendor\meshoptimizer\src;vendor\assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -130,6 +130,7 @@
     <ClInclude Include="src\models\processors\ModelPostProcessor.h" />
     <ClInclude Include="src\models\processors\AnimationProcessor.h" />
     <ClInclude Include="src\models\processors\AssimpContext.h" />
+    <ClInclude Include="src\models\processors\MaterialMapPlan.h" />
     <ClInclude Include="src\models\processors\MaterialProcessor.h" />
     <ClInclude Include="src\models\processors\MeshProcessor.h" />
     <ClInclude Include="src\models\processors\ModelLoaderUtils.h" />
@@ -166,6 +167,8 @@
     <ClInclude Include="src\utils\ConstantBufferTypes.h" />
     <ClInclude Include="src\utils\Mesh\Mesh.h" />
     <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\TangentMath.h" />
+    <ClInclude Include="src\utils\Mesh\Utils\SkinnedBounds.h" />
     <ClInclude Include="src\utils\Mesh\Utils\IndexData.h" />
     <ClInclude Include="src\utils\Mesh\Utils\MeshOptimizer.h" />
     <ClInclude Include="src\utils\Mesh\Utils\MeshBuffers.h" />
@@ -180,7 +183,9 @@
     <ClInclude Include="src\renderer\Systems\LightClustering.h" />
     <ClInclude Include="src\renderer\Systems\SceneExtraction.h" />
     <ClInclude Include="src\scene\TransformSystem.h" />
+    <ClInclude Include="src\utils\ImageDecode.h" />
     <ClInclude Include="src\utils\ImageLoader.h" />
+    <ClInclude Include="src\utils\TextureColorSpace.h" />
     <ClInclude Include="src\utils\TextureNaming.h" />
     <ClInclude Include="src\utils\Transform.h" />
     <ClInclude Include="src\utils\UI\UIButton.h" />
@@ -210,6 +215,13 @@
     <ClInclude Include="src\editor\SceneEditing.h" />
     <ClInclude Include="src\editor\TransformEditing.h" />
     <ClInclude Include="src\editor\ViewportMath.h" />
+    <ClInclude Include="src\assets\AssetCatalog.h" />
+    <ClInclude Include="src\assets\ImportLog.h" />
+    <ClInclude Include="src\assets\ModelImporter.h" />
+    <ClInclude Include="src\assets\ModelLibrary.h" />
+    <ClInclude Include="src\assets\ModelLoaderAdapter.h" />
+    <ClInclude Include="src\editor\AssetsPanel.h" />
+    <ClInclude Include="src\editor\PlatformDialogs.h" />
     <ClInclude Include="src\editor\Editor.h" />
     <ClInclude Include="src\editor\EditorContext.h" />
     <ClInclude Include="src\editor\EntityBounds.h" />
@@ -246,6 +258,9 @@
     <ClCompile Include="src\models\processors\ModelPostProcessor.cpp" />
     <ClCompile Include="src\models\processors\AnimationProcessor.cpp" />
     <ClCompile Include="src\models\processors\AssimpContext.cpp" />
+    <ClCompile Include="src\models\processors\MaterialMapPlan.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\models\processors\MaterialProcessor.cpp" />
     <ClCompile Include="src\models\processors\MeshProcessor.cpp" />
     <ClCompile Include="src\models\processors\SkeletonProcessor.cpp" />
@@ -298,6 +313,9 @@
     <ClCompile Include="src\renderer\Systems\LightClustering.cpp" />
     <ClCompile Include="src\renderer\Systems\SceneExtraction.cpp" />
     <ClCompile Include="src\scene\TransformSystem.cpp" />
+    <ClCompile Include="src\utils\ImageDecode.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\utils\ImageLoader.cpp" />
     <ClCompile Include="src\utils\TextureNaming.cpp" />
     <ClCompile Include="src\utils\Transform.cpp" />
@@ -329,6 +347,14 @@
     <ClCompile Include="src\editor\SceneEditing.cpp" />
     <ClCompile Include="src\editor\HierarchyModel.cpp" />
     <ClCompile Include="src\editor\EditorContext.cpp" />
+    <ClCompile Include="src\assets\AssetCatalog.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\assets\ModelImporter.cpp" />
+    <ClCompile Include="src\assets\ModelLibrary.cpp" />
+    <ClCompile Include="src\assets\ModelLoaderAdapter.cpp" />
+    <ClCompile Include="src\editor\AssetsPanel.cpp" />
+    <ClCompile Include="src\editor\PlatformDialogs.cpp" />
     <ClCompile Include="src\editor\Editor.cpp" />
     <ClCompile Include="src\editor\EntityBounds.cpp" />
     <ClCompile Include="src\editor\HierarchyPanel.cpp" />

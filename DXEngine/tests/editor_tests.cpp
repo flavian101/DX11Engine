@@ -13,6 +13,7 @@
 #include "camera/Camera.h"
 #include "scene/ScenePicking.h"
 #include "scene/AnimationSystem.h"
+#include "models/ModelAsset.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
@@ -852,6 +853,32 @@ static void TestDuplicateAnimatedModel()
     CHECK(!SceneEditing::CanDuplicate(scene, sky));                     // the one thing that still refuses
 }
 
+// "Add component > Mesh renderer > an imported mesh", and "Add to scene" for an imported model
+static void TestAddImportedMeshAndInstantiateModel()
+{
+    Scene scene, other;
+    auto mesh = Mesh::CreateSphere(nullptr, 0.5f, 8);
+    Entity e = SceneEditing::CreateEmpty(scene, "Thing");
+    CHECK(SceneEditing::AddMeshRenderer(scene, e, mesh));
+    CHECK(e.Get<MeshRendererComponent>().mesh == mesh && e.Get<MeshRendererComponent>().materials.empty());   // the mesh's own materials
+    CHECK(!SceneEditing::AddMeshRenderer(scene, e, Mesh::CreateCube(nullptr, 1.0f)));      // already has one
+    CHECK(e.Get<MeshRendererComponent>().mesh == mesh);
+    CHECK(!SceneEditing::AddMeshRenderer(scene, SceneEditing::CreateEmpty(scene, "x"), nullptr));
+    CHECK(!SceneEditing::AddMeshRenderer(scene, SceneEditing::CreateEmpty(other, "foreign"), mesh));
+    CHECK(!SceneEditing::AddMeshRenderer(scene, Entity(), mesh));
+
+    auto asset = std::make_shared<ModelAsset>();
+    ModelNode root; root.name = "RootNode"; root.position = { 5, 5, 5 };
+    asset->AddNode(root);
+    asset->AttachMesh(0, asset->AddMesh("m", Mesh::CreateCube(nullptr, 1.0f)));
+    Entity inst = SceneEditing::InstantiateModel(scene, asset, "Ship", { 1, 2, 3 });
+    CHECK(inst.IsValid() && NameOf(inst) == "Ship");
+    const auto& t = inst.Get<TransformComponent>();
+    CHECK(Near(t.position.x, 1) && Near(t.position.y, 2) && Near(t.position.z, 3));          // placed where asked
+    CHECK(inst.Has<MeshRendererComponent>());
+    CHECK(!SceneEditing::InstantiateModel(scene, nullptr, "x", { 0, 0, 0 }).IsValid());
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -868,6 +895,7 @@ int main()
         { "reparent: cycles and foreign entities refused",  TestReparentRejectsCyclesAndForeignEntities },
         { "gizmo write-back: world matrix -> local TRS",    TestApplyWorldMatrix },
         { "create: lights and empties",                     TestCreateLights },
+        { "add component: imported mesh, add model",        TestAddImportedMeshAndInstantiateModel },
         { "duplicate: an animated model gets its own Animator", TestDuplicateAnimatedModel },
         { "add component: mesh renderer on an entity",      TestAddMeshRendererToExistingEntity },
         { "euler: round trip, conventions, gimbal",         TestEulerRoundTrip },

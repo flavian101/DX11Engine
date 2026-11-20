@@ -4,8 +4,10 @@
 #include "TextureLoader.h"
 #include "RHI/GraphicsDevice.h"
 #include "renderer/Renderer.h"
+#include "MaterialMapPlan.h"
 #include <algorithm>
 #include <filesystem>
+#include <map>
 
 namespace DXEngine
 {
@@ -21,7 +23,8 @@ namespace DXEngine
 	std::shared_ptr<Material> MaterialProcessor::ProcessMaterial(
 		const aiMaterial* aiMaterial,
 		const std::string& directory,
-		const ModelLoadOptions& options)
+		const ModelLoadOptions& options,
+		std::vector<std::string>* warnings)
 	{
 		if (!aiMaterial)
 		{
@@ -40,11 +43,11 @@ namespace DXEngine
 		auto material = std::make_shared<Material>(name, model);
 		material->SetRenderState(DetermineRenderState(aiMaterial));
 
-		LoadBasicProperties(material, aiMaterial);
+		const FileFactors fileFactors = LoadBasicProperties(material, aiMaterial);
 
 		if (options.loadTextures)
 		{
-			LoadAllTextures(material, aiMaterial, directory, options);
+			LoadAllTextures(material, aiMaterial, directory, options, fileFactors, warnings);
 		}
 
 		// Configure Material based on loaded textures
@@ -88,7 +91,7 @@ namespace DXEngine
 		return state;
 	}
 
-	void MaterialProcessor::LoadBasicProperties(std::shared_ptr<Material> mat, const aiMaterial* aiMat)
+	MaterialProcessor::FileFactors MaterialProcessor::LoadBasicProperties(std::shared_ptr<Material> mat, const aiMaterial* aiMat)
 	{
 		// Load color properties
 		aiColor3D diffuse(1.0f, 1.0f, 1.0f);
@@ -107,8 +110,9 @@ namespace DXEngine
 
 		aiMat->Get(AI_MATKEY_OPACITY, opacity);
 		aiMat->Get(AI_MATKEY_SHININESS, shininess);
-		aiMat->Get(AI_MATKEY_METALLIC_FACTOR, metallic);
-		aiMat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
+		FileFactors fileFactors;
+		fileFactors.metallic  = aiMat->Get(AI_MATKEY_METALLIC_FACTOR, metallic) == AI_SUCCESS;
+		fileFactors.roughness = aiMat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS;
 
 		// Set material properties
 		// The opacity goes into `alpha` ONLY. It used to go into the diffuse colour's alpha as well, and the shaders multiplied
@@ -120,82 +124,106 @@ namespace DXEngine
 		mat->SetAlpha(opacity);
 		mat->SetMetallic(metallic);
 		mat->SetRoughness(roughness);
+		// an imported emissive colour is what the artist authored (glTF: strength 1 unless an extension says more); the
+		// engine's default of 3 is for materials made in the editor
+		mat->SetEmissiveIntensity(1.0f);
+		return fileFactors;
+	}
+
+	namespace
+	{
+		struct KindToAssimp { SourceMap kind; aiTextureType type; };
+		const KindToAssimp kKinds[] = {
+			{ SourceMap::BaseColor, aiTextureType_BASE_COLOR },        { SourceMap::Diffuse, aiTextureType_DIFFUSE },
+			{ SourceMap::Normals, aiTextureType_NORMALS },             { SourceMap::NormalCamera, aiTextureType_NORMAL_CAMERA },
+			{ SourceMap::Height, aiTextureType_HEIGHT },               { SourceMap::Specular, aiTextureType_SPECULAR },
+			{ SourceMap::Shininess, aiTextureType_SHININESS },         { SourceMap::Emissive, aiTextureType_EMISSIVE },
+			{ SourceMap::EmissionColor, aiTextureType_EMISSION_COLOR }, { SourceMap::Metalness, aiTextureType_METALNESS },
+			{ SourceMap::DiffuseRoughness, aiTextureType_DIFFUSE_ROUGHNESS }, { SourceMap::AmbientOcclusion, aiTextureType_AMBIENT_OCCLUSION },
+			{ SourceMap::Lightmap, aiTextureType_LIGHTMAP },           { SourceMap::Ambient, aiTextureType_AMBIENT },
+			{ SourceMap::Opacity, aiTextureType_OPACITY },
+		};
+
+		aiTextureType AssimpTypeOf(SourceMap kind)
+		{
+			for (const KindToAssimp& k : kKinds) if (k.kind == kind) return k.type;
+			return aiTextureType_UNKNOWN;
+		}
 	}
 
 	void MaterialProcessor::LoadAllTextures(
 		std::shared_ptr<Material> mat,
 		const aiMaterial* aiMat,
 		const std::string& directory,
-		const ModelLoadOptions& options)
+		const ModelLoadOptions& options,
+		const FileFactors& fileFactors,
+		std::vector<std::string>* warnings)
 	{
-		// Core textures
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_DIFFUSE,  TextureSlot::Diffuse);
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_NORMALS,  TextureSlot::Normal);
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_SPECULAR, TextureSlot::Specular);
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_EMISSIVE, TextureSlot::Emissive);
+		auto warn = [&](const std::string& text) { if (warnings) warnings->push_back(mat->GetName() + ": " + text); };
 
-		// PBR textures
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_METALNESS,         TextureSlot::Metallic);
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_DIFFUSE_ROUGHNESS, TextureSlot::Roughness);
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_AMBIENT_OCCLUSION, TextureSlot::AmbientOcclusion);
-
-		const std::string heightPath =
-			LoadTextureOfType(mat, aiMat, directory, aiTextureType_HEIGHT, TextureSlot::Height);
-		LoadTextureOfType(mat, aiMat, directory, aiTextureType_OPACITY, TextureSlot::Opacity);
-
-		// Validate height map assignment. Many exporters (OBJ "bump") put a normal map in the HEIGHT slot;
-		// the file name tells them apart. (An RHI texture does not remember its path, so the path that
-		// LoadTextureOfType returned is used.)
-		if (mat->GetTexture(TextureSlot::Height) && !m_TextureLoader->IsHeightMap(heightPath)) {
-			// Likely misassigned normal map
-			if (!mat->GetTexture(TextureSlot::Normal)) {
-				mat->SetTexture(TextureSlot::Normal, mat->GetTexture(TextureSlot::Height));
-#ifdef DX_DEBUG
-				OutputDebugStringA("MaterialProcessor: Reassigned height texture to normal map\n");
-#endif
-			}
-			mat->SetTexture(TextureSlot::Height, nullptr);   // also switches the HeightMap shader feature off
+		// 1) every texture file the material names, by kind
+		std::map<SourceMap, std::string> files;
+		for (const KindToAssimp& k : kKinds)
+		{
+			const std::string file = GetTextureFilename(aiMat, k.type, directory);
+			if (!file.empty()) files[k.kind] = file;
 		}
+
+		// Many exporters (OBJ "bump") put a NORMAL map in the HEIGHT slot; the file name tells them apart.
+		if (auto height = files.find(SourceMap::Height); height != files.end() && !m_TextureLoader->IsHeightMap(height->second))
+		{
+			if (files.find(SourceMap::Normals) == files.end() && files.find(SourceMap::NormalCamera) == files.end())
+				files[SourceMap::Normals] = height->second;                  // it is the normal map
+			else
+				warn("'" + height->second + "' looks like a normal map but the material has one already: not used");
+			files.erase(SourceMap::Height);
+		}
+
+		// 2) the decision (pure, tested): which file feeds which slot, in which channel
+		const MapPlan plan = PlanMaps(files, fileFactors.metallic, fileFactors.roughness);
+		for (const std::string& w : plan.warnings) warn(w);
+
+		// 3) load them
+		for (const MapAssignment& map : plan.maps)
+		{
+			if (!LoadTextureFile(mat, map.file, directory, AssimpTypeOf(map.source), map.slot))
+			{
+				warn("the " + std::string(MaterialSlots::Info(map.slot).name) + " texture '" + map.file + "' could not be loaded");
+				continue;
+			}
+			mat->SetDataChannel(map.slot, map.channel);                       // (ignored for slots that have no channel)
+		}
+
+		mat->SetNormalFlipY(plan.normalMapIsDirectX && mat->GetTexture(TextureSlot::Normal));
+
+		// 4) a map multiplies its factor: do not let the engine's default silence it
+		if (plan.metallicFactorToOne  && mat->GetTexture(TextureSlot::Metallic))  mat->SetMetallic(1.0f);
+		if (plan.roughnessFactorToOne && mat->GetTexture(TextureSlot::Roughness)) mat->SetRoughness(1.0f);
+		if (mat->GetTexture(TextureSlot::Emissive) && mat->GetProperties().emissiveColor.x + mat->GetProperties().emissiveColor.y + mat->GetProperties().emissiveColor.z <= 0.0f)
+			mat->SetEmissiveColor({ 1.0f, 1.0f, 1.0f, 1.0f });                // an emissive map on a black emissive colour would show nothing
 	}
 
-	std::string MaterialProcessor::LoadTextureOfType(
+	bool MaterialProcessor::LoadTextureFile(
 		std::shared_ptr<Material> mat,
-		const aiMaterial* aiMat,
+		const std::string& relativePath,
 		const std::string& directory,
 		aiTextureType type,
 		TextureSlot slot)
 	{
-		std::string relativePath = GetTextureFilename(aiMat, type, directory);
-
 		if (relativePath.empty())
-			return "";
+			return false;
 
-		// Resolve the full path
-		std::string fullPath = ResolveTexturePath(relativePath, directory);
-
-		if (fullPath.empty()) {
-			OutputDebugStringA(("MaterialProcessor: Could not resolve texture path: " +
-				relativePath + "\n").c_str());
-			return "";
-		}
+		const std::string fullPath = ResolveTexturePath(relativePath, directory);
+		if (fullPath.empty())
+			return false;
 
 		// colours are read as sRGB, data as linear: the slot table says which (MaterialSlots.cpp)
 		auto texture = m_TextureLoader->LoadTexture(fullPath, type, MaterialSlots::Info(slot).colorSpace);
+		if (!texture || !texture->IsValid())
+			return false;
 
-		if (texture && texture->IsValid()) {
-			mat->SetTexture(slot, texture);
-#ifdef DX_DEBUG
-			OutputDebugStringA(("MaterialProcessor: Loaded " +
-				m_TextureLoader->GetTextureTypeName(type) +
-				" texture: " + fullPath + "\n").c_str());
-#endif
-			return fullPath;
-		}
-
-		OutputDebugStringA(("MaterialProcessor: Failed to load " +
-			m_TextureLoader->GetTextureTypeName(type) +
-			" texture: " + fullPath + "\n").c_str());
-		return "";
+		mat->SetTexture(slot, texture);
+		return true;
 	}
 
 	void MaterialProcessor::ConfigureMaterialFromTextures(std::shared_ptr<Material> mat)

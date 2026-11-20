@@ -29,13 +29,16 @@ namespace DXEngine
 		DirectX::XMFLOAT2 textureOffset = { 0.0f,0.0f };
 		DirectX::XMFLOAT2 detailScale = { 8.0f, 8.0f };    
 		DirectX::XMFLOAT2 detailOffset = { 0.0f, 0.0f };
-	
+
+		// Which channel of its image carries each data map: x = roughness, y = metallic, z = occlusion (0 R, 1 G, 2 B, 3 A),
+		// w = 1 when the normal map is DirectX style (+Y down: its green channel is flipped), 0 for OpenGL style (the engine's own). Separate grey maps use R (the default); a glTF "metallicRoughness" image has roughness in G and metallic in B.
+		DirectX::XMFLOAT4 dataChannels = { 0.0f, 0.0f, 0.0f, 0.0f };
 	};
 
 	// This struct IS the constant buffer b2: the bytes are uploaded as they are and read by `cbuffer MaterialBufferData` in
 	// common.hlsli, field by field in this order. Nothing checks that automatically, so the layout is pinned here: an added,
 	// removed or reordered field fails the build instead of corrupting every material on screen.
-	static_assert(sizeof(MaterialProperties) == 112, "MaterialProperties must stay 112 bytes (7 x float4) to match cbuffer MaterialBufferData");
+	static_assert(sizeof(MaterialProperties) == 128, "MaterialProperties must stay 128 bytes (8 x float4) to match cbuffer MaterialBufferData");
 	static_assert(sizeof(MaterialProperties) % 16 == 0, "a constant buffer is a multiple of 16 bytes");
 	static_assert(offsetof(MaterialProperties, specularColor)    == 16, "MaterialProperties layout changed (specularColor)");
 	static_assert(offsetof(MaterialProperties, emissiveColor)    == 32, "MaterialProperties layout changed (emissiveColor)");
@@ -51,4 +54,5 @@ namespace DXEngine
 	static_assert(offsetof(MaterialProperties, textureOffset)    == 88, "MaterialProperties layout changed (textureOffset)");
 	static_assert(offsetof(MaterialProperties, detailScale)      == 96, "MaterialProperties layout changed (detailScale)");
 	static_assert(offsetof(MaterialProperties, detailOffset)     == 104, "MaterialProperties layout changed (detailOffset)");
+	static_assert(offsetof(MaterialProperties, dataChannels)     == 112, "MaterialProperties layout changed (dataChannels)");
 }

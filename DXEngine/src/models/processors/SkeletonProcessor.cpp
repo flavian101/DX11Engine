@@ -81,6 +81,20 @@ namespace DXEngine
 			//set Parent index
 			bone.ParentIndex = parentIndex;
 
+			// A root bone sits under non-bone nodes (an FBX Armature, unit-conversion nodes): their transforms belong to the bone's
+			// world transform, because the offset matrices are relative to the bone placed with them. The model's own root node
+			// is left out: SceneFactory::Instantiate puts that one on the root entity.
+			if (parentIndex < 0)
+			{
+				DirectX::XMMATRIX chain = DirectX::XMMatrixIdentity();
+				for (const aiNode* ancestor = node->mParent; ancestor && ancestor != scene->mRootNode; ancestor = ancestor->mParent)
+				{
+					const DirectX::XMFLOAT4X4 up = ConvertMatrix(ancestor->mTransformation);
+					chain = DirectX::XMMatrixMultiply(chain, DirectX::XMLoadFloat4x4(&up));
+				}
+				DirectX::XMStoreFloat4x4(&bone.RootParentTransform, chain);
+			}
+
 			// Set local transform from node transformation
 			bone.LocalTransform = ConvertMatrix(node->mTransformation);
 

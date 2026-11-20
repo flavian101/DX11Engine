@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "MeshResource.h"
+#include "../Utils/TangentMath.h"
 #include "../Utils/MeshOptimizer.h"
 #include <algorithm>
 #include <sstream>
@@ -342,7 +343,10 @@ namespace DXEngine
             DirectX::XMFLOAT2 deltaUV1(uv1.x - uv0.x, uv1.y - uv0.y);
             DirectX::XMFLOAT2 deltaUV2(uv2.x - uv0.x, uv2.y - uv0.y);
 
-            float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+            const float determinant = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
+            if (std::fabs(determinant) < 1e-12f)
+                continue;                                   // collapsed UVs give no direction (and 1/0 would poison the vertex with NaN)
+            float f = 1.0f / determinant;
 
             DirectX::XMFLOAT3 tangent(
                 f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
@@ -350,10 +354,11 @@ namespace DXEngine
                 f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
             );
 
+            // +Y of an OpenGL normal map is UP in the image = decreasing v (see TangentMath.h): the bitangent is -dP/dv
             DirectX::XMFLOAT3 bitangent(
-                f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
-                f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
-                f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
+                -f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
+                -f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
+                -f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
             );
 
             // Accumulate tangents
@@ -376,14 +381,22 @@ namespace DXEngine
             DirectX::XMVECTOR b = DirectX::XMLoadFloat3(&bitangents[i]);
 
             // Gram-Schmidt orthogonalize
-            t = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(t, DirectX::XMVectorMultiply(n, DirectX::XMVector3Dot(n, t))));
+            t = DirectX::XMVectorSubtract(t, DirectX::XMVectorMultiply(n, DirectX::XMVector3Dot(n, t)));
 
-            // Calculate handedness
-            float handedness = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(n, t), b)) < 0.0f ? -1.0f : 1.0f;
+            DirectX::XMFLOAT3 t3, b3;
+            if (DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(t)) < 1e-20f)
+            {
+                t3 = TangentMath::AnyPerpendicular(normal);   // no usable UV direction at this vertex: any frame is better than NaN
+                b3 = { 0.0f, 0.0f, 0.0f };
+                DirectX::XMStoreFloat3(&b3, DirectX::XMVector3Cross(n, DirectX::XMLoadFloat3(&t3)));
+            }
+            else
+            {
+                DirectX::XMStoreFloat3(&t3, DirectX::XMVector3Normalize(t));
+                DirectX::XMStoreFloat3(&b3, b);
+            }
 
-            DirectX::XMFLOAT4 finalTangent;
-            DirectX::XMStoreFloat3(reinterpret_cast<DirectX::XMFLOAT3*>(&finalTangent), t);
-            finalTangent.w = handedness;
+            DirectX::XMFLOAT4 finalTangent(t3.x, t3.y, t3.z, TangentMath::Handedness(normal, t3, b3));
 
             m_VertexData->SetAttribute(i, RHI::VertexAttributeType::Tangent, finalTangent);
         }

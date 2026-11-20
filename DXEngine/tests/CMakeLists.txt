@@ -91,6 +91,7 @@ add_test(NAME shadow_tests COMMAND shadow_tests)
 # and the colour-space aware mip generation.
 add_executable(material_tests
     material_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/models/processors/MaterialMapPlan.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/ImageMips.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/Material.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/material/MaterialSlots.cpp
@@ -107,6 +108,8 @@ add_test(NAME material_tests COMMAND material_tests)
 add_executable(editor_tests
     editor_tests.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/models/ModelAsset.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AssetInstantiation.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AnimationSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/SceneEditing.cpp
@@ -137,6 +140,13 @@ add_test(NAME editor_tests COMMAND editor_tests)
 add_executable(editor_ui_tests
     editor_ui_tests.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/PlatformDialogs.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/editor/AssetsPanel.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/assets/ModelImporter.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/assets/ModelLibrary.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/assets/AssetCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/models/ModelAsset.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AssetInstantiation.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/ScenePicking.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/picking/Ray.cpp
@@ -170,7 +180,7 @@ add_executable(editor_ui_tests
 target_include_directories(editor_ui_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/DXEngine/src
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src)
-target_link_libraries(editor_ui_tests PRIVATE ImGui ImGuizmo meshoptimizer)
+target_link_libraries(editor_ui_tests PRIVATE ImGui ImGuizmo meshoptimizer comdlg32)
 target_compile_features(editor_ui_tests PRIVATE cxx_std_17)
 add_test(NAME editor_ui_tests COMMAND editor_ui_tests)
 
@@ -208,6 +218,9 @@ add_executable(asset_tests
     asset_tests.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/models/ModelAsset.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/Scene.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/assets/ModelImporter.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/assets/ModelLibrary.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/assets/AssetCatalog.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/TransformSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AnimationSystem.cpp
     ${CMAKE_SOURCE_DIR}/DXEngine/src/scene/AssetInstantiation.cpp
@@ -230,12 +243,12 @@ add_test(NAME asset_tests COMMAND asset_tests)
 set(SRC ${CMAKE_SOURCE_DIR}/DXEngine/src)
 add_executable(model_loader_tests
     model_loader_tests.cpp
-    ${SRC}/models/ModelAsset.cpp ${SRC}/models/ModelLoader.cpp
+    ${SRC}/models/ModelAsset.cpp ${SRC}/models/ModelLoader.cpp ${SRC}/assets/AssetCatalog.cpp
     ${SRC}/models/processors/AnimationProcessor.cpp ${SRC}/models/processors/AssimpContext.cpp
-    ${SRC}/models/processors/MaterialProcessor.cpp ${SRC}/models/processors/MeshProcessor.cpp
+    ${SRC}/models/processors/MaterialProcessor.cpp ${SRC}/models/processors/MaterialMapPlan.cpp ${SRC}/models/processors/MeshProcessor.cpp
     ${SRC}/models/processors/ModelPostProcessor.cpp ${SRC}/models/processors/SkeletonProcessor.cpp
     ${SRC}/models/processors/TextureLoader.cpp
-    ${SRC}/utils/ImageLoader.cpp ${SRC}/utils/ImageMips.cpp ${SRC}/utils/TextureNaming.cpp
+    ${SRC}/utils/ImageLoader.cpp ${SRC}/utils/ImageDecode.cpp ${SRC}/utils/ImageMips.cpp ${SRC}/utils/TextureNaming.cpp
     ${SRC}/scene/Scene.cpp ${SRC}/scene/TransformSystem.cpp ${SRC}/scene/AnimationSystem.cpp ${SRC}/scene/AssetInstantiation.cpp
     ${SRC}/utils/Mesh/Mesh.cpp ${SRC}/utils/Mesh/Resource/MeshResource.cpp
     ${SRC}/utils/Mesh/Utils/VertexAttribute.cpp ${SRC}/utils/Mesh/Utils/IndexData.cpp
@@ -244,9 +257,35 @@ add_executable(model_loader_tests
     ${D3D11_SRC}/D3D11Device.cpp ${D3D11_SRC}/D3D11CommandBuffer.cpp ${D3D11_SRC}/D3D11Query.cpp
     ${D3D11_SRC}/D3D11Pipeline.cpp ${D3D11_SRC}/D3D11Shader.cpp ${D3D11_SRC}/D3D11Buffer.cpp
     ${D3D11_SRC}/D3D11Texture.cpp ${D3D11_SRC}/D3D11Sampler.cpp)
-target_include_directories(model_loader_tests PRIVATE ${SRC} ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src ${CMAKE_SOURCE_DIR}/DXEngine/vendor/stb)
+target_include_directories(model_loader_tests PRIVATE ${SRC} ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src ${CMAKE_SOURCE_DIR}/DXEngine/vendor/stb
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/tinyexr)
 target_compile_definitions(model_loader_tests PRIVATE DX_ASSETS_DIR="${CMAKE_SOURCE_DIR}/Editor/assets")
 target_link_libraries(model_loader_tests PRIVATE assimp meshoptimizer d3d11 dxgi d3dcompiler dxguid ole32)
 target_compile_features(model_loader_tests PRIVATE cxx_std_17)
 add_test(NAME model_loader_tests COMMAND model_loader_tests)
 set_tests_properties(model_loader_tests PROPERTIES LABELS gpu)
+
+# AssetCatalog: which model files lie in the assets folder (std::filesystem only)
+add_executable(asset_catalog_tests
+    asset_catalog_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/assets/AssetCatalog.cpp)
+target_include_directories(asset_catalog_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
+target_compile_features(asset_catalog_tests PRIVATE cxx_std_17)
+add_test(NAME asset_catalog_tests COMMAND asset_catalog_tests)
+
+# The skeleton evaluator and the transforms above a root bone, and the bounding box of a skinned mesh (pure DirectXMath)
+add_executable(skeleton_tests skeleton_tests.cpp)
+target_include_directories(skeleton_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src)
+target_compile_features(skeleton_tests PRIVATE cxx_std_17)
+add_test(NAME skeleton_tests COMMAND skeleton_tests)
+
+# ImageDecode: image files -> 8-bit pixels (stb_image, Radiance HDR, OpenEXR through tinyexr). CPU only.
+add_executable(image_decode_tests
+    image_decode_tests.cpp
+    ${CMAKE_SOURCE_DIR}/DXEngine/src/utils/ImageDecode.cpp)
+target_include_directories(image_decode_tests PRIVATE ${CMAKE_SOURCE_DIR}/DXEngine/src ${CMAKE_SOURCE_DIR}/DXEngine/vendor/stb
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/tinyexr)
+target_compile_definitions(image_decode_tests PRIVATE
+    DX_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/DXEngine/tests/data" DX_ASSETS_DIR="${CMAKE_SOURCE_DIR}/Editor/assets")
+target_compile_features(image_decode_tests PRIVATE cxx_std_17)
+add_test(NAME image_decode_tests COMMAND image_decode_tests)

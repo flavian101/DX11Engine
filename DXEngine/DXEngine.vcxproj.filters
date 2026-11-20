@@ -136,6 +136,12 @@
     <ClInclude Include="src\utils\Mesh\Resource\MeshResource.h">
       <Filter>utils\Mesh\Resource</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Utils\TangentMath.h">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Mesh\Utils\SkinnedBounds.h">
+      <Filter>utils\Mesh\Utils</Filter>
+    </ClInclude>
     <ClInclude Include="src\utils\Mesh\Utils\IndexData.h">
       <Filter>utils\Mesh\Utils</Filter>
     </ClInclude>
@@ -177,6 +183,12 @@
     </ClInclude>
     <ClInclude Include="src\scene\TransformSystem.h">
       <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\ImageDecode.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\TextureColorSpace.h">
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\ImageLoader.h">
       <Filter>utils</Filter>
@@ -292,6 +304,27 @@
       <Filter>editor</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\ViewportMath.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\AssetCatalog.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\ImportLog.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\ModelImporter.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\ModelLibrary.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\assets\ModelLoaderAdapter.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\AssetsPanel.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\PlatformDialogs.h">
       <Filter>editor</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\Editor.h">
@@ -429,6 +462,9 @@
     <ClCompile Include="src\scene\TransformSystem.cpp">
       <Filter>scene</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils\ImageDecode.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
     <ClCompile Include="src\utils\ImageLoader.cpp">
       <Filter>utils</Filter>
     </ClCompile>
@@ -528,6 +564,24 @@
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\EditorContext.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\AssetCatalog.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\ModelImporter.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\ModelLibrary.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\ModelLoaderAdapter.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\AssetsPanel.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\PlatformDialogs.cpp">
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\Editor.cpp">

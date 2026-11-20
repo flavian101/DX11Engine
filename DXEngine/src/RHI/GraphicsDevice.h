@@ -226,7 +226,6 @@ namespace DXEngine::RHI
 		virtual void CopyBuffer(IBuffer* src, IBuffer* dst, uint32_t srcOffset, uint32_t dstOffset, uint32_t size) = 0;
 		virtual void CopyTexture(ITexture* src, ITexture* dst) = 0;
 		virtual void CopyBufferToTexture(IBuffer* src, ITexture* dst, uint32_t mipLevel = 0, uint32_t arraySlice = 0) = 0;
-		virtual void CopyTextureToBuffer(ITexture* src, IBuffer* dst, uint32_t mipLevel = 0, uint32_t arraySlice = 0) = 0;
 
 		//Compute shader dispatch
 		virtual void Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
@@ -305,6 +304,12 @@ namespace DXEngine::RHI
 		// rate), false presents at once. Takes effect at the next Present().
 		virtual void SetVSync(bool enabled) = 0;
 		virtual bool IsVSync() const = 0;
+
+		// Reads one mip level / array slice of a 2D texture back to the CPU: rows tightly packed (width * bytes per pixel, no
+		// padding), blocking until the GPU has finished with it. A frame grab, a picking pass, a test. Returns false, with
+		// 'outPixels' empty, for what it cannot read: depth formats, block-compressed formats, multisampled or 3D textures,
+		// a mip or slice that does not exist. Slow (it stalls the GPU): never per frame in a game.
+		virtual bool ReadTexture(ITexture* texture, uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& outPixels) = 0;
 
 	};
 

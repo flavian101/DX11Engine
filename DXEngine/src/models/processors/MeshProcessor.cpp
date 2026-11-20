@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "MeshProcessor.h"
+#include "utils/Mesh/Utils/TangentMath.h"
 #include "Animation/AnimationController.h"
 
 namespace DXEngine
@@ -109,11 +110,17 @@ namespace DXEngine
 
 			// Tangents
 			if (aiMesh->HasTangentsAndBitangents()) {
-				DirectX::XMFLOAT4 tangent(
-					aiMesh->mTangents[i].x,
-					aiMesh->mTangents[i].y,
-					aiMesh->mTangents[i].z,
-					1.0f); // Handedness
+				// The 4th component is the handedness: B = cross(N, T) * w must be assimp's bitangent. (It used to be a
+				// constant 1, which lit a normal map upside down on every mirrored UV island.)
+				const DirectX::XMFLOAT3 t3(aiMesh->mTangents[i].x, aiMesh->mTangents[i].y, aiMesh->mTangents[i].z);
+				float handedness = 1.0f;
+				if (aiMesh->HasNormals())
+				{
+					const DirectX::XMFLOAT3 n3(aiMesh->mNormals[i].x, aiMesh->mNormals[i].y, aiMesh->mNormals[i].z);
+					const DirectX::XMFLOAT3 b3(aiMesh->mBitangents[i].x, aiMesh->mBitangents[i].y, aiMesh->mBitangents[i].z);
+					handedness = TangentMath::Handedness(n3, t3, b3);
+				}
+				DirectX::XMFLOAT4 tangent(t3.x, t3.y, t3.z, handedness);
 				vertexData->SetAttribute(i, RHI::VertexAttributeType::Tangent, tangent);
 			}
 

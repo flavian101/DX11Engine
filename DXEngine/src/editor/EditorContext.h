@@ -5,6 +5,7 @@
 #include "camera/CameraController.h"
 #include "scene/Scene.h"
 #include "ViewportMath.h"
+#include "assets/ModelLibrary.h"
 #include <memory>
 
 namespace DXEngine
@@ -19,6 +20,9 @@ namespace DXEngine
     {
         Scene* scene = nullptr;
         std::shared_ptr<CameraController> camera;
+
+        // the models imported in this session (the Assets panel fills it; Add component > Mesh renderer reads it)
+        ModelLibrary models;
 
         EditorSelection selection;
         GizmoSettings   gizmoSettings;

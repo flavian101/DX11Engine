@@ -3,6 +3,7 @@
 // list, a drag-drop source without a target... all abort. So "no abort" means the panels are structurally sound and
 // every code path that draws a widget was executed. (What it cannot say: whether it LOOKS right. That needs eyes.)
 //   build: see DXEngine/tests/CMakeLists.txt  (links the ImGui core files, not the backends)
+#include "editor/AssetsPanel.h"
 #include "editor/EditorChrome.h"
 #include "editor/EditorContext.h"
 #include "editor/EditorIcons.h"
@@ -21,12 +22,15 @@
 #include "Event/MouseEvent.h"
 #include "renderer/Renderer.h"
 #include "renderer/Core/RenderTypes.h"
+#include "models/ModelAsset.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
 #include "utils/material/Material.h"
 #include "imgui.h"
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 
 using namespace DXEngine;
 
@@ -48,6 +52,14 @@ namespace DXEngine
     void Renderer::SetEnvironment(const RenderEnvironment& e) { g_env = e; }
     RenderEnvironment Renderer::GetEnvironment() { return g_env; }
     const RenderStatistics& Renderer::GetStats() { return g_stats; }
+    static bool g_vsync = false, g_gpuTiming = true;
+    static GpuFrameTimings g_timings;
+    void Renderer::SetVSync(bool e) { g_vsync = e; }
+    bool Renderer::IsVSyncEnabled() { return g_vsync; }
+    void Renderer::SetGpuProfilingEnabled(bool e) { g_gpuTiming = e; }
+    bool Renderer::IsGpuProfilingEnabled() { return g_gpuTiming; }
+    bool Renderer::IsGpuProfilingAvailable() { return true; }
+    const GpuFrameTimings& Renderer::GetGpuTimings() { return g_timings; }
 }
 
 // The camera behaviours poll Input; there is no window here, so nothing is ever pressed.
@@ -135,7 +147,16 @@ static void Populate(Scene& scene, EditorContext& ctx)
     Entity lamp = scene.CreateEntity("Lamp");
     lamp.Add<LightComponent>();
     scene.CreateEntity("Sky").Add<SkyboxComponent>();
-    scene.CreateEntity("Skinned").Add<SkinnedMeshComponent>();
+    scene.CreateEntity("Skinned").Add<SkinnedMeshComponent>();                       // skinned, nothing above it
+    Entity rig = scene.CreateEntity("Rig");                                          // a real Animator: skeleton + a clip
+    auto& animator = rig.Add<AnimatorComponent>();
+    animator.skeleton = std::make_shared<Skeleton>();
+    Bone bone; bone.Name = "root"; animator.skeleton->AddBone(bone);
+    auto clip = std::make_shared<AnimationClip>("Walk", 30.0f);
+    clip->AddBoneAnimation("root", { Keyframe{}, Keyframe{} });
+    animator.clips = { clip };
+    scene.CreateEntity("Rig skin", rig).Add<SkinnedMeshComponent>();                 // bones from the Animator above it
+    scene.CreateEntity("Bare animator").Add<AnimatorComponent>();                    // no skeleton, no clips: must still draw
     for (int i = 0; i < 300; ++i) scene.CreateEntity("light " + std::to_string(i));   // enough rows to need the clipper
     TransformSystem::Update(scene);
 }
@@ -953,6 +974,131 @@ static void TestHierarchyDragToReparent()
     CHECK(!r.scene.GetParent(r.gamma).IsValid());                         // refused: it would be a cycle
 }
 
+// ------------------------------------------------------------ the Assets panel: files, a held import, the library, the log
+static std::shared_ptr<ModelAsset> TestModelAsset()
+{
+    auto asset = std::make_shared<ModelAsset>();
+    DirectX::XMFLOAT4X4 identity; DirectX::XMStoreFloat4x4(&identity, DirectX::XMMatrixIdentity());
+    asset->AddNode("RootNode", -1, identity);
+    asset->AttachMesh(0, asset->AddMesh("body", MakeCube()));
+    asset->warnings = { "a texture is missing" };
+    return asset;
+}
+
+static void TestAssetsPanel()
+{
+    UiEnv env;
+
+    // a folder with models in it, and a file that is not one
+    namespace fs = std::filesystem;
+    const fs::path root = fs::temp_directory_path() / "dx_assets_panel_test";
+    fs::remove_all(root);
+    fs::create_directories(root / "ship");
+    for (const char* f : { "tree.fbx", "ship/hull.glb", "ship/broken.obj", "ship/notes.txt" }) std::ofstream(root / f) << "x";
+
+    Scene scene; EditorContext ctx; Populate(scene, ctx);
+    AssetsPanel panel;
+    panel.SetAssetsFolder(root.string());
+    int loads = 0;
+    panel.Importer().SetLoadFunction([&](const std::string& path, bool, std::string& error) -> std::shared_ptr<ModelAsset>
+    {
+        ++loads;
+        if (path.find("broken") != std::string::npos) { error = "not a model"; return nullptr; }
+        return TestModelAsset();
+    });
+    bool open = true;
+    auto frame = [&] { Frame([&] { panel.Update(ctx); panel.OnImGui(ctx, &open); }); };
+
+    // the panel lists the three model files (the .txt is not one) and draws without anything imported
+    for (int i = 0; i < 3; ++i) frame();
+    CHECK(ctx.models.Count() == 0 && !panel.IsBusy());
+
+    // a request is HELD one frame (that frame shows "Importing ..."), then the import runs
+    const size_t entitiesBefore = scene.EntityCount();
+    panel.RequestImport((root / "tree.fbx").string(), true);
+    CHECK(panel.IsBusy() && loads == 0);
+    panel.RequestImport((root / "ship/hull.glb").string(), true);          // a second one while busy is ignored, not queued
+    frame();                                                               // frame 1: the message, no work yet
+    CHECK(panel.IsBusy() && loads == 0 && ctx.models.Count() == 0);
+    frame();                                                               // frame 2: the work
+    CHECK(!panel.IsBusy() && loads == 1 && ctx.models.Count() == 1);
+
+    // it went into the scene, named like the file, selected, with the library counting the instance
+    CHECK(scene.EntityCount() == entitiesBefore + 1);                      // a one-node model: one entity
+    CHECK(ctx.selection.Has() && ctx.selection.Get().Get<NameComponent>().name == "tree");
+    CHECK(ctx.selection.Get().Has<MeshRendererComponent>());
+    CHECK(ctx.revealSelection);
+    CHECK(ctx.models.All()[0].instances == 1);
+    CHECK(panel.Log().Count(Assets::LogSeverity::Info) >= 2 && panel.Log().Count(Assets::LogSeverity::Warning) == 1);   // import, add; the warning
+
+    // the same model again: no second read, one more instance
+    panel.RequestImport((root / "tree.fbx").string(), true);
+    frame(); frame();
+    CHECK(loads == 1 && ctx.models.All()[0].instances == 2 && scene.EntityCount() == entitiesBefore + 2);
+
+    // import only: nothing is added to the scene
+    panel.RequestImport((root / "ship/hull.glb").string(), false);
+    frame(); frame();
+    CHECK(loads == 2 && ctx.models.Count() == 2 && scene.EntityCount() == entitiesBefore + 2);
+
+    // a reimport reads again and keeps one entry
+    panel.RequestImport((root / "ship/hull.glb").string(), false, true);
+    frame(); frame();
+    CHECK(loads == 3 && ctx.models.Count() == 2);
+
+    // a file that fails: an error line, nothing added
+    const size_t errors = panel.Log().Count(Assets::LogSeverity::Error);
+    panel.RequestImport((root / "ship/broken.obj").string(), true);
+    frame(); frame();
+    CHECK(ctx.models.Count() == 2 && panel.Log().Count(Assets::LogSeverity::Error) == errors + 1 && scene.EntityCount() == entitiesBefore + 2);
+
+    // the "Import file..." picker: a chosen file is imported, a cancelled dialog does nothing
+    std::string chosen;
+    panel.SetFilePicker([&] { return chosen; });
+    panel.PickAndImport();
+    CHECK(!panel.IsBusy());
+    chosen = (root / "tree.fbx").string();
+    panel.PickAndImport();
+    CHECK(panel.IsBusy());
+    frame(); frame();
+    CHECK(ctx.models.All()[0].instances == 3);
+
+    // everything draws with models imported, a filter, an empty result, and the window closed
+    panel.RequestImport("", true);                                         // an empty path is not a request
+    CHECK(!panel.IsBusy());
+    for (int i = 0; i < 3; ++i) frame();
+    panel.SetAssetsFolder((root / "does_not_exist").string());             // a missing folder: a hint, no crash
+    for (int i = 0; i < 2; ++i) frame();
+    panel.SetAssetsFolder(root.string());
+    open = false;
+    frame();
+    open = true;
+
+    // without a reader or without a scene nothing crashes
+    AssetsPanel bare;
+    EditorContext bareCtx; bareCtx.scene = &scene;                         // (an empty library: the file is not "already imported")
+    bare.SetAssetsFolder(root.string());
+    bare.RequestImport((root / "tree.fbx").string(), true);
+    Frame([&] { bare.Update(bareCtx); bare.OnImGui(bareCtx, &open); });
+    Frame([&] { bare.Update(bareCtx); bare.OnImGui(bareCtx, &open); });
+    CHECK(bare.Log().Count(Assets::LogSeverity::Error) == 1 && bareCtx.models.Count() == 0);
+    EditorContext noScene;
+    AssetsPanel p2;
+    p2.Importer().SetLoadFunction([](const std::string&, bool, std::string&) { return TestModelAsset(); });
+    p2.SetAssetsFolder(root.string());
+    p2.RequestImport((root / "tree.fbx").string(), true);
+    Frame([&] { p2.Update(noScene); p2.OnImGui(noScene, &open); });
+    Frame([&] { p2.Update(noScene); p2.OnImGui(noScene, &open); });
+    CHECK(noScene.models.Count() == 1);                                    // imported, nothing to add it to
+
+    // the inspector's Add component menu lists the imported meshes: drawn for an entity without a renderer
+    InspectorPanel inspector;
+    Entity bareEntity = scene.CreateEntity("needs a mesh");
+    ctx.selection.Set(bareEntity);
+    for (int i = 0; i < 3; ++i) Frame([&] { inspector.OnImGui(ctx, &open); });
+    fs::remove_all(root);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -965,6 +1111,7 @@ int main()
         { "theme: scale applies, never compounds",          TestThemeScaling },
         { "icons and property grid draw",                   TestIconsAndPropertyGrid },
         { "toolbar and status bar",                         TestChrome },
+        { "assets panel: import, library, log",           TestAssetsPanel },
         { "renderer panel: looking changes nothing",        TestRendererPanel },
         { "hierarchy: row order, selection, expand",        TestHierarchyRowsOrderAndSelection },
         { "hierarchy: the eye toggles visibility",          TestHierarchyEyeTogglesVisibility },

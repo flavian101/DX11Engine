@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "Editor.h"
+#include "assets/ModelLoaderAdapter.h"
 #include "EditorChrome.h"
 #include "EditorIcons.h"
 #include "EditorTheme.h"
@@ -19,6 +20,8 @@ namespace DXEngine
     {
         m_Ctx.gizmo = std::make_unique<ImGuizmoGizmo>();
         m_Prefs = LoadEditorPrefs();
+        // imports read the file with the engine's loader, on the device the editor holds when the first one runs
+        m_Assets.Importer().SetLoadFunction(MakeModelLoaderFunction([this] { return m_Ctx.device; }));
     }
 
     Editor::~Editor()
@@ -164,6 +167,8 @@ namespace DXEngine
         m_Inspector.OnImGui(m_Ctx, &m_ShowInspector);
         m_Viewport.OnImGui(m_Ctx, &m_ShowViewport);
         RendererPanel::OnImGui(&m_ShowRenderer);
+        m_Assets.Update(m_Ctx);                                    // carries out a held import, also while the window is hidden
+        m_Assets.OnImGui(m_Ctx, &m_ShowAssets);
         DrawShortcutsWindow();
 
         // Over the scene picture the mouse belongs to the scene (picking, cursor capture); everywhere else to the panels.
@@ -195,6 +200,9 @@ namespace DXEngine
 
         if (ImGui::BeginMenu("File"))
         {
+            if (ImGui::MenuItem("Import Model...", nullptr, false, !m_Assets.IsBusy()))
+                m_Assets.PickAndImport();
+            ImGui::Separator();
             if (ImGui::MenuItem("Exit", "Esc"))
                 Application::Get().GetWindow().QuitWindow();
             ImGui::EndMenu();
@@ -228,6 +236,7 @@ namespace DXEngine
             ImGui::MenuItem("Inspector", nullptr, &m_ShowInspector);
             ImGui::MenuItem("Viewport",  nullptr, &m_ShowViewport);
             ImGui::MenuItem("Renderer",  nullptr, &m_ShowRenderer);
+            ImGui::MenuItem("Assets",    nullptr, &m_ShowAssets);
             ImGui::Separator();
             if (ImGui::BeginMenu("UI scale"))
             {
@@ -331,6 +340,7 @@ namespace DXEngine
 
             ImGui::DockBuilderDockWindow("Hierarchy", leftTop);
             ImGui::DockBuilderDockWindow("Renderer", leftBottom);
+            ImGui::DockBuilderDockWindow("Assets", leftBottom);
             ImGui::DockBuilderDockWindow("Viewport", center);
             ImGui::DockBuilderDockWindow("Inspector", right);
             ImGui::DockBuilderFinish(dockId);

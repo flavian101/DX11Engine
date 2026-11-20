@@ -156,8 +156,17 @@ cbuffer MaterialBufferData : register(b2)
     float2 textureOffset;
     float2 detailScale;      //Detail texture scale
     float2 detailOffset;     //Detail texture offset
-    
+
+    // Which channel of its image carries each data map (0 R, 1 G, 2 B, 3 A): x roughness, y metallic, z occlusion.
+    // Separate grey maps use R; a glTF metallicRoughness image has roughness in G and metallic in B.
+    // w = 1: the normal map is DirectX style (green channel down) and is flipped when sampled.
+    float4 dataChannels;
 };
+
+float PickChannel(float4 texel, float channel)
+{
+    return channel < 0.5 ? texel.r : (channel < 1.5 ? texel.g : (channel < 2.5 ? texel.b : texel.a));
+}
 
 // Scene lighting: the environment + the DIRECTIONAL lights (few, every pixel needs all of them).
 // Mirrors SceneLightData in utils/ConstantBufferTypes.h.
@@ -397,6 +406,8 @@ float3 SampleNormalMap(float2 uv)
     
     // Convert from [0,1] to [-1,1] range
     float3 normal = normalSample.rgb * 2.0 - 1.0;
+    if (dataChannels.w > 0.5)
+        normal.y = -normal.y;               // a DirectX-style map (green down) -> the engine's OpenGL style
     
     // Apply normal intensity/scale
     normal.xy *= normalScale;
@@ -440,7 +451,7 @@ float SampleRoughnessMap(float2 uv)
 {
 #if HAS_ROUGHNESS_MAP
     float2 scaledUV = uv * textureScale + textureOffset;
-    return roughnessTexture.Sample(standardSampler, scaledUV).r;
+    return PickChannel(roughnessTexture.Sample(standardSampler, scaledUV), dataChannels.x);
 #else
     return roughness;
 #endif
@@ -450,7 +461,7 @@ float SampleMetallicMap(float2 uv)
 {
 #if HAS_METALLIC_MAP
     float2 scaledUV = uv * textureScale + textureOffset;
-    return metallicTexture.Sample(standardSampler, scaledUV).r;
+    return PickChannel(metallicTexture.Sample(standardSampler, scaledUV), dataChannels.y);
 #else
     return metallic;
 #endif
@@ -460,7 +471,7 @@ float SampleAOMap(float2 uv)
 {
 #if HAS_AO_MAP
     float2 scaledUV = uv * textureScale + textureOffset;
-    return aoTexture.Sample(standardSampler, scaledUV).r;
+    return PickChannel(aoTexture.Sample(standardSampler, scaledUV), dataChannels.z);
 #else
     return 1.0; // No occlusion by default
 #endif

@@ -8,6 +8,8 @@ namespace DXEngine::RHI
 	// UNORDERED_ACCESS on DYNAMIC or IMMUTABLE resources.
 	static D3D11_USAGE GetD3DUsage(const BufferDesc& desc)
 	{
+		if (desc.type == BufferType::Staging)
+			return D3D11_USAGE_STAGING;                       // CPU-visible copy: what IBuffer::Read maps
 		if (desc.type == BufferType::Storage && desc.allowUnorderedAccess)
 			return D3D11_USAGE_DEFAULT;
 
@@ -40,6 +42,7 @@ namespace DXEngine::RHI
 	}
 
 	static UINT GetCPUAccessFlags(D3D11_USAGE usage) {
+		if (usage == D3D11_USAGE_STAGING) return D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
 		return usage == D3D11_USAGE_DYNAMIC ? D3D11_CPU_ACCESS_WRITE : 0;
 	}
 
@@ -158,6 +161,16 @@ namespace DXEngine::RHI
 				return true;
 			}
 			return false;
+		}
+
+		if (m_D3DUsage == D3D11_USAGE_STAGING)
+		{
+			D3D11_MAPPED_SUBRESOURCE mapped;
+			if (FAILED(m_Context->Map(m_Buffer.Get(), 0, D3D11_MAP_WRITE, 0, &mapped)))
+				return false;
+			memcpy(static_cast<char*>(mapped.pData) + offset, data, size);     // (the rest of the buffer keeps what it had)
+			m_Context->Unmap(m_Buffer.Get(), 0);
+			return true;
 		}
 
 		// UpdateSubresource for default buffers (including GPU-written Storage buffers)

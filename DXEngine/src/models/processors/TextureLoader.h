@@ -27,8 +27,6 @@ namespace DXEngine
 		// while it processes a scene and clears it afterwards; it is never owned or kept.
 		void SetCurrentScene(const aiScene* scene) { m_CurrentScene = scene; }
 
-		std::shared_ptr<RHI::ITexture> CreateFallbackTexture(aiTextureType type);
-		std::shared_ptr<RHI::ITexture> CreateSolidColorTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 		// Texture type utilities
 		std::string GetTextureTypeName(aiTextureType type) const;
@@ -37,7 +35,7 @@ namespace DXEngine
 
 		// Cache management
 		void EnableCaching(bool enable) { m_CachingEnabled = enable; }
-		void ClearCache() { m_TextureCache.clear(); m_SolidColorCache.clear(); }
+		void ClearCache() { m_TextureCache.clear(); }
 		size_t GetCacheSize() const { return m_TextureCache.size(); }
 
 		// Statistics
@@ -47,7 +45,6 @@ namespace DXEngine
 	private:
 		std::shared_ptr<RHI::IGraphicsDevice> m_Device;
 		std::unordered_map<std::string, std::weak_ptr<RHI::ITexture>> m_TextureCache;
-		std::unordered_map<uint32_t, std::shared_ptr<RHI::ITexture>>  m_SolidColorCache;   // one 1x1 per colour, not one per request
 		const aiScene* m_CurrentScene = nullptr;
 		bool   m_CachingEnabled = true;
 		size_t m_TexturesLoaded = 0;

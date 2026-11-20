@@ -7,6 +7,8 @@ namespace DXEngine { namespace RHI { class IGraphicsDevice; } }
 
 namespace DXEngine
 {
+    class ModelAsset;
+    class Mesh;
     // ==================================================================
     // SceneEditing: the operations an editor performs on a Scene. Free functions over Scene / Entity, no UI and no GPU,
     // so each one is tested in editor_tests. (The panels call these; they never poke at components for structural changes.)
@@ -49,6 +51,16 @@ namespace DXEngine
         // This is what "Add component > Mesh renderer" does. Returns false and changes nothing when the entity is
         // invalid, belongs to another scene, or already has a mesh renderer.
         bool AddMeshRenderer(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Entity entity, Primitive primitive);
+
+        // Gives an EXISTING entity a mesh renderer for 'mesh' (an imported model's mesh: it brings its own materials).
+        // Returns false and changes nothing when the mesh is null, the entity is invalid or in another scene, or it already
+        // has a mesh renderer.
+        bool AddMeshRenderer(Scene& scene, Entity entity, const std::shared_ptr<Mesh>& mesh);
+
+        // Puts an imported model into the scene as SceneFactory::Instantiate does, with the root at 'position'.
+        // Returns an invalid Entity when the asset is null or empty.
+        Entity InstantiateModel(Scene& scene, const std::shared_ptr<ModelAsset>& asset, const std::string& name,
+                                const DirectX::XMFLOAT3& position);
 
         Entity CreatePrimitive(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Primitive primitive, Entity parent = Entity());
 

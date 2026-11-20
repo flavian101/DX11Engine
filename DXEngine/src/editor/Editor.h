@@ -1,6 +1,7 @@
 #pragma once
 #include "EditorContext.h"
 #include "EditorPrefs.h"
+#include "AssetsPanel.h"
 #include "HierarchyPanel.h"
 #include "InspectorPanel.h"
 #include "RendererPanel.h"
@@ -74,6 +75,7 @@ namespace DXEngine
         HierarchyPanel m_Hierarchy;
         InspectorPanel m_Inspector;
         ViewportPanel  m_Viewport;
+        AssetsPanel    m_Assets;
         EditorPrefs    m_Prefs;
         Entity         m_StressTest;                // the parent of the stress lights while they exist
 
@@ -84,6 +86,7 @@ namespace DXEngine
         bool  m_ShowInspector = true;
         bool  m_ShowViewport  = true;
         bool  m_ShowRenderer  = true;
+        bool  m_ShowAssets    = true;
         bool  m_ShowShortcuts = false;
         bool  m_ResetLayout   = false;
         float m_PlayHint = 0.0f;                    // seconds left of the "F1 to edit" hint after entering play mode

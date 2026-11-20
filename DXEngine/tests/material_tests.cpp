@@ -6,6 +6,8 @@
 #include "utils/ConstantBufferTypes.h"
 #include "utils/ImageMips.h"
 #include "utils/material/Material.h"
+#include "models/processors/MaterialMapPlan.h"
+#include <map>
 #include "utils/material/MaterialSlots.h"
 #include "utils/material/MaterialTypes.h"
 #include <algorithm>
@@ -589,6 +591,138 @@ static void TestFactories()
     CHECK(MaterialFactory::CreateUnlitMaterial()->GetShadingModel() == ShadingModel::Unlit);
 }
 
+// ------------------------------------------------------------ which file feeds which slot (MaterialMapPlan)
+static std::map<SourceMap, std::string> Files(std::initializer_list<std::pair<SourceMap, const char*>> l)
+{
+    std::map<SourceMap, std::string> m;
+    for (auto& p : l) m[p.first] = p.second;
+    return m;
+}
+
+static void TestPlanSeparateMaps()
+{
+    const auto plan = PlanMaps(Files({ { SourceMap::Diffuse, "a_diff.jpg" }, { SourceMap::Normals, "a_nor_gl.exr" }, { SourceMap::DiffuseRoughness, "a_rough.exr" },
+                                       { SourceMap::Metalness, "a_metal.exr" }, { SourceMap::AmbientOcclusion, "a_ao.png" } }), false, false);
+    CHECK(plan.warnings.empty() && plan.maps.size() == 5);
+    CHECK(plan.Find(TextureSlot::Diffuse) && plan.Find(TextureSlot::Normal));
+    for (TextureSlot slot : { TextureSlot::Roughness, TextureSlot::Metallic, TextureSlot::AmbientOcclusion })
+        CHECK(plan.Find(slot) && plan.Find(slot)->channel == 0);          // separate grey maps: red
+    CHECK(plan.metallicFactorToOne && plan.roughnessFactorToOne);         // no factors in the file: maps must not be silenced
+}
+
+static void TestPlanFactorsOfTheFileWin()
+{
+    const auto plan = PlanMaps(Files({ { SourceMap::Metalness, "m.png" }, { SourceMap::DiffuseRoughness, "r.png" } }), true, true);
+    CHECK(!plan.metallicFactorToOne && !plan.roughnessFactorToOne);       // the file said 0.2: keep it
+    const auto none = PlanMaps(Files({ { SourceMap::Diffuse, "d.png" } }), false, false);
+    CHECK(!none.metallicFactorToOne && !none.roughnessFactorToOne && none.maps.size() == 1);   // no map: nothing to multiply
+}
+
+static void TestPlanGltfPackedMetallicRoughness()
+{
+    // assimp reports glTF's one metallicRoughness image as BOTH the metalness and the roughness texture
+    const auto plan = PlanMaps(Files({ { SourceMap::BaseColor, "base.png" }, { SourceMap::Diffuse, "base.png" }, { SourceMap::Normals, "n.png" },
+                                       { SourceMap::Metalness, "textures/MR.png" }, { SourceMap::DiffuseRoughness, "textures\\mr.PNG" },
+                                       { SourceMap::Lightmap, "ao.png" } }), true, true);
+    CHECK(plan.Find(TextureSlot::Roughness) && plan.Find(TextureSlot::Roughness)->channel == 1);   // green
+    CHECK(plan.Find(TextureSlot::Metallic) && plan.Find(TextureSlot::Metallic)->channel == 2);     // blue
+    CHECK(plan.Find(TextureSlot::AmbientOcclusion) && plan.Find(TextureSlot::AmbientOcclusion)->channel == 0 &&
+          plan.Find(TextureSlot::AmbientOcclusion)->source == SourceMap::Lightmap);                // glTF's occlusion map, red of its own image
+    CHECK(plan.Find(TextureSlot::Diffuse)->source == SourceMap::BaseColor);                        // base colour wins over diffuse
+
+    // the occlusion map is the same image as metallic/roughness (an ORM pack): still red
+    const auto orm = PlanMaps(Files({ { SourceMap::Metalness, "orm.png" }, { SourceMap::DiffuseRoughness, "orm.png" }, { SourceMap::Lightmap, "orm.png" } }), true, true);
+    CHECK(orm.Find(TextureSlot::AmbientOcclusion)->channel == 0 && orm.Find(TextureSlot::Roughness)->channel == 1 && orm.Find(TextureSlot::Metallic)->channel == 2);
+}
+
+static void TestPlanFbxShininessIsRoughnessByName()
+{
+    auto plan = PlanMaps(Files({ { SourceMap::Shininess, "ship_rough_2k.jpg" }, { SourceMap::Metalness, "ship_metal_2k.jpg" } }), false, false);
+    CHECK(plan.Find(TextureSlot::Roughness) && plan.Find(TextureSlot::Roughness)->source == SourceMap::Shininess && plan.Find(TextureSlot::Roughness)->channel == 0);
+    CHECK(plan.warnings.empty() && plan.roughnessFactorToOne);
+    // assimp also derives a roughness FACTOR (0.5) from the FBX shininess number: it must not darken the map
+    plan = PlanMaps(Files({ { SourceMap::Shininess, "ship_rough_2k.jpg" } }), false, true);
+    CHECK(plan.roughnessFactorToOne);
+    plan = PlanMaps(Files({ { SourceMap::DiffuseRoughness, "r.png" } }), false, true);          // a real roughness texture with a factor: glTF, the factor stays
+    CHECK(!plan.roughnessFactorToOne);
+
+    plan = PlanMaps(Files({ { SourceMap::Shininess, "ship_gloss.png" } }), false, false);
+    CHECK(!plan.Find(TextureSlot::Roughness) && plan.warnings.size() == 1 && plan.warnings[0].find("glossiness") != std::string::npos);
+
+    plan = PlanMaps(Files({ { SourceMap::Shininess, "ship_s.png" } }), false, false);        // cannot tell: not used, and said so
+    CHECK(!plan.Find(TextureSlot::Roughness) && plan.warnings.size() == 1 && plan.warnings[0].find("ship_s.png") != std::string::npos);
+
+    // a real roughness texture wins over a shininess one
+    plan = PlanMaps(Files({ { SourceMap::DiffuseRoughness, "r.png" }, { SourceMap::Shininess, "x_rough.png" } }), false, false);
+    CHECK(plan.Find(TextureSlot::Roughness)->file == "r.png" && plan.warnings.empty());
+}
+
+static void TestPlanOcclusionFallbacksAndSpecular()
+{
+    CHECK(PlanMaps(Files({ { SourceMap::Lightmap, "l.png" } }), false, false).Find(TextureSlot::AmbientOcclusion));
+    CHECK(PlanMaps(Files({ { SourceMap::Ambient, "a.png" } }), false, false).Find(TextureSlot::AmbientOcclusion));
+    const auto both = PlanMaps(Files({ { SourceMap::AmbientOcclusion, "ao.png" }, { SourceMap::Lightmap, "l.png" }, { SourceMap::Ambient, "a.png" } }), false, false);
+    CHECK(both.Find(TextureSlot::AmbientOcclusion)->file == "ao.png");                      // the dedicated one wins
+
+    // the engine's Specular slot is a PACKED data map: only a file that says so goes there
+    auto plan = PlanMaps(Files({ { SourceMap::Specular, "wall_ORM.png" } }), false, false);
+    CHECK(plan.Find(TextureSlot::Specular) && plan.warnings.empty());
+    plan = PlanMaps(Files({ { SourceMap::Specular, "wall_spec.png" } }), false, false);
+    CHECK(!plan.Find(TextureSlot::Specular) && plan.warnings.size() == 1);                  // a specular COLOUR map is not used, and said so
+
+    // normals: the camera-space kind as a fallback; emissive; height; opacity
+    CHECK(PlanMaps(Files({ { SourceMap::NormalCamera, "n.png" } }), false, false).Find(TextureSlot::Normal));
+    CHECK(PlanMaps(Files({ { SourceMap::EmissionColor, "e.png" } }), false, false).Find(TextureSlot::Emissive));
+    const auto extras = PlanMaps(Files({ { SourceMap::Height, "h.png" }, { SourceMap::Opacity, "o.png" } }), false, false);
+    CHECK(extras.Find(TextureSlot::Height) && extras.Find(TextureSlot::Opacity));
+    CHECK(PlanMaps({}, false, false).maps.empty());
+}
+
+static void TestNameHints()
+{
+    CHECK(NameHintsPackedData("tex/Wall_ORM.png") && NameHintsPackedData("x-arm.jpg") && !NameHintsPackedData("warm.png") && !NameHintsPackedData("farm_diffuse.png"));
+    CHECK(NameHintsGloss("a_gloss.png") && NameHintsGloss("Smoothness.tga") && !NameHintsGloss("glossary.png"));
+    CHECK(NameHintsRoughness("lion_head_rough_2k.exr") && NameHintsRoughness("ROUGHNESS.png") && !NameHintsRoughness("roughly.png"));
+    CHECK(NameHintsNormal("lion_head_nor_gl_2k.exr") && NameHintsNormal("a_Normal.png") && !NameHintsNormal("normalize.png"));
+    CHECK(!NameHintsRoughness("C:\\folder_rough\\texture.png"));                          // only the FILE name counts, not the folders
+}
+
+static void TestDirectXNormalMapsAreRecognised()
+{
+    CHECK(NameHintsDirectX("lion_head_nor_dx_2k.exr") && NameHintsDirectX("wall_normal_directx.png") && !NameHintsDirectX("lion_head_nor_gl_2k.exr"));
+    CHECK(!NameHintsDirectX("index.png") && !NameHintsDirectX("dxf_plan.png"));            // whole tokens only
+    CHECK(PlanMaps(Files({ { SourceMap::Normals, "a_nor_dx.png" } }), false, false).normalMapIsDirectX);
+    CHECK(!PlanMaps(Files({ { SourceMap::Normals, "a_nor_gl.png" } }), false, false).normalMapIsDirectX);
+    CHECK(!PlanMaps(Files({ { SourceMap::Diffuse, "a_dx.png" } }), false, false).normalMapIsDirectX);   // only the NORMAL map's name counts
+
+    Material m("m", ShadingModel::Lit);
+    CHECK(!m.GetNormalFlipY());
+    m.SetNormalFlipY(true);
+    CHECK(m.GetNormalFlipY() && m.GetProperties().dataChannels.w == 1.0f);
+    m.SetDataChannel(TextureSlot::Roughness, 2);                                           // the channels share the float4 but not the flag
+    CHECK(m.GetNormalFlipY() && m.GetDataChannel(TextureSlot::Roughness) == 2);
+    m.SetNormalFlipY(false);
+    CHECK(!m.GetNormalFlipY());
+}
+
+static void TestDataChannelsOfAMaterial()
+{
+    Material m("m", ShadingModel::Lit);
+    CHECK(m.GetDataChannel(TextureSlot::Roughness) == 0 && m.GetDataChannel(TextureSlot::Metallic) == 0 && m.GetDataChannel(TextureSlot::AmbientOcclusion) == 0);
+    m.SetDataChannel(TextureSlot::Roughness, 1);
+    m.SetDataChannel(TextureSlot::Metallic, 2);
+    m.SetDataChannel(TextureSlot::AmbientOcclusion, 3);
+    CHECK(m.GetDataChannel(TextureSlot::Roughness) == 1 && m.GetDataChannel(TextureSlot::Metallic) == 2 && m.GetDataChannel(TextureSlot::AmbientOcclusion) == 3);
+    const MaterialProperties& p = m.GetProperties();
+    CHECK(p.dataChannels.x == 1.0f && p.dataChannels.y == 2.0f && p.dataChannels.z == 3.0f && p.dataChannels.w == 0.0f);   // what the shader reads
+    m.SetDataChannel(TextureSlot::Metallic, 99);
+    CHECK(m.GetDataChannel(TextureSlot::Metallic) == 3);               // clamped
+    m.SetDataChannel(TextureSlot::Metallic, -4);
+    CHECK(m.GetDataChannel(TextureSlot::Metallic) == 0);
+    m.SetDataChannel(TextureSlot::Diffuse, 2);                         // a slot without a channel: ignored
+    CHECK(m.GetDataChannel(TextureSlot::Diffuse) == 0 && p.dataChannels.x == 1.0f);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -620,6 +754,14 @@ int main()
         { "state: render queue is derived, explicit wins",          TestRenderQueueResolution },
         { "state: depth write == the old pipeline rule",            TestDepthWriteResolution },
         { "state: who takes part in the depth pre-pass",            TestDepthPrepassParticipation },
+        { "maps: separate maps, factors of 1 when the file has none", TestPlanSeparateMaps },
+        { "maps: the file's own factors are kept",                   TestPlanFactorsOfTheFileWin },
+        { "maps: glTF packed metallic-roughness (G, B) + occlusion",  TestPlanGltfPackedMetallicRoughness },
+        { "maps: FBX shininess is roughness by its name",            TestPlanFbxShininessIsRoughnessByName },
+        { "maps: occlusion fallbacks, specular, normals, extras",     TestPlanOcclusionFallbacksAndSpecular },
+        { "maps: name hints look at the file name only",              TestNameHints },
+        { "material: data channels reach the constant buffer",        TestDataChannelsOfAMaterial },
+        { "maps: DirectX style normal maps are recognised",           TestDirectXNormalMapsAreRecognised },
         { "material: the shading model never changes",              TestMaterialModelIsFixed },
         { "material: render state is the source of truth",          TestMaterialRenderStateIsTheSourceOfTruth },
         { "material: factories produce the right model + state",    TestFactories },

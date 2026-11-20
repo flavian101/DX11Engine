@@ -5,6 +5,7 @@
 #include "PropertyGrid.h"
 #include "SceneEditing.h"
 #include "scene/AnimationSystem.h"
+#include "models/ModelAsset.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
 
@@ -210,6 +211,26 @@ namespace DXEngine
                 for (SceneEditing::Primitive p : kPrimitives)
                     if (ImGui::MenuItem(SceneEditing::PrimitiveName(p)) && ctx.scene)
                         SceneEditing::AddMeshRenderer(*ctx.scene, ctx.device, e, p);
+
+                // the meshes of the imported models. Skinned ones are left out: they need the skeleton and the Animator
+                // of their model, which "Add to scene" in the Assets panel brings along.
+                ImGui::Separator();
+                if (ctx.models.Count() == 0)
+                    ImGui::TextDisabled("Import a model to use its meshes");
+                for (const ImportedModel& model : ctx.models.All())
+                {
+                    if (!ImGui::BeginMenu(model.name.c_str())) continue;
+                    bool any = false;
+                    for (const ModelMesh& entry : model.asset->meshes)
+                    {
+                        if (entry.skinned || !entry.mesh) continue;
+                        any = true;
+                        if (ImGui::MenuItem(entry.name.c_str()) && ctx.scene)
+                            SceneEditing::AddMeshRenderer(*ctx.scene, e, entry.mesh);
+                    }
+                    if (!any) ImGui::TextDisabled("(no unskinned meshes)");
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMenu();
             }
             ImGui::EndPopup();

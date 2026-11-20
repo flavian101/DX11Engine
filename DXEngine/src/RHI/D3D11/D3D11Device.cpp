@@ -107,6 +107,71 @@ namespace DXEngine::RHI
 		return nullptr;
 	}
 
+	namespace
+	{
+		// bytes per pixel of the uncompressed colour formats a frame grab or a test reads; 0 = not readable this way
+		UINT BytesPerPixel(DXGI_FORMAT format)
+		{
+			switch (format)
+			{
+			case DXGI_FORMAT_R8_UNORM: return 1;
+			case DXGI_FORMAT_R8G8_UNORM: case DXGI_FORMAT_R16_FLOAT: return 2;
+			case DXGI_FORMAT_R8G8B8A8_UNORM: case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+			case DXGI_FORMAT_B8G8R8A8_UNORM: case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+			case DXGI_FORMAT_R16G16_FLOAT: case DXGI_FORMAT_R32_FLOAT: case DXGI_FORMAT_R11G11B10_FLOAT: return 4;
+			case DXGI_FORMAT_R16G16B16A16_FLOAT: case DXGI_FORMAT_R32G32_FLOAT: return 8;
+			case DXGI_FORMAT_R32G32B32A32_FLOAT: return 16;
+			default: return 0;
+			}
+		}
+	}
+
+	bool D3D11Device::ReadTexture(ITexture* texture, uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& outPixels)
+	{
+		outPixels.clear();
+		auto* d3dTexture = static_cast<D3D11Texture*>(texture);
+		ID3D11Texture2D* source = d3dTexture ? d3dTexture->GetD3D11Texture2D() : nullptr;
+		if (!source)
+			return false;                                      // null, or not a 2D texture
+
+		D3D11_TEXTURE2D_DESC desc;
+		source->GetDesc(&desc);
+		const UINT bytesPerPixel = BytesPerPixel(desc.Format);
+		if (bytesPerPixel == 0 || desc.SampleDesc.Count > 1 || mipLevel >= desc.MipLevels || arraySlice >= desc.ArraySize)
+			return false;
+
+		const UINT width  = std::max(1u, desc.Width  >> mipLevel);
+		const UINT height = std::max(1u, desc.Height >> mipLevel);
+
+		D3D11_TEXTURE2D_DESC stagingDesc = {};
+		stagingDesc.Width = width;
+		stagingDesc.Height = height;
+		stagingDesc.MipLevels = 1;
+		stagingDesc.ArraySize = 1;
+		stagingDesc.Format = desc.Format;
+		stagingDesc.SampleDesc.Count = 1;
+		stagingDesc.Usage = D3D11_USAGE_STAGING;
+		stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+		ComPtr<ID3D11Texture2D> staging;
+		if (FAILED(m_Device->CreateTexture2D(&stagingDesc, nullptr, staging.GetAddressOf())))
+			return false;
+
+		m_Context->CopySubresourceRegion(staging.Get(), 0, 0, 0, 0, source,
+			D3D11CalcSubresource(mipLevel, arraySlice, desc.MipLevels), nullptr);
+
+		D3D11_MAPPED_SUBRESOURCE mapped;
+		if (FAILED(m_Context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))     // waits for the copy
+			return false;
+
+		const size_t rowBytes = static_cast<size_t>(width) * bytesPerPixel;
+		outPixels.resize(rowBytes * height);
+		for (UINT y = 0; y < height; ++y)
+			memcpy(outPixels.data() + y * rowBytes, static_cast<const uint8_t*>(mapped.pData) + static_cast<size_t>(y) * mapped.RowPitch, rowBytes);
+		m_Context->Unmap(staging.Get(), 0);
+		return true;
+	}
+
 	std::shared_ptr<IFence> D3D11Device::CreateFence(const FenceDesc& desc)
 	{
 		// D3D11 has no fences: an EVENT query is the equivalent (see D3D11Fence)

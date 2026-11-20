@@ -634,8 +634,8 @@ namespace DXEngine::RHI
         if (d.allowUnorderedAccess && d.type != BufferType::Storage)
             return name + ": allowUnorderedAccess is only supported for Storage buffers";
 
-        // A Static buffer is filled once at creation. (A GPU-written Storage buffer is exempt: it is never static.)
-        if (d.usage == BufferUsage::Static && !d.allowUnorderedAccess && d.initialData == nullptr)
+        // A Static buffer is filled once at creation. (A GPU-written Storage buffer is exempt: it is never static; a Staging buffer is CPU-written.)
+        if (d.usage == BufferUsage::Static && !d.allowUnorderedAccess && d.type != BufferType::Staging && d.initialData == nullptr)
             return name + ": a Static buffer needs initialData (it cannot be written after creation)";
 
         return {};

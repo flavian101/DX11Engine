@@ -1,5 +1,6 @@
 #pragma once
 #include "dxpch.h"
+#include "assets/AssetCatalog.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -137,15 +138,7 @@ namespace DXEngine
 
         inline bool IsSupportedFormat(const std::string& extension)
         {
-            static std::vector<std::string> supportedFormats = {
-                ".fbx", ".obj", ".dae", ".gltf", ".glb", ".3ds", ".ase", ".ply",
-                ".x", ".md3", ".md2", ".md5mesh", ".iqm", ".bvh", ".csm"
-            };
-
-            std::string lowerExt = extension;
-            std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(), ::tolower);
-
-            return std::find(supportedFormats.begin(), supportedFormats.end(), lowerExt) != supportedFormats.end();
+            return Assets::IsModelExtension(extension);      // the one list (assets/AssetCatalog)
         }
     }
 }

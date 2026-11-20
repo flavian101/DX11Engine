@@ -440,12 +440,6 @@ namespace DXEngine::RHI
 		OutputDebugStringA("Warning: CopyBufferToTexture not yet implemented for D3D11\n");
 
 	}
-	void D3D11CommandBuffer::CopyTextureToBuffer(ITexture* src, IBuffer* dst, uint32_t mipLevel, uint32_t arraySlice)
-	{
-		if (!src || !dst) return;
-		OutputDebugStringA("Warning: CopyTextureToBuffer not yet implemented for D3D11\n");
-
-	}
 	void D3D11CommandBuffer::Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 	{
 		m_Context->Dispatch(groupCountX, groupCountY, groupCountZ);

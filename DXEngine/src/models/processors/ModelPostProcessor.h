@@ -19,6 +19,10 @@ namespace DXEngine
 		void OptimizeModel(const std::shared_ptr<ModelAsset>& asset);        // meshoptimizer: see MeshResource::OptimizeForRendering
 		void ValidateModel(const std::shared_ptr<ModelAsset>& asset);        // structure problems -> warnings
 		void EnsureDefaultMaterials(const std::shared_ptr<ModelAsset>& asset);
+
+		// The bounding box of a skinned mesh made from the vertices AFTER skinning (bind pose and every pose the clips sample),
+		// not from the raw positions: see utils/Mesh/Utils/SkinnedBounds.h. Culling, picking and the selection box use it.
+		void UpdateSkinnedBounds(const std::shared_ptr<ModelAsset>& asset);
 		void ApplyGlobalScale(const std::shared_ptr<ModelAsset>& asset, float scale);
 	};
 }

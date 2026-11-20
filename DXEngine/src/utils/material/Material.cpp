@@ -100,6 +100,37 @@ namespace DXEngine {
 		m_Dirty = true;
 	}
 
+	void Material::SetDataChannel(TextureSlot slot, int channel)
+	{
+		float* target = nullptr;
+		switch (slot)
+		{
+		case TextureSlot::Roughness:        target = &m_Properties.dataChannels.x; break;
+		case TextureSlot::Metallic:         target = &m_Properties.dataChannels.y; break;
+		case TextureSlot::AmbientOcclusion: target = &m_Properties.dataChannels.z; break;
+		default: return;
+		}
+		*target = static_cast<float>(std::clamp(channel, 0, 3));
+		m_Dirty = true;
+	}
+
+	int Material::GetDataChannel(TextureSlot slot) const
+	{
+		switch (slot)
+		{
+		case TextureSlot::Roughness:        return static_cast<int>(m_Properties.dataChannels.x);
+		case TextureSlot::Metallic:         return static_cast<int>(m_Properties.dataChannels.y);
+		case TextureSlot::AmbientOcclusion: return static_cast<int>(m_Properties.dataChannels.z);
+		default: return 0;
+		}
+	}
+
+	void Material::SetNormalFlipY(bool flip)
+	{
+		m_Properties.dataChannels.w = flip ? 1.0f : 0.0f;
+		m_Dirty = true;
+	}
+
 	void Material::SetNormalScale(float scale)
 	{
 		m_Properties.normalScale = std::max(0.0f, scale);

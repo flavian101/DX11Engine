@@ -153,6 +153,43 @@ static bool TestDeviceAndProfiler()
     }
     CHECK(gpu.GetTimings().valid && gpu.GetTimings().scopes.size() == 1 && gpu.GetTimings().scopes[0].name == "again");
 
+    // reading a texture back: clear the back buffer red, read it, the pixels are red
+    {
+        cmd->Begin();
+        cmd->ClearRenderTarget(device->GetBackBuffer(), 1, 0, 0, 1);
+        cmd->End();
+        device->Submit(cmd.get());
+        std::vector<uint8_t> pixels;
+        CHECK(device->ReadTexture(device->GetBackBuffer(), 0, 0, pixels));
+        CHECK(pixels.size() == size_t(640) * 480 * 4);                 // tightly packed rows, 4 bytes a pixel
+        if (pixels.size() >= 4)
+        {
+            const bool rgba = pixels[0] == 255 && pixels[2] == 0, bgra = pixels[0] == 0 && pixels[2] == 255;   // either channel order
+            CHECK((rgba || bgra) && pixels[1] == 0 && pixels[3] == 255);
+            CHECK(pixels[pixels.size() - 4 + (rgba ? 0 : 2)] == 255);   // the last pixel too
+        }
+        CHECK(!device->ReadTexture(nullptr, 0, 0, pixels) && pixels.empty());
+        CHECK(!device->ReadTexture(device->GetBackBuffer(), 5, 0, pixels));   // no such mip
+        CHECK(!device->ReadTexture(device->GetBackBuffer(), 0, 3, pixels));   // no such slice
+    }
+
+    // a staging buffer: written by the CPU, read back by the CPU
+    {
+        BufferDesc bd; bd.type = BufferType::Staging; bd.usage = BufferUsage::Dynamic; bd.size = 64;
+        auto staging = device->CreateBuffer(bd);
+        CHECK(staging != nullptr);
+        if (staging)
+        {
+            uint8_t in[16], out[16] = {};
+            for (int i = 0; i < 16; ++i) in[i] = uint8_t(i * 7 + 1);
+            CHECK(staging->Update(in, 16, 8));
+            CHECK(staging->Read(out, 16, 8));
+            bool same = true; for (int i = 0; i < 16; ++i) same = same && in[i] == out[i];
+            CHECK(same);
+            CHECK(!staging->Update(in, 16, 60));                       // past the end
+        }
+    }
+
     // a fence given to Submit: each Submit signals the NEXT value
     auto fence = device->CreateFence(FenceDesc{});
     CHECK(fence != nullptr);

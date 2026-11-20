@@ -2,9 +2,7 @@
 #include "ImageLoader.h"
 #include "ImageMips.h"
 
-// The single translation unit that compiles stb_image (the legacy Texture.cpp no longer does).
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "ImageDecode.h"       // the decoding (stb_image, Radiance HDR, OpenEXR) lives there, away from the GPU
 
 #include <algorithm>
 #include <vector>
@@ -64,17 +62,13 @@ namespace DXEngine
                                                               TextureColorSpace colorSpace,
                                                               bool generateMipChain)
     {
-        int width = 0, height = 0, channels = 0;
-        stbi_uc* decoded = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-        if (!decoded)
+        ImageDecode::Image image = ImageDecode::DecodeFile(path, colorSpace);
+        if (!image.ok())
         {
-            Log("could not load '" + path + "': " + stbi_failure_reason());
+            Log(image.error);
             return nullptr;
         }
-
-        std::vector<uint8_t> pixels(decoded, decoded + static_cast<size_t>(width) * height * 4);
-        stbi_image_free(decoded);
-        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), path, colorSpace, generateMipChain);
+        return CreateFromRGBA8(device, image.rgba, static_cast<uint32_t>(image.width), static_cast<uint32_t>(image.height), path, colorSpace, generateMipChain);
     }
 
     std::shared_ptr<RHI::ITexture> ImageLoader::LoadTexture2DFromMemory(RHI::IGraphicsDevice& device,
@@ -83,17 +77,13 @@ namespace DXEngine
                                                                         TextureColorSpace colorSpace,
                                                                         bool generateMipChain)
     {
-        int width = 0, height = 0, channels = 0;
-        stbi_uc* decoded = stbi_load_from_memory(data, static_cast<int>(sizeBytes), &width, &height, &channels, STBI_rgb_alpha);
-        if (!decoded)
+        ImageDecode::Image image = ImageDecode::DecodeMemory(data, sizeBytes, debugName, colorSpace);
+        if (!image.ok())
         {
-            Log("could not decode '" + debugName + "': " + stbi_failure_reason());
+            Log(image.error);
             return nullptr;
         }
-
-        std::vector<uint8_t> pixels(decoded, decoded + static_cast<size_t>(width) * height * 4);
-        stbi_image_free(decoded);
-        return CreateFromRGBA8(device, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height), debugName, colorSpace, generateMipChain);
+        return CreateFromRGBA8(device, image.rgba, static_cast<uint32_t>(image.width), static_cast<uint32_t>(image.height), debugName, colorSpace, generateMipChain);
     }
 
     std::shared_ptr<RHI::ITexture> ImageLoader::CreateTexture2DFromRGBA8(RHI::IGraphicsDevice& device,
@@ -121,22 +111,19 @@ namespace DXEngine
 
         for (size_t i = 0; i < 6; ++i)
         {
-            int w = 0, h = 0, channels = 0;
-            stbi_uc* decoded = stbi_load(facePaths[i].c_str(), &w, &h, &channels, STBI_rgb_alpha);
-            if (!decoded)
+            ImageDecode::Image face = ImageDecode::DecodeFile(facePaths[i], colorSpace);
+            if (!face.ok())
             {
-                Log("could not load cube face '" + facePaths[i] + "': " + stbi_failure_reason());
+                Log("cube face: " + face.error);
                 return nullptr;
             }
-            if (i == 0) { width = w; height = h; pixels.reserve(static_cast<size_t>(w) * h * 4 * 6); }
-            if (w != width || h != height)
+            if (i == 0) { width = face.width; height = face.height; pixels.reserve(static_cast<size_t>(width) * height * 4 * 6); }
+            if (face.width != width || face.height != height)
             {
                 Log("cube face '" + facePaths[i] + "' has a different size than the first face");
-                stbi_image_free(decoded);
                 return nullptr;
             }
-            pixels.insert(pixels.end(), decoded, decoded + static_cast<size_t>(w) * h * 4);
-            stbi_image_free(decoded);
+            pixels.insert(pixels.end(), face.rgba.begin(), face.rgba.end());
         }
 
         RHI::TextureDesc desc;

@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "SceneEditing.h"
+#include "scene/SceneFactory.h"
 #include "TransformEditing.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
@@ -127,6 +128,23 @@ namespace DXEngine
             renderer.mesh = std::move(mesh);
             renderer.materials = { std::move(material) };
             return true;
+        }
+
+        bool AddMeshRenderer(Scene& scene, Entity entity, const std::shared_ptr<Mesh>& mesh)
+        {
+            if (!mesh || !entity.IsValid() || entity.GetScene() != &scene || entity.Has<MeshRendererComponent>())
+                return false;
+            entity.Add<MeshRendererComponent>().mesh = mesh;       // no material list: the mesh's own materials are used
+            return true;
+        }
+
+        Entity InstantiateModel(Scene& scene, const std::shared_ptr<ModelAsset>& asset, const std::string& name,
+                                const DirectX::XMFLOAT3& position)
+        {
+            Entity root = SceneFactory::Instantiate(scene, asset, name);
+            if (root.IsValid())
+                root.Get<TransformComponent>().position = position;
+            return root;
         }
 
         Entity CreatePrimitive(Scene& scene, const std::shared_ptr<RHI::IGraphicsDevice>& device, Primitive primitive, Entity parent)

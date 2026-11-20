@@ -63,6 +63,15 @@ namespace DXEngine {
 		void SetAlpha(float alpha);
 		void SetMetallic(float metallic);
 		void SetRoughness(float roughness);
+		// Which channel (0 R, 1 G, 2 B, 3 A) of the slot's image carries the data. Only the packable data slots have one:
+		// Roughness, Metallic, AmbientOcclusion (any other slot is ignored, and reads as 0). Out of range is clamped.
+		void SetDataChannel(TextureSlot slot, int channel);
+		int  GetDataChannel(TextureSlot slot) const;
+
+		// A DirectX-style normal map (green channel pointing DOWN) is flipped to the engine's OpenGL style when it is sampled.
+		void SetNormalFlipY(bool flip);
+		bool GetNormalFlipY() const { return m_Properties.dataChannels.w > 0.5f; }
+
 		void SetNormalScale(float scale);
 		void SetHeightScale(float scale);
 		void SetOcculsionStrength(float strength);

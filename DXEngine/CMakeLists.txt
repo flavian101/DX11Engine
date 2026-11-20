@@ -18,6 +18,7 @@ target_include_directories(DXEngine PUBLIC
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/imgui
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/assimp/include
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/stb
+    ${CMAKE_SOURCE_DIR}/DXEngine/vendor/tinyexr
     ${CMAKE_SOURCE_DIR}/DXEngine/vendor/entt/src
 )
 
@@ -28,6 +29,7 @@ target_link_libraries(DXEngine
 	  ImGuizmo
 	  assimp
 	  meshoptimizer
+	  comdlg32
 )
 
 target_compile_definitions(DXEngine PUBLIC

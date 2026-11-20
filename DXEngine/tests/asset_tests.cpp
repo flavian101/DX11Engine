@@ -1,5 +1,8 @@
 // ModelAsset, Scene::Instantiate and the Animator, without a GPU: the asset's node tree becomes entities, a skinned model
 // gets an Animator with a playback of its own, and AnimationSystem steps it.
+#include "assets/AssetCatalog.h"
+#include "assets/ModelImporter.h"
+#include "assets/ModelLibrary.h"
 #include "models/ModelAsset.h"
 #include "scene/AnimationSystem.h"
 #include "scene/Scene.h"
@@ -421,6 +424,114 @@ static void ACopiedAnimatorHasItsOwnPlayback()
     CHECK(a.runtime.controller != b.runtime.controller);
 }
 
+// ------------------------------------------------------------------ the library and the importer
+static std::shared_ptr<ModelAsset> AssetWithOneCube(const char* meshName = "cube")
+{
+    auto asset = std::make_shared<ModelAsset>();
+    asset->AddNode("root", -1, Matrix(XMMatrixIdentity()));
+    asset->AttachMesh(0, asset->AddMesh(meshName, CubeMesh()));
+    return asset;
+}
+
+static void TheLibraryKeepsOneEntryPerFile()
+{
+    ModelLibrary lib;
+    CHECK(lib.Count() == 0 && !lib.Find("a/ship.fbx") && !lib.Contains("a/ship.fbx"));
+
+    auto first = AssetWithOneCube();
+    ImportedModel& a = lib.Add("models/a/ship.fbx", first, 12.5);
+    CHECK(a.name == "ship" && a.asset == first && a.importMs == 12.5 && a.instances == 0);
+    lib.Add("models/b/tree.obj", AssetWithOneCube(), 3.0);
+    CHECK(lib.Count() == 2 && lib.All()[0].name == "ship" && lib.All()[1].name == "tree");   // import order
+
+    // another spelling of the same file finds the same entry
+    CHECK(lib.Find("models/a/../a/ship.fbx") == lib.Find("models/a/ship.fbx") && lib.Find("models/a/ship.fbx"));
+
+    lib.NoteInstance("models/a/ship.fbx");
+    lib.NoteInstance("models/a/./ship.fbx");
+    lib.NoteInstance("models/missing.fbx");                           // unknown: ignored
+    CHECK(lib.Find("models/a/ship.fbx")->instances == 2);
+
+    // a re-import replaces the data, keeps the place and the count
+    auto second = AssetWithOneCube("cube2");
+    lib.Add("models/a/ship.fbx", second, 99.0);
+    CHECK(lib.Count() == 2 && lib.All()[0].asset == second && lib.All()[0].importMs == 99.0 && lib.All()[0].instances == 2);
+
+    CHECK(lib.Remove("models/b/tree.obj") && lib.Count() == 1 && !lib.Contains("models/b/tree.obj"));
+    CHECK(!lib.Remove("models/b/tree.obj"));
+    lib.Clear();
+    CHECK(lib.Count() == 0);
+}
+
+static void RemovingAModelKeepsItsInstancesAlive()
+{
+    Scene scene;
+    ModelLibrary lib;
+    auto asset = AssetWithOneCube();
+    lib.Add("m/cube.fbx", asset, 1.0);
+    Entity inst = SceneFactory::Instantiate(scene, asset, "Cube");
+    std::weak_ptr<Mesh> mesh = asset->meshes[0].mesh;
+    asset.reset();
+    lib.Remove("m/cube.fbx");                                          // the library lets go ...
+    CHECK(!mesh.expired());                                            // ... the instance still shares the mesh
+    CHECK(inst.Get<MeshRendererComponent>().mesh && inst.Get<MeshRendererComponent>().mesh->IsValid());
+}
+
+static void TheImporterReportsWhatHappened()
+{
+    ModelLibrary lib;
+    Assets::ImportLog log;
+    ModelImporter importer;
+
+    auto r = importer.Import(lib, log, "m/ship.fbx");                  // no reader set up
+    CHECK(!r.model && lib.Count() == 0 && log.Count(Assets::LogSeverity::Error) == 1);
+    CHECK(r.message.find("no importer") != std::string::npos);
+
+    int loads = 0; bool lastReload = false;
+    auto asset = AssetWithOneCube();
+    asset->warnings = { "a texture is missing", "a clip was ignored" };
+    importer.SetLoadFunction([&](const std::string& path, bool reload, std::string& error) -> std::shared_ptr<ModelAsset>
+    {
+        ++loads; lastReload = reload;
+        if (path.find("broken") != std::string::npos) { error = "Assimp error: truncated file"; return nullptr; }
+        return asset;
+    });
+    CHECK(importer.HasLoadFunction());
+
+    r = importer.Import(lib, log, "m/ship.fbx");
+    CHECK(r.model && !r.wasAlreadyImported && loads == 1 && !lastReload && lib.Count() == 1);
+    CHECK(r.message.find("Imported ship.fbx") == 0 && r.message.find("1 meshes") != std::string::npos && r.message.find("2 warnings") != std::string::npos);
+    CHECK(log.Count(Assets::LogSeverity::Info) == 1 && log.Count(Assets::LogSeverity::Warning) == 2);   // the summary + every warning, none dropped
+    CHECK(log.Lines().back().text.find("a clip was ignored") != std::string::npos);
+
+    r = importer.Import(lib, log, "m/./ship.fbx");                     // the same file again: not read
+    CHECK(r.model && r.wasAlreadyImported && loads == 1 && r.message.find("already imported") != std::string::npos);
+
+    r = importer.Import(lib, log, "m/ship.fbx", true);                 // a reimport reads it again
+    CHECK(r.model && !r.wasAlreadyImported && loads == 2 && lastReload && lib.Count() == 1);
+    CHECK(r.message.find("Reimported ship.fbx") == 0);
+
+    const size_t errorsBefore = log.Count(Assets::LogSeverity::Error);
+    r = importer.Import(lib, log, "m/broken.fbx");
+    CHECK(!r.model && lib.Count() == 1 && !lib.Contains("m/broken.fbx"));
+    CHECK(r.message.find("truncated file") != std::string::npos && log.Count(Assets::LogSeverity::Error) == errorsBefore + 1);
+
+    // a failed reimport leaves the model that was there
+    lib.Add("m/broken.fbx", AssetWithOneCube(), 1.0);
+    r = importer.Import(lib, log, "m/broken.fbx", true);
+    CHECK(!r.model && lib.Contains("m/broken.fbx"));
+}
+
+static void TheLogIsCapped()
+{
+    Assets::ImportLog log;
+    for (size_t i = 0; i < Assets::ImportLog::kMaxLines + 50; ++i) log.Info("line " + std::to_string(i));
+    CHECK(log.Lines().size() == Assets::ImportLog::kMaxLines);
+    CHECK(log.Lines().front().text == "line 50" && log.Lines().back().text == "line " + std::to_string(Assets::ImportLog::kMaxLines + 49));
+    log.Clear();
+    CHECK(log.Lines().empty());
+}
+
 int main()
 {
     NodesKeepTheirLocalTransform();
@@ -437,6 +548,10 @@ int main()
     ADegenerateClipIsHarmless();
     ClipsFromFilesPlayInSecondsNotTicks();
     ACopiedAnimatorHasItsOwnPlayback();
+    TheLibraryKeepsOneEntryPerFile();
+    RemovingAModelKeepsItsInstancesAlive();
+    TheImporterReportsWhatHappened();
+    TheLogIsCapped();
     if (g_failures) { std::printf("%d check(s) failed\n", g_failures); return 1; }
     std::printf("All asset tests passed\n");
     return 0;
