@@ -64,4 +64,29 @@ namespace DXEngine::PlatformDialogs
             return {};
         return Narrow(file.data());
     }
+
+    std::string OpenImageFile()
+    {
+        std::wstring filter = L"Image files";
+        filter.push_back(L'\0');
+        filter += L"*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.hdr";
+        filter.push_back(L'\0');
+        filter += L"All files";
+        filter.push_back(L'\0');
+        filter += L"*.*";
+        filter.push_back(L'\0');
+
+        std::vector<wchar_t> file(32768, L'\0');
+        OPENFILENAMEW ofn = {};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = GetActiveWindow();
+        ofn.lpstrFilter = filter.c_str();
+        ofn.lpstrFile = file.data();
+        ofn.nMaxFile = static_cast<DWORD>(file.size());
+        ofn.lpstrTitle = L"Choose texture";
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_HIDEREADONLY;
+        if (!GetOpenFileNameW(&ofn))
+            return {};
+        return Narrow(file.data());
+    }
 }

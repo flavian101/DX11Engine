@@ -9,7 +9,7 @@ namespace DXEngine
 		:
 		m_Camera(std::make_shared<DXEngine::Camera>())
 	{
-		m_Camera->SetProjectionParams(45.0f, (float)16.0f / (float)9.0f, 0.5f, 1000.0f);
+		m_Camera->SetProjectionParams(45.0f, (float)16.0f / (float)9.0f, 0.1f, 1000.0f);
 		m_FreeLookBehavior = std::make_shared<FreeLookBehavior>(0.002f);
 		m_MovementBehavior = std::make_shared<MovementBehavior>(32.0f);
 

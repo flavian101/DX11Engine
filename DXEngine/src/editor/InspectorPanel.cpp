@@ -8,6 +8,9 @@
 #include "models/ModelAsset.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/material/Material.h"
+#include "utils/ImageLoader.h"
+#include "renderer/Renderer.h"
+#include "PlatformDialogs.h"
 
 #include "imgui.h"
 
@@ -44,9 +47,51 @@ namespace DXEngine
             return open;
         }
 
-        void DrawMaterial(Material& m, int index)
+        const char* const kBlendNames[]   = { "Opaque", "Alpha blend", "Additive", "Multiply", "Premultiplied alpha" };
+        const char* const kCullNames[]    = { "None (double sided)", "Front faces", "Back faces" };
+        const char* const kDepthNames[]   = { "Off", "Less", "Less or equal", "Greater", "Greater or equal", "Equal", "Not equal", "Always" };
+        const char* const kChannelNames[] = { "R", "G", "B", "A" };
+
+        // One row per texture slot: Browse / Replace and Clear. The image is decoded FOR THAT SLOT, so colour textures come
+        // in as sRGB and data textures (normal, roughness, ...) as linear without the user having to think about it.
+        void TextureRow(Material& m, TextureSlot slot, const char* label, const char* tooltip = nullptr)
+        {
+            PropertyGrid::Label(label, tooltip);
+            ImGui::PushID(static_cast<int>(slot));
+            const bool bound = m.GetTexture(slot) != nullptr;
+            if (ImGui::Button(bound ? "Replace..." : "Browse..."))
+            {
+                const std::string path = PlatformDialogs::OpenImageFile();
+                if (!path.empty())
+                {
+                    if (auto device = Renderer::GetDevice())
+                        if (auto texture = ImageLoader::LoadForSlot(*device, path, slot))
+                            m.SetTexture(slot, texture);
+                }
+            }
+            if (bound)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("Clear"))
+                    m.SetTexture(slot, nullptr);
+            }
+            ImGui::PopID();
+        }
+
+        // Which channel of a data map carries its values (a glTF "metallicRoughness" image: roughness in G, metallic in B).
+        void ChannelRow(Material& m, TextureSlot slot, const char* label)
+        {
+            if (!m.GetTexture(slot)) return;
+            int channel = m.GetDataChannel(slot);
+            if (PropertyGrid::Combo(label, channel, kChannelNames, 4))
+                m.SetDataChannel(slot, channel);
+        }
+
+        void DrawMaterial(Material& m, int index, bool meshHasTangents)
         {
             MaterialProperties& p = m.GetProperties();       // read here, written only through the setters below
+            const bool lit = m.GetShadingModel() == ShadingModel::Lit;
+            const bool shaded = lit || m.GetShadingModel() == ShadingModel::Emissive || m.GetShadingModel() == ShadingModel::Unlit;
 
             // the title carries a colour swatch, so a long list can be told apart at a glance
             const std::string title = "     " + m.GetName() + "##mat" + std::to_string(index);
@@ -58,6 +103,7 @@ namespace DXEngine
                                                       ImGui::ColorConvertFloat4ToU32(ImVec4(p.diffuseColor.x, p.diffuseColor.y, p.diffuseColor.z, 1.0f)), 3.0f);
             if (!open) return;
 
+            // ---------------- surface ----------------
             if (PropertyGrid::Begin("material"))
             {
                 PropertyGrid::Text("Shading", "%s", ShadingModelName(m.GetShadingModel()));
@@ -65,28 +111,117 @@ namespace DXEngine
                 DirectX::XMFLOAT4 diffuse = p.diffuseColor;
                 if (PropertyGrid::Color4("Colour", &diffuse.x)) m.SetDiffuseColor(diffuse);
 
-                if (m.GetShadingModel() == ShadingModel::Lit)
+                if (lit)
                 {
                     float metallic = p.metallic, roughness = p.roughness;
                     if (PropertyGrid::Slider("Metallic", metallic, 0.0f, 1.0f))   m.SetMetallic(metallic);
                     if (PropertyGrid::Slider("Roughness", roughness, 0.0f, 1.0f)) m.SetRoughness(roughness);
+
+                    float occlusion = p.occlusionStrength;
+                    if (PropertyGrid::Slider("Occlusion", occlusion, 0.0f, 1.0f)) m.SetOcculsionStrength(occlusion);
+
+                    float normalStrength = p.normalScale;
+                    if (PropertyGrid::Float("Normal strength", normalStrength, 0.01f, 0.0f, 4.0f)) m.SetNormalScale(normalStrength);
+
+                    bool flipY = m.GetNormalFlipY();
+                    if (PropertyGrid::Checkbox("Flip normal Y", flipY)) m.SetNormalFlipY(flipY);
                 }
 
-                DirectX::XMFLOAT4 emissive = p.emissiveColor;
-                if (PropertyGrid::Color3("Emissive", &emissive.x, true)) m.SetEmissiveColor(emissive);
-                float intensity = p.emissiveIntensity;
-                if (PropertyGrid::Float("Emissive power", intensity, 0.05f, 0.0f, 100.0f)) m.SetEmissiveIntensity(intensity);
+                if (shaded)
+                {
+                    DirectX::XMFLOAT4 emissive = p.emissiveColor;
+                    if (PropertyGrid::Color3("Emissive", &emissive.x, true)) m.SetEmissiveColor(emissive);
+                    float intensity = p.emissiveIntensity;
+                    if (PropertyGrid::Float("Emissive power", intensity, 0.05f, 0.0f, 100.0f)) m.SetEmissiveIntensity(intensity);
+                }
 
                 float alpha = p.alpha;
                 if (PropertyGrid::Slider("Alpha", alpha, 0.0f, 1.0f)) m.SetAlpha(alpha);
-
-                DirectX::XMFLOAT3 tiling = { p.textureScale.x, p.textureScale.y, 0.0f };
-                if (PropertyGrid::Float("Tiling U", tiling.x, 0.05f, 0.01f, 1000.0f) | PropertyGrid::Float("Tiling V", tiling.y, 0.05f, 0.01f, 1000.0f))
-                    m.SetTextureScale({ tiling.x, tiling.y });
-
-                PropertyGrid::Text("Blending", "%s", m.IsBlended() ? "blended" : "opaque");
                 PropertyGrid::End();
             }
+
+            // ---------------- texture coordinates ----------------
+            if (ImGui::TreeNodeEx("UV##uv", ImGuiTreeNodeFlags_SpanAvailWidth))
+            {
+                if (PropertyGrid::Begin("uv"))
+                {
+                    float tu = p.textureScale.x, tv = p.textureScale.y;
+                    const bool tilingChanged = PropertyGrid::Float("Tiling U", tu, 0.05f, 0.01f, 1000.0f) | PropertyGrid::Float("Tiling V", tv, 0.05f, 0.01f, 1000.0f);
+                    if (tilingChanged) m.SetTextureScale({ tu, tv });
+
+                    float ou = p.textureOffset.x, ov = p.textureOffset.y;
+                    const bool offsetChanged = PropertyGrid::Float("Offset U", ou, 0.01f, -1000.0f, 1000.0f) | PropertyGrid::Float("Offset V", ov, 0.01f, -1000.0f, 1000.0f);
+                    if (offsetChanged) m.SetTextureOffset({ ou, ov });
+                    PropertyGrid::End();
+                }
+                ImGui::TreePop();
+            }
+
+            // ---------------- textures ----------------
+            if (shaded && ImGui::TreeNodeEx("Textures##tex", ImGuiTreeNodeFlags_SpanAvailWidth))
+            {
+                if (PropertyGrid::Begin("textures"))
+                {
+                    TextureRow(m, TextureSlot::Diffuse, "Base colour");
+                    if (lit)
+                    {
+                        TextureRow(m, TextureSlot::Normal, "Normal");
+                        TextureRow(m, TextureSlot::Specular, "Packed (ORM)", "R = occlusion, G = roughness, B = metallic (glTF style). Ignored when a roughness or metallic map is set.");
+                        TextureRow(m, TextureSlot::Roughness, "Roughness");
+                        ChannelRow(m, TextureSlot::Roughness, "  Roughness channel");
+                        TextureRow(m, TextureSlot::Metallic, "Metallic");
+                        ChannelRow(m, TextureSlot::Metallic, "  Metallic channel");
+                        TextureRow(m, TextureSlot::AmbientOcclusion, "Occlusion");
+                        ChannelRow(m, TextureSlot::AmbientOcclusion, "  Occlusion channel");
+                        TextureRow(m, TextureSlot::Height, "Height (parallax)");
+                        if (m.GetTexture(TextureSlot::Height))
+                        {
+                            float heightScale = p.heightScale;
+                            if (PropertyGrid::Float("  Height scale", heightScale, 0.001f, 0.0f, 0.2f, "%.3f")) m.SetHeightScale(heightScale);
+                        }
+                        TextureRow(m, TextureSlot::DetailDiffuse, "Detail colour");
+                        TextureRow(m, TextureSlot::DetailNormal, "Detail normal");
+                        if (m.GetTexture(TextureSlot::DetailDiffuse) || m.GetTexture(TextureSlot::DetailNormal))
+                        {
+                            float du = p.detailScale.x, dv = p.detailScale.y;
+                            const bool detailChanged = PropertyGrid::Float("  Detail tiling U", du, 0.05f, 0.01f, 1000.0f) | PropertyGrid::Float("  Detail tiling V", dv, 0.05f, 0.01f, 1000.0f);
+                            if (detailChanged) m.SetDetailTextureScale({ du, dv });
+                        }
+                    }
+                    TextureRow(m, TextureSlot::Emissive, "Emissive");
+                    TextureRow(m, TextureSlot::Opacity, "Opacity");
+                    PropertyGrid::End();
+                }
+
+                // The classic "my normal map does nothing": the shader needs tangents to use one.
+                if (lit && m.GetTexture(TextureSlot::Normal) && !meshHasTangents)
+                {
+                    ImGui::PushTextWrapPos();
+                    ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.25f, 1.0f), "This mesh has no tangents, so its normal map is ignored.");
+                    ImGui::PopTextWrapPos();
+                }
+                ImGui::TreePop();
+            }
+
+            // ---------------- render state ----------------
+            if (shaded && ImGui::TreeNodeEx("Render state##state", ImGuiTreeNodeFlags_SpanAvailWidth))
+            {
+                if (PropertyGrid::Begin("state"))
+                {
+                    RenderState state = m.GetRenderState();
+                    int blend = static_cast<int>(state.blend);
+                    int cull  = static_cast<int>(state.cull);
+                    int depth = static_cast<int>(state.depthTest);
+                    bool changed = false;
+                    if (PropertyGrid::Combo("Blending", blend, kBlendNames, 5))  { state.blend = static_cast<RHI::BlendMode>(blend);        changed = true; }
+                    if (PropertyGrid::Combo("Culling", cull, kCullNames, 3))     { state.cull = static_cast<RHI::CullMode>(cull);           changed = true; }
+                    if (PropertyGrid::Combo("Depth test", depth, kDepthNames, 8)){ state.depthTest = static_cast<RHI::DepthTestMode>(depth); changed = true; }
+                    if (changed) m.SetRenderState(state);
+                    PropertyGrid::End();
+                }
+                ImGui::TreePop();
+            }
+
             ImGui::TextDisabled("Shared: this changes every object that uses it.");
             ImGui::TreePop();
         }
@@ -308,9 +443,13 @@ namespace DXEngine
             ImGui::TextDisabled("Uses the mesh's own material.");
         else
             ImGui::SeparatorText("Materials");
+        bool meshHasTangents = true;
+        if (mr.mesh && mr.mesh->GetResource())
+            if (const VertexData* vertexData = mr.mesh->GetResource()->GetVertexData())
+                meshHasTangents = vertexData->GetLayout().HasAttribute(RHI::VertexAttributeType::Tangent);
         for (size_t i = 0; i < mr.materials.size(); ++i)
             if (mr.materials[i])
-                DrawMaterial(*mr.materials[i], static_cast<int>(i));
+                DrawMaterial(*mr.materials[i], static_cast<int>(i), meshHasTangents);
         ImGui::TreePop();
     }
 

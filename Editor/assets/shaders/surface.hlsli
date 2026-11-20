@@ -127,6 +127,19 @@ Surface EvaluateSurface(StandardVertexOutput input, float3 V)
     return s;
 }
 
+// Analytic split-sum environment BRDF (Karis, "Physically Based Shading on Mobile"): the scale and bias a BRDF lookup
+// table would give, as a few multiplies. Returns the factor to apply to a PREFILTERED environment colour so that a
+// surface's specular reflection of it is right for its F0, roughness and viewing angle.
+float3 EnvBRDFApprox(float3 F0, float roughness, float NdotV)
+{
+    const float4 c0 = float4(-1.0, -0.0275, -0.572,  0.022);
+    const float4 c1 = float4( 1.0,  0.0425,  1.04,  -0.04);
+    const float4 r = roughness * c0 + c1;
+    const float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    const float2 AB = float2(-1.04, 1.04) * a004 + r.zw;
+    return F0 * AB.x + AB.y;
+}
+
 // ==========================================================================================================
 // Lighting: ambient + every directional / local light + image-based lighting + emissive + fog.
 // Returns LINEAR HDR colour. Tone mapping and the display encoding are the caller's last step (ToDisplay).
@@ -139,7 +152,18 @@ float3 ShadeSurface(Surface s, StandardVertexOutput input, float3 V)
     const float3 F0     = lerp(float3(0.04, 0.04, 0.04), s.baseColor, s.metallic);
     const float3 albedo = s.baseColor * (1.0 - s.metallic);
 
-    float3 color = ambientColor * ambientIntensity * s.baseColor * s.occlusion;
+    const float NdotV = max(dot(N, V), 0.001);
+
+    // Ambient diffuse uses the ALBEDO (a metal has no diffuse, so it takes no diffuse ambient: before this a metal sphere
+    // was lit by ambient exactly like plastic).
+    float3 color = ambientColor * ambientIntensity * albedo * s.occlusion;
+
+#if !HAS_ENVIRONMENT_MAP
+    // No environment map on the material: treat the ambient colour as a uniform environment and reflect it. Without this a
+    // metal (no diffuse, specular only from the lights' tiny highlights) is black wherever no light highlight lands, and
+    // the Renderer panel's ambient slider does nothing for it.
+    color += ambientColor * ambientIntensity * EnvBRDFApprox(F0, s.roughness, NdotV) * s.occlusion;
+#endif
 
     [loop]
     for (uint i = 0; i < directionalLightCount; ++i)
@@ -149,7 +173,6 @@ float3 ShadeSurface(Surface s, StandardVertexOutput input, float3 V)
 
 #if HAS_ENVIRONMENT_MAP
     // reflections from the environment cube map
-    const float  NdotV = max(dot(N, V), 0.0);
     const float3 R = reflect(-V, N);
     const float3 prefiltered = environmentTexture.SampleLevel(standardSampler, R, s.roughness * 8.0).rgb;
     const float3 F_env = FresnelSchlickRoughness(NdotV, F0, s.roughness);
@@ -161,10 +184,10 @@ float3 ShadeSurface(Surface s, StandardVertexOutput input, float3 V)
     const float3 diffuseIBL = float3(0.0, 0.0, 0.0);
 #endif
 
-    // simplified split-sum BRDF (no lookup table yet)
-    const float2 envBRDF = float2(1.0 - s.roughness, 1.0) * NdotV;
-    const float3 specularIBL = prefiltered * (F_env * envBRDF.x + envBRDF.y);
-    color += (diffuseIBL + specularIBL) * iblIntensity;
+    // split-sum specular. (The previous "float2(1 - roughness, 1) * NdotV" added NdotV of the environment to EVERY surface,
+    // however rough, which washed rough materials out.)
+    const float3 specularIBL = prefiltered * EnvBRDFApprox(F0, s.roughness, NdotV);
+    color += (diffuseIBL + specularIBL) * iblIntensity * s.occlusion;
 #endif
 
     color += s.emissive;

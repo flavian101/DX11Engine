@@ -992,6 +992,20 @@ float3 ApplyGamma(float3 color, float gamma)
     return pow(LinearToSRGB(color), 2.2f / gamma);
 }
 
+// Normals must be transformed by the INVERSE TRANSPOSE of the model matrix, not by the matrix itself: with a non-uniform
+// scale (a sphere stretched into an egg in the editor) the plain matrix tilts every normal and the lighting looks wrong.
+// For row vectors the cofactor matrix equals det * inverse-transpose, so multiplying by it (and undoing the sign of a
+// mirroring matrix) gives the right direction without needing an inverse.
+float3 TransformNormalToWorld(float3 n, float4x4 m)
+{
+    const float3 r0 = m[0].xyz;
+    const float3 r1 = m[1].xyz;
+    const float3 r2 = m[2].xyz;
+    const float3x3 cofactor = float3x3(cross(r1, r2), cross(r2, r0), cross(r0, r1));
+    const float det = dot(r0, cross(r1, r2));
+    return normalize(mul(n, cofactor) * (det < 0.0 ? -1.0 : 1.0));
+}
+
 StandardVertexOutput StandardVertexShader(StandardVertexInput input)
 {
     StandardVertexOutput output;
@@ -1087,7 +1101,7 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     output.position = mul(localPos, WVP);
     
 #if HAS_NORMAL_ATTRIBUTE
-    output.normal = normalize(mul(localNormal, (float3x3)Model));
+    output.normal = TransformNormalToWorld(localNormal, Model);
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE
@@ -1112,8 +1126,9 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
     output.color = input.color;
 #endif
 
-    // Calculate view direction (from vertex to camera)
-    output.viewDir = normalize(CameraPosition - output.worldPos.xyz);
+    // View vector (vertex -> camera), NOT normalized here: the pixel shaders normalize it per pixel (interpolating unit
+    // vectors shortens them between vertices), and keeping its length is what lets distance fog know the real distance.
+    output.viewDir = CameraPosition - output.worldPos.xyz;
     
     // Pass time for animated effects
     output.time = Time;

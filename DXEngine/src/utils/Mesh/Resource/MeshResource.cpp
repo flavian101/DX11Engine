@@ -521,7 +521,7 @@ namespace DXEngine
     // Factory methods
     std::unique_ptr<MeshResource> MeshResource::CreateQuad(const std::string& name, float width, float height)
     {
-        auto layout = VertexLayout::CreateBasic();
+        auto layout = VertexLayout::CreateLit();
         auto vertexData = std::make_unique<VertexData>(layout);
         vertexData->Resize(4);
 
@@ -555,13 +555,15 @@ namespace DXEngine
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
         resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
+        // Tangents are what make a NORMAL MAP work: with no tangent attribute the shader skips the normal map.
+        resource->GenerateTangents();
 
         return resource;
     }
    
     std::unique_ptr<MeshResource> MeshResource::CreateCube(const std::string& name, float size)
     {
-        auto layout = VertexLayout::CreateBasic();
+        auto layout = VertexLayout::CreateLit();
         auto vertexData = std::make_unique<VertexData>(layout);
         vertexData->Resize(24); // 6 faces * 4 vertices per face
 
@@ -623,13 +625,15 @@ namespace DXEngine
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
         resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
+        // Tangents are what make a NORMAL MAP work: with no tangent attribute the shader skips the normal map.
+        resource->GenerateTangents();
 
         return resource;
     }
 
     std::unique_ptr<MeshResource> MeshResource::CreateSphere(const std::string& name, float radius, uint32_t segments)
     {
-        auto layout = VertexLayout::CreateBasic();
+        auto layout = VertexLayout::CreateLit();
 
         uint32_t rings = segments / 2;
         uint32_t vertexCount = (rings + 1) * (segments + 1);
@@ -690,13 +694,15 @@ namespace DXEngine
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
         resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
+        // Tangents are what make a NORMAL MAP work: with no tangent attribute the shader skips the normal map.
+        resource->GenerateTangents();
 
         return resource;
     }
 
     std::unique_ptr<MeshResource> MeshResource::CreateCylinder(const std::string& name, float radius, float height, uint32_t segments)
     {
-        auto layout = VertexLayout::CreateBasic();
+        auto layout = VertexLayout::CreateLit();
 
         // Vertices: segments+1 for each cap, segments+1 for each of 2 rings = (segments+1)*4
         uint32_t vertexCount = (segments + 1) * 4;
@@ -778,13 +784,15 @@ namespace DXEngine
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
         resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
+        // Tangents are what make a NORMAL MAP work: with no tangent attribute the shader skips the normal map.
+        resource->GenerateTangents();
 
         return resource;
     }
 
     std::unique_ptr<MeshResource> MeshResource::CreatePlane(const std::string& name, float width, float depth, uint32_t widthSegments, uint32_t depthSegments)
     {
-        auto layout = VertexLayout::CreateBasic();
+        auto layout = VertexLayout::CreateLit();
 
         uint32_t vertexCount = (widthSegments + 1) * (depthSegments + 1);
         auto vertexData = std::make_unique<VertexData>(layout);
@@ -837,6 +845,8 @@ namespace DXEngine
         resource->SetVertexData(std::move(vertexData));
         resource->SetIndexData(std::move(indexData));
         resource->SetTopology(RHI::PrimitiveTopology::TriangleList);
+        // Tangents are what make a NORMAL MAP work: with no tangent attribute the shader skips the normal map.
+        resource->GenerateTangents();
 
         return resource;
     }

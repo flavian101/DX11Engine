@@ -298,6 +298,42 @@ static std::multiset<PosTri> PositionTriangles(const MeshResource& res, size_t f
     return s;
 }
 
+// Normal maps need a tangent frame. The procedural primitives used to be built WITHOUT tangents, so a normal map on the
+// ground plane (or any primitive) was silently skipped by the shader. Every primitive now carries a unit tangent with w = +-1,
+// perpendicular to its normal.
+static void CheckPrimitiveHasTangentFrame(const MeshResource& resource)
+{
+    const VertexData* vertexData = resource.GetVertexData();
+    CHECK(vertexData != nullptr);
+    if (!vertexData) return;
+    CHECK(vertexData->GetLayout().HasAttribute(RHI::VertexAttributeType::Tangent));
+
+    for (size_t i = 0; i < vertexData->GetVertexCount(); ++i)
+    {
+        const DirectX::XMFLOAT3 n = vertexData->GetAttribute<DirectX::XMFLOAT3>(i, RHI::VertexAttributeType::Normal);
+        const DirectX::XMFLOAT4 t = vertexData->GetAttribute<DirectX::XMFLOAT4>(i, RHI::VertexAttributeType::Tangent);
+        const float length = std::sqrt(t.x * t.x + t.y * t.y + t.z * t.z);
+        const float dotNT = n.x * t.x + n.y * t.y + n.z * t.z;
+        CHECK(std::fabs(length - 1.0f) < 1e-3f);
+        CHECK(std::fabs(dotNT) < 1e-3f);
+        CHECK(t.w == 1.0f || t.w == -1.0f);
+    }
+}
+
+static void TestPrimitivesHaveTangents()
+{
+    CheckPrimitiveHasTangentFrame(*MeshResource::CreatePlane("plane", 1.0f, 1.0f, 1, 1));
+    CheckPrimitiveHasTangentFrame(*MeshResource::CreateCube("cube", 1.0f));
+    CheckPrimitiveHasTangentFrame(*MeshResource::CreateSphere("sphere", 1.0f, 16));
+    CheckPrimitiveHasTangentFrame(*MeshResource::CreateCylinder("cylinder", 1.0f, 2.0f, 16));
+    CheckPrimitiveHasTangentFrame(*MeshResource::CreateQuad("quad", 1.0f, 1.0f));
+
+    // the ground plane lies in XZ with u along +X: its tangent is +X and a flat normal-map texel maps to +Y (up)
+    auto plane = MeshResource::CreatePlane("plane", 1.0f, 1.0f, 1, 1);
+    const DirectX::XMFLOAT4 t = plane->GetVertexData()->GetAttribute<DirectX::XMFLOAT4>(0, RHI::VertexAttributeType::Tangent);
+    CHECK(std::fabs(t.x - 1.0f) < 1e-3f && std::fabs(t.y) < 1e-3f && std::fabs(t.z) < 1e-3f);
+}
+
 static void TestOptimizeKeepsTrianglesAndSubmeshes()
 {
     auto resource = std::shared_ptr<MeshResource>(MeshResource::CreateSphere("sphere", 1.0f, 24));
@@ -464,6 +500,7 @@ int main()
         { "extraction: skinned bones optional and safe",       TestSkinnedBonesAreOptionalAndSafe },
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
         { "scene target: size resolution",                     TestSceneTargetSize },
+        { "mesh: primitives carry tangents (normal maps work)", TestPrimitivesHaveTangents },
         { "mesh: cache optimisation keeps triangles + submeshes", TestOptimizeKeepsTrianglesAndSubmeshes },
         { "tangents: generated ones follow the UVs (GL style)",   TestGeneratedTangentsFollowTheUvs },
         { "tangents: a mirrored UV island gets the other handedness", TestMirroredUvIslandsGetTheOppositeHandedness },
