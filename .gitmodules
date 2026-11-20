@@ -14,3 +14,6 @@
 [submodule "DXEngine/vendor/meshoptimizer"]
 	path = DXEngine/vendor/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer.git
+[submodule "DXEngine/vendor/tinyexr"]
+	path = DXEngine/vendor/tinyexr
+	url = https://github.com/syoyo/tinyexr.git
