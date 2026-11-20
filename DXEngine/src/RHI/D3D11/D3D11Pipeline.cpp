@@ -14,6 +14,10 @@ namespace DXEngine::RHI
 		case DataFormat::Int2: return DXGI_FORMAT_R32G32_SINT;
 		case DataFormat::Int3: return DXGI_FORMAT_R32G32B32_SINT;
 		case DataFormat::Int4: return DXGI_FORMAT_R32G32B32A32_SINT;
+		case DataFormat::UInt: return DXGI_FORMAT_R32_UINT;
+		case DataFormat::UInt2: return DXGI_FORMAT_R32G32_UINT;
+		case DataFormat::UInt3: return DXGI_FORMAT_R32G32B32_UINT;
+		case DataFormat::UInt4: return DXGI_FORMAT_R32G32B32A32_UINT;
 		case DataFormat::UByte4: return DXGI_FORMAT_R8G8B8A8_UINT;
 		case DataFormat::UByte4N: return DXGI_FORMAT_R8G8B8A8_UNORM;
 		case DataFormat::Short2: return DXGI_FORMAT_R16G16_SINT;

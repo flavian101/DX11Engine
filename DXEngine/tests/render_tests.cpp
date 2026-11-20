@@ -9,6 +9,7 @@
 #include "utils/material/Material.h"
 #include "utils/Mesh/Resource/MeshResource.h"
 #include "utils/Mesh/Utils/TangentMath.h"
+#include "utils/Mesh/Utils/VertexAttribute.h"
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -416,6 +417,39 @@ static void TestHandednessHelper()
     CHECK(Near(p.x * p.x + p.y * p.y + p.z * p.z, 1.0f) && Near(p.y, 0.0f));
 }
 
+// ------------------------------------------------------------ skinning vertex data
+// The importer writes the four bone indices as an XMINT4 (16 bytes) and then the four weights. If the layout reserves less room
+// for the indices than that, the weights overwrite indices 1-3: a vertex keeps one real bone and its other influences land on
+// bone 0 (joints, neck, jaw and legs come out skewed). The layout must hold what is written, and every vertex must read back intact.
+static void TestSkinningDataSurvivesTheLayout()
+{
+    auto vertices = std::make_unique<VertexData>(VertexLayout::CreateSkinned());
+    const VertexLayout& layout = vertices->GetLayout();
+    const RHI::VertexAttribute* idx = layout.FindAttribute(RHI::VertexAttributeType::BlendIndices, 0);
+    const RHI::VertexAttribute* wgt = layout.FindAttribute(RHI::VertexAttributeType::BlendWeights, 0);
+    CHECK(idx && wgt);
+    if (!idx || !wgt) return;
+    CHECK(idx->GetSize() >= sizeof(XMINT4));                              // room for four 32-bit indices
+    CHECK(wgt->GetSize() >= sizeof(XMFLOAT4));
+    CHECK(wgt->Offset >= idx->Offset + sizeof(XMINT4) || idx->Offset >= wgt->Offset + sizeof(XMFLOAT4));   // the two do not overlap
+
+    vertices->Resize(3);
+    const XMINT4   bones[3]   = { XMINT4(3, 17, 41, 70), XMINT4(1, 2, 3, 4), XMINT4(70, 0, 0, 0) };
+    const XMFLOAT4 weights[3] = { XMFLOAT4(0.4f, 0.3f, 0.2f, 0.1f), XMFLOAT4(0.25f, 0.25f, 0.25f, 0.25f), XMFLOAT4(1, 0, 0, 0) };
+    for (size_t v = 0; v < 3; ++v)                                        // written the way MeshProcessor does: indices, then weights
+    {
+        vertices->SetAttribute(v, RHI::VertexAttributeType::BlendIndices, bones[v]);
+        vertices->SetAttribute(v, RHI::VertexAttributeType::BlendWeights, weights[v]);
+    }
+    for (size_t v = 0; v < 3; ++v)                                        // read back after ALL are written: a neighbour must not clobber it
+    {
+        const XMINT4   b = vertices->GetAttribute<XMINT4>(v, RHI::VertexAttributeType::BlendIndices);
+        const XMFLOAT4 w = vertices->GetAttribute<XMFLOAT4>(v, RHI::VertexAttributeType::BlendWeights);
+        CHECK(b.x == bones[v].x && b.y == bones[v].y && b.z == bones[v].z && b.w == bones[v].w);
+        CHECK(Near(w.x, weights[v].x) && Near(w.y, weights[v].y) && Near(w.z, weights[v].z) && Near(w.w, weights[v].w));
+    }
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -435,6 +469,7 @@ int main()
         { "tangents: a mirrored UV island gets the other handedness", TestMirroredUvIslandsGetTheOppositeHandedness },
         { "tangents: collapsed UVs give a finite frame",           TestDegenerateUvsDoNotPoisonTheMesh },
         { "tangents: handedness helper",                           TestHandednessHelper },
+        { "skinning: bone indices + weights survive the layout",   TestSkinningDataSurvivesTheLayout },
     };
     for (auto& t : tests)
     {

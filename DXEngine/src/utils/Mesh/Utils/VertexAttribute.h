@@ -23,7 +23,11 @@ namespace DXEngine
 		VertexLayout& Tangent(RHI::DataFormat format = RHI::DataFormat::Float4, uint32_t slot = 0);
 		VertexLayout& TexCoord(uint32_t index = 0, RHI::DataFormat format = RHI::DataFormat::Float2, uint32_t slot = 0);
 		VertexLayout& Color(uint32_t index = 0, RHI::DataFormat format = RHI::DataFormat::Float4, uint32_t slot = 0);
-		VertexLayout& BlendData(RHI::DataFormat indicesFormat = RHI::DataFormat::UByte4,
+		// Bone indices are stored as four 32-bit integers (UInt4 = DXGI R32G32B32A32_UINT, read as 'uint4' by the skinning shaders):
+		// that is the size the importer writes (SetAttribute<XMINT4>, 16 bytes) and PostProcessor reads back. A narrower format
+		// here (it used to be UByte4, 4 bytes) makes the BlendWeights write overwrite indices 1-3, so every vertex ends up with
+		// one real bone and its other influences on bone 0.
+		VertexLayout& BlendData(RHI::DataFormat indicesFormat = RHI::DataFormat::UInt4,
 								RHI::DataFormat weightsFormat = RHI::DataFormat::Float4, uint32_t slot = 0);
 
 		void Finalize();
