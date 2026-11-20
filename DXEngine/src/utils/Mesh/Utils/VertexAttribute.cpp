@@ -512,4 +512,21 @@ namespace DXEngine
         return result;
     }
 
+    template<>
+    DirectX::XMINT4 VertexData::GetAttribute<DirectX::XMINT4>(size_t vertexIndex, RHI::VertexAttributeType type, uint32_t slot) const
+    {
+        const RHI::VertexAttribute* attr = m_Layout.FindAttribute(type, slot);
+        assert(attr && "Attribute not found in layout");
+        assert(vertexIndex < m_VertexCount && "Vertex index out of range");
+
+        const auto& slotData = m_Data.at(slot);
+        uint32_t stride = m_Layout.GetStride(slot);
+        const uint8_t* vertexStart = slotData.data() + (vertexIndex * stride);
+        const uint8_t* attrStart = vertexStart + attr->Offset;
+
+        DirectX::XMINT4 result;
+        memcpy(&result, attrStart, sizeof(DirectX::XMINT4));
+        return result;
+    }
+
 }

@@ -135,5 +135,8 @@ namespace DXEngine
 	template<>
 	DirectX::XMUINT4 VertexData::GetAttribute<DirectX::XMUINT4>(size_t vertexIndex, RHI::VertexAttributeType type, uint32_t slot) const;
 
+	template<>
+	DirectX::XMINT4 VertexData::GetAttribute<DirectX::XMINT4>(size_t vertexIndex, RHI::VertexAttributeType type, uint32_t slot) const;
+
 }
 
