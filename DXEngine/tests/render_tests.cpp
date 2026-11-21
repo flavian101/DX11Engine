@@ -321,6 +321,34 @@ static void CheckPrimitiveHasTangentFrame(const MeshResource& resource)
     }
 }
 
+// Every vertex of a primitive is used, and a cylinder's caps are lit as flat discs (normal along -Y / +Y), not with the
+// side normals of the ring they used to share.
+static void TestCylinderVerticesAndCaps()
+{
+    const auto cyl = MeshResource::CreateCylinder("cylinder", 1.0f, 2.0f, 16);
+    const VertexData* v = cyl->GetVertexData();
+    const IndexData*  ix = cyl->GetIndexData();
+    std::vector<bool> used(v->GetVertexCount(), false);
+    for (size_t i = 0; i < ix->GetIndexCount(); ++i)
+    {
+        const uint32_t index = ix->GetIndex(i);
+        CHECK(index < v->GetVertexCount());
+        if (index < used.size()) used[index] = true;
+    }
+    for (bool u : used) CHECK(u);                                    // nothing allocated and left zeroed
+
+    size_t flatCapTriangles = 0;
+    for (size_t t = 0; t + 2 < ix->GetIndexCount(); t += 3)
+    {
+        const DirectX::XMFLOAT3 n0 = v->GetAttribute<DirectX::XMFLOAT3>(ix->GetIndex(t),     RHI::VertexAttributeType::Normal);
+        const DirectX::XMFLOAT3 n1 = v->GetAttribute<DirectX::XMFLOAT3>(ix->GetIndex(t + 1), RHI::VertexAttributeType::Normal);
+        const DirectX::XMFLOAT3 n2 = v->GetAttribute<DirectX::XMFLOAT3>(ix->GetIndex(t + 2), RHI::VertexAttributeType::Normal);
+        const bool vertical = std::fabs(n0.y) == 1.0f && n1.y == n0.y && n2.y == n0.y;
+        if (vertical) ++flatCapTriangles;
+    }
+    CHECK(flatCapTriangles == 32);                                   // 16 per cap
+}
+
 static void TestPrimitivesHaveTangents()
 {
     CheckPrimitiveHasTangentFrame(*MeshResource::CreatePlane("plane", 1.0f, 1.0f, 1, 1));
@@ -502,6 +530,7 @@ int main()
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
         { "scene target: size resolution",                     TestSceneTargetSize },
         { "mesh: primitives carry tangents (normal maps work)", TestPrimitivesHaveTangents },
+        { "mesh: cylinder uses every vertex, caps are flat", TestCylinderVerticesAndCaps },
         { "mesh: cache optimisation keeps triangles + submeshes", TestOptimizeKeepsTrianglesAndSubmeshes },
         { "tangents: generated ones follow the UVs (GL style)",   TestGeneratedTangentsFollowTheUvs },
         { "tangents: a mirrored UV island gets the other handedness", TestMirroredUvIslandsGetTheOppositeHandedness },

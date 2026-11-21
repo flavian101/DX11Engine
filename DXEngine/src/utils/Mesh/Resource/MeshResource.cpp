@@ -704,8 +704,11 @@ namespace DXEngine
     {
         auto layout = VertexLayout::CreateLit();
 
-        // Vertices: segments+1 for each cap, segments+1 for each of 2 rings = (segments+1)*4
-        uint32_t vertexCount = (segments + 1) * 4;
+        // Vertices: 2 cap centres, 2 side rings (their normals point outwards) and 2 cap rings (their normals point
+        // along -Y / +Y). The caps need rings of their own: sharing the side ring would shade a cap with the SIDE normals.
+        // (This used to allocate (segments + 1) * 4 vertices, write only 2 + 2 * (segments + 1) of them, and build the
+        // caps from the side ring.)
+        uint32_t vertexCount = 2 + (segments + 1) * 4;
 
         auto vertexData = std::make_unique<VertexData>(layout);
         vertexData->Resize(vertexCount);
@@ -749,6 +752,26 @@ namespace DXEngine
             ++vertexIndex;
         }
 
+        // Cap rings: a planar disc mapping for the texture coordinates
+        const uint32_t bottomCapBase = vertexIndex;
+        const uint32_t topCapBase    = bottomCapBase + segments + 1;
+        for (uint32_t cap = 0; cap < 2; ++cap)
+        {
+            const bool  top = (cap == 1);
+            const float y   = top ? halfHeight : -halfHeight;
+            const DirectX::XMFLOAT3 normal(0.0f, top ? 1.0f : -1.0f, 0.0f);
+            for (uint32_t segment = 0; segment <= segments; ++segment)
+            {
+                const float theta = static_cast<float>(segment) / segments * DirectX::XM_2PI;
+                const float c = cosf(theta);
+                const float sn = sinf(theta);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Position, DirectX::XMFLOAT3(radius * c, y, radius * sn));
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::Normal, normal);
+                vertexData->SetAttribute(vertexIndex, RHI::VertexAttributeType::TexCoord0, DirectX::XMFLOAT2(0.5f + 0.5f * c, 0.5f + 0.5f * sn));
+                ++vertexIndex;
+            }
+        }
+
         // Generate indices
         auto indexData = std::make_unique<IndexData>(IndexType::UInt32);
 
@@ -767,16 +790,16 @@ namespace DXEngine
         // Bottom cap (triangle fan)
         for (uint32_t segment = 0; segment < segments; ++segment)
         {
-            uint32_t current = 2 + segment * 2;
-            uint32_t next = current + 2;
+            uint32_t current = bottomCapBase + segment;
+            uint32_t next = current + 1;
             indexData->AddTriangle(0, next, current); // Note: reversed winding for bottom face
         }
 
         // Top cap (triangle fan)
         for (uint32_t segment = 0; segment < segments; ++segment)
         {
-            uint32_t current = 3 + segment * 2;
-            uint32_t next = current + 2;
+            uint32_t current = topCapBase + segment;
+            uint32_t next = current + 1;
             indexData->AddTriangle(1, current, next);
         }
 
