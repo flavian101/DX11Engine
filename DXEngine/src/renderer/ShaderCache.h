@@ -26,12 +26,10 @@ namespace DXEngine {
         constexpr uint32_t HasSkinning = 1 << 5;
 
         // Rendering features
-        constexpr uint32_t Fog = 1 << 6;
-        constexpr uint32_t Instancing = 1 << 7;
-        constexpr uint32_t AlphaTest = 1 << 8;
-        constexpr uint32_t Lighting = 1 << 9;
-        constexpr uint32_t Shadows = 1 << 10;
-        constexpr uint32_t Blended = 1 << 11;    // the surface is alpha blended: only pixels that would be invisible are discarded
+        constexpr uint32_t AlphaTest = 1 << 6;
+        constexpr uint32_t Lighting = 1 << 7;
+        constexpr uint32_t Shadows = 1 << 8;
+        constexpr uint32_t Blended = 1 << 9;     // the surface is alpha blended: only pixels that would be invisible are discarded
     }
 
     // ========== SHADER VARIANT KEY ==========

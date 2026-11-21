@@ -141,7 +141,7 @@ float3 EnvBRDFApprox(float3 F0, float roughness, float NdotV)
 }
 
 // ==========================================================================================================
-// Lighting: ambient + every directional / local light + image-based lighting + emissive + fog.
+// Lighting: ambient + every directional / local light + image-based lighting + emissive.
 // Returns LINEAR HDR colour. Tone mapping and the display encoding are the caller's last step (ToDisplay).
 // ==========================================================================================================
 float3 ShadeSurface(Surface s, StandardVertexOutput input, float3 V)
@@ -191,11 +191,6 @@ float3 ShadeSurface(Surface s, StandardVertexOutput input, float3 V)
 #endif
 
     color += s.emissive;
-
-#if ENABLE_FOG
-    const float fogFactor = saturate(exp(-length(input.viewDir) * 0.001));
-    color = lerp(ambientColor, color, fogFactor);
-#endif
 
     return color;
 }

@@ -3,10 +3,8 @@
 #include "ShadowTypes.h"
 #include <DirectXCollision.h>
 #include <DirectXMath.h>
-#include <any>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace DXEngine
@@ -109,20 +107,6 @@ namespace DXEngine
         // ---- produced by passes ----
         RenderStatistics stats;
 
-        // ---- escape hatch for experiments ----
-        // Typed fields above are preferred. Use this only for data that exactly one
-        // pass writes and one pass reads (e.g. a future cluster grid).
-        template<typename T>
-        void Set(const std::string& key, T value) { m_Extra[key] = std::move(value); }
-
-        // Returns nullptr when missing or of a different type. NEVER copies the data.
-        template<typename T>
-        const T* TryGet(const std::string& key) const
-        {
-            auto it = m_Extra.find(key);
-            return it == m_Extra.end() ? nullptr : std::any_cast<T>(&it->second);
-        }
-
         void BeginFrame(float dt, float total)
         {
             ++frameIndex;
@@ -137,10 +121,6 @@ namespace DXEngine
             clusterRangeBuffer = nullptr;
             lightIndexBuffer = nullptr;
             stats.Reset();
-            m_Extra.clear();
         }
-
-    private:
-        std::unordered_map<std::string, std::any> m_Extra;
     };
 }

@@ -224,10 +224,4 @@ namespace DXEngine {
 		return mat;
 	}
 
-	std::shared_ptr<Material> MaterialFactory::CreateFromConfig(const std::string& configPath)
-	{
-		// TODO: Implement material loading from file (JSON, XML, etc.)
-		return CreateLitMaterial("DefaultFromConfig");
-	}
-
 }

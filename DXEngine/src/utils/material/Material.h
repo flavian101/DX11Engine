@@ -119,7 +119,6 @@ namespace DXEngine {
 
 
 		// Create material from config
-		static std::shared_ptr<Material> CreateFromConfig(const std::string& configPath);
 	};
 
 }

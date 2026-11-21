@@ -25,8 +25,7 @@ namespace DXEngine
 
         DirectX::XMFLOAT4X4 world;               // NOT transposed. The drawer transposes on upload.
 
-        // Non-owning. Valid for the frame because FrameContext::scene keeps the Model alive.
-        const std::vector<DirectX::XMFLOAT4X4>* instanceTransforms = nullptr;
+        // Non-owning. Points into the scene's Animator component, valid for the frame.
         const std::vector<DirectX::XMFLOAT4X4>* boneMatrices       = nullptr;
 
         float distanceToCamera = 0.0f;           // used for sorting only
@@ -34,7 +33,6 @@ namespace DXEngine
         bool  depthPrepassed   = false;          // written by DepthPrepass when it drew this item: the forward pass then only
                                                  // shades the pixels that stayed visible (depth test LessEqual, no depth write)
 
-        bool IsInstanced() const { return instanceTransforms && instanceTransforms->size() > 1; }
         bool IsSkinned()   const { return boneMatrices && !boneMatrices->empty(); }
     };
 

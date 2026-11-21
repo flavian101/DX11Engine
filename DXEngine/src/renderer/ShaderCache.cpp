@@ -444,10 +444,6 @@ namespace DXEngine
 		// Rendering features
 		if (features & ShaderFeature::Shadows)
 			defines << "#define ENABLE_SHADOWS 1\n";
-		if (features & ShaderFeature::Fog)
-			defines << "#define ENABLE_FOG 1\n";
-		if (features & ShaderFeature::Instancing)
-			defines << "#define ENABLE_INSTANCING 1\n";
 		if ((features & ShaderFeature::AlphaTest) || (features & ShaderFeature::Blended))
 			defines << "#define ENABLE_ALPHA_TEST 1\n";
 		if (features & ShaderFeature::Blended)
@@ -734,8 +730,6 @@ namespace DXEngine
 			if (HasFeature(flags, ShaderFeature::HasSecondTexCoords)) featureNames.push_back("SecondUV");
 
 			if (HasFeature(flags, ShaderFeature::Shadows)) featureNames.push_back("Shadows");
-			if (HasFeature(flags, ShaderFeature::Fog)) featureNames.push_back("Fog");
-			if (HasFeature(flags, ShaderFeature::Instancing)) featureNames.push_back("Instancing");
 			if (HasFeature(flags, ShaderFeature::AlphaTest)) featureNames.push_back("AlphaTest");
 			if (HasFeature(flags, ShaderFeature::Blended)) featureNames.push_back("Blended");
 

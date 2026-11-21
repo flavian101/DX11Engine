@@ -150,19 +150,6 @@ namespace DXEngine
         if (item.IsSkinned())
             UploadBones(item);
 
-        if (item.IsInstanced())
-        {
-            const XMMATRIX model = XMLoadFloat4x4(&item.world);       // same convention as Draw()
-            for (const XMFLOAT4X4& inst : *item.instanceTransforms)
-            {
-                XMFLOAT4X4 world;
-                XMStoreFloat4x4(&world, XMLoadFloat4x4(&inst) * model);
-                UploadTransform(world);
-                IssueDraw(ctx, *item.mesh, item.submeshIndex);
-            }
-            return;
-        }
-
         UploadTransform(item.world);
         IssueDraw(ctx, *item.mesh, item.submeshIndex);
     }
@@ -237,23 +224,6 @@ namespace DXEngine
 
         if (item.IsSkinned())
             UploadBones(item);
-
-        if (item.IsInstanced())
-        {
-            // The current HLSL has no per-instance vertex input, so true GPU instancing is not
-            // possible yet. Correct-but-slower fallback: one draw per instance.
-            // ASSUMPTION: instance transforms are placed inside the model's space
-            //             (final = instance * model). Verify against how you author instances.
-            const XMMATRIX model = XMLoadFloat4x4(&item.world);
-            for (const XMFLOAT4X4& inst : *item.instanceTransforms)
-            {
-                XMFLOAT4X4 world;
-                XMStoreFloat4x4(&world, XMLoadFloat4x4(&inst) * model);
-                UploadTransform(world);
-                DrawMesh(ctx, *item.mesh, *item.material, item.submeshIndex, item.depthPrepassed);
-            }
-            return;
-        }
 
         UploadTransform(item.world);
         DrawMesh(ctx, *item.mesh, *item.material, item.submeshIndex, item.depthPrepassed);

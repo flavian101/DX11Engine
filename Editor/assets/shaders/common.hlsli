@@ -53,7 +53,7 @@
 #define HAS_DETAIL_TEXTURES 0
 #endif
 
-// ========== ADD THIS NEW RENDERING FEATURE ==========
+// Parallax mapping: switched on by the material having a height map (see ShaderCache)
 #ifndef ENABLE_PARALLAX_MAPPING
 #define ENABLE_PARALLAX_MAPPING 0
 #endif
@@ -88,26 +88,10 @@
 #define ENABLE_SHADOWS 0
 #endif
 
-#ifndef ENABLE_FOG
-#define ENABLE_FOG 0
-#endif
-
-#ifndef ENABLE_INSTANCING
-#define ENABLE_INSTANCING 0
-#endif
-
 #ifndef ENABLE_ALPHA_TEST
 #define ENABLE_ALPHA_TEST 0
 #endif
 
-#ifndef ENABLE_EMISSIVE
-#define ENABLE_EMISSIVE 0
-#endif
-
-// Custom vertex input override
-#ifndef CUSTOM_VERTEX_INPUT
-#define CUSTOM_VERTEX_INPUT 0
-#endif
 
 //Common constants
 static const float PI = 3.14159265359;
@@ -145,7 +129,7 @@ cbuffer MaterialBufferData : register(b2)
     float roughness;
     float alpha;
     
-    // ========== NEW: ENHANCED MATERIAL PROPERTIES ==========
+    // ---- extended material properties ----
     float normalScale;       //Normal map intensity
     float heightScale;       //Parallax/height scale
     float occlusionStrength; //AO intensity
@@ -296,7 +280,7 @@ struct StandardVertexOutput
     float2 texCoord : TEXCOORD0;
 #endif
 #if HAS_SECOND_UV_ATTRIBUTE
-    float2 texCoord1 : TEXCOORD1;  // ADD THIS
+    float2 texCoord1 : TEXCOORD1;
 #endif
 #if HAS_VERTEX_COLOR_ATTRIBUTE
     float4 color : COLOR;
@@ -397,7 +381,6 @@ float4 SampleDiffuseTexture(float2 uv)
 #endif
 }
 
-// Add validation in SampleNormalMap
 float3 SampleNormalMap(float2 uv)
 {
 #if HAS_NORMAL_MAP
@@ -497,7 +480,7 @@ float SampleOpacityMap(float2 uv)
 #endif
 }
 
-// ========== NEW: DETAIL TEXTURE SAMPLING ==========
+// ========== DETAIL TEXTURE SAMPLING ==========
 
 float4 SampleDetailDiffuse(float2 uv)
 {
@@ -572,7 +555,7 @@ float3 CalculateWorldNormal(float3 vertexNormal, float4 tangent, float2 texCoord
 #endif
 }
 
-// ========== NEW: PARALLAX OCCLUSION MAPPING ==========
+// ========== PARALLAX OCCLUSION MAPPING ==========
 
 float2 ParallaxOcclusionMapping(float2 texCoords, float3 viewDir,
                                float3 normal, float4 tangent)
