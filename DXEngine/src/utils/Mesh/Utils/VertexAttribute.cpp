@@ -157,16 +157,6 @@ namespace DXEngine
         return layout;
     }
 
-    VertexLayout VertexLayout::CreateUI()
-    {
-        VertexLayout layout;
-        layout.Position(RHI::DataFormat::Float2)
-              .TexCoord(0)
-              .Color(0)
-              .Finalize();
-        return layout;
-    }
-
     VertexLayout VertexLayout::CreateSkinned()
     {
         VertexLayout layout;

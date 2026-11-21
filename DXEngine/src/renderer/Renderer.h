@@ -8,7 +8,6 @@ namespace DXEngine
 {
     class Camera;
     class Scene;
-    class UIElement;
     namespace RHI { class IGraphicsDevice; class ITexture; }
 
     // ==================================================================
@@ -16,7 +15,6 @@ namespace DXEngine
     //
     //   BeginScene(camera)     start a frame: fill FrameContext (camera, targets, command buffer)
     //   Submit(scene)          the 3D world to draw (the Scene is persistent; nothing is re-submitted per object)
-    //   SubmitUI(element)      2D UI for this frame
     //   EndScene()             extract (cull, route, sort) -> pack lights -> run the render graph
     //   Present()              show the frame (Application calls it once per frame, after everything that draws on top)
     // ==================================================================
@@ -40,7 +38,6 @@ namespace DXEngine
         static void BeginScene(const std::shared_ptr<Camera>& camera);
         // Updates the scene's world matrices (TransformSystem) and remembers it for EndScene.
         static void Submit(Scene& scene);
-        static void SubmitUI(const std::shared_ptr<UIElement>& element);
         static void EndScene();
 
         static void OnWindowResize(int width, int height);

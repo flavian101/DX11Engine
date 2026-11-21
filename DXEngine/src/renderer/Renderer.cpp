@@ -12,7 +12,6 @@
 #include "Passes/DepthPrepass.h"
 #include "Passes/ForwardPass.h"
 #include "Passes/ShadowPass.h"
-#include "Passes/UIPass.h"
 #include "Systems/LightSystem.h"
 #include "Systems/SceneExtraction.h"
 #include "Systems/ShadowSystem.h"
@@ -21,7 +20,6 @@
 #include "camera/Camera.h"
 #include "scene/Scene.h"
 #include "scene/TransformSystem.h"
-#include "utils/UI/UIElement.h"
 #include <algorithm>
 
 namespace DXEngine
@@ -154,7 +152,6 @@ namespace DXEngine
         g->graph.AddPass<ForwardPass>("background",  ForwardPass::Queue::Background);
         g->graph.AddPass<ForwardPass>("opaque",      ForwardPass::Queue::Opaque);
         g->graph.AddPass<ForwardPass>("transparent", ForwardPass::Queue::Transparent);
-        g->graph.AddPass<UIPass>("ui");
 
         if (!g->graph.Compile() || !g->graph.Initialize(g->frame))
         {
@@ -244,11 +241,6 @@ namespace DXEngine
         g->frame.scene.world = &scene;
     }
 
-    void Renderer::SubmitUI(const std::shared_ptr<UIElement>& element)
-    {
-        if (g && g->inScene && element) g->frame.scene.uiElements.push_back(element);
-    }
-
     void Renderer::EndScene()
     {
         if (!g || !g->inScene) return;
@@ -276,7 +268,7 @@ namespace DXEngine
         g->services.device->Submit(g->cmd.get());
 
         g->lastStats = f.stats;
-        f.scene.Clear();             // release models/UI now, not at the start of the next frame
+        f.scene.Clear();             // drop the scene pointer now, not at the start of the next frame
         f.camera.reset();
         g->inScene = false;
 

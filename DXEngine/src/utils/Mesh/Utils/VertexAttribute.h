@@ -44,7 +44,6 @@ namespace DXEngine
 
 		static VertexLayout CreateBasic();          // Position + Normal + TexCoord
 		static VertexLayout CreateLit();            // Position + Normal + Tangent + TexCoord
-		static VertexLayout CreateUI();             // Position + TexCoord + Color
 		static VertexLayout CreateSkinned();        // Position + Normal + Tangent + TexCoord + Blend data
 		static VertexLayout CreateParticle();       // Position + Color + Size (for point sprites)
 

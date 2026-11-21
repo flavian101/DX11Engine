@@ -125,7 +125,7 @@ namespace DXEngine
                 if (isSky || queue == RenderQueue::Background)  out.background.push_back(std::move(item));
                 else if (queue == RenderQueue::Transparent)     out.transparent.push_back(std::move(item));
                 else if (queue == RenderQueue::Opaque)          out.opaque.push_back(std::move(item));
-                // UI / Overlay materials belong to the UI pass, not to the 3D scene
+                // Overlay-queue materials are not part of the 3D scene
             }
         }
 

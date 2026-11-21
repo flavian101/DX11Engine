@@ -13,7 +13,7 @@ namespace DXEngine
     namespace RHI { class IBuffer; class IPipeline; }
 
     // ==================================================================
-    // MeshDrawer: "how ONE mesh gets drawn". Used by ForwardPass (x3) and UIPass.
+    // MeshDrawer: "how ONE mesh gets drawn". Used by ForwardPass (x3), DepthPrepass and ShadowPass.
     //
     //  Pass   = WHERE and WHEN to draw   (which targets, which list, which order)
     //  Drawer = HOW to draw one item     (pipeline, material, transform, geometry)
@@ -52,9 +52,6 @@ namespace DXEngine
         void BeginDepthPass(FrameContext& ctx, int32_t depthBias, float slopeBias);
         void SetDepthViewProj(const DirectX::XMFLOAT4X4& lightViewProj);
         bool DrawDepth(FrameContext& ctx, const DrawItem& item);                  // true when something was drawn
-
-        // UIPass changes a material's colour between draws, so the cached "last material" is stale.
-        void InvalidateMaterialCache() { m_LastMaterial = nullptr; }
 
     private:
         void UploadTransform(const DirectX::XMFLOAT4X4& world);

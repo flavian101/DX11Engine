@@ -39,8 +39,7 @@ namespace DXEngine
     };
 
     // ------------------------------------------------------------------
-    // BatchQueue: three lists, one per forward pass. (UI is not a DrawItem:
-    // UI elements are not Models, UIPass reads FrameContext::scene.uiElements.)
+    // BatchQueue: three lists, one per forward pass.
     // ------------------------------------------------------------------
     struct BatchQueue
     {
@@ -124,7 +123,6 @@ namespace DXEngine
         uint32_t trianglesRendered  = 0;
         uint32_t pipelineChanges    = 0;
         uint32_t materialChanges    = 0;
-        uint32_t uiElementsRendered = 0;
         uint32_t directionalLights  = 0;   // written by LightSystem
         uint32_t localLights        = 0;   // point + spot lights uploaded this frame
         uint32_t lightsDropped      = 0;   // local lights over the limit (0 in a healthy scene)
@@ -147,8 +145,7 @@ namespace DXEngine
                 << "  submitted " << objectsSubmitted << ", culled " << objectsCulled << "\n"
                 << "  draw calls " << drawCalls << ", triangles " << trianglesRendered << "\n"
                 << "  pipeline changes " << pipelineChanges
-                << ", material changes " << materialChanges << "\n"
-                << "  ui elements " << uiElementsRendered << "\n";
+                << ", material changes " << materialChanges << "\n";
             if (depthPrepassDraws)
                 oss << "  depth pre-pass: " << depthPrepassDraws << " draws\n";
             oss

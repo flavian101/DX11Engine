@@ -541,7 +541,7 @@ static void TestMaterialModelIsFixed()
     CHECK(m.GetShadingModel() == ShadingModel::Lit);
     CHECK(m.GetMetallic() == 0.0f && std::fabs(m.GetRoughness() - 0.9f) < 1e-6f);        // ... but the values are stored
 
-    for (ShadingModel model : { ShadingModel::Unlit, ShadingModel::Emissive, ShadingModel::Sky, ShadingModel::UI })
+    for (ShadingModel model : { ShadingModel::Unlit, ShadingModel::Emissive, ShadingModel::Sky })
     {
         Material other("o", model);
         other.SetMetallic(1.0f); other.SetRoughness(0.5f);
@@ -583,8 +583,9 @@ static void TestFactories()
     CHECK(sky->GetShadingModel() == ShadingModel::Sky && sky->GetRenderQueue() == RenderQueue::Background);
     CHECK(sky->GetCullMode() == RHI::CullMode::Front && sky->GetDepthTest() == RHI::DepthTestMode::LessEqual);
 
-    auto ui = MaterialFactory::CreateUIMaterial();
-    CHECK(ui->GetShadingModel() == ShadingModel::UI && ui->GetRenderQueue() == RenderQueue::UI);
+    auto ui = std::make_shared<Material>("overlay", ShadingModel::Unlit);
+    ui->SetRenderState(RenderState::Overlay());
+    CHECK(ui->GetRenderQueue() == RenderQueue::UI);
     CHECK(ui->GetCullMode() == RHI::CullMode::None && ui->GetDepthTest() == RHI::DepthTestMode::None && ui->IsBlended());
 
     CHECK(MaterialFactory::CreateEmissiveMaterial()->GetShadingModel() == ShadingModel::Emissive);

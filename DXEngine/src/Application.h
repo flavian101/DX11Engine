@@ -8,7 +8,6 @@
 #include <Core/Layer.h>
 #include <Core/LayerStack.h>
 #include "renderer/Renderer.h"
-#include "utils/UI/UILayer.h"
 #include "Core/ImGuiLayer.h"
 
 
@@ -48,7 +47,6 @@ namespace DXEngine {
 	private:
 		FrameTime m_Deltatime;
 		std::unique_ptr<Window> m_Window;
-		UILayer* m_UILayer;
 		ImGuiLayer* m_ImGuiLayer;
 		bool m_Minimized = false;
 		LayerStack m_LayerStack;

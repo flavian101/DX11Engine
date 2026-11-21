@@ -16,7 +16,6 @@ namespace DXEngine
                     { ShadingModel::Lit,      "Lit",      "Standard.vs.hlsl",   "Lit.ps.hlsl",       true  },
                     { ShadingModel::Emissive, "Emissive", "Standard.vs.hlsl",   "Emissive.ps.hlsl",  false },
                     { ShadingModel::Sky,      "Sky",      "Skybox.vs.hlsl",     "Skybox.ps.hlsl",    false },
-                    { ShadingModel::UI,       "UI",       "UI.vs.hlsl",         "UI.ps.hlsl",        false },
                 };
                 return kTable;
             }

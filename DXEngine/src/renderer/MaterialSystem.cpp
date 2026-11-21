@@ -81,7 +81,6 @@ namespace DXEngine
 		add("DefaultUnlit",    MaterialFactory::CreateUnlitMaterial());
 		add("DefaultLit",      MaterialFactory::CreateLitMaterial());
 		add("DefaultEmissive", MaterialFactory::CreateEmissiveMaterial());
-		add("DefaultUI",       MaterialFactory::CreateUIMaterial());
 
 		OutputDebugStringA("MaterialSystem: Default materials created\n");
 	}

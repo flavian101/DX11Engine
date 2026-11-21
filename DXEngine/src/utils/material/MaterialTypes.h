@@ -10,7 +10,7 @@ namespace DXEngine
     // ==================================================================
     // A material is TWO independent things:
     //
-    //   ShadingModel : WHAT the pixels compute      (Unlit, Lit, Emissive, Sky, UI)   -> which shader
+    //   ShadingModel : WHAT the pixels compute      (Unlit, Lit, Emissive, Sky)       -> which shader
     //   RenderState  : HOW the result is drawn      (blend, cull, depth, queue)       -> which pipeline / draw order
     //
     // They used to be one enum (Unlit, Lit, PBR, Transparent, UI, Skybox, Emissive) that mixed both: "Transparent" was
@@ -26,7 +26,6 @@ namespace DXEngine
         Lit,        // metallic-roughness PBR, lit by the scene's lights, shadows and environment (the old Lit AND PBR)
         Emissive,   // a stylised glow: emission dominates, soft rim, boosted exposure (lamps, markers, screens)
         Sky,        // an environment cube map looked up by direction (needs its own vertex shader)
-        UI,         // screen-space quads: texture x colour, no lighting
         Count
     };
 

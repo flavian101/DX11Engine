@@ -22,9 +22,6 @@ namespace DXEngine {
 
 		Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight());
 		
-		m_UILayer = new UILayer();
-		PushOverlay(m_UILayer);
-
 		// Pushed LAST so it is the first to see events (events travel the stack from the top).
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);

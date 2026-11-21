@@ -224,14 +224,6 @@ namespace DXEngine {
 		return mat;
 	}
 
-	std::shared_ptr<Material> MaterialFactory::CreateUIMaterial(const std::string& name)
-	{
-		auto mat = std::make_shared<Material>(name, ShadingModel::UI);
-		mat->SetDiffuseColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-		mat->SetRenderState(RenderState::Overlay());
-		return mat;
-	}
-
 	std::shared_ptr<Material> MaterialFactory::CreateFromConfig(const std::string& configPath)
 	{
 		// TODO: Implement material loading from file (JSON, XML, etc.)

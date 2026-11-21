@@ -215,10 +215,6 @@ namespace DXEngine
 		fallbackLayout.Position();
 
 		switch (model) {
-		case ShadingModel::UI:
-			fallbackLayout.TexCoord(0);
-			fallbackLayout.Color(0);
-			break;
 		case ShadingModel::Sky:
 			fallbackLayout.Normal();
 			break;
@@ -467,16 +463,14 @@ namespace DXEngine
 		std::vector<VertexLayout> layouts = {
 			VertexLayout::CreateBasic(),    // Position, Normal, TexCoord
 			VertexLayout::CreateLit(),      // + Tangent
-			VertexLayout::CreateSkinned(),  // + Blend data
-			VertexLayout::CreateUI()        // UI specific
+			VertexLayout::CreateSkinned()   // + Blend data
 		};
 
 		// Common material types
 		// (a blended material is the same model with the Blended feature: the common blended Lit variant is added below)
 		std::vector<ShadingModel> models = {
 			ShadingModel::Lit,
-			ShadingModel::Unlit,
-			ShadingModel::UI
+			ShadingModel::Unlit
 		};
 
 		size_t variantsCompiled = 0;
@@ -485,12 +479,6 @@ namespace DXEngine
 			layout.Finalize();
 
 			for (ShadingModel model : models) {
-				// Skip UI shaders for non-UI layouts
-				if (model == ShadingModel::UI &&
-					!layout.HasAttribute(RHI::VertexAttributeType::Color0)) {
-					continue;
-				}
-
 				ShaderVariantKey key;
 				key.baseName = ShadingModels::Name(model);
 				key.vertexLayoutHash = GenerateVertexLayoutHash(layout);

@@ -186,7 +186,8 @@ static void TestBucketComesFromTheMaterialsRenderState()
     hologram->SetRenderState(RenderState::Blended());
     auto backdrop = std::make_shared<Material>("backdrop", ShadingModel::Unlit);   // an explicit queue, no SkyboxComponent needed
     backdrop->GetRenderState().queue = RenderQueue::Background;
-    auto hud = MaterialFactory::CreateUIMaterial();                             // UI materials belong to the UI pass
+    auto hud = std::make_shared<Material>("hud", ShadingModel::Unlit);          // the overlay queue is not part of the 3D scene
+    hud->SetRenderState(RenderState::Overlay());
 
     AddMesh(scene, "a", { 0, 0, 0 },  mesh, opaque);
     AddMesh(scene, "b", { 1, 0, 0 },  mesh, glass);

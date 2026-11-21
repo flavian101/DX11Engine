@@ -14,7 +14,6 @@ namespace DXEngine
     class Scene;
     class Material;
     class Camera;
-    class UIElement;
     class ResourceCache;
     class ShaderCache;
     class MaterialSystem;
@@ -76,8 +75,7 @@ namespace DXEngine
         struct SceneInput
         {
             Scene* world = nullptr;                               // the persistent 3D world (not owned)
-            std::vector<std::shared_ptr<UIElement>> uiElements;   // 2D, rebuilt every frame
-            void Clear() { world = nullptr; uiElements.clear(); }
+            void Clear() { world = nullptr; }
         } scene;
 
         RenderEnvironment environment;                            // ambient / exposure / gamma (copied in by Renderer)
