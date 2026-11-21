@@ -154,9 +154,6 @@
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h">
       <Filter>utils\Mesh\Utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\PerfomanceProfiller.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="src\scene\Components.h">
       <Filter>scene</Filter>
     </ClInclude>
@@ -199,24 +196,6 @@
     <ClInclude Include="src\utils\Transform.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\UI\UIButton.h">
-      <Filter>utils\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\UI\UIElement.h">
-      <Filter>utils\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\UI\UILayer.h">
-      <Filter>utils\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\UI\UIManager.h">
-      <Filter>utils\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\UI\UIPanel.h">
-      <Filter>utils\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\UI\UIText.h">
-      <Filter>utils\UI</Filter>
-    </ClInclude>
     <ClInclude Include="src\utils\material\Material.h">
       <Filter>utils\material</Filter>
     </ClInclude>
@@ -245,7 +224,6 @@
     <ClInclude Include="src\RHI\D3D11\D3D11Shader.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11CommandBuffer.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Pipeline.h" />
-    <ClInclude Include="src\ResourceManager\ResourceManager.h" />
     <ClInclude Include="src\renderer\MaterialSystem.h" />
     <ClInclude Include="src\renderer\ShaderCache.h" />
     <ClInclude Include="src\RHI\D3D11\D3D11Query.h" />
@@ -261,7 +239,6 @@
     <ClInclude Include="src\renderer\Passes\ForwardPass.h" />
     <ClInclude Include="src\renderer\Passes\MeshDrawer.h" />
     <ClInclude Include="src\renderer\Passes\ClearPass.h" />
-    <ClInclude Include="src\renderer\Passes\UIPass.h" />
     <ClInclude Include="src\renderer\Systems\LightSystem.h" />
     <ClInclude Include="src\renderer\Core\ShadowTypes.h" />
     <ClInclude Include="src\renderer\Systems\ShadowMath.h">
@@ -474,24 +451,6 @@
     <ClCompile Include="src\utils\Transform.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\UI\UIButton.cpp">
-      <Filter>utils\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\UI\UIElement.cpp">
-      <Filter>utils\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\UI\UILayer.cpp">
-      <Filter>utils\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\UI\UIManager.cpp">
-      <Filter>utils\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\UI\UIPanel.cpp">
-      <Filter>utils\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\UI\UIText.cpp">
-      <Filter>utils\UI</Filter>
-    </ClCompile>
     <ClCompile Include="src\utils\material\Material.cpp">
       <Filter>utils\material</Filter>
     </ClCompile>
@@ -511,7 +470,6 @@
     <ClCompile Include="src\RHI\D3D11\D3D11Shader.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11CommandBuffer.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Pipeline.cpp" />
-    <ClCompile Include="src\ResourceManager\ResourceManager.cpp" />
     <ClCompile Include="src\renderer\MaterialSystem.cpp" />
     <ClCompile Include="src\renderer\ShaderCache.cpp" />
     <ClCompile Include="src\RHI\D3D11\D3D11Query.cpp" />
@@ -522,7 +480,6 @@
     <ClCompile Include="src\renderer\Passes\DepthPrepass.cpp" />
     <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
     <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />
-    <ClCompile Include="src\renderer\Passes\UIPass.cpp" />
     <ClCompile Include="src\renderer\Systems\LightSystem.cpp" />
     <ClCompile Include="src\renderer\Systems\ShadowMath.cpp">
       <Filter>renderer</Filter>
