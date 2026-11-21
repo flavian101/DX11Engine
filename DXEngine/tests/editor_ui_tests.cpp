@@ -23,6 +23,7 @@
 #include "renderer/Renderer.h"
 #include "renderer/Core/RenderTypes.h"
 #include "models/ModelAsset.h"
+#include "utils/ImageLoader.h"
 #include "scene/TransformSystem.h"
 #include "utils/Mesh/Mesh.h"
 #include "utils/Mesh/Resource/MeshResource.h"
@@ -75,6 +76,14 @@ namespace DXEngine
         float GetMouseXImpl() override { return 0.0f; }
         float GetMouseYImpl() override { return 0.0f; }
     };
+}
+
+// The panels reach two functions of code this test does not link (the renderer and the image decoder). Neither is
+// needed without a GPU: no device, and no texture. (The stubs were missing, so this target did not link.)
+namespace DXEngine
+{
+    std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice() { return nullptr; }
+    std::shared_ptr<RHI::ITexture> ImageLoader::LoadForSlot(RHI::IGraphicsDevice&, const std::string&, TextureSlot, bool) { return nullptr; }
 }
 
 static int g_failed = 0;
