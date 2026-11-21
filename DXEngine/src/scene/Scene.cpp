@@ -36,6 +36,9 @@ namespace DXEngine
         RelationshipComponent* rel = m_Registry.try_get<RelationshipComponent>(child);
         if (!rel || rel->parent == entt::null) return;
 
+        if (TransformComponent* t = m_Registry.try_get<TransformComponent>(child))
+            t->MarkDirty();                                  // its world matrix no longer includes the same parent
+
         const entt::entity parent = rel->parent, prev = rel->prevSibling, next = rel->nextSibling;
         rel->parent = rel->prevSibling = rel->nextSibling = entt::null;
 
@@ -57,6 +60,8 @@ namespace DXEngine
         m_Registry.get_or_emplace<RelationshipComponent>(child);
         RelationshipComponent& p = m_Registry.get<RelationshipComponent>(parent);
         RelationshipComponent& c = m_Registry.get<RelationshipComponent>(child);
+        if (TransformComponent* t = m_Registry.try_get<TransformComponent>(child))
+            t->MarkDirty();                                  // new parent, new world matrix
 
         c.parent      = parent;
         c.prevSibling = p.lastChild;

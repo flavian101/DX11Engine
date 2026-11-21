@@ -2,7 +2,9 @@
 //   build: see DXEngine/tests/CMakeLists.txt  (cmake -DDXENGINE_BUILD_TESTS=ON)
 #include "scene/Scene.h"
 #include "scene/TransformSystem.h"
+#include <algorithm>
 #include <chrono>
+#include <functional>
 #include <cmath>
 #include <cstdio>
 #include <random>
@@ -418,6 +420,168 @@ static void TestChildLookupDoesNotScanTheScene()
     if (seconds >= 0.5) std::printf("  (took %.3f s)\n", seconds);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// TransformSystem: only what changed is recomputed, and the result is the same as computing everything from scratch.
+// ---------------------------------------------------------------------------------------------------------------------
+static XMMATRIX ReferenceWorld(Scene& scene, Entity e)                      // from scratch: local * parent's, all the way up
+{
+    XMMATRIX w = e.Get<TransformComponent>().Local();
+    Entity parent = scene.GetParent(e);
+    if (parent.IsValid() && parent.Has<TransformComponent>()) w = w * ReferenceWorld(scene, parent);
+    return w;
+}
+
+static bool WorldMatches(Entity e, FXMMATRIX expected)
+{
+    XMFLOAT4X4 a, b;
+    XMStoreFloat4x4(&a, e.Get<TransformComponent>().World());
+    XMStoreFloat4x4(&b, expected);
+    const float* pa = &a._11; const float* pb = &b._11;
+    for (int i = 0; i < 16; ++i) if (!Near(pa[i], pb[i], 1e-3f)) return false;
+    return true;
+}
+
+static void TestTransformRecomputesOnlyWhatChanged()
+{
+    Scene scene;
+    Entity root = scene.CreateEntity("root"), a = scene.CreateEntity("a", root), b = scene.CreateEntity("b", a);
+    Entity c = scene.CreateEntity("c", root), other = scene.CreateEntity("other");
+    const auto move = [](Entity e, float x) { e.Get<TransformComponent>().position.x = x; };
+
+    CHECK(TransformSystem::Update(scene) == 5);            // new entities: all of them
+    CHECK(TransformSystem::Update(scene) == 0);            // nothing changed: nothing computed
+
+    move(b, 1);                                            CHECK(TransformSystem::Update(scene) == 1);   // a leaf
+    move(c, 2);                                            CHECK(TransformSystem::Update(scene) == 1);
+    move(other, 3);                                        CHECK(TransformSystem::Update(scene) == 1);
+    move(a, 4);                                            CHECK(TransformSystem::Update(scene) == 2);   // a and b below it
+    move(root, 5);                                         CHECK(TransformSystem::Update(scene) == 4);   // the whole tree, not 'other'
+    move(root, 6); move(a, 7); move(b, 8);                 CHECK(TransformSystem::Update(scene) == 4);   // changed at several depths: each once
+    CHECK(Near(b.Get<TransformComponent>().WorldPosition().x, 6 + 7 + 8));
+
+    CHECK(scene.SetParent(c, a));                          CHECK(TransformSystem::Update(scene) == 1);   // a new parent, no field changed
+    CHECK(Near(c.Get<TransformComponent>().WorldPosition().x, 2 + 7 + 6));
+    CHECK(scene.SetParent(a, other));                      CHECK(TransformSystem::Update(scene) == 3);   // a, b, c (c is under a now)
+    CHECK(Near(b.Get<TransformComponent>().WorldPosition().x, 3 + 7 + 8));
+    CHECK(scene.SetParent(c, c.GetScene()->GetParent(c)));  CHECK(TransformSystem::Update(scene) == 0);  // same parent: nothing to do
+    CHECK(scene.SetParent(a, Entity()));                   CHECK(TransformSystem::Update(scene) == 3);   // back to a root
+    CHECK(Near(b.Get<TransformComponent>().WorldPosition().x, 7 + 8));
+
+    // A copied transform brings someone else's 'world' along: it must not be trusted.
+    Entity d = scene.CreateEntity("d", other);
+    CHECK(TransformSystem::Update(scene) == 1);
+    d.Get<TransformComponent>() = root.Get<TransformComponent>();                 // what Duplicate does
+    CHECK(TransformSystem::Update(scene) == 1);
+    CHECK(WorldMatches(d, ReferenceWorld(scene, d)) && Near(d.Get<TransformComponent>().WorldPosition().x, 3 + 6));
+
+    root.Get<TransformComponent>().MarkDirty();            // an explicit request recomputes without a field change
+    CHECK(TransformSystem::Update(scene) == 1);            // root has no children left (a and c moved away): just itself
+    CHECK(TransformSystem::Update(scene) == 0);
+}
+
+// Random edits (fields, reparenting, creation, destruction, copied transforms, MarkDirty). After every Update each world
+// matrix must equal the from-scratch result, and the number of matrices written must be EXACTLY the set that needed it:
+// the changed entities plus everything below them. Not fewer (stale), not more (wasted work).
+static void TestTransformUpdateAgainstReference()
+{
+    Scene scene;
+    std::mt19937 rng(777);
+    const auto pick = [&](size_t n) { return static_cast<size_t>(rng() % n); };
+    const auto number = [&]() { return static_cast<float>(static_cast<int>(rng() % 2001) - 1000) / 100.0f; };
+
+    std::vector<Entity> alive;
+    int updates = 0, mismatched = 0, wrongCount = 0;
+    size_t totalRecomputed = 0, totalEntities = 0;
+
+    for (int step = 0; step < 3000; ++step)
+    {
+        const size_t op = pick(12);
+        if (alive.size() < 6 || op < 2)
+        {
+            Entity parent = (!alive.empty() && pick(4) != 0) ? alive[pick(alive.size())] : Entity();
+            alive.push_back(scene.CreateEntity("e", parent));
+        }
+        else if (op < 6)                                                           // change one field of one entity
+        {
+            TransformComponent& t = alive[pick(alive.size())].Get<TransformComponent>();
+            switch (pick(3))
+            {
+            case 0: t.position = { number(), number(), number() }; break;
+            case 1: t.SetEulerDegrees(number() * 9, number() * 9, number() * 9); break;
+            default: t.scale = { 1 + std::fabs(number()) / 10, 1 + std::fabs(number()) / 10, 1 + std::fabs(number()) / 10 }; break;
+            }
+        }
+        else if (op < 8) scene.SetParent(alive[pick(alive.size())], pick(4) == 0 ? Entity() : alive[pick(alive.size())]);
+        else if (op == 8) alive[pick(alive.size())].Get<TransformComponent>() = alive[pick(alive.size())].Get<TransformComponent>();
+        else if (op == 9) alive[pick(alive.size())].Get<TransformComponent>().MarkDirty();
+        else if (op == 10 && alive.size() > 30)
+        {
+            scene.DestroyEntity(alive[pick(alive.size())]);
+            alive.erase(std::remove_if(alive.begin(), alive.end(), [](const Entity& e) { return !e.IsValid(); }), alive.end());
+        }
+
+        if (pick(4) != 0) continue;                                                // update every few edits, so changes pile up
+
+        // what has to be recomputed: entities that need it, and everything below them
+        std::function<bool(Entity)> stale = [&](Entity e)
+        {
+            if (e.Get<TransformComponent>().NeedsUpdate()) return true;
+            Entity parent = scene.GetParent(e);
+            return parent.IsValid() && stale(parent);
+        };
+        size_t expected = 0;
+        for (const Entity& e : alive) if (stale(e)) ++expected;
+
+        const size_t written = TransformSystem::Update(scene);
+        ++updates; totalRecomputed += written; totalEntities += alive.size();
+        if (written != expected) ++wrongCount;
+        for (const Entity& e : alive)
+            if (!WorldMatches(e, ReferenceWorld(scene, e))) { ++mismatched; break; }
+        if (TransformSystem::Update(scene) != 0) ++wrongCount;                     // and a second run has nothing to do
+    }
+    CHECK(mismatched == 0);
+    CHECK(wrongCount == 0);
+    CHECK(updates > 500);
+    CHECK(totalRecomputed < totalEntities);            // it really did skip entities that had not changed
+    if (mismatched || wrongCount) std::printf("  (%d updates; %d with a wrong matrix, %d with a wrong count)\n", updates, mismatched, wrongCount);
+}
+
+// The roadmap's exit check for P1: 100 000 entities, one parent moves, the update costs a few milliseconds.
+// The best of 20 runs is compared with the budget, so a busy machine does not fail it. Where this was written one moving
+// parent took ~0.9 ms and recomputing all 100 000 matrices (what the old system did every frame, plus a depth sort) ~7 ms.
+static void TestTransformUpdateOf100kEntitiesWithOneMovingParent()
+{
+    Scene scene;
+    Entity mover;
+    for (int g = 0; g < 1000; ++g)                                                 // 1000 groups of 1 + 99 entities
+    {
+        Entity group = scene.CreateEntity("group");
+        group.Get<TransformComponent>().position = { float(g), 0, 0 };
+        if (g == 0) mover = group;
+        for (int i = 0; i < 99; ++i) scene.CreateEntity("part", group).Get<TransformComponent>().position = { 0, float(i), 0 };
+    }
+    CHECK(scene.EntityCount() == 100000);
+
+    using Clock = std::chrono::steady_clock;
+    const auto t0 = Clock::now();
+    CHECK(TransformSystem::Update(scene) == 100000);                               // the first update computes everything
+    const double first = std::chrono::duration<double>(Clock::now() - t0).count();
+    CHECK(TransformSystem::Update(scene) == 0);
+
+    double best = 1e9;
+    for (int run = 0; run < 20; ++run)
+    {
+        mover.Get<TransformComponent>().position.y = float(run + 1);
+        const auto start = Clock::now();
+        const size_t written = TransformSystem::Update(scene);
+        best = std::min(best, std::chrono::duration<double>(Clock::now() - start).count());
+        CHECK(written == 100);                                                     // the group and its 99 parts, nothing else
+    }
+    CHECK(Near(scene.GetChildren(mover)[98].Get<TransformComponent>().WorldPosition().y, 20 + 98));
+    CHECK(best < 0.005);                                                           // 5 ms
+    std::printf("  (100k entities: first update %.1f ms, one moving parent %.3f ms best of 20)\n", first * 1000, best * 1000);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -437,6 +601,9 @@ int main()
         { "destroy unlinks from the parent",          TestDestroyUnlinksFromParent },
         { "hierarchy vs a reference model (random)",  TestHierarchyAgainstReferenceModel },
         { "child lookup does not scan the scene",     TestChildLookupDoesNotScanTheScene },
+        { "transforms: only what changed",            TestTransformRecomputesOnlyWhatChanged },
+        { "transforms vs from-scratch (random)",      TestTransformUpdateAgainstReference },
+        { "transforms: 100k entities, one parent",    TestTransformUpdateOf100kEntitiesWithOneMovingParent },
     };
     for (auto& t : tests)
     {

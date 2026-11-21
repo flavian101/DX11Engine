@@ -1,48 +1,98 @@
 #include "dxpch.h"
 #include "TransformSystem.h"
 #include "Scene.h"
-#include <algorithm>
 
 namespace DXEngine
 {
     namespace TransformSystem
     {
-        void Update(Scene& scene)
+        namespace
+        {
+            // true if an ancestor of 'entity' (that has a transform; the chain of inherited transforms ends at the first
+            // one that has none) is going to be recomputed, which then recomputes 'entity' too.
+            bool AncestorIsDirty(entt::registry& reg, entt::entity entity)
+            {
+                const RelationshipComponent* rel = reg.try_get<RelationshipComponent>(entity);
+                // (a cycle cannot exist, Scene::SetParent refuses it; the bound is a belt)
+                for (int depth = 0; rel && rel->parent != entt::null && reg.valid(rel->parent) && depth < 4096; ++depth)
+                {
+                    const TransformComponent* parent = reg.try_get<TransformComponent>(rel->parent);
+                    if (!parent) return false;
+                    if (parent->tracking.dirty) return true;
+                    rel = reg.try_get<RelationshipComponent>(rel->parent);
+                }
+                return false;
+            }
+
+            // Recomputes 'root' and everything below it, parents before children, by following the child links.
+            // The parent of 'root' must be current (nothing above root changed). Returns the number of matrices written.
+            std::size_t RecomputeSubtree(entt::registry& reg, entt::entity root, std::vector<entt::entity>& stack)
+            {
+                const std::size_t bound = reg.storage<TransformComponent>().size();   // a subtree cannot have more entities than exist
+                std::size_t written = 0;
+
+                stack.clear();
+                stack.push_back(root);
+                while (!stack.empty() && written <= bound)
+                {
+                    const entt::entity e = stack.back();
+                    stack.pop_back();
+
+                    TransformComponent& t = reg.get<TransformComponent>(e);
+                    DirectX::XMMATRIX world = t.Local();
+
+                    const RelationshipComponent* rel = reg.try_get<RelationshipComponent>(e);
+                    if (rel && rel->parent != entt::null && reg.valid(rel->parent))
+                        if (const TransformComponent* parent = reg.try_get<TransformComponent>(rel->parent))
+                            world = world * parent->World();                      // row vectors: child world = local * parent world
+
+                    DirectX::XMStoreFloat4x4(&t.world, world);
+                    ++written;
+
+                    if (rel)
+                        for (entt::entity c = rel->firstChild; c != entt::null && reg.valid(c); )
+                        {
+                            if (reg.all_of<TransformComponent>(c)) stack.push_back(c);
+                            const RelationshipComponent* childRel = reg.try_get<RelationshipComponent>(c);
+                            c = childRel ? childRel->nextSibling : entt::null;
+                        }
+                }
+                return written;
+            }
+        }
+
+        std::size_t Update(Scene& scene)
         {
             entt::registry& reg = scene.Registry();
 
-            // An entity must be processed after its parent. Instead of recursing, order by depth in the
-            // hierarchy (roots = 0). The depth walk is capped so a corrupted hierarchy cannot loop forever
-            // (Scene::SetParent already refuses to create cycles).
-            struct Item { entt::entity entity; uint32_t depth; };
-            std::vector<Item> items;
-            items.reserve(reg.view<TransformComponent>().size());
-
-            for (auto entity : reg.view<TransformComponent>())
-            {
-                uint32_t depth = 0;
-                for (const RelationshipComponent* up = reg.try_get<RelationshipComponent>(entity); up && up->parent != entt::null && depth < 1024; )
+            // 1. What changed? Flag it, so that step 2 can tell "my ancestor is being recomputed anyway".
+            std::vector<entt::entity> changed;
+            for (auto [e, t] : reg.view<TransformComponent>().each())
+                if (t.NeedsUpdate())
                 {
-                    ++depth;
-                    up = reg.valid(up->parent) ? reg.try_get<RelationshipComponent>(up->parent) : nullptr;
+                    t.tracking.dirty = true;
+                    changed.push_back(e);
                 }
-                items.push_back({ entity, depth });
-            }
-            std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.depth < b.depth; });
+            if (changed.empty()) return 0;
 
-            for (const Item& item : items)
+            // 2. Recompute every topmost changed entity with its subtree. A changed entity below another changed one is
+            //    skipped: its ancestor's subtree covers it, once.
+            std::size_t recomputed = 0;
+            std::vector<entt::entity> stack;
+            for (entt::entity e : changed)
+                if (!AncestorIsDirty(reg, e))
+                    recomputed += RecomputeSubtree(reg, e, stack);
+
+            // 3. All world matrices are current: remember what they were computed from.
+            for (entt::entity e : changed)
             {
-                TransformComponent& t = reg.get<TransformComponent>(item.entity);
-                DirectX::XMMATRIX world = t.Local();
-
-                // child world = local * parent world (row-vector convention)
-                if (const RelationshipComponent* up = reg.try_get<RelationshipComponent>(item.entity))
-                    if (up->parent != entt::null && reg.valid(up->parent))
-                        if (const TransformComponent* parentT = reg.try_get<TransformComponent>(up->parent))
-                            world = world * parentT->World();
-
-                DirectX::XMStoreFloat4x4(&t.world, world);
+                TransformComponent& t = reg.get<TransformComponent>(e);
+                t.tracking.position = t.position;
+                t.tracking.rotation = t.rotation;
+                t.tracking.scale    = t.scale;
+                t.tracking.dirty    = false;
             }
+            return recomputed;
         }
     }
 }

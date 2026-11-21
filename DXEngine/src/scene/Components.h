@@ -47,9 +47,29 @@ namespace DXEngine
         entt::entity nextSibling = entt::null;
     };
 
+    // The part of TransformComponent that TransformSystem keeps for itself: which local position / rotation / scale the
+    // 'world' matrix was last computed from, and whether it must be computed again anyway (a new entity, a new parent).
+    // It is never copied: whatever receives a copy of a transform (Duplicate, "a.Get<Transform>() = b.Get<Transform>()")
+    // starts dirty, because the 'world' it was handed belongs to someone else's place in the hierarchy.
+    struct TransformTracking
+    {
+        DirectX::XMFLOAT3 position{ 0.0f, 0.0f, 0.0f };
+        DirectX::XMFLOAT4 rotation{ 0.0f, 0.0f, 0.0f, 1.0f };
+        DirectX::XMFLOAT3 scale{ 1.0f, 1.0f, 1.0f };
+        bool dirty = true;
+
+        TransformTracking() = default;
+        TransformTracking(const TransformTracking&) {}                                   // a copy is dirty (see above)
+        TransformTracking& operator=(const TransformTracking&) { dirty = true; return *this; }
+    };
+
     // ------------------------------------------------------------------
     // Transform: local position / rotation / scale. 'world' is DERIVED: it is written by
-    // TransformSystem::Update once per frame (parents before children) and only read elsewhere.
+    // TransformSystem::Update (parents before children) and only read elsewhere.
+    //
+    // Nobody has to tell the system that a transform changed: Update compares position / rotation / scale with the
+    // values 'world' was computed from, so writing the fields directly (inspector, gizmo, animation, gameplay) is enough.
+    // Only a change the fields cannot show needs MarkDirty(); Scene::SetParent does that itself.
     // ------------------------------------------------------------------
     struct TransformComponent
     {
@@ -58,6 +78,21 @@ namespace DXEngine
         DirectX::XMFLOAT3 scale{ 1.0f, 1.0f, 1.0f };
 
         DirectX::XMFLOAT4X4 world = Identity();                 // written by TransformSystem
+
+        TransformTracking tracking;                              // TransformSystem's bookkeeping: do not touch
+
+        // Ask for 'world' to be computed again at the next TransformSystem::Update although the fields did not change.
+        void MarkDirty() { tracking.dirty = true; }
+
+        // true if the next TransformSystem::Update has to recompute this entity (a field changed or MarkDirty was called)
+        bool NeedsUpdate() const
+        {
+            const TransformTracking& t = tracking;
+            return t.dirty ||
+                position.x != t.position.x || position.y != t.position.y || position.z != t.position.z ||
+                rotation.x != t.rotation.x || rotation.y != t.rotation.y || rotation.z != t.rotation.z || rotation.w != t.rotation.w ||
+                scale.x != t.scale.x || scale.y != t.scale.y || scale.z != t.scale.z;
+        }
 
         void SetEulerDegrees(float pitchX, float yawY, float rollZ)
         {

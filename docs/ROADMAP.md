@@ -161,7 +161,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 ### C. Does not scale
 | ID | Problem | Status |
 |---|---|---|
-| C1 | `TransformSystem::Update` runs inside `Renderer::Submit`, for every entity every frame: it walks the depth of each entity and sorts, with no dirty flags. | Open (P1) |
+| C1 | `TransformSystem::Update` ran inside `Renderer::Submit`, for every entity every frame: it walked the depth of each entity and sorted, with no dirty flags. | Half fixed: only changed subtrees are recomputed (below). Still open: `Submit` calls it (P1) |
 | C2 | `Scene::GetChildren` scanned every entity; `DestroyEntity` was O(entities x descendants). | Fixed (`RelationshipComponent`: parent, first/last child, prev/next sibling; children, detach and subtree destruction cost what they touch; test with a time budget) |
 | C3 | The shader variant key is built from strings on every draw. | Open (P4) |
 | C4 | Every draw uploads a full transform buffer including the per-frame view/projection; skinned submeshes re-upload 128 bone matrices each; `DrawItem` copies two `shared_ptr`s per draw per frame. | Open (P4) |
@@ -196,8 +196,13 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 Each phase ends with something a person can check. Do not start a phase with a failing exit check in the previous one.
 
 **P1: Foundations** (C1, C2, C6, D2)
-* Transforms: a dirty flag on `TransformComponent`, world matrices recomputed only for dirty subtrees, and
-  `TransformSystem::Update` called by the application before `Renderer::Submit` (the renderer stops mutating the scene).
+* Transforms, recompute only what changed: *done.* An entity is dirty when its position / rotation / scale differ from the
+  values its world matrix was computed from (so the inspector, gizmo, animation and gameplay keep writing the fields and
+  nothing has to remember a flag), or when `MarkDirty()` was called (`SetParent` does; a copied `TransformComponent` always
+  starts dirty). `Update` recomputes each topmost dirty entity with its subtree once, following the child links, and returns
+  how many matrices it wrote. 100 000 entities with one moving parent: about 1 ms (test with a time budget).
+* Transforms, `TransformSystem::Update` called by the application before `Renderer::Submit` (the renderer stops mutating
+  the scene): open.
 * Hierarchy: *done.* `RelationshipComponent` (parent, first/last child, prev/next sibling) replaced the `ParentComponent` scan;
   child iteration, unparenting and subtree destruction need no scan. Children are kept in attach order.
 * Build: one `DXEngineCore` library (everything without the editor and without `WinMain`) that the tests link, instead of
