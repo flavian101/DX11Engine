@@ -143,6 +143,31 @@ static void TestManyEntitiesUnderOneParent()
     CHECK(ok == 5000);
 }
 
+static void TestDestroyLargeSubtree()
+{
+    Scene scene;
+    Entity bystander = scene.CreateEntity("bystander");
+    Entity root = scene.CreateEntity("root");
+    Entity keptChild;                                      // a sibling subtree that must survive
+    for (int i = 0; i < 2000; ++i)
+    {
+        Entity child = scene.CreateEntity("c", root);
+        for (int g = 0; g < 3; ++g) scene.CreateEntity("g", child);
+    }
+    Entity other = scene.CreateEntity("other");
+    keptChild = scene.CreateEntity("kept", other);
+    CHECK(scene.EntityCount() == 1 + 1 + 2000 * 4 + 1 + 1);
+
+    scene.DestroyEntity(root);                             // 8001 entities: must be linear, not quadratic
+    CHECK(!root.IsValid());
+    CHECK(scene.EntityCount() == 3);                       // bystander, other, kept
+    CHECK(bystander.IsValid() && other.IsValid() && keptChild.IsValid());
+    CHECK(scene.GetParent(keptChild) == other);
+
+    scene.DestroyEntity(other);                            // a subtree that is not at the top of the registry
+    CHECK(!keptChild.IsValid() && bystander.IsValid() && scene.EntityCount() == 1);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -155,6 +180,7 @@ int main()
         { "add / replace / remove component",         TestComponentsAddReplaceRemove },
         { "find by name, children",                   TestFindAndChildren },
         { "5000 children under one parent",           TestManyEntitiesUnderOneParent },
+        { "destroy a large subtree",                  TestDestroyLargeSubtree },
     };
     for (auto& t : tests)
     {

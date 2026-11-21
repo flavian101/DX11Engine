@@ -1,6 +1,7 @@
 #include "dxpch.h"
 #include "Scene.h"
 #include <algorithm>
+#include <unordered_map>
 
 namespace DXEngine
 {
@@ -20,22 +21,23 @@ namespace DXEngine
         return entity;
     }
 
-    void Scene::CollectDescendants(entt::entity root, std::vector<entt::entity>& out)
-    {
-        for (auto [e, p] : m_Registry.view<ParentComponent>().each())
-            if (p.parent == root)
-            {
-                out.push_back(e);
-                CollectDescendants(e, out);
-            }
-    }
-
     void Scene::DestroyEntity(Entity entity)
     {
         if (!entity.IsValid() || entity.GetScene() != this) return;
 
+        // ONE pass over the hierarchy builds parent -> children; the subtree is then walked breadth-first. (The old
+        // version scanned every entity for every node of the subtree: O(entities x descendants), and recursive.)
+        std::unordered_map<entt::entity, std::vector<entt::entity>> childrenOf;
+        for (auto [e, p] : m_Registry.view<ParentComponent>().each())
+            childrenOf[p.parent].push_back(e);
+
         std::vector<entt::entity> doomed{ entity.Id() };
-        CollectDescendants(entity.Id(), doomed);
+        for (size_t i = 0; i < doomed.size(); ++i)
+        {
+            const auto it = childrenOf.find(doomed[i]);
+            if (it != childrenOf.end())
+                doomed.insert(doomed.end(), it->second.begin(), it->second.end());
+        }
         for (entt::entity e : doomed)
             if (m_Registry.valid(e))
                 m_Registry.destroy(e);

@@ -81,8 +81,6 @@ namespace DXEngine
         Entity Wrap(entt::entity id) { return Entity(id, this); }
 
     private:
-        void CollectDescendants(entt::entity root, std::vector<entt::entity>& out);
-
         entt::registry m_Registry;
     };
 
