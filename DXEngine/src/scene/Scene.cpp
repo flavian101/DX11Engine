@@ -1,7 +1,6 @@
 #include "dxpch.h"
 #include "Scene.h"
 #include <algorithm>
-#include <unordered_map>
 
 namespace DXEngine
 {
@@ -21,22 +20,70 @@ namespace DXEngine
         return entity;
     }
 
+    // ---------------- hierarchy: the three edits everything else is made of ----------------
+    // Invariant (RelationshipComponent): a parent's child list runs firstChild -> nextSibling -> ... -> lastChild, every
+    // child points back with parent / prevSibling, and an entity that has neither a parent nor children has no component.
+
+    void Scene::DropIfEmpty(entt::entity entity)
+    {
+        const RelationshipComponent* r = m_Registry.valid(entity) ? m_Registry.try_get<RelationshipComponent>(entity) : nullptr;
+        if (r && r->parent == entt::null && r->firstChild == entt::null)
+            m_Registry.remove<RelationshipComponent>(entity);
+    }
+
+    void Scene::Detach(entt::entity child)
+    {
+        RelationshipComponent* rel = m_Registry.try_get<RelationshipComponent>(child);
+        if (!rel || rel->parent == entt::null) return;
+
+        const entt::entity parent = rel->parent, prev = rel->prevSibling, next = rel->nextSibling;
+        rel->parent = rel->prevSibling = rel->nextSibling = entt::null;
+
+        // Neighbours that are gone (destroyed behind our back) are skipped rather than dereferenced.
+        const auto link = [this](entt::entity e) { return m_Registry.valid(e) ? m_Registry.try_get<RelationshipComponent>(e) : nullptr; };
+        if (RelationshipComponent* p = link(prev))   p->nextSibling = next;
+        else if (RelationshipComponent* up = link(parent)) up->firstChild = next;
+        if (RelationshipComponent* n = link(next))   n->prevSibling = prev;
+        else if (RelationshipComponent* up = link(parent)) up->lastChild = prev;
+
+        DropIfEmpty(child);
+        DropIfEmpty(parent);
+    }
+
+    void Scene::Attach(entt::entity child, entt::entity parent)
+    {
+        // Add both components BEFORE taking references: adding one can move the others.
+        m_Registry.get_or_emplace<RelationshipComponent>(parent);
+        m_Registry.get_or_emplace<RelationshipComponent>(child);
+        RelationshipComponent& p = m_Registry.get<RelationshipComponent>(parent);
+        RelationshipComponent& c = m_Registry.get<RelationshipComponent>(child);
+
+        c.parent      = parent;
+        c.prevSibling = p.lastChild;
+        c.nextSibling = entt::null;
+        if (p.lastChild != entt::null) m_Registry.get<RelationshipComponent>(p.lastChild).nextSibling = child;
+        else                           p.firstChild = child;
+        p.lastChild = child;
+    }
+
     void Scene::DestroyEntity(Entity entity)
     {
         if (!entity.IsValid() || entity.GetScene() != this) return;
 
-        // ONE pass over the hierarchy builds parent -> children; the subtree is then walked breadth-first. (The old
-        // version scanned every entity for every node of the subtree: O(entities x descendants), and recursive.)
-        std::unordered_map<entt::entity, std::vector<entt::entity>> childrenOf;
-        for (auto [e, p] : m_Registry.view<ParentComponent>().each())
-            childrenOf[p.parent].push_back(e);
+        // Cut the subtree out of the hierarchy first, so the parent never points at a destroyed entity.
+        Detach(entity.Id());
 
+        // The subtree, breadth first, by following the child links: its size is the cost, no other entity is looked at.
         std::vector<entt::entity> doomed{ entity.Id() };
         for (size_t i = 0; i < doomed.size(); ++i)
         {
-            const auto it = childrenOf.find(doomed[i]);
-            if (it != childrenOf.end())
-                doomed.insert(doomed.end(), it->second.begin(), it->second.end());
+            const RelationshipComponent* rel = m_Registry.try_get<RelationshipComponent>(doomed[i]);
+            for (entt::entity c = rel ? rel->firstChild : entt::null; c != entt::null && m_Registry.valid(c); )
+            {
+                doomed.push_back(c);
+                const RelationshipComponent* childRel = m_Registry.try_get<RelationshipComponent>(c);
+                c = childRel ? childRel->nextSibling : entt::null;
+            }
         }
         for (entt::entity e : doomed)
             if (m_Registry.valid(e))
@@ -49,7 +96,7 @@ namespace DXEngine
 
         if (!parent.IsValid())                       // unparent
         {
-            m_Registry.remove<ParentComponent>(child.Id());
+            Detach(child.Id());
             return true;
         }
         if (parent.GetScene() != this) return false;
@@ -58,28 +105,48 @@ namespace DXEngine
         for (entt::entity e = parent.Id(); e != entt::null;)
         {
             if (e == child.Id()) return false;
-            const ParentComponent* up = m_Registry.try_get<ParentComponent>(e);
+            const RelationshipComponent* up = m_Registry.try_get<RelationshipComponent>(e);
             e = up ? up->parent : entt::null;
         }
 
-        m_Registry.emplace_or_replace<ParentComponent>(child.Id(), ParentComponent{ parent.Id() });
+        const RelationshipComponent* current = m_Registry.try_get<RelationshipComponent>(child.Id());
+        if (current && current->parent == parent.Id())
+            return true;                             // already its parent: nothing moves, the order of the children stays
+
+        Detach(child.Id());
+        Attach(child.Id(), parent.Id());
         return true;
     }
 
     Entity Scene::GetParent(Entity entity)
     {
-        if (const ParentComponent* p = entity.TryGet<ParentComponent>())
-            return Wrap(p->parent);
+        if (const RelationshipComponent* r = entity.TryGet<RelationshipComponent>())
+            if (r->parent != entt::null)
+                return Wrap(r->parent);
+        return Entity();
+    }
+
+    Entity Scene::FirstChild(Entity entity)
+    {
+        if (const RelationshipComponent* r = entity.TryGet<RelationshipComponent>())
+            if (r->firstChild != entt::null)
+                return Wrap(r->firstChild);
+        return Entity();
+    }
+
+    Entity Scene::NextSibling(Entity entity)
+    {
+        if (const RelationshipComponent* r = entity.TryGet<RelationshipComponent>())
+            if (r->nextSibling != entt::null)
+                return Wrap(r->nextSibling);
         return Entity();
     }
 
     std::vector<Entity> Scene::GetChildren(Entity entity)
     {
         std::vector<Entity> children;
-        if (!entity.IsValid()) return children;
-        for (auto [e, p] : m_Registry.view<ParentComponent>().each())
-            if (p.parent == entity.Id())
-                children.push_back(Wrap(e));
+        for (Entity c = FirstChild(entity); c; c = NextSibling(c))
+            children.push_back(c);
         return children;
     }
 

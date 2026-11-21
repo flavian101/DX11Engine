@@ -29,10 +29,22 @@ namespace DXEngine
         std::string name = "Entity";
     };
 
-    // The parent entity. Absent = a root. Set through Scene::SetParent (it rejects cycles).
-    struct ParentComponent
+    // Where an entity sits in the hierarchy: its parent and its children, as links between entities.
+    //
+    // The children of an entity form a doubly linked list (firstChild .. lastChild, joined by prevSibling / nextSibling),
+    // in the order they were attached. That makes "the children of X", "detach X" and "the subtree of X" cost what they
+    // touch and never a scan of all entities. (prevSibling is there so detaching from the middle of a list is O(1).)
+    //
+    // Absent = a root without children. ONLY Scene writes this component (SetParent, DestroyEntity); everything else
+    // reads it, normally through Scene::GetParent / GetChildren / FirstChild / NextSibling. Scene keeps it consistent:
+    // it is added when an entity gets a parent or a child and removed again when both are gone.
+    struct RelationshipComponent
     {
-        entt::entity parent = entt::null;
+        entt::entity parent      = entt::null;   // null = a root
+        entt::entity firstChild  = entt::null;   // null = no children
+        entt::entity lastChild   = entt::null;
+        entt::entity prevSibling = entt::null;   // within the parent's child list
+        entt::entity nextSibling = entt::null;
     };
 
     // ------------------------------------------------------------------

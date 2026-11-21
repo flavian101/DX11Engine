@@ -162,7 +162,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | ID | Problem | Status |
 |---|---|---|
 | C1 | `TransformSystem::Update` runs inside `Renderer::Submit`, for every entity every frame: it walks the depth of each entity and sorts, with no dirty flags. | Open (P1) |
-| C2 | `Scene::GetChildren` scans every entity; `DestroyEntity` was O(entities x descendants). | `DestroyEntity` Fixed (linear); `GetChildren` Open (P1: sibling links) |
+| C2 | `Scene::GetChildren` scanned every entity; `DestroyEntity` was O(entities x descendants). | Fixed (`RelationshipComponent`: parent, first/last child, prev/next sibling; children, detach and subtree destruction cost what they touch; test with a time budget) |
 | C3 | The shader variant key is built from strings on every draw. | Open (P4) |
 | C4 | Every draw uploads a full transform buffer including the per-frame view/projection; skinned submeshes re-upload 128 bone matrices each; `DrawItem` copies two `shared_ptr`s per draw per frame. | Open (P4) |
 | C5 | No GPU instancing. | Open (P4; design the HLSL input first) |
@@ -198,8 +198,8 @@ Each phase ends with something a person can check. Do not start a phase with a f
 **P1: Foundations** (C1, C2, C6, D2)
 * Transforms: a dirty flag on `TransformComponent`, world matrices recomputed only for dirty subtrees, and
   `TransformSystem::Update` called by the application before `Renderer::Submit` (the renderer stops mutating the scene).
-* Hierarchy: replace the `ParentComponent` scan with a relationship component (parent, first child, next sibling) so
-  child iteration, unparenting and subtree destruction need no scan.
+* Hierarchy: *done.* `RelationshipComponent` (parent, first/last child, prev/next sibling) replaced the `ParentComponent` scan;
+  child iteration, unparenting and subtree destruction need no scan. Children are kept in attach order.
 * Build: one `DXEngineCore` library (everything without the editor and without `WinMain`) that the tests link, instead of
   per-test source lists.
 * Assets in git: move the large textures and models to Git LFS, or keep only small stand-ins in the repository.

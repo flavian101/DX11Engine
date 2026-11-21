@@ -94,8 +94,8 @@ namespace DXEngine
             {
                 if (const AnimatorComponent* animator = reg.try_get<AnimatorComponent>(entity))
                     return animator;
-                const ParentComponent* parent = reg.try_get<ParentComponent>(entity);
-                entity = parent ? parent->parent : entt::null;
+                const RelationshipComponent* rel = reg.try_get<RelationshipComponent>(entity);
+                entity = rel ? rel->parent : entt::null;
             }
             return nullptr;
         }

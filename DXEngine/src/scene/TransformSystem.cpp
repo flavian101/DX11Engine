@@ -21,10 +21,10 @@ namespace DXEngine
             for (auto entity : reg.view<TransformComponent>())
             {
                 uint32_t depth = 0;
-                for (const ParentComponent* up = reg.try_get<ParentComponent>(entity); up && depth < 1024; )
+                for (const RelationshipComponent* up = reg.try_get<RelationshipComponent>(entity); up && up->parent != entt::null && depth < 1024; )
                 {
                     ++depth;
-                    up = reg.valid(up->parent) ? reg.try_get<ParentComponent>(up->parent) : nullptr;
+                    up = reg.valid(up->parent) ? reg.try_get<RelationshipComponent>(up->parent) : nullptr;
                 }
                 items.push_back({ entity, depth });
             }
@@ -36,8 +36,8 @@ namespace DXEngine
                 DirectX::XMMATRIX world = t.Local();
 
                 // child world = local * parent world (row-vector convention)
-                if (const ParentComponent* up = reg.try_get<ParentComponent>(item.entity))
-                    if (reg.valid(up->parent))
+                if (const RelationshipComponent* up = reg.try_get<RelationshipComponent>(item.entity))
+                    if (up->parent != entt::null && reg.valid(up->parent))
                         if (const TransformComponent* parentT = reg.try_get<TransformComponent>(up->parent))
                             world = world * parentT->World();
 

@@ -55,13 +55,13 @@ namespace DXEngine
         for (auto& entry : m_Children) entry.second.clear();     // keep the vectors' capacity
         m_Roots.clear();
 
-        for (auto [e, p] : reg.view<ParentComponent>().each())
-            if (reg.valid(p.parent)) m_Children[p.parent].push_back(e);
+        for (auto [e, rel] : reg.view<RelationshipComponent>().each())
+            if (reg.valid(rel.parent)) m_Children[rel.parent].push_back(e);
 
         for (auto [e, transform] : reg.view<TransformComponent>().each())
         {
             (void)transform;
-            const ParentComponent* up = reg.try_get<ParentComponent>(e);
+            const RelationshipComponent* up = reg.try_get<RelationshipComponent>(e);
             if (!up || !reg.valid(up->parent))          // a root (or an orphan whose parent is gone)
                 m_Roots.push_back(e);
         }

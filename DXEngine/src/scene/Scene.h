@@ -57,14 +57,24 @@ namespace DXEngine
         Entity CreateEntity(const std::string& name = "Entity");
         Entity CreateEntity(const std::string& name, Entity parent);
 
-        // Destroys the entity AND all its descendants.
+        // Destroys the entity AND all its descendants, and removes it from its parent's children. Cost: the size of
+        // the subtree (the hierarchy is linked, see RelationshipComponent; nothing scans all entities).
         void DestroyEntity(Entity entity);
 
         // parent invalid (default Entity()) = make it a root. Returns false (and changes nothing) if the
-        // parent is the entity itself or one of its descendants, which would make a cycle.
+        // parent is the entity itself or one of its descendants, which would make a cycle. The child becomes the LAST
+        // child of its new parent; setting the parent it already has changes nothing (the order stays).
+        // Cost: the depth of the new parent (the cycle check), nothing else.
+        // The local transform is kept (the entity moves with the new parent): see SceneEditing::Reparent for the other kind.
         bool SetParent(Entity child, Entity parent);
         Entity GetParent(Entity entity);
+
+        // The children in the order they were attached. GetChildren allocates a vector: to walk them without that, use
+        //   for (Entity c = scene.FirstChild(e); c; c = scene.NextSibling(c)) { ... }
+        // (do not change the hierarchy of the entity you are standing on while walking: take NextSibling first).
         std::vector<Entity> GetChildren(Entity entity);
+        Entity FirstChild(Entity entity);
+        Entity NextSibling(Entity entity);
 
         Entity FindByName(const std::string& name);
 
@@ -81,6 +91,11 @@ namespace DXEngine
         Entity Wrap(entt::entity id) { return Entity(id, this); }
 
     private:
+        // The three hierarchy edits SetParent and DestroyEntity are made of. They keep RelationshipComponent consistent.
+        void Detach(entt::entity child);                        // unlink from the parent's child list; the child becomes a root
+        void Attach(entt::entity child, entt::entity parent);   // append to the parent's child list (the child must be a root)
+        void DropIfEmpty(entt::entity entity);                  // remove the RelationshipComponent when it holds nothing
+
         entt::registry m_Registry;
     };
 
