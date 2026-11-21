@@ -38,7 +38,8 @@ namespace DXEngine
         static void SetClearColor(float r, float g, float b, float a = 1.0f);
 
         static void BeginScene(const std::shared_ptr<Camera>& camera);
-        // Updates the scene's world matrices (TransformSystem) and remembers it for EndScene.
+        // Remembers the scene for EndScene. Read only: the caller runs TransformSystem::Update(scene) first
+        // (debug builds assert it).
         static void Submit(Scene& scene);
         static void EndScene();
 

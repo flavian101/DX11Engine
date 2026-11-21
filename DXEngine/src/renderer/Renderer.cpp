@@ -20,6 +20,7 @@
 #include "camera/Camera.h"
 #include "scene/Scene.h"
 #include "scene/TransformSystem.h"
+#include <cassert>
 #include <algorithm>
 
 namespace DXEngine
@@ -238,7 +239,11 @@ namespace DXEngine
     void Renderer::Submit(Scene& scene)
     {
         if (!g || !g->inScene) return;
-        TransformSystem::Update(scene);          // world matrices are derived data: make sure they are current
+        // The renderer only READS the scene. World matrices are the application's to bring up to date
+        // (TransformSystem::Update, after gameplay and animation, before Submit); a stale one is drawn where it was.
+#ifdef _DEBUG
+        assert(TransformSystem::IsCurrent(scene) && "call TransformSystem::Update(scene) before Renderer::Submit");
+#endif
         g->frame.scene.world = &scene;
     }
 

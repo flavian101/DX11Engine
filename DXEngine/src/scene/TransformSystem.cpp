@@ -61,6 +61,13 @@ namespace DXEngine
             }
         }
 
+        bool IsCurrent(Scene& scene)
+        {
+            for (auto [e, t] : scene.Registry().view<TransformComponent>().each())
+                if (t.NeedsUpdate()) return false;
+            return true;
+        }
+
         std::size_t Update(Scene& scene)
         {
             entt::registry& reg = scene.Registry();

@@ -13,6 +13,7 @@
 #include "Animation/AnimationController.h"
 #include <DirectXMath.h>
 #include <cmath>
+#include <cstring>
 #include <entt/entt.hpp>
 #include <functional>
 #include <memory>
@@ -84,14 +85,15 @@ namespace DXEngine
         // Ask for 'world' to be computed again at the next TransformSystem::Update although the fields did not change.
         void MarkDirty() { tracking.dirty = true; }
 
-        // true if the next TransformSystem::Update has to recompute this entity (a field changed or MarkDirty was called)
+        // true if the next TransformSystem::Update has to recompute this entity (a field changed or MarkDirty was called).
+        // Bitwise on purpose: a NaN in a field is "unchanged" once it has been seen, so it is not recomputed every frame.
         bool NeedsUpdate() const
         {
             const TransformTracking& t = tracking;
             return t.dirty ||
-                position.x != t.position.x || position.y != t.position.y || position.z != t.position.z ||
-                rotation.x != t.rotation.x || rotation.y != t.rotation.y || rotation.z != t.rotation.z || rotation.w != t.rotation.w ||
-                scale.x != t.scale.x || scale.y != t.scale.y || scale.z != t.scale.z;
+                std::memcmp(&position, &t.position, sizeof(position)) != 0 ||
+                std::memcmp(&rotation, &t.rotation, sizeof(rotation)) != 0 ||
+                std::memcmp(&scale,    &t.scale,    sizeof(scale))    != 0;
         }
 
         void SetEulerDegrees(float pitchX, float yawY, float rollZ)

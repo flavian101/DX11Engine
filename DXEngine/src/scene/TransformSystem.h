@@ -21,5 +21,9 @@ namespace DXEngine
     {
         // Returns how many world matrices were recomputed (0 = every transform was current).
         std::size_t Update(Scene& scene);
+
+        // true if every world matrix is current, i.e. Update would do nothing. One comparison per entity: for tests and
+        // debug checks, not for the frame loop (Update itself is the cheap way to find out).
+        bool IsCurrent(Scene& scene);
     }
 }

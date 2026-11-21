@@ -127,6 +127,7 @@ void EditorLayer::OnUpdate(float dt)
 
 	m_CameraController->Update(dt);                   // (the editor decides when the camera listens: Editor::SetCamera)
 	AnimationSystem::Update(m_Scene, dt);             // advance animations (before transforms are derived)
+	TransformSystem::Update(m_Scene);                 // derive world matrices (only what changed); the renderer does not do it
 
 	Renderer::BeginScene(m_CameraController->GetCamera());
 	Renderer::Submit(m_Scene);                        // the renderer reads the persistent scene

@@ -582,6 +582,33 @@ static void TestTransformUpdateOf100kEntitiesWithOneMovingParent()
     std::printf("  (100k entities: first update %.1f ms, one moving parent %.3f ms best of 20)\n", first * 1000, best * 1000);
 }
 
+static void TestTransformIsCurrentAndNaN()
+{
+    Scene scene;
+    CHECK(TransformSystem::IsCurrent(scene));                                       // an empty scene is current
+    Entity a = scene.CreateEntity("a"), b = scene.CreateEntity("b", a);
+    CHECK(!TransformSystem::IsCurrent(scene));                                      // new entities have no world yet
+    TransformSystem::Update(scene);
+    CHECK(TransformSystem::IsCurrent(scene));
+
+    a.Get<TransformComponent>().position.x = 1;
+    CHECK(!TransformSystem::IsCurrent(scene));                                      // a field changed: the renderer would draw stale data
+    CHECK(TransformSystem::IsCurrent(scene) == false && TransformSystem::Update(scene) == 2);
+    CHECK(TransformSystem::IsCurrent(scene));
+
+    scene.SetParent(b, Entity());
+    CHECK(!TransformSystem::IsCurrent(scene));                                      // a new parent counts too
+    TransformSystem::Update(scene);
+
+    // A NaN is seen once and then counts as unchanged; it must not make the scene "never current" (and cost a recompute
+    // of its subtree every frame).
+    b.Get<TransformComponent>().position.y = std::nanf("");
+    CHECK(TransformSystem::Update(scene) == 1);
+    CHECK(TransformSystem::IsCurrent(scene) && TransformSystem::Update(scene) == 0);
+    b.Get<TransformComponent>().position.y = 2;                                     // and a real value brings it back
+    CHECK(TransformSystem::Update(scene) == 1 && Near(b.Get<TransformComponent>().WorldPosition().y, 2));
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -604,6 +631,7 @@ int main()
         { "transforms: only what changed",            TestTransformRecomputesOnlyWhatChanged },
         { "transforms vs from-scratch (random)",      TestTransformUpdateAgainstReference },
         { "transforms: 100k entities, one parent",    TestTransformUpdateOf100kEntitiesWithOneMovingParent },
+        { "transforms: IsCurrent, NaN settles",       TestTransformIsCurrentAndNaN },
     };
     for (auto& t : tests)
     {

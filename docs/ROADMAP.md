@@ -96,7 +96,7 @@ declared twice (`utils/ConstantBufferTypes.h`, `common.hlsli`); the C++ side `st
    textures a material holds; the render queue is derived from blend state; there is one slot table and one shading-model table).
 3. Assets are shared and immutable; instances are small.
 4. Systems transform data: gameplay writes components, systems derive the rest, the renderer only reads.
-   (Known violation: `Renderer::Submit` runs `TransformSystem`; see issue C1.)
+   (The application runs `TransformSystem::Update` before `Renderer::Submit`; debug builds assert it.)
 5. Handles, not raw pointers: a destroyed entity is detected, never dereferenced.
 6. Anything that is pure logic is testable without a GPU, and has a test.
 
@@ -161,7 +161,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 ### C. Does not scale
 | ID | Problem | Status |
 |---|---|---|
-| C1 | `TransformSystem::Update` ran inside `Renderer::Submit`, for every entity every frame: it walked the depth of each entity and sorted, with no dirty flags. | Half fixed: only changed subtrees are recomputed (below). Still open: `Submit` calls it (P1) |
+| C1 | `TransformSystem::Update` ran inside `Renderer::Submit`, for every entity every frame: it walked the depth of each entity and sorted, with no dirty flags. | Fixed (only changed subtrees are recomputed; the application calls `Update`, `Submit` only reads) |
 | C2 | `Scene::GetChildren` scanned every entity; `DestroyEntity` was O(entities x descendants). | Fixed (`RelationshipComponent`: parent, first/last child, prev/next sibling; children, detach and subtree destruction cost what they touch; test with a time budget) |
 | C3 | The shader variant key is built from strings on every draw. | Open (P4) |
 | C4 | Every draw uploads a full transform buffer including the per-frame view/projection; skinned submeshes re-upload 128 bone matrices each; `DrawItem` copies two `shared_ptr`s per draw per frame. | Open (P4) |
@@ -201,8 +201,8 @@ Each phase ends with something a person can check. Do not start a phase with a f
   nothing has to remember a flag), or when `MarkDirty()` was called (`SetParent` does; a copied `TransformComponent` always
   starts dirty). `Update` recomputes each topmost dirty entity with its subtree once, following the child links, and returns
   how many matrices it wrote. 100 000 entities with one moving parent: about 1 ms (test with a time budget).
-* Transforms, `TransformSystem::Update` called by the application before `Renderer::Submit` (the renderer stops mutating
-  the scene): open.
+* Transforms, `TransformSystem::Update` called by the application before `Renderer::Submit`: *done.* `EditorLayer::OnUpdate`
+  calls it after `AnimationSystem`; `Renderer::Submit` only reads, and a debug build asserts `TransformSystem::IsCurrent`.
 * Hierarchy: *done.* `RelationshipComponent` (parent, first/last child, prev/next sibling) replaced the `ParentComponent` scan;
   child iteration, unparenting and subtree destruction need no scan. Children are kept in attach order.
 * Build: one `DXEngineCore` library (everything without the editor and without `WinMain`) that the tests link, instead of
