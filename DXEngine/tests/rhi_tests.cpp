@@ -1,5 +1,5 @@
 // RHI rules that need no GPU: the checks every backend shares before it creates a buffer.
-// (The D3D11 code that applies them needs a device and is exercised by running the Sandbox.)
+// (The D3D11 code that applies them needs a device and is exercised by running the Editor.)
 #include "RHI/GraphicsTypes.h"
 #include <cstdio>
 

@@ -578,8 +578,4 @@
       <Filter>editor</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="src\RHI\Readme_OwnerShip.md" />
-    <None Include="src\renderer\ARCHITECTURE.md" />
-  </ItemGroup>
 </Project>

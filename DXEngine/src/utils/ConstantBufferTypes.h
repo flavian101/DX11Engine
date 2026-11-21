@@ -83,7 +83,7 @@ namespace DXEngine {
     // ------------------------------------------------------------------
     // LOCAL lights (point + spot): one element of the structured buffer `localLights` (SRV_Lights).
     //
-    // 64 bytes, laid out in four 16-byte rows. THE HLSL STRUCT IN SandBox/assets/shaders/common.hlsli MUST MATCH
+    // 64 bytes, laid out in four 16-byte rows. THE HLSL STRUCT IN Editor/assets/shaders/common.hlsli MUST MATCH
     // FIELD FOR FIELD (structured buffers use plain C packing, so a float3 + float pair fills one row).
     // The size and every offset are checked below: change a field here and the build tells you.
     //

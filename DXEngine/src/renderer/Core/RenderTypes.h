@@ -62,7 +62,7 @@ namespace DXEngine
     };
 
     // ------------------------------------------------------------------
-    // Shadow tuning. Lives in RenderEnvironment so a game (or the sandbox) can change it every frame; the planner
+    // Shadow tuning. Lives in RenderEnvironment so a game (or the editor) can change it every frame; the planner
     // reads a copy, nothing caches it. Resolutions are rounded DOWN to a power of two (the atlas allocator needs it).
     // ------------------------------------------------------------------
     struct ShadowSettings
