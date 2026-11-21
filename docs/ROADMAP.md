@@ -157,6 +157,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | B6 | `editor_ui_tests` did not link: the two stubs its comment promises were missing. | Fixed (not run here: needs ImGui and `comdlg32`) |
 | B7 | `Esc` quits the whole application at once (unless a text field has focus), and nothing can be saved yet. `Application` also hard-codes the middle-mouse capture (an editor policy living in the engine). | Open (E3) |
 | B8 | Assets and shaders are found through paths relative to the working directory (`assets/shaders/`, `assets/textures/...` hard-coded in `EditorLayer`), so the Editor only works when started from the folder holding its assets. | Open (P3: resolve against the executable / a project root) |
+| B9 | A skinned model (the horse) was drawn at the scene origin while its gizmo sat at the entity, and moving the entity moved only the gizmo. Cause: the bone matrices map the mesh into the skeleton's root space and carry no scene transform, but both skinning vertex shaders treated the result as world space and skipped `Model`; culling still used the entity's position, so the model could also vanish where it was not drawn. | Fixed in code and tests (the shaders apply `Model`; a skinned draw uses the Animator entity's world matrix, also for culling and shadows; pose-less skinned meshes get identity bones). **Still to check on a GPU**: load the horse, move / rotate / scale it, look at its shadow |
 
 ### C. Does not scale
 | ID | Problem | Status |
@@ -166,7 +167,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | C3 | The shader variant key is built from strings on every draw. | Open (P4) |
 | C4 | Every draw uploads a full transform buffer including the per-frame view/projection; skinned submeshes re-upload 128 bone matrices each; `DrawItem` copies two `shared_ptr`s per draw per frame. | Open (P4) |
 | C5 | No GPU instancing. | Open (P4; design the HLSL input first) |
-| C6 | About 450 MB of textures and models are tracked in git, and every Editor build copied all of it next to the exe. | Copy Fixed (incremental with CMake >= 3.26); history size Open (P1: Git LFS or trimmed assets) |
+| C6 | About 450 MB of textures and models are tracked in git, and every Editor build copied all of it next to the exe. | Fixed. Copy: incremental (CMake >= 3.26). Size: **decided, see the C6 decision below**: stays in git, growth is stopped by a commit guard, no LFS, no history rewrite |
 | C7 | The scene target is 8-bit and every pixel shader tone maps and encodes its own output: no HDR, no exposure, blending and any later bloom or IBL work on tone-mapped values. HDR images are stored as 8 bits. | Open (P4) |
 | C8 | `Renderer` is a global static: no second view (material preview, second viewport), no headless instance. | Open (P2) |
 
@@ -191,11 +192,38 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 
 ---
 
+### C6 decision: assets stay in git, growth is stopped, no LFS, no history rewrite
+
+Measured on the Renderer branch: the pack is 512 MiB; every blob ever committed adds up to 576 MB, and the current tree
+holds 452 MB of those. Only about 52 MB of big blobs exist solely in history. So:
+
+* **LFS would save nothing today.** A checkout would still download the 452 MB that are in the tree, and history is
+  almost the same size as the tree, so there is nothing to shrink.
+* **LFS costs more than it saves for a public engine repo.** On GitHub Free it comes with 10 GiB of bandwidth and 10 GiB of
+  storage per month, and every download (clones, forks, Actions, source archives) counts against the *owner*; with
+  450 MB of assets about twenty full clones a month use it all, and without a payment method LFS then stops. A clone made
+  without `git lfs install`, and "Download ZIP", contain text pointer files instead of images, and the editor fails on
+  them with confusing decode errors.
+* **A history rewrite is not worth it.** It would touch every branch (`master`, `sky`, `Ball-game`, `build_cmake`,
+  `Renderer`) and every fork, to remove at most ~125 MB.
+* **A separate sample pack (release download plus a fetch step) is the right answer later, not now.** It adds a step to
+  every fresh clone and a release to maintain, for a repository whose daily operations are not slowed by 450 MB of files that
+  almost never change.
+
+What is done instead: the incremental asset copy (C6, fixed earlier) and `tools/hooks/pre-commit`, which stops the one thing
+that would make this worse, a *new or changed* binary above 10 MiB. Bypass when it is intended:
+`ALLOW_LARGE_FILES=1 git commit ...`.
+
+**Revisit when** (any one): tracked assets pass 1 GB; a large binary has to be edited repeatedly; CI or outside contributors
+start cloning regularly. Then, in this order: move the sample content into a pack that CMake downloads and verifies
+(`file(DOWNLOAD ... EXPECTED_HASH)`), and only then, if the clone is still too big, rewrite history once with `git filter-repo`.
+Known limit: the hook is local, so each clone has to install it, and nothing checks pull requests.
+
 ## 4. Roadmap
 
 Each phase ends with something a person can check. Do not start a phase with a failing exit check in the previous one.
 
-**P1: Foundations** (C1, C2, C6, D2)
+**P1: Foundations** (C1, C2, C6, D2): *complete*
 * Transforms, recompute only what changed: *done.* An entity is dirty when its position / rotation / scale differ from the
   values its world matrix was computed from (so the inspector, gizmo, animation and gameplay keep writing the fields and
   nothing has to remember a flag), or when `MarkDirty()` was called (`SetParent` does; a copied `TransformComponent` always
@@ -211,7 +239,8 @@ Each phase ends with something a person can check. Do not start a phase with a f
   reaches, so each test still pulls in only what it uses (and `editor_ui_tests` still never links the renderer: it stubs
   two functions). The price: building any test first builds the whole engine, assimp and ImGui. (The editor is still
   inside the library; P2 moves it out.)
-* Assets in git: move the large textures and models to Git LFS, or keep only small stand-ins in the repository.
+* Assets in git (C6): *decided, see below.* Nothing is migrated; `tools/hooks/pre-commit` refuses new or changed files above
+  10 MiB (install once per clone: `git config core.hooksPath tools/hooks`).
 * *Exit:* a scene with 100k entities and one moving parent updates in a few milliseconds (a test with a time budget);
   `tests/CMakeLists.txt` has no engine `.cpp` listed more than once (now: none at all).
 
@@ -257,7 +286,9 @@ Each phase ends with something a person can check. Do not start a phase with a f
   sources. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
 * **Never executed on a real GPU or window** (check by running the Editor): the depth pre-pass, the shadow bias values
   (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` were chosen by reasoning), the editor's look,
-  a middle-button fly, the gizmo handles, play mode, and the HLSL changes of the cleanup series (removed fog and unused defines).
+  a middle-button fly, the gizmo handles, play mode, and a skinned model moving with its gizmo (B9: the horse, plus its shadow).
+* Shaders: every permutation (static and skinned vertex shaders, the shadow caster, the Lit / Unlit / Emissive / Skybox pixel
+  shaders) compiles with DXC at shader model 6.0. That checks the HLSL, not the engine's real D3DCompile (shader model 5).
 * The editor panels are run through real ImGui frames headlessly (`editor_ui_tests`); that cannot say whether the UI looks right.
 
 ## 6. Deliberately not built yet

@@ -66,6 +66,9 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## Contributing
 
+After cloning, run once: `git config core.hooksPath tools/hooks`. The pre-commit hook refuses new or changed files above
+10 MiB (the repository already carries ~450 MB of sample assets and every blob stays in the history; see C6 in the roadmap).
+
 Fork, branch, keep commits small and focused, and say what you tested. Read [docs/ROADMAP.md](docs/ROADMAP.md) first: it
 holds the rules the code follows and the list of known problems. If a change makes that file untrue, update it in the
 same commit.

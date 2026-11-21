@@ -1,0 +1,39 @@
+#!/bin/sh
+# DXEngine pre-commit: refuse large binary files.
+#
+# Why: the repository already holds ~450 MB of sample assets and every blob stays in the history for good (a 40 MB texture
+# edited three times is 120 MB for everybody who clones). The decision (docs/ROADMAP.md, C6) is to stop the growth rather
+# than migrate: new or changed files above the limit do not go in. Install once per clone:
+#
+#     git config core.hooksPath tools/hooks
+#
+# Limit: 10 MiB per file (override: DX_MAX_FILE_MB=25 git commit ...).
+# Knowingly adding one anyway:   ALLOW_LARGE_FILES=1 git commit ...     (or git commit --no-verify)
+# What to do instead of adding it: keep the big source file outside the repository and commit a smaller export (a 2K
+# texture instead of an 8K one, a decimated model); if it truly has to be shared, see C6 in docs/ROADMAP.md for the plan.
+
+[ "${ALLOW_LARGE_FILES:-}" = "1" ] && exit 0
+
+limit_mb="${DX_MAX_FILE_MB:-10}"
+limit=$((limit_mb * 1024 * 1024))
+found=0
+
+# Added, Copied, Modified, Renamed files (deletions never matter); the size is that of the STAGED content.
+git -c core.quotepath=off diff --cached --name-only --diff-filter=ACMR | while IFS= read -r path; do
+    size=$(git cat-file -s ":$path" 2>/dev/null) || continue
+    if [ "$size" -gt "$limit" ]; then
+        printf '  %6s MiB  %s\n' "$((size / 1024 / 1024))" "$path" >&2
+        echo x > "${TMPDIR:-/tmp}/.dx_large_$$"
+    fi
+done
+
+if [ -f "${TMPDIR:-/tmp}/.dx_large_$$" ]; then
+    rm -f "${TMPDIR:-/tmp}/.dx_large_$$"
+    {
+        echo "pre-commit: the files above are larger than ${limit_mb} MiB."
+        echo "Big binaries stay in the history forever. Commit a smaller export, or see docs/ROADMAP.md (C6)."
+        echo "To add one anyway:  ALLOW_LARGE_FILES=1 git commit ...   (limit: DX_MAX_FILE_MB)"
+    } >&2
+    exit 1
+fi
+exit 0
