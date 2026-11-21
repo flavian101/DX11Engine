@@ -168,7 +168,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | C4 | Every draw uploads a full transform buffer including the per-frame view/projection; skinned submeshes re-upload 128 bone matrices each; `DrawItem` copies two `shared_ptr`s per draw per frame. | Open (P4) |
 | C5 | No GPU instancing. | Open (P4; design the HLSL input first) |
 | C6 | About 450 MB of textures and models are tracked in git, and every Editor build copied all of it next to the exe. | Fixed. Copy: incremental (CMake >= 3.26). Size: **decided, see the C6 decision below**: stays in git, growth is stopped by a commit guard, no LFS, no history rewrite |
-| C7 | The scene target is 8-bit and every pixel shader tone maps and encodes its own output: no HDR, no exposure, blending and any later bloom or IBL work on tone-mapped values. HDR images are stored as 8 bits. | Open (P4) |
+| C7 | The scene target is 8-bit and every pixel shader tone maps and encodes its own output: no HDR, no exposure, blending and any later bloom or IBL work on tone-mapped values. HDR images are stored as 8 bits. | Open (P4b, step 1) |
 | C8 | `Renderer` is a global static: no second view (material preview, second viewport), no headless instance. | Open (P2) |
 
 ### D. Architecture
@@ -182,6 +182,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | D6 | The editor scene is built in C++ (`EditorLayer`) with asset paths relative to the working directory. | Open (P3) |
 | D7 | `ShadingModel::Emissive` is Lit plus emission under another name (the "one fact, two places" pattern the design rules out). | Open (P4) |
 | D8 | `SceneFactory` takes the device as a parameter while `Renderer::GetDevice()` is a global. `utils/` holds core types (Mesh, Material, Transform). | Open (P2) |
+| D9 | The scene has no environment lighting. IBL exists only as two *material* texture slots (`Environment`, `Irradiance`), and the only material that gets one is the sky dome, so every other object falls back to a flat ambient colour (metals go dark and flat, nothing is lit from "the sky"). Nothing produces the maps the shader expects: it reads `environmentTexture.SampleLevel(..., roughness * 8)` and assumes a GGX-prefiltered mip chain of exactly 8 levels, and `irradianceTexture` has no producer. The sky itself is an 8-bit LDR cube. | Open (P4: environment becomes a scene resource, baked from an HDR source) |
 
 ### E. Docs and tooling
 | ID | Problem | Status |
@@ -259,14 +260,45 @@ Each phase ends with something a person can check. Do not start a phase with a f
 * Undo / redo and multi-selection (the two things the editor lacks after saving).
 * *Exit:* save, quit, start, load gives the same scene (round-trip test); Play then Stop restores every component.
 
-**P4: Renderer scale and quality** (A4, C3, C4, C5, C7, D7, E2)
+**P4: Renderer scale and quality** (A4, C3, C4, C5, C7, D7, D9, E2)
+
+*P4a: scale and tooling*
 * Integer-hashed variant key; per-frame constants (view, projection, camera, time) in one buffer, per-object data in a
   structured buffer indexed by instance id; `DrawIndexedInstanced` for identical mesh + material.
-* RGBA16F scene target, one tone-mapping pass with exposure, HDR environment textures and image-based lighting.
 * Call `ShaderCache::Update` from the editor (hot reload on, with a visible compile error instead of a crash).
 * Fold `Emissive` into `Lit` (emissive factor and map are already part of `EvaluateSurface`).
 * *Exit:* 10k identical cubes draw in a handful of draw calls; a shader edit shows without a restart; GPU frame-time
   numbers recorded for clustered vs unclustered lighting (still open from the lighting work).
+
+*P4b: lighting quality (HDR, PBR, IBL)*. Why the lighting looks "a little off", in order of effect (the direct-light BRDF
+itself is textbook Cook-Torrance: GGX, Smith, Schlick, Lambert / PI, and is not the cause):
+1. *HDR pipeline first, everything below depends on it* (C7). RGBA16F scene target; shaders output linear HDR and stop
+   tone mapping themselves; one fullscreen pass does exposure + tone mapping + the display encoding. Today's curve is
+   `1 - exp(-c * 0.4)` clamped to [0,1] per pixel shader, which maps scene-linear 0.18 grey to about 0.29 sRGB: a global
+   darkening and flattening, and blending / any later bloom operate on already-clamped values. Replace it with a filmic
+   curve (ACES-fit or AgX), an exposure in stops, and an auto-exposure option later.
+2. *Environment as a scene resource* (D9). `RenderEnvironment` / `FrameContext` own one prefiltered specular cube, one
+   diffuse irradiance source (cube or 9 SH coefficients) and the BRDF lookup texture, bound once per frame at fixed
+   engine registers (t37 and up; t0..t31 stay material textures). The `Environment` / `Irradiance` material slots go away.
+   No environment loaded = today's flat ambient, so nothing regresses.
+3. *Bake the environment from an HDR source* (the tinyexr / Radiance loaders decode HDR today, but to 8 bits: a float
+   path to an RGBA16F / RGBA32F texture is needed first): equirect -> cube,
+   GGX prefilter into the mips of the specular cube (roughness from the real mip count, not a hard-coded 8), diffuse
+   irradiance, and the split-sum BRDF LUT replacing the analytic `EnvBRDFApprox`. Done on the GPU at load time with
+   compute or render passes; the CPU math (SH projection, GGX sample generation, LUT integration) is written as plain
+   functions that tests check without a GPU.
+4. *Sky from the same HDR source* so the sun and bright sky are above 1.0 and reflect correctly; the editor gets an
+   environment picker, rotation and intensity.
+5. *PBR completeness*: specular occlusion from ambient occlusion, horizon fade of reflections on bumpy normals,
+   multiple-scattering energy compensation for rough metals, `(1 - F)` on ambient diffuse, a clear-coat and sheen
+   option only if a material needs it. Keep ONE BRDF function shared by direct lights and IBL.
+6. *Light units*: decide and document what an intensity of 1.0 means (a scale between "artist numbers" and
+   lumens / lux) so exposure, sun and point lights stay consistent; the Renderer panel shows EV.
+* *Exit:* (a) a white-furnace test: a rough dielectric and a rough metal under a uniform white environment render within a
+  few percent of uniform white (energy conservation; the CPU baking functions are checked the same way); (b) a
+  material-ball scene (roughness 0..1 across, metallic 0 / 1 down) looks right under at least two HDR environments and
+  matches a reference image taken once and committed under 10 MiB; (c) the editor shows a metal sphere reflecting its
+  surroundings with no light in the scene.
 
 **P5: Gameplay basics** (B7, D4)
 * `CameraComponent`; the editor fly camera is a controller, not part of the engine camera.
