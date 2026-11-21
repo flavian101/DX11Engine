@@ -1,17 +1,22 @@
 # Engine tests. Enable with:  cmake -DDXENGINE_BUILD_TESTS=ON ...      Run:  ctest --output-on-failure
 #
-# Every test is ONE source file linked against DXEngineCore (the whole engine as a static library, see DXEngine/CMakeLists.txt).
+# Every test is ONE source file linked against DXEngineCore (the engine as a static library, see DXEngine/CMakeLists.txt);
+# the two that exercise the editor (EDITOR below) link DXEngineEditor, which brings the core + ImGui.
 # No engine source is listed here: a linker takes from a static library only the files a test actually reaches, so a test
 # that needs just Scene and Mesh pulls in just those, and adding or moving an engine file touches no test target.
-# What the core brings to every test: the include paths (src, entt, imgui, assimp, stb, tinyexr) and the libraries
-# (ImGui, ImGuizmo, assimp, meshoptimizer, the D3D11 libraries).
+# What the core brings to every test: the include paths (src, entt, assimp, stb, tinyexr) and the libraries (assimp,
+# meshoptimizer, the D3D11 libraries). The core has no ImGui: that is the editor library's.
 #
 # The test executables are named after their source file; the tests that need no GPU run everywhere, the ones labelled `gpu`
 # need a D3D11 device and print SKIPPED (and pass) without one:  ctest -L gpu   /   ctest -LE gpu
 
 function(dx_add_test name)
     add_executable(${name} ${name}.cpp)
-    target_link_libraries(${name} PRIVATE DXEngineCore)
+    if("EDITOR" IN_LIST ARGN)
+        target_link_libraries(${name} PRIVATE DXEngineEditor)
+    else()
+        target_link_libraries(${name} PRIVATE DXEngineCore)
+    endif()
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
@@ -24,8 +29,8 @@ dx_add_test(rhi_tests)                 # RHI rules that need no device (buffer d
 dx_add_test(shadow_tests)              # cascade fitting, spot / point views, the atlas allocator, which lights get shadows
 dx_add_test(material_tests)            # texture slot table, Material's derived texture mask, colour-space aware mips
 target_compile_definitions(material_tests PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/Editor/assets/shaders/")
-dx_add_test(editor_tests)              # selection, hierarchy rows, duplicate / reparent / gizmo write-back, picking, ...
-dx_add_test(editor_ui_tests)           # the editor panels through real ImGui frames (ImGui's assertions are the oracle);
+dx_add_test(editor_tests EDITOR)       # selection, hierarchy rows, duplicate / reparent / gizmo write-back, picking, ...
+dx_add_test(editor_ui_tests EDITOR)    # the editor panels through real ImGui frames (ImGui's assertions are the oracle);
                                        # two renderer-side functions are stubbed in the test, so the renderer is never linked
 dx_add_test(mesh_optimizer_tests)      # the wrapper around meshoptimizer, against the real library
 dx_add_test(gpu_timings_tests)         # the GPU profiler's bookkeeping (header only)

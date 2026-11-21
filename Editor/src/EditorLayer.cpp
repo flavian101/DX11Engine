@@ -1,4 +1,5 @@
 #include "EditorLayer.h"
+#include "editor/ImGuiLayer.h"
 #include "utils/ImageLoader.h"
 #include "utils/material/Material.h"
 
@@ -121,7 +122,7 @@ void EditorLayer::OnUpdate(float dt)
 
 	// F1: edit <-> play. (Polled, so not while a text field is being edited.)
 	const bool f1Down = Input::IsKeyPressed(VK_F1);
-	if (f1Down && !m_F1WasDown && !Application::Get().GetImGuiLayer().WantsTextInput())
+	if (f1Down && !m_F1WasDown && !ImGuiLayer::Get().WantsTextInput())
 		m_Editor.SetEnabled(!m_Editor.IsEnabled());
 	m_F1WasDown = f1Down;
 

@@ -6,7 +6,9 @@
 namespace DXEngine
 {
     // ==================================================================
-    // ImGuiLayer: Dear ImGui (DOCKING branch) wired into the engine. Application owns one, as the top overlay.
+    // ImGuiLayer: Dear ImGui (DOCKING branch) wired into the engine. It belongs to the EDITOR: the engine library does not
+    // know ImGui. The editor application pushes one as the top overlay and calls Begin / End from the Application hooks
+    // OnUIFrameBegin / OnUIFrameEnd; there is one, reached through ImGuiLayer::Get().
     //
     // Frame, driven by Application::Render:
     //     layers OnUpdate   (the scene is drawn: BeginScene ... EndScene)
@@ -27,6 +29,9 @@ namespace DXEngine
     public:
         ImGuiLayer();
         ~ImGuiLayer() override;
+
+        static bool HasInstance() { return s_Instance != nullptr; }
+        static ImGuiLayer& Get() { return *s_Instance; }
 
         void OnAttach() override;      // creates the context and the backends
         void OnDetach() override;      // idempotent. Application calls it BEFORE the renderer shuts down.
@@ -54,6 +59,8 @@ namespace DXEngine
 
     private:
         void ApplyStyle();
+
+        static ImGuiLayer* s_Instance;
 
         bool m_Active = false;
         UiInputState State() const;

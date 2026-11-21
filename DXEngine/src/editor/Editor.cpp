@@ -2,6 +2,7 @@
 #include "Editor.h"
 #include "assets/ModelLoaderAdapter.h"
 #include "EditorChrome.h"
+#include "ImGuiLayer.h"
 #include "EditorIcons.h"
 #include "EditorTheme.h"
 #include "ImGuizmoGizmo.h"
@@ -56,7 +57,7 @@ namespace DXEngine
         if (!m_Enabled)
         {
             Renderer::SetSceneTargetSize(0, 0);                       // back into the window
-            Application::Get().GetImGuiLayer().SetBlockMouseEvents(true);
+            ImGuiLayer::Get().SetBlockMouseEvents(true);
             m_PlayHint = 4.0f;
         }
         ApplyCameraMode();
@@ -83,7 +84,7 @@ namespace DXEngine
     bool Editor::AcceptsGameInput() const
     {
         if (!m_Enabled) return true;
-        return m_Ctx.viewportFocused && !Application::Get().GetImGuiLayer().WantsTextInput();
+        return m_Ctx.viewportFocused && !ImGuiLayer::Get().WantsTextInput();
     }
 
     bool Editor::OnEvent(Event& e)
@@ -121,7 +122,7 @@ namespace DXEngine
 
     void Editor::OnImGui()
     {
-        ImGuiLayer& ui = Application::Get().GetImGuiLayer();
+        ImGuiLayer& ui = ImGuiLayer::Get();
         if (!ui.IsActive()) return;                     // no UI backend (not D3D11): the scene simply stays in the window
 
         if (!m_ThemeApplied)

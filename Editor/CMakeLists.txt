@@ -36,7 +36,7 @@ target_include_directories(Editor PUBLIC
 	${CMAKE_SOURCE_DIR}/DXEngine/src
 )
 
-target_link_libraries(Editor PRIVATE DXEngineCore)
+target_link_libraries(Editor PRIVATE DXEngineEditor)
 
 target_compile_definitions(Editor PUBLIC
     UNICODE

@@ -1,5 +1,6 @@
 #pragma once
 #include "DXEngine.h"
+#include "editor/Editor.h"
 #include <memory>
 
 // The editor application: one Scene, one camera, and the Editor (docked panels) that edits them.

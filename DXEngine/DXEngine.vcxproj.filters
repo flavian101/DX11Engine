@@ -259,7 +259,7 @@
     <ClInclude Include="src\utils\ImageMips.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\Core\ImGuiLayer.h">
+    <ClInclude Include="src\editor\ImGuiLayer.h">
       <Filter>editor</Filter>
     </ClInclude>
     <ClInclude Include="src\editor\RendererPanel.h">
@@ -508,7 +508,7 @@
     <ClCompile Include="vendor\imgui\backends\imgui_impl_dx11.cpp">
       <Filter>imgui_backends</Filter>
     </ClCompile>
-    <ClCompile Include="src\Core\ImGuiLayer.cpp">
+    <ClCompile Include="src\editor\ImGuiLayer.cpp">
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\RendererPanel.cpp">

@@ -60,8 +60,9 @@ ctest --test-dir build -C Release --output-on-failure
 | `DXEngine/src/scene` | scene, entities, components, transform and animation systems |
 | `DXEngine/src/utils` | meshes, materials, texture slots, image loading |
 | `DXEngine/src/assets`, `models` | model import and the asset catalog |
-| `DXEngine/src/editor` | editor panels and GPU-free editor logic (will move out of the engine library, see the roadmap) |
+| `DXEngine/src/editor` | editor panels, GPU-free editor logic and the ImGui layer: the `DXEngineEditor` library (the engine, `DXEngineCore`, does not link ImGui) |
 | `Editor` | the editor application and its assets (`Editor/assets/shaders` holds the HLSL) |
+| `Game` | the smallest application on the engine: a lit cube, no UI, links `DXEngineCore` only (CMake only) |
 | `DXEngine/tests` | tests |
 
 ## Contributing

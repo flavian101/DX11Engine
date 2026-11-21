@@ -22,7 +22,9 @@ Renderer              FrameContext + RenderGraph + passes                   rend
 RHI                   IGraphicsDevice, D3D11 backend                        RHI/
 ```
 
-Today `editor/` is compiled into the engine library (see issue D1).
+CMake builds two libraries from this tree: `DXEngineCore` (everything but `src/editor/`: what a game links) and
+`DXEngineEditor` (`src/editor/`, the ImGui layer included; links the core + ImGui + ImGuizmo). `Game/` is a minimal
+application on the core alone.
 
 ### One frame
 
@@ -155,7 +157,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | B4 | `CreateCylinder` allocated 32 vertices it never wrote (zero normal) and shaded its caps with the side normals. | Fixed (own cap rings, tests) |
 | B5 | `Ray.cpp` included `utils/mesh/...` (wrong case: breaks on a case-sensitive file system). | Fixed |
 | B6 | `editor_ui_tests` did not link: the two stubs its comment promises were missing. | Fixed (not run here: needs ImGui and `comdlg32`) |
-| B7 | `Esc` quits the whole application at once (unless a text field has focus), and nothing can be saved yet. `Application` also hard-codes the middle-mouse capture (an editor policy living in the engine). | Open (E3) |
+| B7 | `Esc` quits the whole application at once (unless a text field has focus), and nothing can be saved yet. | Policy moved out of the engine (`Application` no longer knows Esc or the middle mouse button: `EditorApp` handles them through the `OnApplicationEvent` hook). The behaviour itself is Open (P5: Esc stops play mode, it does not quit) |
 | B8 | Assets and shaders are found through paths relative to the working directory (`assets/shaders/`, `assets/textures/...` hard-coded in `EditorLayer`), so the Editor only works when started from the folder holding its assets. | Open (P3: resolve against the executable / a project root) |
 | B9 | A skinned model (the horse) was drawn at the scene origin while its gizmo sat at the entity, and moving the entity moved only the gizmo. Cause: the bone matrices map the mesh into the skeleton's root space and carry no scene transform, but both skinning vertex shaders treated the result as world space and skipped `Model`; culling still used the entity's position, so the model could also vanish where it was not drawn. | Fixed in code and tests (the shaders apply `Model`; a skinned draw uses the Animator entity's world matrix, also for culling and shadows; pose-less skinned meshes get identity bones). **Still to check on a GPU**: load the horse, move / rotate / scale it, look at its shadow |
 
@@ -174,7 +176,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 ### D. Architecture
 | ID | Problem | Status |
 |---|---|---|
-| D1 | About 38 editor files live in the engine library and `DXEngine.h` includes editor headers, so a game build would link ImGui, ImGuizmo and `comdlg32`. | Open (P2) |
+| D1 | The editor (~38 files and the ImGui layer) lived in the engine library and `DXEngine.h` included editor headers, so a game build would have linked ImGui, ImGuizmo and `comdlg32`. | Fixed. `DXEngineEditor` holds `src/editor/` (the ImGui layer moved there: `editor/ImGuiLayer.h`, reached through `ImGuiLayer::Get()`); `Application` has neutral hooks (`OnUIFrameBegin/End`, `OnApplicationEvent`) and `EditorApp` fills them in. `Game.exe` has 0 ImGui symbols, `Editor.exe` 933 |
 | D2 | `DXEngine/tests/CMakeLists.txt` listed engine sources by hand, repeated per test target, so any file move touched many targets. | Fixed (every test links `DXEngineCore`; no engine source is listed in the tests file). Link-checked with a MinGW cross build, not yet built with MSVC |
 | D3 | Components hold `shared_ptr<Mesh>` / `shared_ptr<Material>` and entities have no stable id: a scene cannot be saved or loaded, and a prefab cannot refer to an asset. | Open (P3) |
 | D4 | The camera is not a component; its weighted behaviour-blending stack is more than a fly camera needs. | Open (P5) |
@@ -245,12 +247,13 @@ Each phase ends with something a person can check. Do not start a phase with a f
 * *Exit:* a scene with 100k entities and one moving parent updates in a few milliseconds (a test with a time budget);
   `tests/CMakeLists.txt` has no engine `.cpp` listed more than once (now: none at all).
 
-**P2: Separate the editor, make the renderer an instance** (C8, D1, D8)
-* `DXEngineEditor` library (or `Editor/src`) holds `editor/`; `DXEngine.h` stops including it.
+**P2: Separate the editor, make the renderer an instance** (C8, D1, D8): *D1 done*
+* ~~`DXEngineEditor` library holds `editor/`; `DXEngine.h` stops including it.~~ Done (D1).
 * `Renderer` becomes an object owned by `Application`; a `RenderView` (camera + target + scene) lets the editor render
   more than one view. The global facade can stay as a thin wrapper until nothing uses it.
 * `SceneFactory` and friends take what they need explicitly. Core types leave `utils/`.
-* *Exit:* a minimal "Game" executable links the engine without ImGui; the editor shows two views of one scene.
+* *Exit:* a minimal "Game" executable links the engine without ImGui (**met**: `Game/`, checked on the linked binary); the
+  editor shows two views of one scene (open, needs C8).
 
 **P3: Assets, scenes, play mode** (B8, D3, D5, D6)
 * `UUID` component on every entity; asset handles (id + path) replace `shared_ptr` in components; an asset registry

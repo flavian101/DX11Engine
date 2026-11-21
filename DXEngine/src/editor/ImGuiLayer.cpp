@@ -1,5 +1,5 @@
 #include "dxpch.h"
-#include "ImGuiLayer.h"
+#include "editor/ImGuiLayer.h"
 #include "Application.h"
 #include "renderer/Renderer.h"
 #include "RHI/D3D11/D3D11Device.h"
@@ -26,11 +26,14 @@ namespace DXEngine
         }
     }
 
-    ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
+    ImGuiLayer* ImGuiLayer::s_Instance = nullptr;
+
+    ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") { s_Instance = this; }
 
     ImGuiLayer::~ImGuiLayer()
     {
-        OnDetach();      // normally already done by Application; harmless the second time
+        OnDetach();      // normally already done by LayerStack::Clear; harmless the second time
+        if (s_Instance == this) s_Instance = nullptr;
     }
 
     void ImGuiLayer::OnAttach()

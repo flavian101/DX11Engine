@@ -23,9 +23,10 @@ add_subdirectory(DXEngine/vendor/meshoptimizer)
 include(cmake/ImGui.cmake)
 
 
-#Add engine and the editor application
+#Add the engine, the editor application and a minimal game
 add_subdirectory(DXEngine)
 add_subdirectory(Editor)
+add_subdirectory(Game)
 
 # Engine tests (no GPU needed):  cmake -DDXENGINE_BUILD_TESTS=ON ..  then  ctest --output-on-failure
 option(DXENGINE_BUILD_TESTS "Build the engine tests" OFF)
