@@ -174,7 +174,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | ID | Problem | Status |
 |---|---|---|
 | D1 | About 38 editor files live in the engine library and `DXEngine.h` includes editor headers, so a game build would link ImGui, ImGuizmo and `comdlg32`. | Open (P2) |
-| D2 | `DXEngine/tests/CMakeLists.txt` lists engine sources by hand, repeated per test target, so any file move touches many targets. | Open (P1) |
+| D2 | `DXEngine/tests/CMakeLists.txt` listed engine sources by hand, repeated per test target, so any file move touched many targets. | Fixed (every test links `DXEngineCore`; no engine source is listed in the tests file). Link-checked with a MinGW cross build, not yet built with MSVC |
 | D3 | Components hold `shared_ptr<Mesh>` / `shared_ptr<Material>` and entities have no stable id: a scene cannot be saved or loaded, and a prefab cannot refer to an asset. | Open (P3) |
 | D4 | The camera is not a component; its weighted behaviour-blending stack is more than a fly camera needs. | Open (P5) |
 | D5 | Play mode only hides the panels: there is no scene snapshot and restore, and no game layer separate from the editor. | Open (P3) |
@@ -205,11 +205,15 @@ Each phase ends with something a person can check. Do not start a phase with a f
   calls it after `AnimationSystem`; `Renderer::Submit` only reads, and a debug build asserts `TransformSystem::IsCurrent`.
 * Hierarchy: *done.* `RelationshipComponent` (parent, first/last child, prev/next sibling) replaced the `ParentComponent` scan;
   child iteration, unparenting and subtree destruction need no scan. Children are kept in attach order.
-* Build: one `DXEngineCore` library (everything without the editor and without `WinMain`) that the tests link, instead of
-  per-test source lists.
+* Build: *done.* One `DXEngineCore` static library (a glob of everything under `DXEngine/src`; it has no entry point, `Main.h`
+  is a header) that the Editor and every test link; `DXEngine` remains as an alias. `tests/CMakeLists.txt` is one
+  `dx_add_test(name)` line per test plus its definitions. A linker takes from a static library only the files a test
+  reaches, so each test still pulls in only what it uses (and `editor_ui_tests` still never links the renderer: it stubs
+  two functions). The price: building any test first builds the whole engine, assimp and ImGui. (The editor is still
+  inside the library; P2 moves it out.)
 * Assets in git: move the large textures and models to Git LFS, or keep only small stand-ins in the repository.
 * *Exit:* a scene with 100k entities and one moving parent updates in a few milliseconds (a test with a time budget);
-  `tests/CMakeLists.txt` has no engine `.cpp` listed more than once.
+  `tests/CMakeLists.txt` has no engine `.cpp` listed more than once (now: none at all).
 
 **P2: Separate the editor, make the renderer an instance** (C8, D1, D8)
 * `DXEngineEditor` library (or `Editor/src`) holds `editor/`; `DXEngine.h` stops including it.
@@ -248,6 +252,9 @@ Each phase ends with something a person can check. Do not start a phase with a f
 * GPU-free logic has tests (`DXEngine/tests`, build with `-DDXENGINE_BUILD_TESTS=ON`, run with `ctest`): scene, render
   extraction, lights, clusters, shadows, materials, RHI types, editor logic, mesh optimizer, GPU timings, assets, asset
   catalog, skeleton, image decode.
+* The P1 build change (`DXEngineCore`, `dx_add_test`) was built end to end with a MinGW-w64 cross build of the real top-level
+  CMake (the library, the Editor and all 17 test executables link) and the GPU-free tests were run on Linux against the same
+  sources. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
 * **Never executed on a real GPU or window** (check by running the Editor): the depth pre-pass, the shadow bias values
   (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` were chosen by reasoning), the editor's look,
   a middle-button fly, the gizmo handles, play mode, and the HLSL changes of the cleanup series (removed fog and unused defines).
