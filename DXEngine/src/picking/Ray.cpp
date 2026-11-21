@@ -1,8 +1,8 @@
 // Ray.cpp - Fixed implementation with proper MeshResource integration
 #include "dxpch.h"
 #include "Ray.h"
-#include "utils/mesh/Mesh.h"
-#include "utils/mesh/Resource/MeshResource.h"
+#include "utils/Mesh/Mesh.h"
+#include "utils/Mesh/Resource/MeshResource.h"
 #include "camera/Camera.h"
 
 namespace DXEngine {
