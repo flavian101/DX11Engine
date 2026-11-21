@@ -87,17 +87,23 @@ namespace DXEngine
             animator.time = 0.0f;
         }
 
-        const AnimatorComponent* FindAnimator(Scene& scene, entt::entity entity)
+        entt::entity FindAnimatorEntity(Scene& scene, entt::entity entity)
         {
             entt::registry& reg = scene.Registry();
             for (int depth = 0; entity != entt::null && reg.valid(entity) && depth < 4096; ++depth)   // (a cycle cannot exist, the bound is a belt)
             {
-                if (const AnimatorComponent* animator = reg.try_get<AnimatorComponent>(entity))
-                    return animator;
+                if (reg.all_of<AnimatorComponent>(entity))
+                    return entity;
                 const RelationshipComponent* rel = reg.try_get<RelationshipComponent>(entity);
                 entity = rel ? rel->parent : entt::null;
             }
-            return nullptr;
+            return entt::null;
+        }
+
+        const AnimatorComponent* FindAnimator(Scene& scene, entt::entity entity)
+        {
+            const entt::entity owner = FindAnimatorEntity(scene, entity);
+            return owner == entt::null ? nullptr : scene.Registry().try_get<AnimatorComponent>(owner);
         }
     }
 }

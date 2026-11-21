@@ -22,5 +22,10 @@ namespace DXEngine
 
         // The Animator a skinned mesh draws with: the nearest one on the entity itself or above it, else nullptr.
         const AnimatorComponent* FindAnimator(Scene& scene, entt::entity entity);
+
+        // The entity that holds that Animator (entt::null when there is none). A skinned mesh is drawn in ITS space: the
+        // bone matrices map the mesh into the skeleton's root space, and the root entity's world matrix places that space
+        // in the scene. (The mesh entity's own transform is not part of the pose; it is ignored, as glTF specifies.)
+        entt::entity FindAnimatorEntity(Scene& scene, entt::entity entity);
     }
 }

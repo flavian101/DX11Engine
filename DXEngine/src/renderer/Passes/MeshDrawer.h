@@ -56,6 +56,10 @@ namespace DXEngine
     private:
         void UploadTransform(const DirectX::XMFLOAT4X4& world);
         void UploadBones(const DrawItem& item);
+        // The bones an item is drawn with: its pose, or (a mesh that has blend attributes but no pose: no Animator above it,
+        // or none published yet) identity matrices. Such a mesh still runs the skinning shader; without this it would read
+        // whatever the last character left in b1.
+        void UploadBonesFor(const DrawItem& item);
         void BindMaterial(FrameContext& ctx, Material& material);
         void IssueDraw(FrameContext& ctx, Mesh& mesh, uint32_t submeshIndex);
         // bones, then the item's transform(s) and the draw(s): what both depth-only paths do after the pipeline is set
@@ -66,6 +70,7 @@ namespace DXEngine
 
         std::shared_ptr<RHI::IBuffer> m_TransformCB;
         std::shared_ptr<RHI::IBuffer> m_BoneCB;
+        bool m_BonesAreIdentity = false;                  // b1 currently holds identity matrices (skip re-uploading them)
 
         // cached "what is bound right now" -> skip redundant GPU calls. Reset in BeginPass().
         RHI::IPipeline* m_LastPipeline = nullptr;

@@ -42,6 +42,33 @@ namespace DXEngine
                                               AxisLength(world._31, world._32, world._33) });
             return DirectX::BoundingSphere(center, local.radius * maxScale);
         }
+
+        // How a skinned mesh is drawn: with the bones of the Animator above it, IN THAT ANIMATOR'S SPACE. The bone matrices
+        // map the mesh into the skeleton's root space and carry no scene transform, so the draw's world matrix is the
+        // Animator entity's (the mesh entity's own transform is not part of the pose). Moving, rotating or scaling the
+        // character means moving its Animator entity, which is the entity the editor selects. Nothing above it, or no pose
+        // published yet: the mesh is drawn unskinned, with its own world matrix.
+        struct SkinBinding
+        {
+            const std::vector<XMFLOAT4X4>* bones = nullptr;
+            const XMFLOAT4X4* space = nullptr;                 // the Animator entity's world matrix; null = use the mesh's own
+        };
+
+        SkinBinding FindSkin(Scene& scene, entt::registry& reg, entt::entity entity)
+        {
+            SkinBinding skin;
+            if (!reg.all_of<SkinnedMeshComponent>(entity)) return skin;
+
+            const entt::entity owner = AnimationSystem::FindAnimatorEntity(scene, entity);
+            if (owner == entt::null) return skin;
+            const AnimatorComponent* animator = reg.try_get<AnimatorComponent>(owner);
+            const TransformComponent* ownerTransform = reg.try_get<TransformComponent>(owner);
+            if (!animator || animator->boneMatrices.empty() || !ownerTransform) return skin;
+
+            skin.bones = &animator->boneMatrices;
+            skin.space = &ownerTransform->world;
+            return skin;
+        }
     }
 
     BoundingFrustum SceneExtraction::BuildFrustum(const ExtractionCamera& camera)
@@ -67,7 +94,8 @@ namespace DXEngine
             ++stats.objectsSubmitted;
 
             const bool isSky = reg.all_of<SkyboxComponent>(entity);
-            XMFLOAT4X4 world = transform.world;
+            const SkinBinding skin = FindSkin(scene, reg, entity);
+            XMFLOAT4X4 world = skin.space ? *skin.space : transform.world;      // the culling sphere and the draw use the same matrix
             if (isSky)
             {
                 // the sky follows the camera, so it is always "around" the viewer
@@ -96,10 +124,6 @@ namespace DXEngine
             const float dx = center.x - camera.position.x, dy = center.y - camera.position.y, dz = center.z - camera.position.z;
             const float distance = isSky ? 0.0f : std::sqrt(dx * dx + dy * dy + dz * dz);
 
-            // a skinned mesh draws with the bones of the Animator above it (none, or none yet: drawn unskinned)
-            const AnimatorComponent* animator = reg.all_of<SkinnedMeshComponent>(entity) ? AnimationSystem::FindAnimator(scene, entity) : nullptr;
-            const std::vector<XMFLOAT4X4>* bones = (animator && !animator->boneMatrices.empty()) ? &animator->boneMatrices : nullptr;
-
             const size_t submeshCount = std::max<size_t>(1, renderer.mesh->GetSubmeshCount());
             for (size_t si = 0; si < submeshCount; ++si)
             {
@@ -115,7 +139,7 @@ namespace DXEngine
                 item.submeshIndex     = static_cast<uint32_t>(si);
                 item.world            = world;
                 item.distanceToCamera = distance;
-                item.boneMatrices     = bones;
+                item.boneMatrices     = skin.bones;
                 item.receivesShadows  = renderer.receivesShadows;
 
                 // The bucket comes from the MATERIAL's render state (an explicit queue, else blended -> Transparent, else
@@ -146,12 +170,12 @@ namespace DXEngine
             if (reg.all_of<SkyboxComponent>(entity))
                 continue;                                                    // the sky is not geometry in the world
 
-            DirectX::BoundingSphere sphere = WorldSphere(*renderer.mesh, transform.world);
-            sphere.Radius *= m_Config.boundsMargin;
+            // a skinned mesh casts with the bones of the Animator above it, in that Animator's space (see FindSkin)
+            const SkinBinding skin = FindSkin(scene, reg, entity);
+            const XMFLOAT4X4& world = skin.space ? *skin.space : transform.world;
 
-            // a skinned mesh draws with the bones of the Animator above it (none, or none yet: drawn unskinned)
-            const AnimatorComponent* animator = reg.all_of<SkinnedMeshComponent>(entity) ? AnimationSystem::FindAnimator(scene, entity) : nullptr;
-            const std::vector<XMFLOAT4X4>* bones = (animator && !animator->boneMatrices.empty()) ? &animator->boneMatrices : nullptr;
+            DirectX::BoundingSphere sphere = WorldSphere(*renderer.mesh, world);
+            sphere.Radius *= m_Config.boundsMargin;
 
             const size_t submeshCount = std::max<size_t>(1, renderer.mesh->GetSubmeshCount());
             for (size_t si = 0; si < submeshCount; ++si)
@@ -166,8 +190,8 @@ namespace DXEngine
                 item.mesh         = renderer.mesh;
                 item.material     = material;                                // only its cull mode matters to the shadow pass
                 item.submeshIndex = static_cast<uint32_t>(si);
-                item.world        = transform.world;
-                item.boneMatrices = bones;
+                item.world        = world;
+                item.boneMatrices = skin.bones;
                 items.push_back(std::move(item));
                 bounds.push_back(sphere);
             }

@@ -33,6 +33,7 @@ namespace DXEngine
         m_LastPipeline = nullptr;
         m_LastMaterial = nullptr;
         m_LastMesh     = nullptr;
+        m_BonesAreIdentity = false;                    // another pass may have written b1
         m_Time         = ctx.totalTime;
         m_Kind         = DrawKind::Scene;
         m_ReceiveShadows = 1.0f;
@@ -84,6 +85,7 @@ namespace DXEngine
         m_LastPipeline = nullptr;
         m_LastMaterial = nullptr;
         m_LastMesh     = nullptr;
+        m_BonesAreIdentity = false;                    // another pass may have written b1
         m_Kind         = DrawKind::ShadowCaster;
         m_DepthBias    = depthBias;
         m_SlopeBias    = slopeBias;
@@ -100,8 +102,8 @@ namespace DXEngine
 
     void MeshDrawer::SetDepthViewProj(const XMFLOAT4X4& lightViewProj)
     {
-        // The vertex shaders compute WVP = World * View * Projection, and skinned meshes View * Projection. Putting the
-        // light's matrix in View and the identity in Projection gives both of them the light's clip space.
+        // The vertex shaders compute WVP = World * View * Projection (skinned meshes too: World is their Animator's).
+        // Putting the light's matrix in View and the identity in Projection gives all of them the light's clip space.
         m_View = lightViewProj;
         XMStoreFloat4x4(&m_Proj, XMMatrixIdentity());
     }
@@ -147,8 +149,7 @@ namespace DXEngine
 
     void MeshDrawer::SubmitGeometry(FrameContext& ctx, const DrawItem& item)
     {
-        if (item.IsSkinned())
-            UploadBones(item);
+        UploadBonesFor(item);
 
         UploadTransform(item.world);
         IssueDraw(ctx, *item.mesh, item.submeshIndex);
@@ -163,6 +164,7 @@ namespace DXEngine
         m_LastPipeline = nullptr;
         m_LastMaterial = nullptr;
         m_LastMesh     = nullptr;
+        m_BonesAreIdentity = false;                    // another pass may have written b1
         m_Kind         = DrawKind::Prepass;
         m_Time         = ctx.totalTime;
         m_ReceiveShadows = 0.0f;
@@ -222,8 +224,7 @@ namespace DXEngine
 
         m_ReceiveShadows = item.receivesShadows ? 1.0f : 0.0f;
 
-        if (item.IsSkinned())
-            UploadBones(item);
+        UploadBonesFor(item);
 
         UploadTransform(item.world);
         DrawMesh(ctx, *item.mesh, *item.material, item.submeshIndex, item.depthPrepassed);
@@ -296,8 +297,32 @@ namespace DXEngine
         m_TransformCB->Update(&cb, sizeof(cb), 0);
     }
 
+    void MeshDrawer::UploadBonesFor(const DrawItem& item)
+    {
+        if (item.IsSkinned())
+        {
+            UploadBones(item);
+            return;
+        }
+
+        const auto& resource = item.mesh ? item.mesh->GetResource() : nullptr;
+        if (!resource || !resource->GetVertexData() ||
+            !resource->GetVertexData()->GetLayout().HasAttribute(RHI::VertexAttributeType::BlendWeights))
+            return;                                              // a static mesh: its shader never reads b1
+        if (m_BonesAreIdentity)
+            return;
+
+        BoneMatrixBuffer data;
+        XMFLOAT4X4 identity;
+        XMStoreFloat4x4(&identity, XMMatrixIdentity());
+        for (size_t i = 0; i < 128; ++i) data.boneMatrices[i] = identity;
+        m_BoneCB->Update(&data, sizeof(data), 0);
+        m_BonesAreIdentity = true;
+    }
+
     void MeshDrawer::UploadBones(const DrawItem& item)
     {
+        m_BonesAreIdentity = false;
         BoneMatrixBuffer data;
         XMFLOAT4X4 identity;
         XMStoreFloat4x4(&identity, XMMatrixIdentity());

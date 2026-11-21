@@ -1042,8 +1042,8 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
                 float4x4 boneMatrix = BoneMatrices[boneIndex];
                 
                 // Transform and accumulate position
-                // BoneMatrix already includes: OffsetMatrix * AnimatedWorldTransform
-                // This transforms: MeshSpace -> BoneSpace -> AnimatedWorldSpace
+                // BoneMatrix = OffsetMatrix * AnimatedBoneTransform. It maps the mesh into the skeleton's ROOT space
+                // (mesh -> bone -> animated skeleton space); the scene transform is applied below with Model.
                 skinnedPos += weight * mul(localPos, boneMatrix);
                 
 #if HAS_NORMAL_ATTRIBUTE
@@ -1059,23 +1059,19 @@ StandardVertexOutput StandardVertexShader(StandardVertexInput input)
         }
     }
     
-    // IMPORTANT: The bone matrices already transformed vertices to world space
-    // So skinnedPos is in WORLD SPACE, not local space
-    output.worldPos = skinnedPos;
-    
-    // Transform from world space to clip space (NOT using Model matrix)
-    // Skinned vertices bypass the Model matrix since bones handle transformation
-    float4x4 viewProj = mul(View, Projection);
-    output.position = mul(output.worldPos, viewProj);
+    // skinnedPos is in the skeleton's root space. Model is the world matrix of the entity that owns the Animator
+    // (the C++ side puts it there), so a character moves, turns and scales like any other object.
+    // (This used to skip Model: the character was always drawn at the origin and could not be moved.)
+    output.worldPos = mul(skinnedPos, Model);
+    output.position = mul(skinnedPos, WVP);
     
 #if HAS_NORMAL_ATTRIBUTE
-    // Normalize the accumulated normal
-    output.normal = normalize(skinnedNormal);
+    output.normal = TransformNormalToWorld(skinnedNormal, Model);
 #endif
     
 #if HAS_TANGENT_ATTRIBUTE
-    // Normalize tangent and preserve handedness (w component)
-    output.tangent = float4(normalize(skinnedTangent), input.tangent.w);
+    // preserve handedness (w component)
+    output.tangent = float4(normalize(mul(skinnedTangent, (float3x3)Model)), input.tangent.w);
 #endif
 
 #else  

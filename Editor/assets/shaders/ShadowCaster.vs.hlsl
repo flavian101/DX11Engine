@@ -6,9 +6,9 @@
 //   b0 TransformBuffer : WVP, Model, View, Projection
 //   b1 BoneMatrices    : skinning palette
 // The shadow pass fills them like this: View = the LIGHT's view*projection matrix, Projection = identity, so
-//   WVP            = world * lightViewProj            (static meshes)
-//   View*Projection = lightViewProj                   (skinned meshes: they skin to world space first)
-// and both vertex paths below land in the light's clip space with no extra code.
+//   WVP = world * lightViewProj
+// for static AND skinned meshes (a skinned mesh's world is its Animator entity's: the bones map it into the skeleton's
+// root space), so both vertex paths below land in the light's clip space with the same transform.
 //
 // Defines (from ShaderCache::GetShadowCasterShader):
 //   HAS_SKINNING_ATTRIBUTES  the mesh has bone indices/weights
@@ -30,7 +30,7 @@ float4 main(ShadowVSInput input) : SV_POSITION
 
 #if HAS_SKINNING_ATTRIBUTES
     // EXACTLY the blend StandardVertexShader does (weights re-normalised, bone index validated), or a shadow would
-    // not line up with the mesh it belongs to. The bone matrices already include the model transform.
+    // not line up with the mesh it belongs to.
     float4 skinnedPos = float4(0.0f, 0.0f, 0.0f, 0.0f);
     float totalWeight = input.blendWeights.x + input.blendWeights.y + input.blendWeights.z + input.blendWeights.w;
     float4 weights = input.blendWeights;
@@ -47,7 +47,7 @@ float4 main(ShadowVSInput input) : SV_POSITION
                 skinnedPos += weights[i] * mul(localPos, BoneMatrices[boneIndex]);
         }
     }
-    return mul(skinnedPos, mul(View, Projection));
+    return mul(skinnedPos, WVP);
 #else
     return mul(localPos, WVP);
 #endif

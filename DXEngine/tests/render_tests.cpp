@@ -238,6 +238,53 @@ static void TestSkinnedBonesAreOptionalAndSafe()
     CHECK(skinned == 1);                                                  // only the skinned mesh that has an Animator above it
 }
 
+// A skinned mesh is drawn in its ANIMATOR's space: the bone matrices carry no scene transform, so the draw's world matrix
+// is the Animator entity's. Moving the character (the entity the editor selects) must move the draw, in the colour pass and
+// in the shadow pass; the mesh entity's own transform is not part of the pose. (The shaders skipped Model, so the character
+// was always drawn at the origin and could not be moved.) A skinned mesh with no pose is drawn like any other mesh.
+static void TestSkinnedMeshDrawsInTheAnimatorsSpace()
+{
+    Scene scene;
+    auto material = MakeMaterial("lit");
+
+    Entity rig = scene.CreateEntity("rig");
+    rig.Get<TransformComponent>().position = { 5, 0, 0 };
+    auto& animator = rig.Add<AnimatorComponent>();
+    animator.boneMatrices.assign(4, TransformComponent::Identity());
+    Entity body = AddMesh(scene, "skinned", { 0, 2, 0 }, MakeCube(), material, rig);   // its own offset must NOT matter
+    body.Add<SkinnedMeshComponent>();
+    Entity loose = AddMesh(scene, "no_animator", { 0, 0, 3 }, MakeCube(), material);
+    loose.Add<SkinnedMeshComponent>();
+
+    const ExtractionCamera cam = MakeCamera({ 0, 0, -20 }, { 0, 0, 0 });
+    auto r = Run(scene, cam);
+    int skinned = 0, plain = 0;
+    for (auto& i : r.q.opaque)
+    {
+        if (i.IsSkinned()) { ++skinned; CHECK(Near(i.world._41, 5) && Near(i.world._42, 0) && Near(i.world._43, 0)); }   // the rig's, not (5,2,0)
+        else               { ++plain;   CHECK(Near(i.world._41, 0) && Near(i.world._42, 0) && Near(i.world._43, 3)); }   // its own
+    }
+    CHECK(skinned == 1 && plain == 1);
+
+    rig.Get<TransformComponent>().position = { -4, 1, 2 };                     // move the character
+    r = Run(scene, cam);
+    for (auto& i : r.q.opaque)
+        if (i.IsSkinned()) CHECK(Near(i.world._41, -4) && Near(i.world._42, 1) && Near(i.world._43, 2));
+
+    // the shadow pass draws the same thing in the same place
+    std::vector<DrawItem> items; std::vector<DirectX::BoundingSphere> bounds;
+    SceneExtraction().ExtractShadowCasters(scene, items, bounds);
+    int shadowSkinned = 0;
+    for (size_t k = 0; k < items.size(); ++k)
+        if (items[k].IsSkinned())
+        {
+            ++shadowSkinned;
+            CHECK(Near(items[k].world._41, -4) && Near(items[k].world._42, 1) && Near(items[k].world._43, 2));
+            CHECK(Near(bounds[k].Center.x, -4) && Near(bounds[k].Center.y, 1) && Near(bounds[k].Center.z, 2));   // culled where it is drawn
+        }
+    CHECK(shadowSkinned == 1);
+}
+
 static void TestExtractionReusesCapacity()
 {
     Scene scene;
@@ -527,6 +574,7 @@ int main()
         { "extraction: material resolution",                   TestMaterialResolution },
         { "extraction: bucket follows the material's state",   TestBucketComesFromTheMaterialsRenderState },
         { "extraction: skinned bones optional and safe",       TestSkinnedBonesAreOptionalAndSafe },
+        { "extraction: skinned mesh is drawn in the animator's space", TestSkinnedMeshDrawsInTheAnimatorsSpace },
         { "extraction: no per-frame reallocation",             TestExtractionReusesCapacity },
         { "scene target: size resolution",                     TestSceneTargetSize },
         { "mesh: primitives carry tangents (normal maps work)", TestPrimitivesHaveTangents },
