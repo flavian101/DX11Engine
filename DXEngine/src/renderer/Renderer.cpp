@@ -110,7 +110,7 @@ namespace DXEngine
     }
 
     // ------------------------------------------------------------------ lifetime
-    void Renderer::Init(void* windowHandle, int width, int height)
+    bool Renderer::Init(void* windowHandle, int width, int height)
     {
         g = std::make_unique<State>();
         RenderServices& s = g->services;
@@ -122,7 +122,7 @@ namespace DXEngine
         {
             Log("ERROR: Renderer::Init - device creation failed\n");
             g.reset();
-            return;
+            return false;
         }
 
         // 2) services (order matters: shaders and materials need the device; materials need shaders)
@@ -134,7 +134,7 @@ namespace DXEngine
         {
             Log("ERROR: Renderer::Init - service initialisation failed\n");
             g.reset();
-            return;
+            return false;
         }
 
         g->cmd = s.device->CreateCommandBuffer();
@@ -157,9 +157,10 @@ namespace DXEngine
         {
             Log("ERROR: Renderer::Init - render graph setup failed\n");
             g.reset();
-            return;
+            return false;
         }
         Log("Renderer initialised\n");
+        return true;
     }
 
     void Renderer::Shutdown()

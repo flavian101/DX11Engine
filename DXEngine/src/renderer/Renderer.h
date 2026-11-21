@@ -21,7 +21,9 @@ namespace DXEngine
     class Renderer
     {
     public:
-        static void Init(void* windowHandle, int width, int height);
+        // Creates the device and every renderer service. False (with the reason sent to the debugger output) when that
+        // failed; the renderer is then not initialised and every other call is a no-op.
+        static bool Init(void* windowHandle, int width, int height);
         static void Shutdown();
 
         // The GPU device, for code that creates GPU resources (meshes, textures) outside the renderer.

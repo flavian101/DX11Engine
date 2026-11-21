@@ -2,6 +2,7 @@
 #include "Application.h"
 #include "Event/Event.h"
 #include "Core/Input.h"
+#include <stdexcept>
 
 namespace DXEngine {
 
@@ -20,7 +21,8 @@ namespace DXEngine {
 		m_Window = std::make_unique<Window>(hInstance, nCmdShow, L"DXEngine", L"DirectX", 1270, 720);
 		m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
-		Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight());
+		if (!Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight()))
+			throw std::runtime_error("The renderer could not be initialised (see the debugger output). A DirectX 11 capable GPU is required.");
 		
 		// Pushed LAST so it is the first to see events (events travel the stack from the top).
 		m_ImGuiLayer = new ImGuiLayer();
@@ -30,8 +32,9 @@ namespace DXEngine {
 
 	Application::~Application()
 	{
-		// The UI backend holds device objects: it goes before the renderer does.
-		m_ImGuiLayer->OnDetach();
+		// Layers own scenes (meshes, materials, textures) and the UI backend, which all hold device objects: they go
+		// before the renderer does. (They used to be deleted by the member destructors AFTER Renderer::Shutdown.)
+		m_LayerStack.Clear();
 		Renderer::Shutdown();
 
 	}
@@ -69,15 +72,15 @@ namespace DXEngine {
 		const float deltaSeconds = m_Deltatime.Mark();
 
 		Renderer::SetTime(m_Deltatime.Duration());
-		if (!m_Minimized)
-		{
-			for (Layer* layer : m_LayerStack)
-			{
-				layer->OnUpdate(deltaSeconds);
-			}
-		}
 		if (m_Minimized)
+		{
+			Sleep(10);      // nothing to draw: do not spin a CPU core while the window is minimised
 			return;
+		}
+		for (Layer* layer : m_LayerStack)
+		{
+			layer->OnUpdate(deltaSeconds);
+		}
 
 		// The UI is built after the scene was drawn (layers draw it in OnUpdate) and goes on top of it.
 		m_ImGuiLayer->Begin();
