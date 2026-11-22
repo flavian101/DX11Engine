@@ -30,14 +30,14 @@ application on the core alone.
 
 ```
 Application::Render
-  layers OnUpdate        the scene is drawn:  BeginScene(camera) -> Submit(scene) -> EndScene()
+  layers OnUpdate        the main view is drawn:  BeginScene(camera) -> Submit(scene) -> EndScene()
   ImGuiLayer::Begin
-  layers OnUIRender      editor panels
+  layers OnUIRender      editor panels (a panel may draw the scene again through a view of its own: Renderer::Render)
   ImGuiLayer::End        draws into the back buffer, over the scene
   Renderer::Present
 ```
 
-Inside `EndScene`:
+`EndScene()` is `Renderer::Render(mainView, scene, camera)`. Inside every `Render`:
 
 ```
 CPU systems (fill the FrameContext)
@@ -48,8 +48,11 @@ GPU passes (read the FrameContext), in insertion order
   ShadowPass -> ClearPass -> DepthPrepass -> ForwardPass(background) -> ForwardPass(opaque) -> ForwardPass(transparent)
 ```
 
-The scene lands in `FrameContext::targets` (the back buffer, or a texture when the editor asked for a viewport size
-with `Renderer::SetSceneTargetSize`; applied at the next `BeginScene`, never mid-frame).
+Each picture lands in `FrameContext::targets`: the back buffer, or the texture of the `RenderView` being drawn when it was
+given a size (`RenderView::SetSize`; the editor's Viewport sizes the main view with `Renderer::SetSceneTargetSize`). A size
+request is applied at the start of the next `Render`, never mid-frame. Views are drawn one after the other, each recorded and
+submitted completely, so they share everything that is not a target (device, caches, shadow atlas, light buffers) and the
+`FrameContext` is refilled for each. A view that draws into the back buffer clears all of it: at most one per frame.
 
 ### Shader register map
 
@@ -72,10 +75,10 @@ declared twice (`utils/ConstantBufferTypes.h`, `common.hlsli`); the C++ side `st
 
 | Thing | Owner | Lifetime |
 |---|---|---|
-| Device, ResourceCache, ShaderCache, MaterialSystem | `RenderServices` inside `Renderer` | whole run |
+| Renderer (device, ResourceCache, ShaderCache, MaterialSystem, systems, graph) | `Application` (`GetRenderer()`; `Renderer::Get()` is the primary instance) | whole run |
 | Pipelines, shared constant + structured buffers, default sampler | `ResourceCache` | whole run (a structured buffer may be replaced by a bigger one) |
 | Back buffer, depth buffer | the device | recreated on resize: re-fetch every frame, never cache |
-| Scene texture + its depth | `Renderer` | replaced when the requested size changes |
+| A view's texture + its depth | the `RenderView` (the main one: the `Renderer`) | replaced when the requested size changes; released by `Renderer::Shutdown` |
 | Camera, batches, stats, pointers to the buffers above | `FrameContext` | one frame |
 | Meshes, materials, textures | whoever holds the `shared_ptr` | until the last holder lets go |
 
@@ -171,7 +174,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | C5 | No GPU instancing. | Open (P4; design the HLSL input first) |
 | C6 | About 450 MB of textures and models are tracked in git, and every Editor build copied all of it next to the exe. | Fixed. Copy: incremental (CMake >= 3.26). Size: **decided, see the C6 decision below**: stays in git, growth is stopped by a commit guard, no LFS, no history rewrite |
 | C7 | The scene target is 8-bit and every pixel shader tone maps and encodes its own output: no HDR, no exposure, blending and any later bloom or IBL work on tone-mapped values. HDR images are stored as 8 bits. | Open (P4b, step 1) |
-| C8 | `Renderer` is a global static: no second view (material preview, second viewport), no headless instance. | Open (P2) |
+| C8 | `Renderer` was a global static: no second view (material preview, second viewport), no headless instance. | Fixed. `Renderer` is an instance owned by `Application`; `RenderView` (target, size, clear colour, stats) + `Renderer::Render(view, scene, camera)` draw any scene through any number of views; `BeginScene/Submit/EndScene` remain as the main view's sequence. The editor's "View 2" panel is the first user. `Renderer::Get()` / `PrimaryDevice()` remain for code that cannot be handed a renderer (loaders) |
 
 ### D. Architecture
 | ID | Problem | Status |
@@ -183,7 +186,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | D5 | Play mode only hides the panels: there is no scene snapshot and restore, and no game layer separate from the editor. | Open (P3) |
 | D6 | The editor scene is built in C++ (`EditorLayer`) with asset paths relative to the working directory. | Open (P3) |
 | D7 | `ShadingModel::Emissive` is Lit plus emission under another name (the "one fact, two places" pattern the design rules out). | Open (P4) |
-| D8 | `SceneFactory` takes the device as a parameter while `Renderer::GetDevice()` is a global. `utils/` holds core types (Mesh, Material, Transform). | Open (P2) |
+| D8 | `SceneFactory` takes the device as a parameter while loaders and a few panels reach for `Renderer::PrimaryDevice()` / `Renderer::Get()`. `utils/` holds core types (Mesh, Material, Transform). | Open (P2: pass the device or the renderer explicitly; core types leave `utils/`) |
 | D9 | The scene has no environment lighting. IBL exists only as two *material* texture slots (`Environment`, `Irradiance`), and the only material that gets one is the sky dome, so every other object falls back to a flat ambient colour (metals go dark and flat, nothing is lit from "the sky"). Nothing produces the maps the shader expects: it reads `environmentTexture.SampleLevel(..., roughness * 8)` and assumes a GGX-prefiltered mip chain of exactly 8 levels, and `irradianceTexture` has no producer. The sky itself is an 8-bit LDR cube. | Open (P4: environment becomes a scene resource, baked from an HDR source) |
 
 ### E. Docs and tooling
@@ -247,13 +250,15 @@ Each phase ends with something a person can check. Do not start a phase with a f
 * *Exit:* a scene with 100k entities and one moving parent updates in a few milliseconds (a test with a time budget);
   `tests/CMakeLists.txt` has no engine `.cpp` listed more than once (now: none at all).
 
-**P2: Separate the editor, make the renderer an instance** (C8, D1, D8): *D1 done*
+**P2: Separate the editor, make the renderer an instance** (C8, D1, D8): *C8 and D1 done, D8 open*
 * ~~`DXEngineEditor` library holds `editor/`; `DXEngine.h` stops including it.~~ Done (D1).
-* `Renderer` becomes an object owned by `Application`; a `RenderView` (camera + target + scene) lets the editor render
-  more than one view. The global facade can stay as a thin wrapper until nothing uses it.
-* `SceneFactory` and friends take what they need explicitly. Core types leave `utils/`.
-* *Exit:* a minimal "Game" executable links the engine without ImGui (**met**: `Game/`, checked on the linked binary); the
-  editor shows two views of one scene (open, needs C8).
+* ~~`Renderer` becomes an object owned by `Application`; a `RenderView` lets the editor render more than one view.~~ Done (C8).
+  Still transitional: `Renderer::Get()` and `PrimaryDevice()` for code with no way to be handed a renderer.
+* `SceneFactory` and friends take what they need explicitly (device or renderer; no `PrimaryDevice()` in loaders). Core types
+  leave `utils/`. (D8, open.)
+* *Exit:* a minimal "Game" executable links the engine without ImGui (**met**, D1); the editor shows two views of one scene
+  (**met in code and tests**: View > View 2 draws the scene through a second camera into its own texture; **still to check on a
+  GPU**: open it, pin it, fly the main camera, compare, check that shadows and the main view are unaffected).
 
 **P3: Assets, scenes, play mode** (B8, D3, D5, D6)
 * `UUID` component on every entity; asset handles (id + path) replace `shared_ptr` in components; an asset registry
@@ -319,7 +324,8 @@ itself is textbook Cook-Torrance: GGX, Smith, Schlick, Lambert / PI, and is not 
 * The P1 build change (`DXEngineCore`, `dx_add_test`) was built end to end with a MinGW-w64 cross build of the real top-level
   CMake (the library, the Editor and all 17 test executables link) and the GPU-free tests were run on Linux against the same
   sources. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
-* **Never executed on a real GPU or window** (check by running the Editor): the depth pre-pass, the shadow bias values
+* **Never executed on a real GPU or window** (check by running the Editor): the new `Renderer` / `RenderView` path (main view
+  into the window and into the viewport texture, View 2, closing View 2, resizing the window with both open), the depth pre-pass, the shadow bias values
   (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` were chosen by reasoning), the editor's look,
   a middle-button fly, the gizmo handles, play mode, and a skinned model moving with its gizmo (B9: the horse, plus its shadow).
 * Shaders: every permutation (static and skinned vertex shaders, the shadow caster, the Lit / Unlit / Emissive / Skybox pixel

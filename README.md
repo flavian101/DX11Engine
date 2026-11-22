@@ -40,6 +40,8 @@ is set to that folder). Editing a shader in `Editor/assets/shaders` needs a buil
 * Left click picks, **F** frames the selection, **Q W E R** select / move / rotate / scale, **Ctrl+D** duplicates,
   **Del** deletes. **F1** switches between editing and playing (play hides the panels).
 * Models are imported from the Assets panel.
+* **View > View 2** shows the scene through a second camera in its own window (it starts at the editor camera's pose;
+  "Pin to editor camera" copies the pose again).
 
 ## Tests
 
