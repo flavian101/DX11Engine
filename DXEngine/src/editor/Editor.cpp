@@ -56,7 +56,7 @@ namespace DXEngine
         m_Ctx.viewportHovered = m_Ctx.viewportFocused = false;
         if (!m_Enabled)
         {
-            Renderer::SetSceneTargetSize(0, 0);                       // back into the window
+            Renderer::Get().SetSceneTargetSize(0, 0);                       // back into the window
             ImGuiLayer::Get().SetBlockMouseEvents(true);
             m_PlayHint = 4.0f;
         }
@@ -136,11 +136,11 @@ namespace DXEngine
         if (!m_VSyncApplied)
         {
             m_VSyncApplied = true;
-            Renderer::SetVSync(m_Prefs.vsync);
+            Renderer::Get().SetVSync(m_Prefs.vsync);
         }
-        else if (Renderer::IsVSyncEnabled() != m_Prefs.vsync)
+        else if (Renderer::Get().IsVSyncEnabled() != m_Prefs.vsync)
         {
-            m_Prefs.vsync = Renderer::IsVSyncEnabled();
+            m_Prefs.vsync = Renderer::Get().IsVSyncEnabled();
             SaveEditorPrefs(m_Prefs);
         }
 
@@ -151,7 +151,7 @@ namespace DXEngine
         }
 
         m_Ctx.flying = IsFlying();
-        m_Ctx.device = Renderer::GetDevice();
+        m_Ctx.device = Renderer::Get().GetDevice();
 
         // The order matters: the bars first (each one shrinks the area left), then the dock space inside what is left.
         DrawMainMenu();
@@ -167,6 +167,7 @@ namespace DXEngine
         m_Hierarchy.OnImGui(m_Ctx, &m_ShowHierarchy);
         m_Inspector.OnImGui(m_Ctx, &m_ShowInspector);
         m_Viewport.OnImGui(m_Ctx, &m_ShowViewport);
+        m_SecondView.OnImGui(m_Ctx, &m_ShowSecondView);
         RendererPanel::OnImGui(&m_ShowRenderer);
         m_Assets.Update(m_Ctx);                                    // carries out a held import, also while the window is hidden
         m_Assets.OnImGui(m_Ctx, &m_ShowAssets);
@@ -236,6 +237,7 @@ namespace DXEngine
             ImGui::MenuItem("Hierarchy", nullptr, &m_ShowHierarchy);
             ImGui::MenuItem("Inspector", nullptr, &m_ShowInspector);
             ImGui::MenuItem("Viewport",  nullptr, &m_ShowViewport);
+            ImGui::MenuItem("View 2",    nullptr, &m_ShowSecondView);
             ImGui::MenuItem("Renderer",  nullptr, &m_ShowRenderer);
             ImGui::MenuItem("Assets",    nullptr, &m_ShowAssets);
             ImGui::Separator();

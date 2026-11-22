@@ -16,7 +16,7 @@ namespace DXEngine
 	{
 		if (!m_TextureLoader)
 		{
-			m_TextureLoader = std::make_shared<TextureLoader>(Renderer::GetDevice());
+			m_TextureLoader = std::make_shared<TextureLoader>(Renderer::PrimaryDevice());
 		}
 	}
 

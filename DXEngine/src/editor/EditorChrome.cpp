@@ -105,15 +105,15 @@ namespace DXEngine
                 const float group = buttons * 3.0f + spacing * 5.0f + 1.0f;
                 ImGui::SameLine(ImGui::GetWindowWidth() - group - ImGui::GetStyle().WindowPadding.x);
 
-                bool wireframe = Renderer::IsWireframeEnabled();
+                bool wireframe = Renderer::Get().IsWireframeEnabled();
                 if (EditorIcons::Button("##wire", Icon::Wireframe, wireframe, "Wireframe"))
-                    Renderer::EnableWireframe(!wireframe);
+                    Renderer::Get().EnableWireframe(!wireframe);
                 ImGui::SameLine();
-                RenderEnvironment env = Renderer::GetEnvironment();
+                RenderEnvironment env = Renderer::Get().GetEnvironment();
                 if (EditorIcons::Button("##shadows", Icon::Shadow, env.shadows.enabled, "Shadows"))
                 {
                     env.shadows.enabled = !env.shadows.enabled;
-                    Renderer::SetEnvironment(env);
+                    Renderer::Get().SetEnvironment(env);
                 }
                 Divider();
                 if (EditorIcons::Button("##play", Icon::Play, false, "Play: the scene fills the window  (F1 to come back)"))
@@ -163,7 +163,7 @@ namespace DXEngine
 
                 // the numbers, right aligned
                 char stats[160];
-                const RenderStatistics& st = Renderer::GetStats();
+                const RenderStatistics& st = Renderer::Get().GetStats();
                 FormatStats(stats, sizeof(stats), ImGui::GetIO().Framerate, ctx.scene ? ctx.scene->EntityCount() : 0, st.drawCalls, st.trianglesRendered);
                 ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(stats).x - ImGui::GetStyle().WindowPadding.x);
                 ImGui::TextColored(pal.textDim, "%s", stats);

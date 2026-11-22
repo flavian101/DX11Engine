@@ -43,7 +43,7 @@ namespace DXEngine
     // FrameContext: the blackboard for ONE frame.
     //
     //  WHO WRITES WHAT (this table is the contract):
-    //   Renderer::BeginScene/Submit -> camera, cmd, targets, scene, environment
+    //   Renderer::Render            -> camera, cmd, targets, clear colour, scene, environment (one view at a time)
     //   SceneExtraction             -> batches (culling + material resolution + sorting)
     //   ShadowSystem                -> shadows (casters, views, atlas + buffers), shadow stats
     //   LightSystem                 -> lightBuffer, localLightBuffer, clusterBuffer, clusterRangeBuffer, lightIndexBuffer, stats
@@ -81,13 +81,14 @@ namespace DXEngine
         // ---- render targets: raw, NON-owning, re-fetched EVERY frame ----
         // (the device recreates the back buffer on resize, and the scene texture is replaced when its size changes,
         //  so caching either is a dangling-pointer bug)
-        // 'color' is where the 3D scene and the UI are drawn: the window's back buffer, or the scene texture when an
-        // editor asked for one (Renderer::SetSceneTargetSize). Passes never need to know which.
+        // 'color' is where the 3D scene and the UI are drawn: the window's back buffer, or the texture of the view being
+        // drawn when it has one (RenderView::SetSize). Passes never need to know which.
         struct RenderTargets
         {
             RHI::ITexture* color = nullptr;
             RHI::ITexture* depth = nullptr;
         } targets;
+        float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };         // the view's (Renderer::Render copies it in); ClearPass reads it
 
         // ---- produced by SceneExtraction ----
         BatchQueue batches;

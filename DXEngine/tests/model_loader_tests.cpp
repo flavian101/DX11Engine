@@ -27,9 +27,9 @@ using namespace DirectX;
 #endif
 
 // The loaders' default constructors ask the Renderer for its device; the test hands the loader a device itself, and this is
-// the one function of Renderer.cpp those constructors link against.
+// the one function of the renderer those constructors link against.
 static std::shared_ptr<RHI::IGraphicsDevice> g_device;
-namespace DXEngine { std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice() { return g_device; } }
+namespace DXEngine { std::shared_ptr<RHI::IGraphicsDevice> Renderer::PrimaryDevice() { return g_device; } }
 
 static int g_failures = 0;
 #define CHECK(c) do { if (!(c)) { std::printf("FAIL line %d: %s\n", __LINE__, #c); ++g_failures; } } while (0)

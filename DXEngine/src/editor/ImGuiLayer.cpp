@@ -19,7 +19,7 @@ namespace DXEngine
         // The two D3D11 objects the backend needs, or null when the device is not D3D11.
         RHI::D3D11Device* GetD3D11Device()
         {
-            auto device = Renderer::GetDevice();
+            auto device = Renderer::PrimaryDevice();
             if (!device || device->GetAPI() != RHI::GraphicsAPI::DirectX11)
                 return nullptr;
             return static_cast<RHI::D3D11Device*>(device.get());

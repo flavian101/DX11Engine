@@ -5,6 +5,7 @@
 #include "HierarchyPanel.h"
 #include "InspectorPanel.h"
 #include "RendererPanel.h"
+#include "SecondViewPanel.h"
 #include "ViewportPanel.h"
 #include "Event/Event.h"
 
@@ -75,6 +76,7 @@ namespace DXEngine
         HierarchyPanel m_Hierarchy;
         InspectorPanel m_Inspector;
         ViewportPanel  m_Viewport;
+        SecondViewPanel m_SecondView;
         AssetsPanel    m_Assets;
         EditorPrefs    m_Prefs;
         Entity         m_StressTest;                // the parent of the stress lights while they exist
@@ -85,6 +87,7 @@ namespace DXEngine
         bool  m_ShowHierarchy = true;
         bool  m_ShowInspector = true;
         bool  m_ShowViewport  = true;
+        bool  m_ShowSecondView = false;      // View > View 2: the scene through a second camera
         bool  m_ShowRenderer  = true;
         bool  m_ShowAssets    = true;
         bool  m_ShowShortcuts = false;

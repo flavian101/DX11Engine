@@ -3,7 +3,7 @@
 
 #include "Core/FrameContext.h"
 #include "Core/RenderGraph.h"
-#include "Core/SceneTarget.h"
+#include "Core/RenderView.h"
 #include "Cache/ResourceCache.h"
 #include "MaterialSystem.h"
 #include "ShaderCache.h"
@@ -27,94 +27,79 @@ namespace DXEngine
 {
     namespace
     {
-        // Everything the renderer owns, in ONE place. Created by Init, destroyed by Shutdown.
-        struct State
-        {
-            RenderServices services;                         // long-lived
-            std::shared_ptr<RHI::ICommandBuffer> cmd;
-
-            FrameContext frame;                              // the blackboard (reused every frame)
-            RenderGraph  graph;                              // GPU passes
-            std::shared_ptr<ClearPass> clearPass;            // typed handle for SetClearColor
-
-            SceneExtraction extraction;                      // CPU systems, run by EndScene
-            ShadowSystem    shadows;                         // BEFORE lights: the light buffers point at its views
-            LightSystem     lights;
-            RenderEnvironment environment;                   // ambient / exposure / gamma
-
-            // The editor's scene texture (null = the scene is drawn into the back buffer). 'request' is what was asked
-            // for, 'size' what exists; BeginScene makes the second follow the first.
-            std::shared_ptr<RHI::ITexture> sceneColor;
-            std::shared_ptr<RHI::ITexture> sceneDepth;
-            int             requestWidth  = 0;
-            int             requestHeight = 0;
-            SceneTargetSize sceneSize;
-
-            RenderStatistics lastStats;
-            float time = 0.0f;
-            bool  inScene = false;
-            bool  debugInfo = false;
-            bool  wireframe = false;
-        };
-
-        std::unique_ptr<State> g;
-        const RenderStatistics kEmptyStats{};
+        Renderer* s_Primary = nullptr;
 
         void Log(const char* msg) { OutputDebugStringA(msg); }
 
-        // The colour the window is cleared to while the scene is drawn into a texture (nothing in the graph touches
-        // the back buffer then). The editor covers all of it with its panels; this is what shows between frames of a resize.
+        // The colour the window is cleared to while the first view of a frame draws into a texture (nothing in the graph
+        // touches the back buffer then). The editor covers all of it with its panels; this is what shows between frames
+        // of a resize.
         constexpr float kWindowClear[4] = { 0.09f, 0.09f, 0.10f, 1.0f };
-
-        // Makes the scene texture match the requested size. Called at the start of a frame.
-        void UpdateSceneTarget()
-        {
-            RenderServices& s = g->services;
-            const SceneTargetSize want = ResolveSceneTargetSize(g->requestWidth, g->requestHeight,
-                                                                s.device->GetCapabilities().maxTextureSize);
-            if (want == g->sceneSize && (g->sceneColor != nullptr) == want.Enabled())
-                return;
-
-            g->sceneColor.reset();
-            g->sceneDepth.reset();
-            g->sceneSize = {};
-            if (!want.Enabled())
-                return;
-
-            RHI::TextureDesc color;
-            color.width  = want.width;
-            color.height = want.height;
-            color.format = RHI::TextureFormat::RGBA8_UNORM;        // the same as the back buffer: pipelines do not care which one they draw to
-            color.isRenderTarget = true;
-            color.debugName = "SceneColor";
-
-            RHI::TextureDesc depth = color;
-            depth.format = RHI::TextureFormat::D24_UNORM_S8_UINT;  // the same as the device's depth buffer
-            depth.isRenderTarget = false;
-            depth.isDepthStencil = true;
-            depth.debugName = "SceneDepth";
-
-            try
-            {
-                g->sceneColor = s.device->CreateTexture(color);
-                g->sceneDepth = s.device->CreateTexture(depth);
-                g->sceneSize  = want;
-            }
-            catch (const std::exception& e)       // D3D11Texture reports failure by throwing
-            {
-                Log((std::string("WARNING: scene texture could not be created, drawing into the back buffer: ") + e.what() + "\n").c_str());
-                g->sceneColor.reset();
-                g->sceneDepth.reset();
-                g->requestWidth = g->requestHeight = 0;   // do not retry (and log) every frame
-            }
-        }
     }
 
+    // Everything the renderer owns that is not a view, in ONE place. Created by Init, destroyed by Shutdown.
+    struct Renderer::Impl
+    {
+        RenderServices services;                         // long-lived, shared by every view
+        std::shared_ptr<RHI::ICommandBuffer> cmd;
+
+        FrameContext frame;                              // the blackboard: refilled for every view that is drawn
+        RenderGraph  graph;                              // GPU passes
+
+        SceneExtraction extraction;                      // CPU systems, run by Render
+        ShadowSystem    shadows;                         // BEFORE lights: the light buffers point at its views
+        LightSystem     lights;
+        RenderEnvironment environment;                   // ambient / exposure / gamma
+
+        float time = 0.0f;
+        float lastFrameTime = 0.0f;
+        float frameDelta = 0.0f;
+        int   viewsThisFrame = 0;                        // reset by Present: the first view of a frame is the timed one
+
+        // the BeginScene / Submit / EndScene sequence of the main view
+        bool inScene = false;
+        std::shared_ptr<Camera> pendingCamera;
+        Scene* pendingScene = nullptr;
+
+        bool debugInfo = false;
+        bool wireframe = false;
+    };
+
     // ------------------------------------------------------------------ lifetime
+    Renderer::Renderer()
+        : m_Main(new RenderView(this, "Main"))
+    {
+        m_Views.push_back(m_Main.get());
+    }
+
+    Renderer::~Renderer()
+    {
+        Shutdown();
+        for (RenderView* view : m_Views)      // views that outlive us must not call back into a dead renderer
+            view->m_Owner = nullptr;
+        m_Views.clear();
+    }
+
+    bool Renderer::HasInstance() { return s_Primary != nullptr; }
+    Renderer& Renderer::Get() { return *s_Primary; }
+    std::shared_ptr<RHI::IGraphicsDevice> Renderer::PrimaryDevice()
+    {
+        return s_Primary ? s_Primary->GetDevice() : std::shared_ptr<RHI::IGraphicsDevice>();
+    }
+
+    bool Renderer::IsInitialized() const { return m_Impl != nullptr; }
+
+    void Renderer::UnregisterView(RenderView* view)
+    {
+        m_Views.erase(std::remove(m_Views.begin(), m_Views.end(), view), m_Views.end());
+    }
+
     bool Renderer::Init(void* windowHandle, int width, int height)
     {
-        g = std::make_unique<State>();
-        RenderServices& s = g->services;
+        if (m_Impl) Shutdown();
+        m_Impl = std::make_unique<Impl>();
+        Impl& g = *m_Impl;
+        RenderServices& s = g.services;
 
         // 1) device
         s.device = std::shared_ptr<RHI::IGraphicsDevice>(
@@ -122,7 +107,7 @@ namespace DXEngine
         if (!s.device || !s.device->Initialize(windowHandle, width, height))
         {
             Log("ERROR: Renderer::Init - device creation failed\n");
-            g.reset();
+            m_Impl.reset();
             return false;
         }
 
@@ -131,15 +116,15 @@ namespace DXEngine
         s.shaders   = std::make_shared<ShaderCache>(s.device);
         s.materials = std::make_shared<MaterialSystem>(s.device, s.shaders);
         if (!s.resources->Initialize() || !s.shaders->Initialize() || !s.materials->Initialize() ||
-            !g->shadows.Initialize(s) || !g->lights.Initialize(s))
+            !g.shadows.Initialize(s) || !g.lights.Initialize(s))
         {
             Log("ERROR: Renderer::Init - service initialisation failed\n");
-            g.reset();
+            m_Impl.reset();
             return false;
         }
 
-        g->cmd = s.device->CreateCommandBuffer();
-        g->frame.services = &g->services;
+        g.cmd = s.device->CreateCommandBuffer();
+        g.frame.services = &g.services;
 
         // GPU timing per pass (the render graph opens a scope for each). Optional: without queries the renderer runs the same.
         s.profiler = std::make_shared<GpuProfiler>();
@@ -147,218 +132,251 @@ namespace DXEngine
             Log("WARNING: Renderer::Init - GPU timing queries are not available\n");
 
         // 3) the frame: passes run in the order they are added
-        g->graph.AddPass<ShadowPass>("shadow");          // first: every lit draw below samples the atlas it fills
-        g->clearPass = g->graph.AddPass<ClearPass>("clear");
-        g->graph.AddPass<DepthPrepass>("depth prepass"); // after the clear (it needs the cleared depth), before every colour pass
-        g->graph.AddPass<ForwardPass>("background",  ForwardPass::Queue::Background);
-        g->graph.AddPass<ForwardPass>("opaque",      ForwardPass::Queue::Opaque);
-        g->graph.AddPass<ForwardPass>("transparent", ForwardPass::Queue::Transparent);
+        g.graph.AddPass<ShadowPass>("shadow");          // first: every lit draw below samples the atlas it fills
+        g.graph.AddPass<ClearPass>("clear");
+        g.graph.AddPass<DepthPrepass>("depth prepass"); // after the clear (it needs the cleared depth), before every colour pass
+        g.graph.AddPass<ForwardPass>("background",  ForwardPass::Queue::Background);
+        g.graph.AddPass<ForwardPass>("opaque",      ForwardPass::Queue::Opaque);
+        g.graph.AddPass<ForwardPass>("transparent", ForwardPass::Queue::Transparent);
 
-        if (!g->graph.Compile() || !g->graph.Initialize(g->frame))
+        if (!g.graph.Compile() || !g.graph.Initialize(g.frame))
         {
             Log("ERROR: Renderer::Init - render graph setup failed\n");
-            g.reset();
+            m_Impl.reset();
             return false;
         }
+        s_Primary = this;
         Log("Renderer initialised\n");
         return true;
     }
 
     void Renderer::Shutdown()
     {
-        if (!g) return;
-        g->graph.Shutdown();
-        g->services.profiler.reset();
-        g->sceneColor.reset();
-        g->sceneDepth.reset();
-        g->services.resources->Clear();
-        g->cmd.reset();
-        g->services.materials.reset();
-        g->services.shaders.reset();
-        g->services.resources.reset();
-        g->services.device->Shutdown();     // device last: everything above may hold GPU objects
-        g->services.device.reset();
-        g.reset();
+        if (!m_Impl) return;
+        Impl& g = *m_Impl;
+
+        for (RenderView* view : m_Views)       // textures are GPU objects: they go before the device does (the views stay usable, empty)
+            view->ReleaseTargets();
+
+        g.graph.Shutdown();
+        g.services.profiler.reset();
+        g.services.resources->Clear();
+        g.cmd.reset();
+        g.services.materials.reset();
+        g.services.shaders.reset();
+        g.services.resources.reset();
+        g.services.device->Shutdown();     // device last: everything above may hold GPU objects
+        g.services.device.reset();
+        m_Impl.reset();
+        if (s_Primary == this) s_Primary = nullptr;
     }
 
-    std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice()
+    std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice() const
     {
-        return g ? g->services.device : std::shared_ptr<RHI::IGraphicsDevice>();
+        return m_Impl ? m_Impl->services.device : std::shared_ptr<RHI::IGraphicsDevice>();
     }
 
     void Renderer::SetEnvironment(const RenderEnvironment& environment)
     {
-        if (g) g->environment = environment;
+        if (m_Impl) m_Impl->environment = environment;
     }
 
-    RenderEnvironment Renderer::GetEnvironment()
+    RenderEnvironment Renderer::GetEnvironment() const
     {
-        return g ? g->environment : RenderEnvironment();
+        return m_Impl ? m_Impl->environment : RenderEnvironment();
     }
 
-    // ------------------------------------------------------------------ per frame
-    void Renderer::SetTime(float totalSeconds) { if (g) g->time = totalSeconds; }
+    void Renderer::SetTime(float totalSeconds) { if (m_Impl) m_Impl->time = totalSeconds; }
 
-    void Renderer::SetClearColor(float r, float gr, float b, float a)
+    // ------------------------------------------------------------------ views
+    RenderView& Renderer::GetMainView() { return *m_Main; }
+
+    std::unique_ptr<RenderView> Renderer::CreateView(const std::string& name)
     {
-        if (g && g->clearPass) g->clearPass->SetColor(r, gr, b, a);
+        if (!m_Impl) return nullptr;
+        std::unique_ptr<RenderView> view(new RenderView(this, name));
+        m_Views.push_back(view.get());
+        return view;
     }
 
-    void Renderer::BeginScene(const std::shared_ptr<Camera>& camera)
+    // ------------------------------------------------------------------ one picture
+    void Renderer::Render(RenderView& view, Scene* scene, const std::shared_ptr<Camera>& camera)
     {
-        if (!g || !camera) { Log("WARNING: BeginScene without renderer or camera\n"); return; }
+        if (!m_Impl || !camera) { Log("WARNING: Renderer::Render without renderer or camera\n"); return; }
+        if (view.m_Owner != this) { Log("WARNING: Renderer::Render with a view of another renderer\n"); return; }
 
-        FrameContext& f = g->frame;
-        const float delta = std::max(0.0f, g->time - f.totalTime);    // before BeginFrame overwrites totalTime
-        f.BeginFrame(delta, g->time);
+        // The renderer only READS the scene. World matrices are the application's to bring up to date
+        // (TransformSystem::Update, after gameplay and animation, before Render); a stale one is drawn where it was.
+#ifdef _DEBUG
+        if (scene)
+            assert(TransformSystem::IsCurrent(*scene) && "call TransformSystem::Update(scene) before drawing it");
+#endif
 
-        f.camera = camera;
-        f.cmd    = g->cmd.get();
-        f.environment = g->environment;
-
-        // Ask EVERY frame: the device recreates the back buffer on resize and the scene texture changes with its panel,
-        // a cached pointer would dangle.
-        UpdateSceneTarget();
-        if (g->sceneColor)
+        Impl& g = *m_Impl;
+        FrameContext& f = g.frame;
+        const bool firstView = (g.viewsThisFrame == 0);
+        ++g.viewsThisFrame;
+        if (firstView)       // one delta per FRAME, not per view
         {
-            f.targets.color = g->sceneColor.get();
-            f.targets.depth = g->sceneDepth.get();
+            g.frameDelta = std::max(0.0f, g.time - g.lastFrameTime);
+            g.lastFrameTime = g.time;
+        }
+
+        f.BeginFrame(g.frameDelta, g.time);
+        f.camera = camera;
+        f.cmd    = g.cmd.get();
+        f.environment = g.environment;
+        f.scene.world = scene;
+        std::copy(view.GetClearColor(), view.GetClearColor() + 4, f.clearColor);
+
+        // Ask EVERY frame: the device recreates the back buffer on resize and a view's texture changes with its panel,
+        // a cached pointer would dangle.
+        view.ApplySize(*g.services.device);
+        if (view.DrawsToTexture())
+        {
+            f.targets.color = view.m_Color.get();
+            f.targets.depth = view.m_Depth.get();
         }
         else
         {
-            f.targets.color = g->services.device->GetBackBuffer();
-            f.targets.depth = g->services.device->GetDepthBuffer();
+            f.targets.color = g.services.device->GetBackBuffer();
+            f.targets.depth = g.services.device->GetDepthBuffer();
         }
 
-        g->cmd->Begin();
-        if (g->sceneColor)      // the graph draws into the texture: the window itself is not touched by any pass
-            g->cmd->ClearRenderTarget(g->services.device->GetBackBuffer(), kWindowClear[0], kWindowClear[1], kWindowClear[2], kWindowClear[3]);
-        g->inScene = true;
+        g.cmd->Begin();
+        if (view.DrawsToTexture() && firstView)     // the graph draws into the texture: the window itself is not touched by any pass
+            g.cmd->ClearRenderTarget(g.services.device->GetBackBuffer(), kWindowClear[0], kWindowClear[1], kWindowClear[2], kWindowClear[3]);
+
+        // ---- CPU systems: fill the blackboard
+        if (f.scene.world)
+        {
+            ExtractionCamera ec;
+            DirectX::XMStoreFloat4x4(&ec.view, f.camera->GetViewMatrix());
+            DirectX::XMStoreFloat4x4(&ec.projection, f.camera->GetProjectionMatrix());
+            ec.position = f.camera->GetPositionFloat3();
+            g.extraction.Extract(*f.scene.world, ec, f.batches, f.stats);   // scene -> batches
+            g.shadows.Update(f, g.extraction, ec);                          // which lights cast, where their tiles are, which casters
+        }
+        g.lights.Upload(f);                                                 // scene lights + environment -> lightBuffer
+
+        // ---- GPU passes: read the blackboard
+        GpuProfiler& gpu = *g.services.profiler;
+        if (firstView) gpu.BeginFrame(*g.cmd);      // one timed picture per frame; scopes of the other views are no-ops
+        g.graph.Execute(f);
+        if (firstView) gpu.EndFrame(*g.cmd);
+
+        g.cmd->End();
+        g.services.device->Submit(g.cmd.get());
+
+        view.m_Stats = f.stats;
+        f.scene.Clear();             // drop the scene pointer now, not at the start of the next frame
+        f.camera.reset();
+
+        if (g.debugInfo && firstView) Log(GetDebugInfo().c_str());
+    }
+
+    // ------------------------------------------------------------------ the main view, in the old sequence
+    void Renderer::BeginScene(const std::shared_ptr<Camera>& camera)
+    {
+        if (!m_Impl || !camera) { Log("WARNING: BeginScene without renderer or camera\n"); return; }
+        m_Impl->pendingCamera = camera;
+        m_Impl->pendingScene  = nullptr;
+        m_Impl->inScene = true;
     }
 
     void Renderer::Submit(Scene& scene)
     {
-        if (!g || !g->inScene) return;
-        // The renderer only READS the scene. World matrices are the application's to bring up to date
-        // (TransformSystem::Update, after gameplay and animation, before Submit); a stale one is drawn where it was.
-#ifdef _DEBUG
-        assert(TransformSystem::IsCurrent(scene) && "call TransformSystem::Update(scene) before Renderer::Submit");
-#endif
-        g->frame.scene.world = &scene;
+        if (!m_Impl || !m_Impl->inScene) return;
+        m_Impl->pendingScene = &scene;
     }
 
     void Renderer::EndScene()
     {
-        if (!g || !g->inScene) return;
-        FrameContext& f = g->frame;
-
-        // ---- CPU systems: fill the blackboard
-        if (f.scene.world && f.camera)
-        {
-            ExtractionCamera camera;
-            DirectX::XMStoreFloat4x4(&camera.view, f.camera->GetViewMatrix());
-            DirectX::XMStoreFloat4x4(&camera.projection, f.camera->GetProjectionMatrix());
-            camera.position = f.camera->GetPositionFloat3();
-            g->extraction.Extract(*f.scene.world, camera, f.batches, f.stats);   // scene -> batches
-            g->shadows.Update(f, g->extraction, camera);                          // which lights cast, where their tiles are, which casters
-        }
-        g->lights.Upload(f);                                                    // scene lights + environment -> lightBuffer
-
-        // ---- GPU passes: read the blackboard
-        GpuProfiler& gpu = *g->services.profiler;
-        gpu.BeginFrame(*g->cmd);
-        g->graph.Execute(f);
-        gpu.EndFrame(*g->cmd);
-
-        g->cmd->End();
-        g->services.device->Submit(g->cmd.get());
-
-        g->lastStats = f.stats;
-        f.scene.Clear();             // drop the scene pointer now, not at the start of the next frame
-        f.camera.reset();
-        g->inScene = false;
-
-        if (g->debugInfo) Log(GetDebugInfo().c_str());
+        if (!m_Impl || !m_Impl->inScene) return;
+        Impl& g = *m_Impl;
+        Scene* scene = g.pendingScene;
+        std::shared_ptr<Camera> camera = std::move(g.pendingCamera);
+        g.pendingScene = nullptr;
+        g.pendingCamera.reset();
+        g.inScene = false;
+        Render(*m_Main, scene, camera);
     }
+
+    void Renderer::SetClearColor(float r, float gr, float b, float a) { m_Main->SetClearColor(r, gr, b, a); }
+    void Renderer::SetSceneTargetSize(int width, int height) { if (m_Impl) m_Main->SetSize(width, height); }
+    RHI::ITexture* Renderer::GetSceneTexture() const { return m_Main->GetTexture(); }
 
     // ------------------------------------------------------------------ settings / queries
     void Renderer::OnWindowResize(int width, int height)
     {
-        if (!g || width <= 0 || height <= 0) return;
-        g->services.device->Resize(width, height);
-        g->graph.OnResize(width, height);
+        if (!m_Impl || width <= 0 || height <= 0) return;
+        m_Impl->services.device->Resize(width, height);
+        m_Impl->graph.OnResize(width, height);
     }
-
-    void Renderer::SetSceneTargetSize(int width, int height)
-    {
-        if (!g) return;
-        g->requestWidth  = width;
-        g->requestHeight = height;       // applied by the next BeginScene
-    }
-
-    RHI::ITexture* Renderer::GetSceneTexture() { return g ? g->sceneColor.get() : nullptr; }
 
     void Renderer::Present()
     {
-        if (g) g->services.device->Present();
+        if (!m_Impl) return;
+        m_Impl->services.device->Present();
+        m_Impl->viewsThisFrame = 0;
     }
 
     void Renderer::SetVSync(bool enabled)
     {
-        if (g) g->services.device->SetVSync(enabled);
+        if (m_Impl) m_Impl->services.device->SetVSync(enabled);
     }
 
-    bool Renderer::IsVSyncEnabled()
+    bool Renderer::IsVSyncEnabled() const
     {
-        return g && g->services.device->IsVSync();
+        return m_Impl && m_Impl->services.device->IsVSync();
     }
 
     void Renderer::SetGpuProfilingEnabled(bool enabled)
     {
-        if (g && g->services.profiler) g->services.profiler->SetEnabled(enabled);
+        if (m_Impl && m_Impl->services.profiler) m_Impl->services.profiler->SetEnabled(enabled);
     }
 
-    bool Renderer::IsGpuProfilingEnabled()
+    bool Renderer::IsGpuProfilingEnabled() const
     {
-        return g && g->services.profiler && g->services.profiler->IsEnabled();
+        return m_Impl && m_Impl->services.profiler && m_Impl->services.profiler->IsEnabled();
     }
 
-    bool Renderer::IsGpuProfilingAvailable()
+    bool Renderer::IsGpuProfilingAvailable() const
     {
-        return g && g->services.profiler && g->services.profiler->IsAvailable();
+        return m_Impl && m_Impl->services.profiler && m_Impl->services.profiler->IsAvailable();
     }
 
-    const GpuFrameTimings& Renderer::GetGpuTimings()
+    const GpuFrameTimings& Renderer::GetGpuTimings() const
     {
         static const GpuFrameTimings kNone{};
-        return (g && g->services.profiler) ? g->services.profiler->GetTimings() : kNone;
+        return (m_Impl && m_Impl->services.profiler) ? m_Impl->services.profiler->GetTimings() : kNone;
     }
 
     void Renderer::EnableWireframe(bool enable)
     {
-        if (!g) return;
-        g->wireframe = enable;
-        g->services.resources->SetWireframeMode(enable);
+        if (!m_Impl) return;
+        m_Impl->wireframe = enable;
+        m_Impl->services.resources->SetWireframeMode(enable);
     }
 
-    bool Renderer::IsWireframeEnabled() { return g && g->wireframe; }
-    bool Renderer::IsFrustumCullingEnabled() { return g && g->extraction.GetConfig().frustumCulling; }
+    bool Renderer::IsWireframeEnabled() const { return m_Impl && m_Impl->wireframe; }
+    bool Renderer::IsFrustumCullingEnabled() const { return m_Impl && m_Impl->extraction.GetConfig().frustumCulling; }
 
     void Renderer::EnableFrustumCulling(bool enable)
     {
-        if (!g) return;
-        ExtractionConfig cfg = g->extraction.GetConfig();
+        if (!m_Impl) return;
+        ExtractionConfig cfg = m_Impl->extraction.GetConfig();
         cfg.frustumCulling = enable;
-        g->extraction.SetConfig(cfg);
+        m_Impl->extraction.SetConfig(cfg);
     }
 
-    void Renderer::EnableDebugInfo(bool enable) { if (g) g->debugInfo = enable; }
+    void Renderer::EnableDebugInfo(bool enable) { if (m_Impl) m_Impl->debugInfo = enable; }
 
-    const RenderStatistics& Renderer::GetStats() { return g ? g->lastStats : kEmptyStats; }
+    const RenderStatistics& Renderer::GetStats() const { return m_Main->GetStats(); }
 
-    std::string Renderer::GetDebugInfo()
+    std::string Renderer::GetDebugInfo() const
     {
-        if (!g) return "Renderer not initialised\n";
-        return g->lastStats.ToString() + g->graph.GetDebugInfo() + g->services.resources->GetDebugInfo();
+        if (!m_Impl) return "Renderer not initialised\n";
+        return m_Main->GetStats().ToString() + m_Impl->graph.GetDebugInfo() + m_Impl->services.resources->GetDebugInfo();
     }
 }

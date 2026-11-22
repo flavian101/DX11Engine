@@ -28,6 +28,8 @@ namespace DXEngine {
 
 		inline static  Application& Get() { return *s_Instance; }
 		inline static bool HasInstance() { return s_Instance != nullptr; }
+		// The renderer this application owns (also reachable as Renderer::Get()).
+		inline Renderer& GetRenderer() { return *m_Renderer; }
 		inline Window& GetWindow() { return *m_Window; }
 
 	protected:
@@ -51,6 +53,7 @@ namespace DXEngine {
 	private:
 		FrameTime m_Deltatime;
 		std::unique_ptr<Window> m_Window;
+		std::unique_ptr<Renderer> m_Renderer;       // after the window (it draws into it), before the layers (they use it)
 		bool m_Minimized = false;
 		LayerStack m_LayerStack;
 

@@ -39,7 +39,7 @@ namespace DXEngine {
     class ModelLoader
     {
     public:
-        // Uses Renderer::GetDevice(): the loader creates GPU meshes and textures, so the renderer must be
+        // Uses Renderer::PrimaryDevice(): the loader creates GPU meshes and textures, so the renderer must be
         // initialised first. Pass a device explicitly to load models without the global renderer.
         ModelLoader();
         explicit ModelLoader(std::shared_ptr<RHI::IGraphicsDevice> device);

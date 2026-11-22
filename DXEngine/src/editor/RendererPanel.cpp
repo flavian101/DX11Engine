@@ -134,17 +134,17 @@ namespace DXEngine
     // they are what to compare when a setting is switched (the depth pre-pass, light culling, shadow resolution).
     static void DrawGpuTimings()
     {
-        if (!Renderer::IsGpuProfilingAvailable())
+        if (!Renderer::Get().IsGpuProfilingAvailable())
         {
             ImGui::TextDisabled("This device cannot create timestamp queries.");
             return;
         }
 
-        bool enabled = Renderer::IsGpuProfilingEnabled();
-        if (ImGui::Checkbox("Measure GPU time", &enabled)) Renderer::SetGpuProfilingEnabled(enabled);
+        bool enabled = Renderer::Get().IsGpuProfilingEnabled();
+        if (ImGui::Checkbox("Measure GPU time", &enabled)) Renderer::Get().SetGpuProfilingEnabled(enabled);
         if (!enabled) return;
 
-        const GpuFrameTimings& t = Renderer::GetGpuTimings();
+        const GpuFrameTimings& t = Renderer::Get().GetGpuTimings();
         if (!t.valid)
         {
             ImGui::TextDisabled("Waiting for the first measurement...");
@@ -175,18 +175,18 @@ namespace DXEngine
             return;
         }
 
-        RenderEnvironment env = Renderer::GetEnvironment();
+        RenderEnvironment env = Renderer::Get().GetEnvironment();
         bool changed = false;
 
         if (ImGui::CollapsingHeader("Display", ImGuiTreeNodeFlags_DefaultOpen) && PropertyGrid::Begin("display"))
         {
-            bool wireframe = Renderer::IsWireframeEnabled();
-            if (PropertyGrid::Checkbox("Wireframe", wireframe)) Renderer::EnableWireframe(wireframe);
-            bool culling = Renderer::IsFrustumCullingEnabled();
-            if (PropertyGrid::Checkbox("Frustum culling", culling)) Renderer::EnableFrustumCulling(culling);
+            bool wireframe = Renderer::Get().IsWireframeEnabled();
+            if (PropertyGrid::Checkbox("Wireframe", wireframe)) Renderer::Get().EnableWireframe(wireframe);
+            bool culling = Renderer::Get().IsFrustumCullingEnabled();
+            if (PropertyGrid::Checkbox("Frustum culling", culling)) Renderer::Get().EnableFrustumCulling(culling);
             // waits for the display's refresh: no tearing and a capped frame rate; off shows what the GPU can really do
-            bool vsync = Renderer::IsVSyncEnabled();
-            if (PropertyGrid::Checkbox("V-Sync", vsync)) Renderer::SetVSync(vsync);
+            bool vsync = Renderer::Get().IsVSyncEnabled();
+            if (PropertyGrid::Checkbox("V-Sync", vsync)) Renderer::Get().SetVSync(vsync);
             PropertyGrid::End();
         }
 
@@ -198,7 +198,7 @@ namespace DXEngine
 
         if (ImGui::CollapsingHeader("Statistics (last frame)"))
         {
-            const RenderStatistics& st = Renderer::GetStats();
+            const RenderStatistics& st = Renderer::Get().GetStats();
             if (PropertyGrid::Begin("stats"))
             {
                 PropertyGrid::Text("Frame", "%.1f FPS  (%.2f ms)", ImGui::GetIO().Framerate, ImGui::GetIO().Framerate > 0.0f ? 1000.0f / ImGui::GetIO().Framerate : 0.0f);
@@ -222,7 +222,7 @@ namespace DXEngine
             DrawGpuTimings();
 
         if (changed)
-            Renderer::SetEnvironment(env);
+            Renderer::Get().SetEnvironment(env);
 
         ImGui::End();
     }

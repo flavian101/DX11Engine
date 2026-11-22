@@ -64,7 +64,7 @@ namespace DXEngine
                 const std::string path = PlatformDialogs::OpenImageFile();
                 if (!path.empty())
                 {
-                    if (auto device = Renderer::GetDevice())
+                    if (auto device = Renderer::PrimaryDevice())
                         if (auto texture = ImageLoader::LoadForSlot(*device, path, slot))
                             m.SetTexture(slot, texture);
                 }

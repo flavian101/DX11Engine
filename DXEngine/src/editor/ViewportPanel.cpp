@@ -23,7 +23,7 @@ namespace DXEngine
         if (open && !*open)
         {
             // hidden panel: the scene is still drawn (into a texture nobody shows) at the last size, never into the window
-            Renderer::SetSceneTargetSize(std::max(m_Size.width, 1), std::max(m_Size.height, 1));
+            Renderer::Get().SetSceneTargetSize(std::max(m_Size.width, 1), std::max(m_Size.height, 1));
             return;
         }
 
@@ -40,7 +40,7 @@ namespace DXEngine
             if (ctx.camera)       // the camera follows the PANEL, not the window (CameraController::SetFollowWindowAspect(false))
                 ctx.camera->GetCamera()->SetAspectRatio(ViewportMath::AspectRatio(m_Size.width, m_Size.height));
         }
-        Renderer::SetSceneTargetSize(m_Size.width, m_Size.height);
+        Renderer::Get().SetSceneTargetSize(m_Size.width, m_Size.height);
 
         if (!visible)
         {
@@ -49,7 +49,7 @@ namespace DXEngine
         }
 
         // ---- the image ----
-        RHI::ITexture* texture = Renderer::GetSceneTexture();
+        RHI::ITexture* texture = Renderer::Get().GetSceneTexture();
         ImGui::SetNextItemAllowOverlap();             // the toolbar sits on top of it
         if (texture)
             ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<uintptr_t>(texture->GetNativeHandle())), avail);

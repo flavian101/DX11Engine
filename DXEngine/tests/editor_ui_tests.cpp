@@ -7,6 +7,7 @@
 #include "editor/EditorChrome.h"
 #include "editor/EditorContext.h"
 #include "editor/EditorIcons.h"
+#include "editor/SecondViewPanel.h"
 #include "editor/EditorTheme.h"
 #include "editor/PropertyGrid.h"
 #include "editor/RendererPanel.h"
@@ -35,32 +36,57 @@
 
 using namespace DXEngine;
 
-// The renderer is not linked into this test: the two functions the viewport panel calls.
+// The renderer is not linked into this test (it needs a GPU): these are the members the panels call, kept in plain
+// variables, and just enough of the class to have an object to call them on. Nothing here touches a member of Renderer.
 namespace DXEngine
 {
+    struct Renderer::Impl {};
+    Renderer::Renderer() : m_Main(new RenderView(this, "Main")) { m_Views.push_back(m_Main.get()); }
+    Renderer::~Renderer() {}
+    bool Renderer::HasInstance() { return true; }
+    RenderView& Renderer::GetMainView() { return *m_Main; }
+    std::unique_ptr<RenderView> Renderer::CreateView(const std::string& name)
+    {
+        std::unique_ptr<RenderView> view(new RenderView(this, name));
+        m_Views.push_back(view.get());
+        return view;
+    }
+    // counts what was asked to be drawn, and how
+    static int g_renders = 0;
+    static Scene* g_renderScene = nullptr;
+    static const Camera* g_renderCamera = nullptr;
+    static bool g_renderSceneWasCurrent = false;
+    void Renderer::Render(RenderView&, Scene* scene, const std::shared_ptr<Camera>& camera)
+    {
+        ++g_renders; g_renderScene = scene; g_renderCamera = camera.get();
+        g_renderSceneWasCurrent = scene && TransformSystem::IsCurrent(*scene);
+    }
+    void Renderer::UnregisterView(RenderView*) {}
+    Renderer& Renderer::Get() { static Renderer* stub = new Renderer(); return *stub; }
+
     static int g_lastSceneW = -1, g_lastSceneH = -1;
     void Renderer::SetSceneTargetSize(int w, int h) { g_lastSceneW = w; g_lastSceneH = h; }
-    RHI::ITexture* Renderer::GetSceneTexture() { return nullptr; }
+    RHI::ITexture* Renderer::GetSceneTexture() const { return nullptr; }
 
-    // what the toolbar and the Renderer panel read and write: kept in plain variables
+    // what the toolbar and the Renderer panel read and write
     static RenderEnvironment g_env;
     static bool g_wireframe = false, g_culling = true;
     static RenderStatistics g_stats;
     void Renderer::EnableWireframe(bool e) { g_wireframe = e; }
-    bool Renderer::IsWireframeEnabled() { return g_wireframe; }
+    bool Renderer::IsWireframeEnabled() const { return g_wireframe; }
     void Renderer::EnableFrustumCulling(bool e) { g_culling = e; }
-    bool Renderer::IsFrustumCullingEnabled() { return g_culling; }
+    bool Renderer::IsFrustumCullingEnabled() const { return g_culling; }
     void Renderer::SetEnvironment(const RenderEnvironment& e) { g_env = e; }
-    RenderEnvironment Renderer::GetEnvironment() { return g_env; }
-    const RenderStatistics& Renderer::GetStats() { return g_stats; }
+    RenderEnvironment Renderer::GetEnvironment() const { return g_env; }
+    const RenderStatistics& Renderer::GetStats() const { return g_stats; }
     static bool g_vsync = false, g_gpuTiming = true;
     static GpuFrameTimings g_timings;
     void Renderer::SetVSync(bool e) { g_vsync = e; }
-    bool Renderer::IsVSyncEnabled() { return g_vsync; }
+    bool Renderer::IsVSyncEnabled() const { return g_vsync; }
     void Renderer::SetGpuProfilingEnabled(bool e) { g_gpuTiming = e; }
-    bool Renderer::IsGpuProfilingEnabled() { return g_gpuTiming; }
-    bool Renderer::IsGpuProfilingAvailable() { return true; }
-    const GpuFrameTimings& Renderer::GetGpuTimings() { return g_timings; }
+    bool Renderer::IsGpuProfilingEnabled() const { return g_gpuTiming; }
+    bool Renderer::IsGpuProfilingAvailable() const { return true; }
+    const GpuFrameTimings& Renderer::GetGpuTimings() const { return g_timings; }
 }
 
 // The camera behaviours poll Input; there is no window here, so nothing is ever pressed.
@@ -78,11 +104,11 @@ namespace DXEngine
     };
 }
 
-// The panels reach two functions of code this test does not link (the renderer and the image decoder). Neither is
+// The panels reach two functions of code this test does not link (the renderer's primary device and the image decoder). Neither is
 // needed without a GPU: no device, and no texture. (The stubs were missing, so this target did not link.)
 namespace DXEngine
 {
-    std::shared_ptr<RHI::IGraphicsDevice> Renderer::GetDevice() { return nullptr; }
+    std::shared_ptr<RHI::IGraphicsDevice> Renderer::PrimaryDevice() { return nullptr; }
     std::shared_ptr<RHI::ITexture> ImageLoader::LoadForSlot(RHI::IGraphicsDevice&, const std::string&, TextureSlot, bool) { return nullptr; }
 }
 
@@ -266,6 +292,70 @@ static float Distance(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
 }
 
 // The viewport with a real camera: aspect follows the panel, the outline path runs, a click picks, F frames the selection.
+// The second view: its own camera, its own texture, drawn from inside the panel; closing it frees the view.
+static void TestSecondViewPanel()
+{
+    static NoInput noInput;
+    Input::Init(&noInput);
+
+    UiEnv env;
+    EditorTheme::Apply(1.0f);
+    Scene scene; EditorContext ctx; Populate(scene, ctx);
+    ctx.camera = std::make_shared<CameraController>();
+    ctx.camera->SetFollowWindowAspect(false);
+    ctx.camera->GetCamera()->SetPosition({ 4, 5, 6 });
+    ctx.camera->GetCamera()->SetRotation({ -0.3f, 0.7f, 0.0f });
+
+    SecondViewPanel panel;
+    bool open = false;
+
+    // closed: nothing is created and nothing is drawn
+    g_renders = 0;
+    Frame([&] { panel.OnImGui(ctx, &open); });
+    CHECK(!panel.HasView() && g_renders == 0);
+
+    // open: a view and a camera appear, the scene is drawn through THAT camera (not the editor's), once per frame
+    open = true;
+    for (int i = 0; i < 3; ++i) Frame([&] { panel.OnImGui(ctx, &open); });
+    CHECK(panel.HasView() && panel.ViewCamera() != nullptr);
+    CHECK(g_renders == 3);
+    CHECK(g_renderScene == &scene);
+    CHECK(g_renderCamera == panel.ViewCamera() && g_renderCamera != ctx.camera->GetCamera().get());
+    CHECK(panel.TargetSize().width >= 1 && panel.TargetSize().height >= 1);
+
+    // it started where the editor camera was ...
+    Camera* view = const_cast<Camera*>(panel.ViewCamera());
+    CHECK(Distance(view->GetPositionFloat3(), { 4, 5, 6 }) < 1e-5f);
+    // ... and does NOT follow it afterwards, until pinned again
+    ctx.camera->GetCamera()->SetPosition({ -7, 1, 2 });
+    for (int i = 0; i < 2; ++i) Frame([&] { panel.OnImGui(ctx, &open); });
+    CHECK(Distance(view->GetPositionFloat3(), { 4, 5, 6 }) < 1e-5f);
+    panel.Pin(ctx);
+    CHECK(Distance(view->GetPositionFloat3(), { -7, 1, 2 }) < 1e-5f);
+    CHECK(Distance(view->GetRotationFloat3(), { -0.3f, 0.7f, 0.0f }) < 1e-5f);
+
+    // world matrices are brought up to date before drawing: a move made earlier in the same frame is not drawn stale
+    Entity mover = scene.Wrap(scene.Registry().view<NameComponent>().begin()[0]);
+    mover.Get<TransformComponent>().position = { 40, 0, 0 };
+    CHECK(!TransformSystem::IsCurrent(scene));
+    Frame([&] { panel.OnImGui(ctx, &open); });
+    CHECK(g_renderSceneWasCurrent);
+
+    // no scene: says so, draws nothing
+    const int before = g_renders;
+    EditorContext empty;
+    Frame([&] { panel.OnImGui(empty, &open); });
+    CHECK(g_renders == before);
+
+    // closing frees the view; reopening makes a new one
+    open = false;
+    Frame([&] { panel.OnImGui(ctx, &open); });
+    CHECK(!panel.HasView());
+    open = true;
+    Frame([&] { panel.OnImGui(ctx, &open); });
+    CHECK(panel.HasView());
+}
+
 static void TestViewportWithCamera()
 {
     static NoInput noInput;
@@ -762,14 +852,14 @@ static void TestRendererPanel()
 {
     UiEnv env;
     EditorTheme::Apply(1.0f);
-    Renderer::SetEnvironment(RenderEnvironment());
-    const RenderEnvironment before = Renderer::GetEnvironment();
+    Renderer::Get().SetEnvironment(RenderEnvironment());
+    const RenderEnvironment before = Renderer::Get().GetEnvironment();
 
     bool open = true;
     for (int i = 0; i < 4; ++i)
         Frame([&] { RendererPanel::OnImGui(&open); });
     // looking at the panel changes nothing
-    const RenderEnvironment after = Renderer::GetEnvironment();
+    const RenderEnvironment after = Renderer::Get().GetEnvironment();
     CHECK(after.exposure == before.exposure && after.gamma == before.gamma && after.shadows.enabled == before.shadows.enabled &&
           after.shadows.cascadeCount == before.shadows.cascadeCount && after.lightCulling == before.lightCulling &&
           after.depthPrepass == before.depthPrepass);
@@ -1115,6 +1205,7 @@ int main()
         { "inspector panel: every entity kind",             TestInspectorPanel },
         { "viewport panel: size request, tools, hidden",    TestViewportPanel },
         { "viewport panel: camera, outline, pick, frame",   TestViewportWithCamera },
+        { "second view: own camera, own view, closes",      TestSecondViewPanel },
         { "imgui: captures while a button is held",         TestImGuiCapturesWhileAButtonIsHeld },
         { "camera: input gate",                             TestCameraInputGate },
         { "theme: scale applies, never compounds",          TestThemeScaling },

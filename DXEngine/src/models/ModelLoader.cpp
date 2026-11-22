@@ -28,7 +28,7 @@ namespace DXEngine
     };
 
     ModelLoader::ModelLoader()
-        : ModelLoader(Renderer::GetDevice())
+        : ModelLoader(Renderer::PrimaryDevice())
     {
     }
 

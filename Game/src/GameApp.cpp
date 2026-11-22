@@ -12,14 +12,14 @@ public:
 
     void OnAttach() override
     {
-        Renderer::SetEnvironment(RenderEnvironment());
-        Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
+        Renderer::Get().SetEnvironment(RenderEnvironment());
+        Renderer::Get().SetClearColor(0.1f, 0.1f, 0.16f);
 
         m_Camera = std::make_shared<CameraController>();
         m_Camera->GetCamera()->SetPosition({ 0.0f, 3.0f, 9.0f });
         m_Camera->GetCamera()->SetRotation({ -0.2f, 0.0f, 0.0f });
 
-        auto device = Renderer::GetDevice();
+        auto device = Renderer::Get().GetDevice();
         auto ground = MaterialFactory::CreateLitMaterial("Ground");
         ground->SetDiffuseColor({ 0.35f, 0.4f, 0.35f, 1.0f });
         SceneFactory::CreatePlane(m_Scene, device, "Ground", 40.0f, 40.0f, ground).Get<MeshRendererComponent>().castsShadows = false;
@@ -42,9 +42,9 @@ public:
         AnimationSystem::Update(m_Scene, dt);
         TransformSystem::Update(m_Scene);
 
-        Renderer::BeginScene(m_Camera->GetCamera());
-        Renderer::Submit(m_Scene);
-        Renderer::EndScene();
+        Renderer::Get().BeginScene(m_Camera->GetCamera());
+        Renderer::Get().Submit(m_Scene);
+        Renderer::Get().EndScene();
     }
 
     void OnEvent(Event& event) override { m_Camera->OnEvent(event); }

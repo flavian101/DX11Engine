@@ -21,7 +21,8 @@ namespace DXEngine {
 		m_Window = std::make_unique<Window>(hInstance, nCmdShow, L"DXEngine", L"DirectX", 1270, 720);
 		m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
-		if (!Renderer::Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight()))
+		m_Renderer = std::make_unique<Renderer>();
+		if (!m_Renderer->Init(m_Window->GetHwnd(), m_Window->GetWidth(), m_Window->GetHeight()))
 			throw std::runtime_error("The renderer could not be initialised (see the debugger output). A DirectX 11 capable GPU is required.");
 	}
 
@@ -30,7 +31,7 @@ namespace DXEngine {
 		// Layers own scenes (meshes, materials, textures) and the UI backend, which all hold device objects: they go
 		// before the renderer does. (They used to be deleted by the member destructors AFTER Renderer::Shutdown.)
 		m_LayerStack.Clear();
-		Renderer::Shutdown();
+		m_Renderer.reset();
 
 	}
 
@@ -66,7 +67,7 @@ namespace DXEngine {
 		// implicit conversion to float called Mark() again, so the value depended on how often it was read.)
 		const float deltaSeconds = m_Deltatime.Mark();
 
-		Renderer::SetTime(m_Deltatime.Duration());
+		m_Renderer->SetTime(m_Deltatime.Duration());
 		if (m_Minimized)
 		{
 			Sleep(10);      // nothing to draw: do not spin a CPU core while the window is minimised
@@ -87,7 +88,7 @@ namespace DXEngine {
 
 		// Everything of this frame is drawn: show it. (Renderer::EndScene used to present, which left no way to draw
 		// on top of the finished scene; the UI layer needs exactly that.)
-		Renderer::Present();
+		m_Renderer->Present();
 	}
 
 	void Application::OnEvent(Event& e)
@@ -115,7 +116,7 @@ namespace DXEngine {
 
 		m_Minimized = false;
 
-		Renderer::OnWindowResize(e.GetWidth(), e.GetHeight());
+		m_Renderer->OnWindowResize(e.GetWidth(), e.GetHeight());
 		return false;
 	}
 }

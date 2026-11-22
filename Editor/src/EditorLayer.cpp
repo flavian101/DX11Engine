@@ -14,7 +14,7 @@ EditorLayer::~EditorLayer() = default;
 
 void EditorLayer::OnAttach()
 {
-	Renderer::SetEnvironment(RenderEnvironment());      // defaults: dim bluish ambient, exposure 0.4, gamma 2.2, clustered lights
+	Renderer::Get().SetEnvironment(RenderEnvironment());      // defaults: dim bluish ambient, exposure 0.4, gamma 2.2, clustered lights
 
 	m_CameraController = std::make_shared<CameraController>();
 	Camera& camera = *m_CameraController->GetCamera();
@@ -29,7 +29,7 @@ void EditorLayer::OnAttach()
 
 void EditorLayer::BuildDefaultScene()
 {
-	auto device = Renderer::GetDevice();
+	auto device = Renderer::Get().GetDevice();
 
 	// ---- sky
 	SceneFactory::CreateSky(m_Scene, device, {
@@ -118,7 +118,7 @@ void EditorLayer::BuildDefaultScene()
 
 void EditorLayer::OnUpdate(float dt)
 {
-	Renderer::SetClearColor(0.1f, 0.1f, 0.16f);
+	Renderer::Get().SetClearColor(0.1f, 0.1f, 0.16f);
 
 	// F1: edit <-> play. (Polled, so not while a text field is being edited.)
 	const bool f1Down = Input::IsKeyPressed(VK_F1);
@@ -130,9 +130,9 @@ void EditorLayer::OnUpdate(float dt)
 	AnimationSystem::Update(m_Scene, dt);             // advance animations (before transforms are derived)
 	TransformSystem::Update(m_Scene);                 // derive world matrices (only what changed); the renderer does not do it
 
-	Renderer::BeginScene(m_CameraController->GetCamera());
-	Renderer::Submit(m_Scene);                        // the renderer reads the persistent scene
-	Renderer::EndScene();
+	Renderer::Get().BeginScene(m_CameraController->GetCamera());
+	Renderer::Get().Submit(m_Scene);                        // the renderer reads the persistent scene
+	Renderer::Get().EndScene();
 }
 
 void EditorLayer::OnUIRender()

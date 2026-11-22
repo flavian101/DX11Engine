@@ -106,6 +106,7 @@
     <ClInclude Include="src\renderer\Cache\ResourceCache.h" />
     <ClInclude Include="src\renderer\Systems\LightSystem.h" />
     <ClInclude Include="src\renderer\Core\GpuProfiler.h" />
+    <ClInclude Include="src\renderer\Core\RenderView.h" />
     <ClInclude Include="src\renderer\Core\GpuTimings.h" />
     <ClInclude Include="src\renderer\Passes\DepthPrepass.h" />
     <ClInclude Include="src\renderer\Passes\ForwardPass.h" />
@@ -219,6 +220,7 @@
     <ClInclude Include="src\editor\HierarchyPanel.h" />
     <ClInclude Include="src\editor\InspectorPanel.h" />
     <ClInclude Include="src\editor\ViewportPanel.h" />
+    <ClInclude Include="src\editor\SecondViewPanel.h" />
     <ClInclude Include="src\editor\ImGuizmoGizmo.h" />
     <ClInclude Include="src\editor\EditorTheme.h" />
     <ClInclude Include="src\editor\EditorIcons.h" />
@@ -230,6 +232,7 @@
     <ClCompile Include="src\renderer\Cache\ResourceCache.cpp" />
     <ClCompile Include="src\renderer\Systems\LightSystem.cpp" />
     <ClCompile Include="src\renderer\Core\GpuProfiler.cpp" />
+    <ClCompile Include="src\renderer\Core\RenderView.cpp" />
     <ClCompile Include="src\renderer\Passes\DepthPrepass.cpp" />
     <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
     <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />
@@ -343,6 +346,7 @@
     <ClCompile Include="src\editor\HierarchyPanel.cpp" />
     <ClCompile Include="src\editor\InspectorPanel.cpp" />
     <ClCompile Include="src\editor\ViewportPanel.cpp" />
+    <ClCompile Include="src\editor\SecondViewPanel.cpp" />
     <ClCompile Include="vendor\ImGuizmo\src\ImGuizmo.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

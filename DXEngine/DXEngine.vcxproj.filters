@@ -234,6 +234,7 @@
     <ClInclude Include="src\renderer\Core\RenderPass.h" />
     <ClInclude Include="src\renderer\Core\FrameContext.h" />
     <ClInclude Include="src\renderer\Core\GpuProfiler.h" />
+    <ClInclude Include="src\renderer\Core\RenderView.h" />
     <ClInclude Include="src\renderer\Core\GpuTimings.h" />
     <ClInclude Include="src\renderer\Passes\DepthPrepass.h" />
     <ClInclude Include="src\renderer\Passes\ForwardPass.h" />
@@ -321,6 +322,9 @@
     </ClInclude>
     <ClInclude Include="src\editor\ViewportPanel.h">
       <Filter>editor</Filter>
+    <ClInclude Include="src\editor\SecondViewPanel.h">
+      <Filter>editor</Filter>
+    </ClInclude>
     </ClInclude>
     <ClInclude Include="src\editor\ImGuizmoGizmo.h">
       <Filter>editor</Filter>
@@ -477,6 +481,7 @@
     <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\Core\RenderGraph.cpp" />
     <ClCompile Include="src\renderer\Core\GpuProfiler.cpp" />
+    <ClCompile Include="src\renderer\Core\RenderView.cpp" />
     <ClCompile Include="src\renderer\Passes\DepthPrepass.cpp" />
     <ClCompile Include="src\renderer\Passes\ForwardPass.cpp" />
     <ClCompile Include="src\renderer\Passes\MeshDrawer.cpp" />
@@ -555,6 +560,9 @@
     </ClCompile>
     <ClCompile Include="src\editor\ViewportPanel.cpp">
       <Filter>editor</Filter>
+    <ClCompile Include="src\editor\SecondViewPanel.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="vendor\ImGuizmo\src\ImGuizmo.cpp">
       <Filter>imgui_backends</Filter>
