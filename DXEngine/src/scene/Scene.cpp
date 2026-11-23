@@ -6,10 +6,39 @@ namespace DXEngine
 {
     Entity Scene::CreateEntity(const std::string& name)
     {
+        Uuid uuid = Uuid::Generate();
+        while (m_ByUuid.count(uuid))               // 64 random bits: practically never, but never store a clash
+            uuid = Uuid::Generate();
+        return CreateEntityWithUuid(name, uuid);
+    }
+
+    Entity Scene::CreateEntityWithUuid(const std::string& name, Uuid uuid)
+    {
+        if (uuid.IsNull() || m_ByUuid.count(uuid)) return Entity();
         const entt::entity id = m_Registry.create();
+        m_Registry.emplace<IdComponent>(id, IdComponent{ uuid });
         m_Registry.emplace<NameComponent>(id, NameComponent{ name });
         m_Registry.emplace<TransformComponent>(id);
+        m_ByUuid.emplace(uuid, id);
         return Entity(id, this);
+    }
+
+    Entity Scene::FindByUuid(Uuid uuid)
+    {
+        const auto it = m_ByUuid.find(uuid);
+        return (it != m_ByUuid.end() && m_Registry.valid(it->second)) ? Entity(it->second, this) : Entity();
+    }
+
+    Uuid Scene::GetUuid(Entity entity) const
+    {
+        const IdComponent* id = entity.TryGet<IdComponent>();
+        return id ? id->id : Uuid{};
+    }
+
+    void Scene::Clear()
+    {
+        m_Registry.clear();
+        m_ByUuid.clear();
     }
 
     Entity Scene::CreateEntity(const std::string& name, Entity parent)
@@ -92,7 +121,11 @@ namespace DXEngine
         }
         for (entt::entity e : doomed)
             if (m_Registry.valid(e))
+            {
+                if (const IdComponent* id = m_Registry.try_get<IdComponent>(e))
+                    m_ByUuid.erase(id->id);
                 m_Registry.destroy(e);
+            }
     }
 
     bool Scene::SetParent(Entity child, Entity parent)

@@ -93,6 +93,45 @@ declared twice (`utils/ConstantBufferTypes.h`, `common.hlsli`); the C++ side `st
 
 ---
 
+### Scene files (`SceneSerializer`, format version 1)
+
+A scene is saved as JSON text (`Json.h`: dependency-free, keys keep their order, floats are written with the shortest text that
+reads back as the same float). The file holds the entities and what is attached to them; it holds NAMES of assets, never the
+assets.
+
+```json
+{
+  "format": "dxengine.scene", "version": 1,
+  "materials": [ { "name": "grass", "shading": "Lit", "diffuse": [..], "roughness": 0.9, "state": {..}, "textures": { "Diffuse": "textures/grass.jpg" } } ],
+  "entities": [
+    { "id": "903a13434de2dfc9", "name": "Horse", "parent": "<id>",
+      "transform": { "position": [x,y,z], "rotation": [x,y,z,w], "scale": [x,y,z] },
+      "light": { "type": "spot", "color": [..], "intensity": 4.5, "range": 33, "innerCone": 12, "outerCone": 27.5, "castsShadows": true },
+      "meshRenderer": { "mesh": "primitive/cube?size=2", "materials": [ {"ref": "model/horse.fbx#material/0"}, {"material": 0}, null ],
+                        "visible": true, "castsShadows": true, "receivesShadows": true },
+      "skinned": true, "skybox": true,
+      "animator": { "model": "models/horse.fbx", "clip": 1, "speed": 1, "mode": "loop", "playing": true, "time": 0.75 } }
+  ]
+}
+```
+
+* **Entities are identified by `Uuid`** (`IdComponent`, 16 hex digits). `parent` is an id; siblings are written in their order, parents
+  before children, roots in creation order, so save -> load -> save gives the same text.
+* **Assets are identified by NAME** (a path-like string), not by id. The names are the `IAssetBridge`'s business; the serializer treats
+  them as opaque. A named material is `{"ref": name}`; an unnamed one is written once into the `materials` table and entities point
+  at it with `{"material": index}` (sharing survives); `null` means "the mesh's own material". Decision: names, like Godot's `res://`
+  paths, because they need no extra files; an asset id (a `.meta` file next to each asset) is the upgrade when moving or renaming files
+  becomes a daily pain.
+* **Not saved:** world matrices and bone matrices (derived: run `TransformSystem` / `AnimationSystem` after loading), the animator's
+  controller (a cache), the selection.
+* **Loading** is all or nothing for the FILE (malformed text, another format, a version newer than the build: nothing changes, and the
+  error says `line:column: why`) and best effort for the CONTENT: an attachment that cannot be resolved is dropped, the entity stays, and
+  a warning says what and where; bad ids get new ones, a missing or cyclic parent leaves a root, wrong-shaped numbers keep the default.
+  Unknown keys are ignored, so an older build reads a newer file as far as it understands it.
+* Bridge contract: naming returns "" for "no name a file can use" (a mesh or texture is then left out with a warning; a material is
+  written inline); resolving returns null for "could not load". The serializer asks once per distinct name per load and shares the
+  result.
+
 ## 2. Rules the code follows
 
 **Principles**
@@ -181,7 +220,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 |---|---|---|
 | D1 | The editor (~38 files and the ImGui layer) lived in the engine library and `DXEngine.h` included editor headers, so a game build would have linked ImGui, ImGuizmo and `comdlg32`. | Fixed. `DXEngineEditor` holds `src/editor/` (the ImGui layer moved there: `editor/ImGuiLayer.h`, reached through `ImGuiLayer::Get()`); `Application` has neutral hooks (`OnUIFrameBegin/End`, `OnApplicationEvent`) and `EditorApp` fills them in. `Game.exe` has 0 ImGui symbols, `Editor.exe` 933 |
 | D2 | `DXEngine/tests/CMakeLists.txt` listed engine sources by hand, repeated per test target, so any file move touched many targets. | Fixed (every test links `DXEngineCore`; no engine source is listed in the tests file). Link-checked with a MinGW cross build, not yet built with MSVC |
-| D3 | Components hold `shared_ptr<Mesh>` / `shared_ptr<Material>` and entities have no stable id: a scene cannot be saved or loaded, and a prefab cannot refer to an asset. | Open (P3) |
+| D3 | Components hold `shared_ptr<Mesh>` / `shared_ptr<Material>` and entities had no stable id: a scene could not be saved or loaded, and a prefab could not refer to an asset. | Mostly fixed. Entities have a `Uuid` (`IdComponent`, `Scene::FindByUuid`); `SceneSerializer` saves and loads scenes through an `IAssetBridge` that names assets (see "Scene files"). **Open:** the real bridge (primitives, imported models, textures) and the editor wiring, which are P3b. Components still hold `shared_ptr`s: the file format does not need handles, so that part of the plan is dropped until something needs it |
 | D4 | The camera is not a component; its weighted behaviour-blending stack is more than a fly camera needs. | Open (P5) |
 | D5 | Play mode only hides the panels: there is no scene snapshot and restore, and no game layer separate from the editor. | Open (P3) |
 | D6 | The editor scene is built in C++ (`EditorLayer`) with asset paths relative to the working directory. | Open (P3) |
@@ -260,13 +299,18 @@ Each phase ends with something a person can check. Do not start a phase with a f
   (**met in code and tests**: View > View 2 draws the scene through a second camera into its own texture; **still to check on a
   GPU**: open it, pin it, fly the main camera, compare, check that shadows and the main view are unaffected).
 
-**P3: Assets, scenes, play mode** (B8, D3, D5, D6)
-* `UUID` component on every entity; asset handles (id + path) replace `shared_ptr` in components; an asset registry
-  resolves them.
-* Scene serialisation (text format) and load/save in the editor; the hard-coded scene becomes a file.
-* Play mode snapshots the scene, runs a game layer on a copy, restores on stop.
-* Undo / redo and multi-selection (the two things the editor lacks after saving).
-* *Exit:* save, quit, start, load gives the same scene (round-trip test); Play then Stop restores every component.
+**P3: Assets, scenes, play mode** (B8, D3, D5, D6): *P3a done, P3b next*
+* P3a (done, tested without a GPU): `Uuid` + `IdComponent` + `Scene::FindByUuid / CreateEntityWithUuid / Clear`; `Json`; `SceneSerializer`
+  with the `IAssetBridge` interface and a fake bridge in the tests (round trips, sharing, animator, save warnings, a bad file changes
+  nothing, repairs, 10k entities: save ~0.1 s, load ~0.1 s).
+* P3b (next, needs the editor): the real bridge: `primitive/...` names for `Mesh::Create*`, `model/<path>#mesh/<i>` and
+  `#material/<j>` through `ModelLibrary` (importing on demand), texture names (files and the sky's six faces), paths stored relative to a
+  project root (this is also B8). Editor: File > New / Open / Save / Save As (a scene file; the hard-coded scene in `EditorLayer`
+  becomes the first one, D6), the loader's warnings shown in the UI, selection cleared after a load.
+* P3c: play mode = snapshot (`SceneSerializer::Save` into memory) on Play, `Load` on Stop; a game layer runs on the live scene (D5).
+* P3d: undo / redo and multi-selection (the two things the editor lacks after saving).
+* *Exit:* save, quit, start, load gives the same scene (met by the serializer's tests with a fake bridge; to be met with the real
+  one); Play then Stop restores every component.
 
 **P4: Renderer scale and quality** (A4, C3, C4, C5, C7, D7, D9, E2)
 

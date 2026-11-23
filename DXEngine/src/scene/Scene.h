@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 #include <typeinfo>
+#include <unordered_map>
 #include <vector>
 
 namespace DXEngine
@@ -53,9 +54,19 @@ namespace DXEngine
     class Scene
     {
     public:
-        // Every entity starts with a Name and a Transform (position 0, no rotation, scale 1).
+        // Every entity starts with an Id (a fresh Uuid), a Name and a Transform (position 0, no rotation, scale 1).
         Entity CreateEntity(const std::string& name = "Entity");
         Entity CreateEntity(const std::string& name, Entity parent);
+
+        // For loading: an entity that has THIS id. An invalid Entity (nothing created) when the id is null or already used.
+        Entity CreateEntityWithUuid(const std::string& name, Uuid id);
+
+        // Identity. FindByUuid is O(1); an id nobody has (or a destroyed entity's) gives an invalid Entity.
+        Entity FindByUuid(Uuid id);
+        Uuid   GetUuid(Entity entity) const;
+
+        // Destroys every entity (and so forgets every id). Handles to the old entities are invalid afterwards.
+        void Clear();
 
         // Destroys the entity AND all its descendants, and removes it from its parent's children. Cost: the size of
         // the subtree (the hierarchy is linked, see RelationshipComponent; nothing scans all entities).
@@ -97,6 +108,7 @@ namespace DXEngine
         void DropIfEmpty(entt::entity entity);                  // remove the RelationshipComponent when it holds nothing
 
         entt::registry m_Registry;
+        std::unordered_map<Uuid, entt::entity> m_ByUuid;       // IdComponent -> entity; kept by CreateEntity / DestroyEntity / Clear
     };
 
     // ---------------- Entity templates ----------------

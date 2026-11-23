@@ -22,6 +22,8 @@ endfunction()
 
 # ---- no GPU, no window --------------------------------------------------------------------------------------------------
 dx_add_test(scene_tests)               # entities, hierarchy links, transforms (TransformSystem)
+dx_add_test(json_tests)               # the JSON model, writer and parser
+dx_add_test(scene_serializer_tests)  # scene <-> text (JSON), with a fake asset bridge
 dx_add_test(render_tests)              # scene extraction: culling, routing, sorting, materials (meshes are made without a device)
 dx_add_test(light_tests)               # Scene lights -> the GPU light data
 dx_add_test(cluster_tests)             # clustered light assignment: grid maths, light -> cluster, the shader's pixel -> cluster formula

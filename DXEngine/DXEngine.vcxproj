@@ -175,6 +175,9 @@
     <ClInclude Include="src\utils\Mesh\Utils\VertexAttribute.h" />
     <ClInclude Include="src\scene\Components.h" />
     <ClInclude Include="src\scene\Scene.h" />
+    <ClInclude Include="src\scene\Uuid.h" />
+    <ClInclude Include="src\scene\SceneSerializer.h" />
+    <ClInclude Include="src\utils\Json.h" />
     <ClInclude Include="src\scene\AnimationSystem.h" />
     <ClInclude Include="src\scene\SceneFactory.h" />
     <ClInclude Include="src\scene\ScenePicking.h" />
@@ -298,6 +301,9 @@
     <ClCompile Include="src\utils\Mesh\Utils\MeshBuffers.cpp" />
     <ClCompile Include="src\utils\Mesh\Utils\VertexAttribute.cpp" />
     <ClCompile Include="src\scene\Scene.cpp" />
+    <ClCompile Include="src\scene\Uuid.cpp" />
+    <ClCompile Include="src\scene\SceneSerializer.cpp" />
+    <ClCompile Include="src\utils\Json.cpp" />
     <ClCompile Include="src\scene\AnimationSystem.cpp" />
     <ClCompile Include="src\scene\AssetInstantiation.cpp" />
     <ClCompile Include="src\scene\SceneFactory.cpp" />

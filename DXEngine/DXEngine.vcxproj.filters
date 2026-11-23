@@ -159,6 +159,9 @@
     </ClInclude>
     <ClInclude Include="src\scene\Scene.h">
       <Filter>scene</Filter>
+    <ClInclude Include="src\scene\Uuid.h" />
+    <ClInclude Include="src\scene\SceneSerializer.h" />
+    <ClInclude Include="src\utils\Json.h" />
     </ClInclude>
     <ClInclude Include="src\scene\AnimationSystem.h">
       <Filter>scene</Filter>
@@ -418,6 +421,9 @@
     </ClCompile>
     <ClCompile Include="src\scene\Scene.cpp">
       <Filter>scene</Filter>
+    <ClCompile Include="src\scene\Uuid.cpp" />
+    <ClCompile Include="src\scene\SceneSerializer.cpp" />
+    <ClCompile Include="src\utils\Json.cpp" />
     </ClCompile>
     <ClCompile Include="src\scene\AssetInstantiation.cpp">
       <Filter>scene</Filter>

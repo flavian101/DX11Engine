@@ -609,6 +609,57 @@ static void TestTransformIsCurrentAndNaN()
     CHECK(TransformSystem::Update(scene) == 1 && Near(b.Get<TransformComponent>().WorldPosition().y, 2));
 }
 
+static void TestUuids()
+{
+    Scene scene;
+    Entity a = scene.CreateEntity("a");
+    Entity b = scene.CreateEntity("b");
+    Uuid ia = scene.GetUuid(a), ib = scene.GetUuid(b);
+    CHECK(!ia.IsNull() && !ib.IsNull() && ia != ib);                      // every entity has its own id from the start
+    CHECK(a.Has<IdComponent>() && a.Get<IdComponent>().id == ia);
+    CHECK(scene.FindByUuid(ia) == a && scene.FindByUuid(ib) == b);        // O(1) lookup
+    CHECK(!scene.FindByUuid(Uuid{}).IsValid() && !scene.FindByUuid(Uuid{ 12345 }).IsValid());
+
+    // text form: 16 hex digits, round trip, strict parse
+    Uuid parsed;
+    CHECK(Uuid::Parse(ia.ToString(), parsed) && parsed == ia && ia.ToString().size() == 16);
+    CHECK(Uuid::Parse("00000000000000FF", parsed) && parsed.value == 255);
+    Uuid untouched{ 77 };
+    CHECK(!Uuid::Parse("", untouched) && !Uuid::Parse("123", untouched) && !Uuid::Parse("zzzzzzzzzzzzzzzz", untouched) &&
+          !Uuid::Parse("00000000000000000", untouched) && untouched.value == 77);   // nothing written on failure
+
+    // an entity with a given id (loading): refuses null and ids in use
+    Entity c = scene.CreateEntityWithUuid("c", Uuid{ 0xABCDEF0123456789ull });
+    CHECK(c.IsValid() && scene.GetUuid(c).ToString() == "abcdef0123456789" && scene.FindByUuid(Uuid{ 0xABCDEF0123456789ull }) == c);
+    const size_t before = scene.EntityCount();
+    CHECK(!scene.CreateEntityWithUuid("dup", Uuid{ 0xABCDEF0123456789ull }).IsValid());
+    CHECK(!scene.CreateEntityWithUuid("null", Uuid{}).IsValid());
+    CHECK(scene.EntityCount() == before);                                 // nothing was created by the refusals
+
+    // destroying forgets the id (the entity AND its descendants)
+    Entity child = scene.CreateEntity("child", a);
+    Uuid ichild = scene.GetUuid(child);
+    scene.DestroyEntity(a);
+    CHECK(!scene.FindByUuid(ia).IsValid() && !scene.FindByUuid(ichild).IsValid());
+    CHECK(scene.FindByUuid(ib) == b);
+    Entity reuse = scene.CreateEntityWithUuid("reborn", ia);              // the id is free again
+    CHECK(reuse.IsValid() && scene.FindByUuid(ia) == reuse);
+
+    // ids are unique across a lot of entities
+    Scene big;
+    for (int i = 0; i < 20000; ++i) big.CreateEntity("e");
+    CHECK(big.EntityCount() == 20000);
+    size_t found = 0;
+    big.Registry().view<IdComponent>().each([&](const IdComponent& id) { if (big.FindByUuid(id.id).IsValid()) ++found; });
+    CHECK(found == 20000);
+
+    // Clear forgets everything, and the scene is usable afterwards
+    big.Clear();
+    CHECK(big.EntityCount() == 0 && !big.FindByUuid(ib).IsValid());
+    Entity again = big.CreateEntity("again");
+    CHECK(again.IsValid() && big.EntityCount() == 1 && big.FindByUuid(big.GetUuid(again)) == again);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -622,6 +673,7 @@ int main()
         { "find by name, children",                   TestFindAndChildren },
         { "5000 children under one parent",           TestManyEntitiesUnderOneParent },
         { "destroy a large subtree",                  TestDestroyLargeSubtree },
+        { "uuids: identity, lookup, clear",            TestUuids },
         { "children are in attach order",             TestChildrenAreInAttachOrder },
         { "detach first / middle / last",             TestDetachFirstMiddleLast },
         { "reparent",                                 TestReparent },

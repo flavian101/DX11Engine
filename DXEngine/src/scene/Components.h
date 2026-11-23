@@ -16,6 +16,7 @@
 #include <cstring>
 #include <entt/entt.hpp>
 #include <functional>
+#include "Uuid.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,6 +29,14 @@ namespace DXEngine
     struct NameComponent
     {
         std::string name = "Entity";
+    };
+
+    // The entity's identity: an id that is the same in every run and in every saved copy of the scene. Every entity has one
+    // from the moment Scene::CreateEntity makes it; Scene keeps the index (Scene::FindByUuid), so nothing else writes it.
+    // (A copy of the component would be a second entity with the same id: duplicating an entity creates a NEW one.)
+    struct IdComponent
+    {
+        Uuid id;
     };
 
     // Where an entity sits in the hierarchy: its parent and its children, as links between entities.
