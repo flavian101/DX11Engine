@@ -8,6 +8,9 @@
 #include "editor/EditorContext.h"
 #include "editor/EditorIcons.h"
 #include "editor/SecondViewPanel.h"
+#include "editor/SceneFileController.h"
+#include "editor/SceneIO.h"
+#include "assets/EngineAssetBridge.h"
 #include "editor/EditorTheme.h"
 #include "editor/PropertyGrid.h"
 #include "editor/RendererPanel.h"
@@ -104,12 +107,11 @@ namespace DXEngine
     };
 }
 
-// The panels reach two functions of code this test does not link (the renderer's primary device and the image decoder). Neither is
-// needed without a GPU: no device, and no texture. (The stubs were missing, so this target did not link.)
+// The panels reach the renderer's primary device, and the renderer is not linked into this test (it needs a GPU): there is no device.
+// (The image loader IS linked, for the scene file tests' asset bridge; it is never asked to load without a device.)
 namespace DXEngine
 {
     std::shared_ptr<RHI::IGraphicsDevice> Renderer::PrimaryDevice() { return nullptr; }
-    std::shared_ptr<RHI::ITexture> ImageLoader::LoadForSlot(RHI::IGraphicsDevice&, const std::string&, TextureSlot, bool) { return nullptr; }
 }
 
 static int g_failed = 0;
@@ -354,6 +356,171 @@ static void TestSecondViewPanel()
     open = true;
     Frame([&] { panel.OnImGui(ctx, &open); });
     CHECK(panel.HasView());
+}
+
+// New / Open / Save / Save As and the "unsaved changes" question, with temp files, stand-in dialogs and the real asset bridge
+// (generated meshes need no device). The modal is drawn in real ImGui frames; the answers are given directly.
+struct FileEnv
+{
+    FileEnv()
+    {
+        dir = (std::filesystem::temp_directory_path() / "dx_scene_file_tests").generic_string();
+        std::filesystem::remove_all(dir);
+        std::filesystem::create_directories(dir);
+        SceneFileController::Hooks hooks;
+        hooks.pickOpenPath = [this] { ++openDialogs; return openAnswer; };
+        hooks.pickSavePath = [this](const std::string& suggested) { ++saveDialogs; lastSuggested = suggested; return saveAnswer; };
+        hooks.makeBridge = [this]() -> std::unique_ptr<IAssetBridge>
+        {
+            return std::make_unique<EngineAssetBridge>(nullptr, models, importer, bridgeLog, dir);
+        };
+        hooks.log = [this](const std::string& line, bool warning) { lines.push_back((warning ? "! " : "  ") + line); };
+        controller = std::make_unique<SceneFileController>(std::move(hooks));
+    }
+    ~FileEnv() { std::filesystem::remove_all(dir); }
+
+    bool Logged(const char* part) const { for (const auto& l : lines) if (l.find(part) != std::string::npos) return true; return false; }
+
+    std::string dir, openAnswer, saveAnswer, lastSuggested;
+    int openDialogs = 0, saveDialogs = 0;
+    ModelLibrary models;
+    ModelImporter importer;
+    Assets::ImportLog bridgeLog;
+    std::vector<std::string> lines;
+    std::unique_ptr<SceneFileController> controller;
+};
+
+static void TestSceneFileController()
+{
+    UiEnv ui;
+    EditorTheme::Apply(1.0f);
+    FileEnv env;
+    SceneFileController& files = *env.controller;
+
+    Scene scene;
+    EditorContext ctx;
+    ctx.scene = &scene;
+    Entity a = scene.CreateEntity("a");
+    Entity b = scene.CreateEntity("b", a);
+    { MeshRendererComponent r; r.mesh = Mesh::CreateCube(nullptr, 2.0f); r.materials = { MaterialFactory::CreateLitMaterial("paint") }; b.Add<MeshRendererComponent>(r); }
+    a.Get<TransformComponent>().position = { 1, 2, 3 };
+    ctx.selection.Set(b);
+    const std::string path = env.dir + "/level.dxscene";
+
+    // a scene that was never saved counts as modified
+    CHECK(files.IsModified(ctx) && files.Path().empty() && !files.HasPending());
+
+    // Save with no file yet asks where (the suggestion is a name), writes it, and the scene is no longer modified
+    env.saveAnswer = path;
+    CHECK(files.Save(ctx) && env.saveDialogs == 1 && env.lastSuggested == "scene.dxscene");
+    CHECK(std::filesystem::is_regular_file(path) && files.Path() == path && !files.IsModified(ctx) && env.Logged("saved 2 entities"));
+
+    // an edit makes it modified; Save now writes to the same file WITHOUT asking
+    a.Get<TransformComponent>().position = { 4, 5, 6 };
+    CHECK(files.IsModified(ctx));
+    CHECK(files.Save(ctx) && env.saveDialogs == 1 && !files.IsModified(ctx));
+
+    // Save As cancelled: nothing changes
+    env.saveAnswer.clear();
+    std::string before; SceneIO::ReadTextFile(path, before);
+    CHECK(!files.SaveAs(ctx) && env.saveDialogs == 2 && files.Path() == path);
+    std::string after; SceneIO::ReadTextFile(path, after);
+    CHECK(before == after);
+    // Save As to a new name (no extension typed): the extension is added, the path moves
+    env.saveAnswer = env.dir + "/copy";
+    CHECK(files.SaveAs(ctx) && files.Path() == env.dir + "/copy.dxscene" && env.lastSuggested == path && std::filesystem::is_regular_file(env.dir + "/copy.dxscene"));
+    CHECK(files.Save(ctx));                                                                    // keeps writing to the new file
+    env.saveAnswer = path;
+    CHECK(files.SaveAs(ctx) && files.Path() == path);
+
+    // ---- New, unmodified: immediate
+    env.openDialogs = 0;
+    files.New(ctx);
+    CHECK(!files.HasPending() && scene.EntityCount() == 0 && !ctx.selection.Has() && files.Path().empty() && !files.IsModified(ctx));
+
+    // ---- Open, unmodified: loads, selection cleared, world matrices current, not modified
+    env.openAnswer = path;
+    files.Open(ctx);
+    CHECK(env.openDialogs == 1 && !files.HasPending() && scene.EntityCount() == 2 && files.Path() == path);
+    CHECK(!ctx.selection.Has() && TransformSystem::IsCurrent(scene) && !files.IsModified(ctx) && env.Logged("opened"));
+    Entity la = scene.FindByUuid(Uuid{}).IsValid() ? Entity() : Entity();
+    scene.Registry().view<NameComponent>().each([&](entt::entity e, const NameComponent& n) { if (n.name == "a") la = scene.Wrap(e); });
+    CHECK(la.IsValid() && la.Get<TransformComponent>().position.x == 4 && la.Get<TransformComponent>().world._41 == 4);
+    auto kids = scene.GetChildren(la);
+    CHECK(kids.size() == 1 && kids[0].Get<MeshRendererComponent>().mesh->GetSourceName() == "primitive/cube?size=2");
+
+    // ---- Open, modified: asks; each answer
+    la.Get<TransformComponent>().position = { 9, 9, 9 };
+    files.Open(ctx);
+    CHECK(files.HasPending() && env.openDialogs == 1);                                         // nothing happened yet
+    Frame([&] { files.OnImGui(ctx); });
+    CHECK(ImGui::IsPopupOpen("Unsaved changes", ImGuiPopupFlags_AnyPopupId) || files.HasPending());   // the modal is up
+    files.AnswerPending(ctx, SceneFileController::Choice::Cancel);
+    CHECK(!files.HasPending() && env.openDialogs == 1 && la.Get<TransformComponent>().position.x == 9);   // still the edited scene
+
+    files.Open(ctx);
+    env.openAnswer = path;
+    ctx.selection.Set(la);                                                                     // something is selected: it is not in the loaded scene
+    CHECK(ctx.selection.Has());
+    files.AnswerPending(ctx, SceneFileController::Choice::DontSave);                           // discard the edit, load the file
+    CHECK(!files.HasPending() && env.openDialogs == 2 && !files.IsModified(ctx) && !ctx.selection.Has());
+    scene.Registry().view<NameComponent>().each([&](entt::entity e, const NameComponent& n) { if (n.name == "a") la = scene.Wrap(e); });
+    CHECK(la.Get<TransformComponent>().position.x == 4);
+
+    la.Get<TransformComponent>().position = { 7, 7, 7 };
+    files.Open(ctx);
+    files.AnswerPending(ctx, SceneFileController::Choice::Save);                               // saves to the current file, then opens it again
+    CHECK(!files.HasPending() && env.openDialogs == 3);
+    scene.Registry().view<NameComponent>().each([&](entt::entity e, const NameComponent& n) { if (n.name == "a") la = scene.Wrap(e); });
+    CHECK(la.Get<TransformComponent>().position.x == 7);                                       // the edit was saved, not lost
+
+    // Save chosen but the save dialog is cancelled (new scene has no path): the pending action is dropped, nothing is lost
+    files.New(ctx);                                                                            // unmodified: immediate
+    ctx.scene->CreateEntity("lonely");
+    env.saveAnswer.clear();
+    files.Open(ctx);
+    CHECK(files.HasPending());
+    files.AnswerPending(ctx, SceneFileController::Choice::Save);
+    CHECK(!files.HasPending() && scene.EntityCount() == 1 && env.openDialogs == 3);             // no dialog for Open, the scene is still there
+
+    // New, modified: asks too
+    files.New(ctx);
+    CHECK(files.HasPending() && scene.EntityCount() == 1);
+    files.AnswerPending(ctx, SceneFileController::Choice::DontSave);
+    CHECK(!files.HasPending() && scene.EntityCount() == 0);
+
+    // ---- bad files change nothing
+    ctx.scene->CreateEntity("keep");
+    env.openAnswer = env.dir + "/corrupt.dxscene";
+    SceneIO::WriteTextFile(env.openAnswer, "{ this is not a scene");
+    files.Open(ctx);                                                                           // modified (never saved): asks
+    files.AnswerPending(ctx, SceneFileController::Choice::DontSave);
+    CHECK(scene.EntityCount() == 1 && env.Logged("open failed"));
+    env.openAnswer = env.dir + "/does_not_exist.dxscene";
+    files.New(ctx); files.AnswerPending(ctx, SceneFileController::Choice::DontSave);       // (modified: it asks first)
+    ctx.scene->CreateEntity("keep");
+    files.Open(ctx); files.AnswerPending(ctx, SceneFileController::Choice::DontSave);
+    CHECK(scene.EntityCount() == 1 && env.Logged("is not a file"));
+    env.openAnswer = env.dir + "/future.dxscene";
+    SceneIO::WriteTextFile(env.openAnswer, "{\"format\":\"dxengine.scene\",\"version\":99,\"entities\":[]}");
+    files.Open(ctx); files.AnswerPending(ctx, SceneFileController::Choice::DontSave);
+    CHECK(scene.EntityCount() == 1 && env.Logged("update the engine"));
+
+    // a cancelled Open dialog is not an error
+    env.openAnswer.clear();
+    const size_t logged = env.lines.size();
+    files.Open(ctx); files.AnswerPending(ctx, SceneFileController::Choice::DontSave);
+    CHECK(scene.EntityCount() == 1 && env.lines.size() == logged);
+
+    // an answer with nothing pending does nothing
+    files.AnswerPending(ctx, SceneFileController::Choice::DontSave);
+    CHECK(scene.EntityCount() == 1);
+
+    // a failing save (the target is a directory) says so and keeps the state
+    const std::string pathBefore = files.Path();
+    std::filesystem::create_directories(env.dir + "/blocked.dxscene");
+    env.saveAnswer = env.dir + "/blocked.dxscene";
+    CHECK(!files.SaveAs(ctx) && env.Logged("save failed") && files.Path() == pathBefore && std::filesystem::is_directory(env.dir + "/blocked.dxscene"));
 }
 
 static void TestViewportWithCamera()
@@ -1206,6 +1373,7 @@ int main()
         { "viewport panel: size request, tools, hidden",    TestViewportPanel },
         { "viewport panel: camera, outline, pick, frame",   TestViewportWithCamera },
         { "second view: own camera, own view, closes",      TestSecondViewPanel },
+        { "scene files: new, open, save, the question",     TestSceneFileController },
         { "imgui: captures while a button is held",         TestImGuiCapturesWhileAButtonIsHeld },
         { "camera: input gate",                             TestCameraInputGate },
         { "theme: scale applies, never compounds",          TestThemeScaling },

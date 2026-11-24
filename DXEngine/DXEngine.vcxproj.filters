@@ -192,6 +192,9 @@
     </ClInclude>
     <ClInclude Include="src\utils\ImageLoader.h">
       <Filter>utils</Filter>
+    <ClInclude Include="src\utils\AssetNames.h">
+      <Filter>utils</Filter>
+    </ClInclude>
     </ClInclude>
     <ClInclude Include="src\utils\TextureNaming.h">
       <Filter>utils</Filter>
@@ -298,6 +301,9 @@
     </ClInclude>
     <ClInclude Include="src\assets\ModelLibrary.h">
       <Filter>editor</Filter>
+    <ClInclude Include="src\assets\EngineAssetBridge.h">
+      <Filter>editor</Filter>
+    </ClInclude>
     </ClInclude>
     <ClInclude Include="src\assets\ModelLoaderAdapter.h">
       <Filter>editor</Filter>
@@ -325,6 +331,12 @@
     </ClInclude>
     <ClInclude Include="src\editor\ViewportPanel.h">
       <Filter>editor</Filter>
+    <ClInclude Include="src\editor\SceneIO.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\editor\SceneFileController.h">
+      <Filter>editor</Filter>
+    </ClInclude>
     <ClInclude Include="src\editor\SecondViewPanel.h">
       <Filter>editor</Filter>
     </ClInclude>
@@ -454,6 +466,9 @@
     </ClCompile>
     <ClCompile Include="src\utils\ImageLoader.cpp">
       <Filter>utils</Filter>
+    <ClCompile Include="src\utils\AssetNames.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="src\utils\TextureNaming.cpp">
       <Filter>utils</Filter>
@@ -542,6 +557,9 @@
     </ClCompile>
     <ClCompile Include="src\assets\ModelLibrary.cpp">
       <Filter>editor</Filter>
+    <ClCompile Include="src\assets\EngineAssetBridge.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="src\assets\ModelLoaderAdapter.cpp">
       <Filter>editor</Filter>
@@ -566,6 +584,12 @@
     </ClCompile>
     <ClCompile Include="src\editor\ViewportPanel.cpp">
       <Filter>editor</Filter>
+    <ClCompile Include="src\editor\SceneIO.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\SceneFileController.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
     <ClCompile Include="src\editor\SecondViewPanel.cpp">
       <Filter>editor</Filter>
     </ClCompile>

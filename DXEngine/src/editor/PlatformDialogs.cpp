@@ -65,6 +65,59 @@ namespace DXEngine::PlatformDialogs
         return Narrow(file.data());
     }
 
+    namespace
+    {
+        std::wstring SceneFilter()
+        {
+            std::wstring filter = L"Scene files";
+            filter.push_back(L'\0');
+            filter += L"*.dxscene";
+            filter.push_back(L'\0');
+            filter += L"All files";
+            filter.push_back(L'\0');
+            filter += L"*.*";
+            filter.push_back(L'\0');
+            return filter;
+        }
+    }
+
+    std::string OpenSceneFile()
+    {
+        const std::wstring filter = SceneFilter();
+        std::vector<wchar_t> file(32768, L'\0');
+        OPENFILENAMEW ofn = {};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = GetActiveWindow();
+        ofn.lpstrFilter = filter.c_str();
+        ofn.lpstrFile = file.data();
+        ofn.nMaxFile = static_cast<DWORD>(file.size());
+        ofn.lpstrTitle = L"Open scene";
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_HIDEREADONLY;
+        if (!GetOpenFileNameW(&ofn))
+            return {};
+        return Narrow(file.data());
+    }
+
+    std::string SaveSceneFile(const std::string& suggested)
+    {
+        const std::wstring filter = SceneFilter();
+        std::vector<wchar_t> file(32768, L'\0');
+        const std::wstring initial = Widen(suggested);
+        for (size_t i = 0; i < initial.size() && i + 1 < file.size(); ++i) file[i] = initial[i];
+        OPENFILENAMEW ofn = {};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = GetActiveWindow();
+        ofn.lpstrFilter = filter.c_str();
+        ofn.lpstrFile = file.data();
+        ofn.nMaxFile = static_cast<DWORD>(file.size());
+        ofn.lpstrDefExt = L"dxscene";
+        ofn.lpstrTitle = L"Save scene";
+        ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_HIDEREADONLY;
+        if (!GetSaveFileNameW(&ofn))
+            return {};
+        return Narrow(file.data());
+    }
+
     std::string OpenImageFile()
     {
         std::wstring filter = L"Image files";

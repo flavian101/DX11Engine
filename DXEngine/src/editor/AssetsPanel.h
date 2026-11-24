@@ -36,6 +36,7 @@ namespace DXEngine
         void SetFilePicker(FilePicker picker);                   // default: the system dialog (PlatformDialogs)
         ModelImporter& Importer() { return m_Importer; }
         const Assets::ImportLog& Log() const { return m_Log; }
+        Assets::ImportLog& MutableLog() { return m_Log; }           // other parts of the editor (scene files) report here too
 
         // ---- requests (carried out by Update, one frame later)
         void RequestImport(const std::string& path, bool addToScene, bool reload = false);

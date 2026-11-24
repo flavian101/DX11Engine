@@ -40,6 +40,9 @@ is set to that folder). Editing a shader in `Editor/assets/shaders` needs a buil
 * Left click picks, **F** frames the selection, **Q W E R** select / move / rotate / scale, **Ctrl+D** duplicates,
   **Del** deletes. **F1** switches between editing and playing (play hides the panels).
 * Models are imported from the Assets panel.
+* **File > Save / Open / New** (Ctrl+S / Ctrl+O / Ctrl+N, Ctrl+Shift+S for Save As) write and read the scene as a `.dxscene` text file. It stores
+  names for meshes, models and textures, not the assets themselves, so keep the files it names where they were. Problems found while loading
+  are listed in the Assets panel's log.
 * **View > View 2** shows the scene through a second camera in its own window (it starts at the editor camera's pose;
   "Pin to editor camera" copies the pose again).
 

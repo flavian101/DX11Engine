@@ -7,6 +7,7 @@
 #include "editor/GizmoTypes.h"
 #include "editor/HierarchyModel.h"
 #include "editor/SceneEditing.h"
+#include "editor/SceneIO.h"
 #include "editor/TransformEditing.h"
 #include "editor/ViewportMath.h"
 #include "Core/UiInputBlocking.h"
@@ -19,6 +20,8 @@
 #include "utils/Mesh/Resource/MeshResource.h"
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 
 using namespace DXEngine;
 using namespace DirectX;
@@ -879,10 +882,58 @@ static void TestAddImportedMeshAndInstantiateModel()
     CHECK(!SceneEditing::InstantiateModel(scene, nullptr, "x", { 0, 0, 0 }).IsValid());
 }
 
+static void TestSceneIO()
+{
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / "dx_sceneio_tests";
+    fs::remove_all(dir);
+    const std::string file = (dir / "nested" / "deeper" / "level.dxscene").generic_string();
+
+    // writes, creating the folders on the way; the temp file does not stay
+    auto w = SceneIO::WriteTextFile(file, "first\r\n\n{ \"binary\": \"exact\" }\r\n");
+    CHECK(w.ok && w.error.empty() && fs::is_regular_file(file) && !fs::exists(file + ".tmp"));
+    std::string back;
+    CHECK(SceneIO::ReadTextFile(file, back).ok && back == "first\r\n\n{ \"binary\": \"exact\" }\r\n");   // bytes, not translated text
+
+    // replaces an existing file
+    CHECK(SceneIO::WriteTextFile(file, "second").ok && SceneIO::ReadTextFile(file, back).ok && back == "second" && !fs::exists(file + ".tmp"));
+    CHECK(SceneIO::WriteTextFile(file, "").ok && SceneIO::ReadTextFile(file, back).ok && back.empty());             // an empty file is a file
+
+    // a failure costs the new save, never the old file
+    CHECK(SceneIO::WriteTextFile(file, "good content").ok);
+    const std::string blockedByFile = file + "/inside.dxscene";                                                    // 'level.dxscene' is a FILE, not a folder
+    auto bad = SceneIO::WriteTextFile(blockedByFile, "x");
+    CHECK(!bad.ok && !bad.error.empty());
+    CHECK(SceneIO::ReadTextFile(file, back).ok && back == "good content");
+    const std::string folderTarget = (dir / "a_folder").generic_string();
+    fs::create_directories(folderTarget);
+    auto bad2 = SceneIO::WriteTextFile(folderTarget, "x");                                                         // the target is a directory
+    CHECK(!bad2.ok && fs::is_directory(folderTarget) && !fs::exists(folderTarget + ".tmp"));                       // untouched, no litter
+    CHECK(!SceneIO::WriteTextFile("", "x").ok);
+
+    // reading
+    CHECK(!SceneIO::ReadTextFile((dir / "missing.dxscene").generic_string(), back).ok && back.empty());
+    CHECK(!SceneIO::ReadTextFile(folderTarget, back).ok);
+    const std::string huge = (dir / "huge.bin").generic_string();
+    {
+        std::ofstream(huge, std::ios::binary) << "x";
+        fs::resize_file(huge, SceneIO::kMaxFileBytes + 1);                                                          // sparse: costs no disk
+    }
+    const auto tooBig = SceneIO::ReadTextFile(huge, back);
+    CHECK(!tooBig.ok && back.empty() && tooBig.error.find("not a scene file") != std::string::npos);
+
+    // the extension
+    CHECK(SceneIO::WithSceneExtension("level") == "level.dxscene" && SceneIO::WithSceneExtension("dir/level") == "dir/level.dxscene");
+    CHECK(SceneIO::WithSceneExtension("level.dxscene") == "level.dxscene" && SceneIO::WithSceneExtension("level.json") == "level.json");
+    CHECK(SceneIO::WithSceneExtension("").empty());
+    fs::remove_all(dir);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
         { "selection: stale entity is nothing",             TestSelection },
+        { "scene files: atomic write, safe read",           TestSceneIO },
         { "hierarchy: rows follow the expanded state",      TestHierarchyRows },
         { "hierarchy: state survives, dead entries pruned", TestHierarchyStateSurvivesAndPrunes },
         { "hierarchy: order is stable",                     TestHierarchyOrderIsStable },

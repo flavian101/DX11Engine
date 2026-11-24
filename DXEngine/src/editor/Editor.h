@@ -3,6 +3,7 @@
 #include "EditorPrefs.h"
 #include "AssetsPanel.h"
 #include "HierarchyPanel.h"
+#include "SceneFileController.h"
 #include "InspectorPanel.h"
 #include "RendererPanel.h"
 #include "SecondViewPanel.h"
@@ -78,6 +79,7 @@ namespace DXEngine
         ViewportPanel  m_Viewport;
         SecondViewPanel m_SecondView;
         AssetsPanel    m_Assets;
+        std::unique_ptr<SceneFileController> m_SceneFile;   // New / Open / Save / Save As (built in the constructor: its hooks need the panels)
         EditorPrefs    m_Prefs;
         Entity         m_StressTest;                // the parent of the stress lights while they exist
 

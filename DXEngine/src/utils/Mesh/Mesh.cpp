@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "Mesh.h"
+#include "utils/AssetNames.h"
 #include <utils/material/Material.h>
 #include <cassert>
 #include <sstream>
@@ -219,25 +220,33 @@ namespace DXEngine {
     std::shared_ptr<Mesh> Mesh::CreateQuad(std::shared_ptr<RHI::IGraphicsDevice> device, float width, float height)
     {
         auto resource = MeshResource::CreateQuad("Quad", width, height);
-        return std::make_shared<Mesh>(std::move(resource),device);
+        auto mesh = std::make_shared<Mesh>(std::move(resource),device);
+        mesh->SetSourceName(AssetNames::QuadName(width, height));
+        return mesh;
     }
 
     std::shared_ptr<Mesh> Mesh::CreateCube(std::shared_ptr<RHI::IGraphicsDevice> device, float size)
     {
         auto resource = MeshResource::CreateCube("Cube", size);
-        return std::make_shared<Mesh>(std::move(resource),device);
+        auto mesh = std::make_shared<Mesh>(std::move(resource),device);
+        mesh->SetSourceName(AssetNames::CubeName(size));
+        return mesh;
     }
 
     std::shared_ptr<Mesh> Mesh::CreateSphere(std::shared_ptr<RHI::IGraphicsDevice> device, float radius, uint32_t segments)
     {
         auto resource = MeshResource::CreateSphere("Sphere", radius, segments);
-        return std::make_shared<Mesh>(std::move(resource),device);
+        auto mesh = std::make_shared<Mesh>(std::move(resource),device);
+        mesh->SetSourceName(AssetNames::SphereName(radius, segments));
+        return mesh;
     }
 
     std::shared_ptr<Mesh> Mesh::CreatePlane(std::shared_ptr<RHI::IGraphicsDevice> device, float width, float depth, uint32_t widthSegments, uint32_t depthSegments)
     {
         auto resource = MeshResource::CreatePlane("Plane", width, depth, widthSegments, depthSegments);
-        return std::make_shared<Mesh>(std::move(resource),device);
+        auto mesh = std::make_shared<Mesh>(std::move(resource),device);
+        mesh->SetSourceName(AssetNames::PlaneName(width, depth, widthSegments, depthSegments));
+        return mesh;
     }
   
     // ===== MeshUtils Implementation =====

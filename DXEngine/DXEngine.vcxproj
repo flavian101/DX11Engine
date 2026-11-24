@@ -187,6 +187,7 @@
     <ClInclude Include="src\scene\TransformSystem.h" />
     <ClInclude Include="src\utils\ImageDecode.h" />
     <ClInclude Include="src\utils\ImageLoader.h" />
+    <ClInclude Include="src\utils\AssetNames.h" />
     <ClInclude Include="src\utils\TextureColorSpace.h" />
     <ClInclude Include="src\utils\TextureNaming.h" />
     <ClInclude Include="src\utils\Transform.h" />
@@ -214,6 +215,7 @@
     <ClInclude Include="src\assets\ImportLog.h" />
     <ClInclude Include="src\assets\ModelImporter.h" />
     <ClInclude Include="src\assets\ModelLibrary.h" />
+    <ClInclude Include="src\assets\EngineAssetBridge.h" />
     <ClInclude Include="src\assets\ModelLoaderAdapter.h" />
     <ClInclude Include="src\editor\AssetsPanel.h" />
     <ClInclude Include="src\editor\PlatformDialogs.h" />
@@ -223,6 +225,8 @@
     <ClInclude Include="src\editor\HierarchyPanel.h" />
     <ClInclude Include="src\editor\InspectorPanel.h" />
     <ClInclude Include="src\editor\ViewportPanel.h" />
+    <ClInclude Include="src\editor\SceneIO.h" />
+    <ClInclude Include="src\editor\SceneFileController.h" />
     <ClInclude Include="src\editor\SecondViewPanel.h" />
     <ClInclude Include="src\editor\ImGuizmoGizmo.h" />
     <ClInclude Include="src\editor\EditorTheme.h" />
@@ -316,6 +320,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\utils\ImageLoader.cpp" />
+    <ClCompile Include="src\utils\AssetNames.cpp" />
     <ClCompile Include="src\utils\TextureNaming.cpp" />
     <ClCompile Include="src\utils\Transform.cpp" />
     <ClCompile Include="src\utils\material\Material.cpp" />
@@ -344,6 +349,7 @@
     </ClCompile>
     <ClCompile Include="src\assets\ModelImporter.cpp" />
     <ClCompile Include="src\assets\ModelLibrary.cpp" />
+    <ClCompile Include="src\assets\EngineAssetBridge.cpp" />
     <ClCompile Include="src\assets\ModelLoaderAdapter.cpp" />
     <ClCompile Include="src\editor\AssetsPanel.cpp" />
     <ClCompile Include="src\editor\PlatformDialogs.cpp" />
@@ -352,6 +358,8 @@
     <ClCompile Include="src\editor\HierarchyPanel.cpp" />
     <ClCompile Include="src\editor\InspectorPanel.cpp" />
     <ClCompile Include="src\editor\ViewportPanel.cpp" />
+    <ClCompile Include="src\editor\SceneIO.cpp" />
+    <ClCompile Include="src\editor\SceneFileController.cpp" />
     <ClCompile Include="src\editor\SecondViewPanel.cpp" />
     <ClCompile Include="vendor\ImGuizmo\src\ImGuizmo.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

@@ -1,6 +1,7 @@
 #pragma once
 #include "Resource/MeshResource.h"
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include "utils/Mesh/Utils/IndexData.h"
 #include "utils/Mesh/Utils/MeshBuffers.h"
@@ -19,6 +20,11 @@ namespace DXEngine {
 
         // Resource management
         const std::shared_ptr<MeshResource>& GetResource() const { return m_Resource; }
+
+        // The name a scene file uses for this mesh when it was GENERATED (Mesh::CreateCube ... set it: "primitive/cube?size=2",
+        // see utils/AssetNames.h). Empty for any other mesh: an imported model's meshes are named by the model library.
+        const std::string& GetSourceName() const { return m_SourceName; }
+        void SetSourceName(std::string name) { m_SourceName = std::move(name); }
         void SetResource(std::shared_ptr<MeshResource> resource);
 
         // Reorders the triangles for the GPU's vertex cache (see MeshResource::OptimizeForRendering) and marks the GPU
@@ -70,6 +76,7 @@ namespace DXEngine {
     private:
         std::shared_ptr<RHI::IGraphicsDevice> m_Device; // use a std::weak_ptr and Test if it still works
         std::shared_ptr<MeshResource> m_Resource;
+        std::string m_SourceName;                        // see GetSourceName()
         mutable MeshBuffers m_Buffers;
         std::vector<std::shared_ptr<Material>> m_Materials;
         mutable bool m_GPUResourcesDirty = true;

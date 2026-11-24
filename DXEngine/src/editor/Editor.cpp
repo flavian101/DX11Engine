@@ -7,6 +7,9 @@
 #include "EditorTheme.h"
 #include "ImGuizmoGizmo.h"
 #include "SceneEditing.h"
+#include "PlatformDialogs.h"
+#include "assets/EngineAssetBridge.h"
+#include <filesystem>
 #include "Application.h"
 #include "Event/MouseEvent.h"
 #include "camera/Camera.h"
@@ -23,6 +26,24 @@ namespace DXEngine
         m_Prefs = LoadEditorPrefs();
         // imports read the file with the engine's loader, on the device the editor holds when the first one runs
         m_Assets.Importer().SetLoadFunction(MakeModelLoaderFunction([this] { return m_Ctx.device; }));
+
+        // Scene files: the real dialogs, the engine's asset bridge (names are relative to the working directory, where the editor
+        // finds its assets), and the Assets panel's log for what saving and loading have to say.
+        SceneFileController::Hooks hooks;
+        hooks.pickOpenPath = [] { return PlatformDialogs::OpenSceneFile(); };
+        hooks.pickSavePath = [](const std::string& suggested) { return PlatformDialogs::SaveSceneFile(suggested); };
+        hooks.makeBridge = [this]() -> std::unique_ptr<IAssetBridge>
+        {
+            auto device = m_Ctx.device ? m_Ctx.device : Renderer::PrimaryDevice();
+            return std::make_unique<EngineAssetBridge>(device, m_Ctx.models, m_Assets.Importer(), m_Assets.MutableLog(),
+                                                       std::filesystem::current_path().generic_string());
+        };
+        hooks.log = [this](const std::string& line, bool warning)
+        {
+            if (warning) m_Assets.MutableLog().Warning("scene: " + line);
+            else         m_Assets.MutableLog().Info("scene: " + line);
+        };
+        m_SceneFile = std::make_unique<SceneFileController>(std::move(hooks));
     }
 
     Editor::~Editor()
@@ -164,6 +185,18 @@ namespace DXEngine
         EditorChrome::DrawStatusBar(m_Ctx, hint);
         DrawDockspace();
 
+        // file shortcuts work anywhere in the editor except while a text field is being edited
+        {
+            const ImGuiIO& io = ImGui::GetIO();
+            if (io.KeyCtrl && !ui.WantsTextInput())
+            {
+                if (ImGui::IsKeyPressed(ImGuiKey_S, false)) { if (io.KeyShift) m_SceneFile->SaveAs(m_Ctx); else m_SceneFile->Save(m_Ctx); }
+                else if (ImGui::IsKeyPressed(ImGuiKey_O, false)) m_SceneFile->Open(m_Ctx);
+                else if (ImGui::IsKeyPressed(ImGuiKey_N, false)) m_SceneFile->New(m_Ctx);
+            }
+        }
+        m_SceneFile->OnImGui(m_Ctx);                       // the "unsaved changes" question, while one is pending
+
         m_Hierarchy.OnImGui(m_Ctx, &m_ShowHierarchy);
         m_Inspector.OnImGui(m_Ctx, &m_ShowInspector);
         m_Viewport.OnImGui(m_Ctx, &m_ShowViewport);
@@ -202,6 +235,16 @@ namespace DXEngine
 
         if (ImGui::BeginMenu("File"))
         {
+            if (ImGui::MenuItem("New Scene", "Ctrl+N", false, scene != nullptr))
+                m_SceneFile->New(m_Ctx);
+            if (ImGui::MenuItem("Open Scene...", "Ctrl+O", false, scene != nullptr))
+                m_SceneFile->Open(m_Ctx);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save", "Ctrl+S", false, scene != nullptr))
+                m_SceneFile->Save(m_Ctx);
+            if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, scene != nullptr))
+                m_SceneFile->SaveAs(m_Ctx);
+            ImGui::Separator();
             if (ImGui::MenuItem("Import Model...", nullptr, false, !m_Assets.IsBusy()))
                 m_Assets.PickAndImport();
             ImGui::Separator();
@@ -269,6 +312,13 @@ namespace DXEngine
         {
             ImGui::MenuItem("Keyboard shortcuts", nullptr, &m_ShowShortcuts);
             ImGui::EndMenu();
+        }
+        // the scene's file, at the right end of the bar
+        {
+            const std::string label = m_SceneFile->Path().empty() ? std::string("unsaved scene") : std::filesystem::path(m_SceneFile->Path()).filename().string();
+            const float width = ImGui::CalcTextSize(label.c_str()).x;
+            ImGui::SameLine(ImGui::GetWindowWidth() - width - 16.0f * EditorTheme::Scale());
+            ImGui::TextDisabled("%s", label.c_str());
         }
         ImGui::EndMainMenuBar();
     }

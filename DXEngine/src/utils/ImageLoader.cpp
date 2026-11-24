@@ -1,5 +1,6 @@
 #include "dxpch.h"
 #include "ImageLoader.h"
+#include "utils/AssetNames.h"
 #include "ImageMips.h"
 
 #include "ImageDecode.h"       // the decoding (stb_image, Radiance HDR, OpenEXR) lives there, away from the GPU
@@ -134,7 +135,7 @@ namespace DXEngine
         desc.mipLevels   = 1;
         desc.arraySize   = 1;                 // the RHI multiplies by 6 for cube maps
         desc.initialData = pixels.data();     // six faces back to back, face i = array slice i
-        desc.debugName   = facePaths[0] + " (+5 faces)";
+        desc.debugName   = AssetNames::CubeMapName(facePaths);        // "cube:a|b|c|d|e|f": a scene file can load it again
 
         return CreateTexture(device, desc);
     }
