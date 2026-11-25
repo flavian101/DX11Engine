@@ -2,8 +2,46 @@
 #include "editor/ImGuiLayer.h"
 #include "utils/ImageLoader.h"
 #include "utils/material/Material.h"
+#include <cmath>
 
 using namespace DXEngine;
+
+namespace
+{
+	// The smallest gameplay there is, and what to look at when checking play mode: while playing, the lamp circles the spheres and its
+	// light pulses. Stop puts the lamp back where it was, with the light it had. (A system finds its entities in OnStart, writes
+	// components in OnUpdate and lets go of the entities in OnStop; it never has to undo anything: the scene is restored for it.)
+	class LampSwing : public IGameSystem
+	{
+	public:
+		void OnStart(Scene& scene) override
+		{
+			m_Lamp = scene.FindByName("Lamp");
+			m_Time = 0.0f;
+			if (!m_Lamp.IsValid()) return;
+			m_Height = m_Lamp.Get<TransformComponent>().position.y;
+			m_Intensity = m_Lamp.Has<LightComponent>() ? m_Lamp.Get<LightComponent>().intensity : 0.0f;
+		}
+
+		void OnUpdate(Scene&, float dt) override
+		{
+			if (!m_Lamp.IsValid()) return;                                   // deleted by someone else: nothing to swing
+			m_Time += dt;
+			m_Lamp.Get<TransformComponent>().position = { kRadius * std::cos(m_Time * 0.6f), m_Height, kRadius * std::sin(m_Time * 0.6f) };
+			if (m_Lamp.Has<LightComponent>())
+				m_Lamp.Get<LightComponent>().intensity = m_Intensity * (0.75f + 0.25f * std::sin(m_Time * 3.0f));
+		}
+
+		void OnStop(Scene&) override { m_Lamp = Entity(); }
+
+	private:
+		static constexpr float kRadius = 10.0f;                              // the lamp starts at (10, 15, 0): the circle passes through it
+		Entity m_Lamp;
+		float  m_Time = 0.0f;
+		float  m_Height = 15.0f;
+		float  m_Intensity = 0.0f;
+	};
+}
 
 EditorLayer::EditorLayer()
 	: Layer("EditorLayer")
@@ -21,10 +59,16 @@ void EditorLayer::OnAttach()
 	camera.SetPosition({ 0.0f, 6.0f, 20.0f });
 	camera.SetRotation({ -0.18f, 0.0f, 0.0f });          // looks a little down (negative pitch), toward -Z
 
-	BuildDefaultScene();
+	m_Game.Add(std::make_unique<LampSwing>());       // gameplay goes here: one system per concern, in the order they should run
 
 	m_Editor.SetScene(&m_Scene);
 	m_Editor.SetCamera(m_CameraController);
+	m_Editor.SetGame(&m_Game);
+
+	// The starting scene is the file last opened or saved; the scene built below is what there is before any file exists (or when
+	// the file is gone or unreadable: the Assets log says which).
+	if (!m_Editor.OpenLastScene())
+		BuildDefaultScene();
 }
 
 void EditorLayer::BuildDefaultScene()
@@ -120,12 +164,16 @@ void EditorLayer::OnUpdate(float dt)
 {
 	Renderer::Get().SetClearColor(0.1f, 0.1f, 0.16f);
 
-	// F1: edit <-> play. (Polled, so not while a text field is being edited.)
+	// F1: play <-> stop. (Polled, so not while a text field is being edited.) Here, not in the UI pass: stopping replaces the scene's contents.
 	const bool f1Down = Input::IsKeyPressed(VK_F1);
 	if (f1Down && !m_F1WasDown && !ImGuiLayer::Get().WantsTextInput())
-		m_Editor.SetEnabled(!m_Editor.IsEnabled());
+	{
+		if (m_Editor.IsPlaying()) m_Editor.Stop();
+		else                      m_Editor.Play();
+	}
 	m_F1WasDown = f1Down;
 
+	m_Editor.Update(dt);                              // gameplay, while playing: it writes components, the systems below derive the rest
 	m_CameraController->Update(dt);                   // (the editor decides when the camera listens: Editor::SetCamera)
 	AnimationSystem::Update(m_Scene, dt);             // advance animations (before transforms are derived)
 	TransformSystem::Update(m_Scene);                 // derive world matrices (only what changed); the renderer does not do it

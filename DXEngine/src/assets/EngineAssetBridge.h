@@ -51,7 +51,14 @@ namespace DXEngine
         std::shared_ptr<RHI::ITexture> ResolveTexture(const std::string& name, TextureSlot slot) override;
         std::shared_ptr<ModelAsset> ResolveModel(const std::string& name) override;
 
+        // The textures of the scene's materials are remembered under the names saving would give them: loading the same names
+        // afterwards returns those textures, and a file the scene already shows (the 8k moon) is not decoded again. (A scene
+        // put back after a play session is the case: nothing it needs has to come from disk twice.)
+        void Reuse(Scene& alive) override;
+
     private:
+        static std::string TextureKey(const std::string& name, TextureSlot slot);
+
         // The library entry for a stored model path, importing the file first when the library has not seen it.
         const ImportedModel* EnsureModel(const std::string& storedPath);
         std::string StoredPathOf(const ImportedModel& model) const;

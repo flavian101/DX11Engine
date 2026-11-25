@@ -6,7 +6,8 @@ project(Game)
 
 add_executable(Game src/GameApp.cpp)
 
-# The engine finds its shaders at assets/shaders/ relative to the working directory: copy just those next to the exe.
+# The engine finds its shaders at assets/shaders/ under the project root: the nearest folder above the exe (or the working directory)
+# that has assets/shaders (Main.h). Copy just the shaders next to the exe, which makes the exe's folder the root.
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
     set(GAME_COPY_CMD copy_directory_if_different)
 else()

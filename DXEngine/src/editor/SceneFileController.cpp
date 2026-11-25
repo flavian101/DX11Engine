@@ -42,6 +42,13 @@ namespace DXEngine
         Proceed(ctx, Action::Open);
     }
 
+    bool SceneFileController::OpenFile(EditorContext& ctx, const std::string& path)
+    {
+        if (!ctx.scene || path.empty()) return false;
+        m_Pending = Action::None;
+        return ReadFrom(ctx, path);
+    }
+
     bool SceneFileController::Save(EditorContext& ctx)
     {
         if (!ctx.scene) return false;
@@ -67,6 +74,7 @@ namespace DXEngine
             m_Path.clear();
             RememberBaseline(ctx);
             Report("new scene", false);
+            PathChanged();
         }
         else if (action == Action::Open)
         {
@@ -90,22 +98,23 @@ namespace DXEngine
         m_Path = path;
         m_Baseline = saved.text;
         m_HasBaseline = true;
+        PathChanged();
         Report("saved " + std::to_string(ctx.scene->EntityCount()) + " entities to '" + path + "'" +
                (saved.warnings.empty() ? std::string() : " (" + std::to_string(saved.warnings.size()) + " warning" + (saved.warnings.size() == 1 ? "" : "s") + ")"), false);
         return true;
     }
 
-    void SceneFileController::ReadFrom(EditorContext& ctx, const std::string& path)
+    bool SceneFileController::ReadFrom(EditorContext& ctx, const std::string& path)
     {
-        if (!m_Hooks.makeBridge) return;
+        if (!m_Hooks.makeBridge) return false;
         std::string text;
         const SceneIO::IoResult io = SceneIO::ReadTextFile(path, text);
-        if (!io.ok) { Report("open failed: " + io.error, true); return; }
+        if (!io.ok) { Report("open failed: " + io.error, true); return false; }
 
         auto bridge = m_Hooks.makeBridge();
-        if (!bridge) return;
+        if (!bridge) return false;
         const SceneSerializer::LoadResult r = SceneSerializer::Load(text, *ctx.scene, *bridge);
-        if (!r.ok) { Report("open failed: " + r.error, true); return; }                  // the scene is untouched
+        if (!r.ok) { Report("open failed: " + r.error, true); return false; }            // the scene is untouched
 
         for (const std::string& w : r.warnings) Report("open: " + w, true);
         ctx.selection.Clear();                                                          // its entity is not in the loaded scene
@@ -114,6 +123,8 @@ namespace DXEngine
         RememberBaseline(ctx);                                                          // what a save would write now
         Report("opened '" + path + "': " + std::to_string(r.entities) + " entities" +
                (r.warnings.empty() ? std::string() : ", " + std::to_string(r.warnings.size()) + " warning" + (r.warnings.size() == 1 ? "" : "s")), false);
+        PathChanged();
+        return true;
     }
 
     // ---------------------------------------------------------------- the question

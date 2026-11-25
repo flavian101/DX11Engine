@@ -37,6 +37,9 @@ namespace DXEngine
         bool IsExpanded(Entity e) const { return m_Expanded.count(e.Id()) != 0; }
         void SetExpanded(Entity e, bool expanded);
         void Toggle(Entity e) { SetExpanded(e, !IsExpanded(e)); }
+        // Every entity of 'scene' that is expanded now (in no particular order). A restored scene has new handles: the host
+        // keeps these by id and expands the same entities again (see PlayMode).
+        std::vector<Entity> ExpandedEntities(Scene& scene) const;
 
         // Expands every ancestor of 'e', so its row exists after the next Rebuild (used when a pick in the viewport selects it).
         void RevealEntity(Scene& scene, Entity e);

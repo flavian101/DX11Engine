@@ -25,6 +25,7 @@ dx_add_test(scene_tests)               # entities, hierarchy links, transforms (
 dx_add_test(json_tests)               # the JSON model, writer and parser
 dx_add_test(scene_serializer_tests)  # scene <-> text (JSON), with a fake asset bridge
 dx_add_test(asset_names_tests)        # the names scene files use for assets (pure functions)
+dx_add_test(project_root_tests)       # finding the folder that has assets/shaders, from the exe folder or the working directory
 dx_add_test(engine_asset_bridge_tests) # naming and finding assets with the model library, no device
 dx_add_test(render_tests)              # scene extraction: culling, routing, sorting, materials (meshes are made without a device)
 dx_add_test(light_tests)               # Scene lights -> the GPU light data
@@ -33,6 +34,7 @@ dx_add_test(rhi_tests)                 # RHI rules that need no device (buffer d
 dx_add_test(shadow_tests)              # cascade fitting, spot / point views, the atlas allocator, which lights get shadows
 dx_add_test(material_tests)            # texture slot table, Material's derived texture mask, colour-space aware mips
 target_compile_definitions(material_tests PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/Editor/assets/shaders/")
+dx_add_test(play_mode_tests EDITOR)    # play mode: scene snapshot + restore, the game runtime, PlayMode (Start / Stop, selection, camera)
 dx_add_test(editor_tests EDITOR)       # selection, hierarchy rows, duplicate / reparent / gizmo write-back, picking, ...
 dx_add_test(editor_ui_tests EDITOR)    # the editor panels through real ImGui frames (ImGui's assertions are the oracle);
                                        # two renderer-side functions are stubbed in the test, so the renderer is never linked

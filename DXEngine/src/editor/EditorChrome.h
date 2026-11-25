@@ -11,7 +11,7 @@ namespace DXEngine
     {
         struct ToolbarResult
         {
-            bool togglePlay = false;       // the Play button was pressed
+            bool playPressed = false;       // the Play button was pressed
         };
 
         // Tools (select / move / rotate / scale), space (world / local), snapping, display switches, play.

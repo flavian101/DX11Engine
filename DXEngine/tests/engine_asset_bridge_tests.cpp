@@ -228,6 +228,50 @@ static void TestSceneThroughTwoBridges()
     CHECK(noModel.FindByUuid(scene.GetUuid(cube)).Has<MeshRendererComponent>());           // generated meshes need no file
 }
 
+// Reuse: a scene about to be replaced hands out the textures it holds, so putting a snapshot back (play mode's Stop) does not decode
+// the same files again. With no device loading is impossible, so a texture that comes back proves it came from the old scene.
+static void TestReuseTexturesOfALiveScene()
+{
+    Fixture f; auto bridge = f.Bridge();
+
+    Scene scene;
+    auto wall = std::make_shared<FakeTexture>(f.root + "/textures/a.png");           // the same file bound to a colour slot ...
+    auto wallData = std::make_shared<FakeTexture>(f.root + "/textures/a.png");       // ... and to a data slot: another texture (other format)
+    auto solid = std::make_shared<FakeTexture>("SolidColor");                         // not a file
+    auto paint = std::make_shared<Material>("paint", ShadingModel::Lit);
+    paint->SetTexture(TextureSlot::Diffuse, wall);
+    paint->SetTexture(TextureSlot::Normal, wallData);
+    paint->SetTexture(TextureSlot::Emissive, solid);
+    Entity cube = scene.CreateEntity("cube");
+    { MeshRendererComponent r; r.mesh = Mesh::CreateCube(nullptr, 2.0f); r.materials = { paint }; cube.Add<MeshRendererComponent>(r); }
+
+    CHECK(!bridge.ResolveTexture("textures/a.png", TextureSlot::Diffuse));          // before: no device, nothing to give
+    const size_t warningsBefore = f.Warnings();
+
+    bridge.Reuse(scene);
+    CHECK(bridge.ResolveTexture("textures/a.png", TextureSlot::Diffuse) == wall);
+    CHECK(bridge.ResolveTexture("textures/a.png", TextureSlot::Normal) == wallData);   // the colour space belongs to the slot
+    CHECK(!bridge.ResolveTexture("SolidColor", TextureSlot::Emissive));                // only what a file can name is remembered
+    CHECK(f.Warnings() == warningsBefore + 1);                                         // (the solid colour's lookup warned, the others did not)
+
+    // the whole circle: save, take the textures of the live scene, load over it: the new scene shows the very same texture objects
+    const auto saved = SceneSerializer::Save(scene, bridge);
+    CHECK(saved.warnings.size() == 1);                                                 // the solid colour has no file: it was not saved
+    Fixture f2; auto fresh = f2.Bridge();
+    fresh.Reuse(scene);
+    Scene loaded;
+    const auto r = SceneSerializer::Load(saved.text, loaded, fresh);
+    CHECK(r.ok);
+    const MeshRendererComponent* lr = loaded.FindByUuid(scene.GetUuid(cube)).TryGet<MeshRendererComponent>();
+    CHECK(lr && lr->materials.size() == 1);
+    if (lr && lr->materials.size() == 1)
+    {
+        CHECK(lr->materials[0]->GetTexture(TextureSlot::Diffuse) == wall);
+        CHECK(lr->materials[0]->GetTexture(TextureSlot::Normal) == wallData);
+        CHECK(!lr->materials[0]->GetTexture(TextureSlot::Emissive));
+    }
+}
+
 int main()
 {
     struct Test { const char* name; void (*fn)(); };
@@ -236,6 +280,7 @@ int main()
         { "model parts: import on demand, both ways",     TestModelParts },
         { "texture names (files, cube maps, no device)",  TestTextureNames },
         { "a scene through two bridges",                  TestSceneThroughTwoBridges },
+        { "reuse: a live scene hands out its textures",   TestReuseTexturesOfALiveScene },
     };
     for (const Test& t : tests)
     {

@@ -21,6 +21,15 @@ namespace DXEngine
         else          m_Expanded.erase(e.Id());
     }
 
+    std::vector<Entity> HierarchyModel::ExpandedEntities(Scene& scene) const
+    {
+        std::vector<Entity> out;
+        out.reserve(m_Expanded.size());
+        for (entt::entity id : m_Expanded)
+            if (scene.Registry().valid(id)) out.push_back(scene.Wrap(id));
+        return out;
+    }
+
     void HierarchyModel::RevealEntity(Scene& scene, Entity e)
     {
         for (Entity parent = scene.GetParent(e); parent.IsValid(); parent = scene.GetParent(parent))

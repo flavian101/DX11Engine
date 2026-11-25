@@ -7,8 +7,8 @@ lights), cascaded / spot / point shadows in one atlas, a material system with PB
 workflow, model import through Assimp (including skeletal animation), and an editor with hierarchy, inspector, viewport,
 transform gizmo and renderer panels.
 
-What it is not yet: a game runtime. Scenes are built in C++ and cannot be saved, there is no play-mode snapshot and no
-HDR pipeline. [docs/ROADMAP.md](docs/ROADMAP.md) lists what is wrong and what comes next.
+What it is not yet: a finished game runtime. Scenes can be saved and loaded, but the starting scene is still built in C++; Play
+runs gameplay systems (`GameRuntime`) and Stop puts the scene back; there is no HDR pipeline. [docs/ROADMAP.md](docs/ROADMAP.md) lists what is wrong and what comes next.
 
 ## Build
 
@@ -30,15 +30,20 @@ The repository also contains `DXEngine.vcxproj` and `Editor.vcxproj` for Visual 
 and there is no `.sln` in the repository; CMake is the supported build.
 
 The Editor's post-build step copies `Editor/assets` (textures, models, **shaders**) next to the executable. Assets and
-shaders are found through paths relative to the **working directory** (`assets/shaders/`, `assets/textures/`), so start
-the Editor from the folder that contains the executable. Visual Studio's debugger already does (its working directory
-is set to that folder). Editing a shader in `Editor/assets/shaders` needs a build (to copy it) and a restart.
+shaders are found under the **project root**: the nearest folder that has `assets/shaders`, looked for from the executable's
+folder upwards and then from the working directory upwards (`ProjectRoot`). The application makes it the working directory
+when it starts, so the Editor and the Game start the same way from Visual Studio, a shortcut or a terminal. Editing a shader
+in `Editor/assets/shaders` needs a build (to copy it) and a restart. Scene files are stored relative to the root; save yours
+under `assets/scenes/` of the folder the Editor runs from (next to the executable after a CMake build; the copy step never
+deletes, but a clean build folder starts without them).
+The Editor starts with the scene file you last opened or saved (`last_scene` in `editor_prefs.ini`); before there is one, or
+when it is gone, it builds a small demo scene.
 
 ## Using the editor
 
 * Hold the **middle mouse button** over the viewport to look around, **W A S D** to fly, the mouse wheel changes the speed.
 * Left click picks, **F** frames the selection, **Q W E R** select / move / rotate / scale, **Ctrl+D** duplicates,
-  **Del** deletes. **F1** switches between editing and playing (play hides the panels).
+  **Del** deletes. **F1** plays and stops (play hides the panels and runs the game systems; stop puts the scene back exactly as it was).
 * Models are imported from the Assets panel.
 * **File > Save / Open / New** (Ctrl+S / Ctrl+O / Ctrl+N, Ctrl+Shift+S for Save As) write and read the scene as a `.dxscene` text file. It stores
   names for meshes, models and textures, not the assets themselves, so keep the files it names where they were. Problems found while loading

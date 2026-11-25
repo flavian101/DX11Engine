@@ -177,6 +177,9 @@
     <ClInclude Include="src\scene\Scene.h" />
     <ClInclude Include="src\scene\Uuid.h" />
     <ClInclude Include="src\scene\SceneSerializer.h" />
+    <ClInclude Include="src\scene\SceneSnapshot.h" />
+    <ClInclude Include="src\assets\ProjectRoot.h" />
+    <ClInclude Include="src\scene\GameRuntime.h" />
     <ClInclude Include="src\utils\Json.h" />
     <ClInclude Include="src\scene\AnimationSystem.h" />
     <ClInclude Include="src\scene\SceneFactory.h" />
@@ -226,6 +229,7 @@
     <ClInclude Include="src\editor\InspectorPanel.h" />
     <ClInclude Include="src\editor\ViewportPanel.h" />
     <ClInclude Include="src\editor\SceneIO.h" />
+    <ClInclude Include="src\editor\PlayMode.h" />
     <ClInclude Include="src\editor\SceneFileController.h" />
     <ClInclude Include="src\editor\SecondViewPanel.h" />
     <ClInclude Include="src\editor\ImGuizmoGizmo.h" />
@@ -307,6 +311,9 @@
     <ClCompile Include="src\scene\Scene.cpp" />
     <ClCompile Include="src\scene\Uuid.cpp" />
     <ClCompile Include="src\scene\SceneSerializer.cpp" />
+    <ClCompile Include="src\scene\SceneSnapshot.cpp" />
+    <ClCompile Include="src\assets\ProjectRoot.cpp" />
+    <ClCompile Include="src\scene\GameRuntime.cpp" />
     <ClCompile Include="src\utils\Json.cpp" />
     <ClCompile Include="src\scene\AnimationSystem.cpp" />
     <ClCompile Include="src\scene\AssetInstantiation.cpp" />
@@ -359,6 +366,7 @@
     <ClCompile Include="src\editor\InspectorPanel.cpp" />
     <ClCompile Include="src\editor\ViewportPanel.cpp" />
     <ClCompile Include="src\editor\SceneIO.cpp" />
+    <ClCompile Include="src\editor\PlayMode.cpp" />
     <ClCompile Include="src\editor\SceneFileController.cpp" />
     <ClCompile Include="src\editor\SecondViewPanel.cpp" />
     <ClCompile Include="vendor\ImGuizmo\src\ImGuizmo.cpp">

@@ -40,8 +40,10 @@ namespace DXEngine
             const size_t eq = line.find('=');
             if (eq == std::string::npos) continue;
             const std::string key = Trim(line.substr(0, eq));
+            const std::string value = Trim(line.substr(eq + 1));
+            if (key == "last_scene") { prefs.lastScene = value; continue; }          // the one text setting (a path may contain '=')
             float v = 0.0f;
-            if (!ParseFloat(Trim(line.substr(eq + 1)), v)) continue;
+            if (!ParseFloat(value, v)) continue;
             if (key == "ui_scale"  && v >= 0.75f && v <= 2.5f)   prefs.uiScale = v;
             if (key == "fly_speed" && v >= 0.5f  && v <= 400.0f) prefs.flySpeed = v;
             if (key == "vsync"     && (v == 0.0f || v == 1.0f))  prefs.vsync = v == 1.0f;
@@ -53,7 +55,9 @@ namespace DXEngine
     {
         char buffer[128];
         snprintf(buffer, sizeof(buffer), "ui_scale=%.3f\nfly_speed=%.3f\nvsync=%d\n", prefs.uiScale, prefs.flySpeed, prefs.vsync ? 1 : 0);
-        return buffer;
+        std::string text = buffer;
+        if (!prefs.lastScene.empty()) text += "last_scene=" + prefs.lastScene + "\n";
+        return text;
     }
 
     EditorPrefs LoadEditorPrefs(const char* path)

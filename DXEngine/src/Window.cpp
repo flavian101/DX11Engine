@@ -39,20 +39,6 @@ namespace DXEngine {
 
 	bool Window::Initialize()
 	{
-		typedef struct _WNDCLASS {
-			UINT cbSize;
-			UINT style;
-			WNDPROC lpfnWndProc;
-			int cbClsExtra;
-			int cbWndExtra;
-			HANDLE hInstance;
-			HICON hIcon;
-			HCURSOR hCursor;
-			HBRUSH hbrBackground;
-			LPCTSTR lpszMenuName;
-			LPCTSTR lpszClassName;
-		} WNDCLASS;
-
 		WNDCLASSEX wc = {};
 
 		wc.cbSize = sizeof(wc);

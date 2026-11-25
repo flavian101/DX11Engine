@@ -748,6 +748,13 @@ static void TestEditorPrefs()
     EditorPrefs on; on.vsync = true;
     CHECK(ParseEditorPrefs(FormatEditorPrefs(on)).vsync);
 
+    // the scene to start with: the one text setting. Round trip (a path may hold spaces and '='), trimmed, none by default and not written
+    EditorPrefs withScene; withScene.lastScene = "assets/scenes/my level=2.dxscene";
+    CHECK(ParseEditorPrefs(FormatEditorPrefs(withScene)).lastScene == withScene.lastScene);
+    CHECK(FormatEditorPrefs(EditorPrefs()).find("last_scene") == std::string::npos && ParseEditorPrefs("ui_scale=1.2\n").lastScene.empty());
+    CHECK(ParseEditorPrefs("last_scene=  a.dxscene \r\nui_scale=1.5\r\n").lastScene == "a.dxscene");
+    CHECK(Near(ParseEditorPrefs(FormatEditorPrefs(withScene)).uiScale, 1.0f));                                  // the other keys are not disturbed
+
     // files: a missing file is the defaults, a saved one comes back
     CHECK(Near(LoadEditorPrefs("no_such_file_for_the_test.ini").uiScale, 1.0f));
     SaveEditorPrefs(p, "editor_prefs_test.ini");

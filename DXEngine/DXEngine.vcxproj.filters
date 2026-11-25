@@ -161,6 +161,9 @@
       <Filter>scene</Filter>
     <ClInclude Include="src\scene\Uuid.h" />
     <ClInclude Include="src\scene\SceneSerializer.h" />
+    <ClInclude Include="src\scene\SceneSnapshot.h" />
+    <ClInclude Include="src\assets\ProjectRoot.h" />
+    <ClInclude Include="src\scene\GameRuntime.h" />
     <ClInclude Include="src\utils\Json.h" />
     </ClInclude>
     <ClInclude Include="src\scene\AnimationSystem.h">
@@ -334,6 +337,9 @@
     <ClInclude Include="src\editor\SceneIO.h">
       <Filter>editor</Filter>
     </ClInclude>
+    <ClInclude Include="src\editor\PlayMode.h">
+      <Filter>editor</Filter>
+    </ClInclude>
     <ClInclude Include="src\editor\SceneFileController.h">
       <Filter>editor</Filter>
     </ClInclude>
@@ -435,6 +441,9 @@
       <Filter>scene</Filter>
     <ClCompile Include="src\scene\Uuid.cpp" />
     <ClCompile Include="src\scene\SceneSerializer.cpp" />
+    <ClCompile Include="src\scene\SceneSnapshot.cpp" />
+    <ClCompile Include="src\assets\ProjectRoot.cpp" />
+    <ClCompile Include="src\scene\GameRuntime.cpp" />
     <ClCompile Include="src\utils\Json.cpp" />
     </ClCompile>
     <ClCompile Include="src\scene\AssetInstantiation.cpp">
@@ -585,6 +594,9 @@
     <ClCompile Include="src\editor\ViewportPanel.cpp">
       <Filter>editor</Filter>
     <ClCompile Include="src\editor\SceneIO.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\PlayMode.cpp">
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\SceneFileController.cpp">

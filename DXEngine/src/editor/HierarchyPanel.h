@@ -17,6 +17,8 @@ namespace DXEngine
 
         void BeginRename(Entity e);
 
+        HierarchyModel& Model() { return m_Model; }        // the expanded / collapsed state, for the host to carry over a restored scene
+
     private:
         void DrawRow(EditorContext& ctx, const HierarchyRow& row);
         void ApplyPending(EditorContext& ctx);

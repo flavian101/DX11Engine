@@ -27,6 +27,9 @@ namespace DXEngine
             std::function<std::string(const std::string& suggested)> pickSavePath;
             std::function<std::unique_ptr<IAssetBridge>()> makeBridge;
             std::function<void(const std::string& line, bool warning)> log;     // the Assets panel's log
+            // The scene's file changed: saved to a path, opened from one ("" = New: no file). The editor remembers it as the
+            // scene to start with next time. Optional.
+            std::function<void(const std::string& path)> pathChanged;
         };
 
         explicit SceneFileController(Hooks hooks) : m_Hooks(std::move(hooks)) {}
@@ -34,6 +37,10 @@ namespace DXEngine
         // The commands. New / Open ask first when the scene has unsaved changes (the answer arrives through OnImGui).
         void New(EditorContext& ctx);
         void Open(EditorContext& ctx);
+
+        // Opens a file without a dialog and without asking about unsaved changes: for the start-up, where the scene is the one built
+        // in code and there is nothing to lose. False when it could not be opened (the log says why); the scene is then untouched.
+        bool OpenFile(EditorContext& ctx, const std::string& path);
         bool Save(EditorContext& ctx);       // no file yet: Save As. False when it did not save (cancelled, failed)
         bool SaveAs(EditorContext& ctx);
 
@@ -53,8 +60,9 @@ namespace DXEngine
 
         void Proceed(EditorContext& ctx, Action action);
         bool WriteTo(EditorContext& ctx, const std::string& path);
-        void ReadFrom(EditorContext& ctx, const std::string& path);
+        bool ReadFrom(EditorContext& ctx, const std::string& path);
         void RememberBaseline(EditorContext& ctx);
+        void PathChanged() const { if (m_Hooks.pathChanged) m_Hooks.pathChanged(m_Path); }
         void Report(const std::string& line, bool warning) const { if (m_Hooks.log) m_Hooks.log(line, warning); }
         std::string CurrentText(EditorContext& ctx);
 

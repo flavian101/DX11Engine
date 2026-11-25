@@ -9,6 +9,7 @@
 #include "SceneEditing.h"
 #include "PlatformDialogs.h"
 #include "assets/EngineAssetBridge.h"
+#include "utils/AssetNames.h"
 #include <filesystem>
 #include "Application.h"
 #include "Event/MouseEvent.h"
@@ -32,18 +33,54 @@ namespace DXEngine
         SceneFileController::Hooks hooks;
         hooks.pickOpenPath = [] { return PlatformDialogs::OpenSceneFile(); };
         hooks.pickSavePath = [](const std::string& suggested) { return PlatformDialogs::SaveSceneFile(suggested); };
-        hooks.makeBridge = [this]() -> std::unique_ptr<IAssetBridge>
-        {
-            auto device = m_Ctx.device ? m_Ctx.device : Renderer::PrimaryDevice();
-            return std::make_unique<EngineAssetBridge>(device, m_Ctx.models, m_Assets.Importer(), m_Assets.MutableLog(),
-                                                       std::filesystem::current_path().generic_string());
-        };
-        hooks.log = [this](const std::string& line, bool warning)
-        {
-            if (warning) m_Assets.MutableLog().Warning("scene: " + line);
-            else         m_Assets.MutableLog().Info("scene: " + line);
-        };
+        hooks.makeBridge = [this] { return MakeBridge(); };
+        hooks.log = [this](const std::string& line, bool warning) { LogLine("scene: " + line, warning); };
+        hooks.pathChanged = [this](const std::string& path) { RememberScene(path); };
         m_SceneFile = std::make_unique<SceneFileController>(std::move(hooks));
+    }
+
+    std::unique_ptr<IAssetBridge> Editor::MakeBridge()
+    {
+        auto device = m_Ctx.device ? m_Ctx.device : Renderer::PrimaryDevice();
+        return std::make_unique<EngineAssetBridge>(device, m_Ctx.models, m_Assets.Importer(), m_Assets.MutableLog(), ProjectRoot());
+    }
+
+    std::string Editor::ProjectRoot() const
+    {
+        return std::filesystem::current_path().generic_string();
+    }
+
+    void Editor::RememberScene(const std::string& path)
+    {
+        const std::string stored = path.empty() ? std::string() : AssetNames::ToStoredPath(path, ProjectRoot());
+        if (stored == m_Prefs.lastScene) return;
+        m_Prefs.lastScene = stored;
+        SaveEditorPrefs(m_Prefs);
+    }
+
+    bool Editor::OpenLastScene()
+    {
+        if (!m_Ctx.scene || m_Prefs.lastScene.empty()) return false;
+        const std::string path = AssetNames::FromStoredPath(m_Prefs.lastScene, ProjectRoot());
+        std::error_code ec;
+        if (!std::filesystem::is_regular_file(path, ec))
+        {
+            LogLine("start-up: the last scene '" + m_Prefs.lastScene + "' is gone, starting with the default scene", true);
+            return false;
+        }
+        return m_SceneFile->OpenFile(m_Ctx, path);          // (a file that cannot be read says so in the log and leaves the scene alone)
+    }
+
+    void Editor::LogLine(const std::string& line, bool warning)
+    {
+        if (warning) m_Assets.MutableLog().Warning(line);
+        else         m_Assets.MutableLog().Info(line);
+    }
+
+    void Editor::Notify(const std::string& text)
+    {
+        m_Notice = text;
+        m_NoticeSeconds = 8.0f;
     }
 
     Editor::~Editor()
@@ -70,7 +107,74 @@ namespace DXEngine
         m_Ctx.gizmo = gizmo ? std::move(gizmo) : std::make_unique<NullGizmo>();
     }
 
-    void Editor::SetEnabled(bool enabled)
+    // ---------------------------------------------------------------- play mode
+    bool Editor::Play()
+    {
+        if (IsPlaying()) return false;
+        if (!m_Ctx.scene) { Notify("Nothing to play: there is no scene"); return false; }
+        m_Ctx.device = Renderer::Get().GetDevice();
+
+        // What the editor holds by entity handle and wants back after the scene is restored: the stress-test parent, then every
+        // expanded row (the selection is PlayMode's own).
+        std::vector<Entity> keep;
+        keep.push_back(m_StressTest);
+        for (Entity e : m_Hierarchy.Model().ExpandedEntities(*m_Ctx.scene)) keep.push_back(e);
+
+        const PlayMode::Outcome r = m_Play.Start(m_Ctx, m_Game, MakeBridge(), keep);
+        for (const std::string& w : r.warnings) LogLine("play: " + w, true);
+        if (!r.ok)
+        {
+            LogLine("play: " + r.error, true);
+            std::string text = "Cannot play: " + (r.warnings.empty() ? r.error : r.warnings.front());
+            if (r.warnings.size() > 1) text += "  (+" + std::to_string(r.warnings.size() - 1) + " more in the Assets log)";
+            Notify(text);
+            return false;
+        }
+
+        m_Notice.clear();
+        m_NoticeSeconds = 0.0f;
+        SetUiEnabled(false);
+        return true;
+    }
+
+    void Editor::Stop()
+    {
+        if (!IsPlaying()) return;
+        const PlayMode::Outcome r = m_Play.Stop(m_Ctx, m_Game, MakeBridge());
+        for (const std::string& w : r.warnings) LogLine("play: " + w, true);
+
+        // the scene has new entities (or, when it could not be restored, still the old ones): the handles the editor kept come back
+        // through 'kept', in the order they were handed over
+        if (!r.kept.empty())
+        {
+            m_StressTest = r.kept.front();
+            for (size_t i = 1; i < r.kept.size(); ++i) m_Hierarchy.Model().SetExpanded(r.kept[i], true);
+        }
+
+        if (!r.ok)
+        {
+            LogLine("play: the scene could not be put back: " + r.error, true);
+            Notify("The scene could not be put back (" + r.error + "): it keeps what the game made of it");
+        }
+        else if (!r.warnings.empty())
+            Notify("Scene put back with " + std::to_string(r.warnings.size()) + (r.warnings.size() == 1 ? " warning" : " warnings") + " (see the Assets log)");
+
+        SetUiEnabled(true);
+    }
+
+    void Editor::Update(float deltaSeconds)
+    {
+        if (!IsPlaying() || !m_Game || !m_Ctx.scene) return;
+        if (m_Game->Update(*m_Ctx.scene, deltaSeconds)) return;
+
+        // a system threw: the game has stopped itself. End the session, so the scene is back and the error is not lost.
+        const std::string why = m_Game->LastError();
+        LogLine("play: the game stopped: " + why, true);
+        Stop();
+        Notify("Play stopped: " + why);
+    }
+
+    void Editor::SetUiEnabled(bool enabled)
     {
         if (m_Enabled == enabled) return;
         m_Enabled = enabled;
@@ -176,10 +280,15 @@ namespace DXEngine
 
         // The order matters: the bars first (each one shrinks the area left), then the dock space inside what is left.
         DrawMainMenu();
-        if (EditorChrome::DrawToolbar(m_Ctx).togglePlay)
-            SetEnabled(false);
+        if (EditorChrome::DrawToolbar(m_Ctx).playPressed && Play())
+        {
+            DrawPlayHint();                              // the scene fills the window from here: no panels this frame
+            return;
+        }
 
-        const char* hint = m_Ctx.flying          ? "Release the middle button to stop flying"
+        if (m_NoticeSeconds > 0.0f) m_NoticeSeconds -= ImGui::GetIO().DeltaTime;
+        const char* hint = m_NoticeSeconds > 0.0f ? m_Notice.c_str()
+                         : m_Ctx.flying          ? "Release the middle button to stop flying"
                          : m_Ctx.viewportHovered ? "Middle button + W A S D  fly      Left click  select      F  frame      Q W E R  tools"
                                                  : "";
         EditorChrome::DrawStatusBar(m_Ctx, hint);
@@ -215,7 +324,7 @@ namespace DXEngine
         if (m_PlayHint <= 0.0f) return;
         m_PlayHint -= ImGui::GetIO().DeltaTime;
 
-        const char* text = "Playing   -   F1 returns to the editor";
+        const char* text = "Playing   -   F1 stops and puts the scene back";
         const ImVec2 size = ImGui::CalcTextSize(text);
         const float pad = 10.0f * EditorTheme::Scale();
         const ImVec2 display = ImGui::GetIO().DisplaySize;
@@ -302,7 +411,7 @@ namespace DXEngine
         if (ImGui::BeginMenu("Tools"))
         {
             if (ImGui::MenuItem("Play", "F1"))
-                SetEnabled(false);
+                Play();
             ImGui::Separator();
             if (ImGui::MenuItem("Stress test: 1000 point lights", nullptr, m_StressTest.IsValid(), scene != nullptr))
                 ToggleStressTest();
@@ -338,7 +447,7 @@ namespace DXEngine
                 { "F2", "Rename (hierarchy)" },
                 { "Ctrl + D", "Duplicate" },
                 { "Delete", "Delete" },
-                { "F1", "Switch between editor and play" },
+                { "F1", "Play / Stop (Stop puts the scene back as it was)" },
                 { "Esc", "Quit (not while typing in a field)" },
             };
             if (ImGui::BeginTable("##shortcuts", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_PadOuterX))

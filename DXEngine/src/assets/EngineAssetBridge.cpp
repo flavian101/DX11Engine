@@ -1,6 +1,7 @@
 #include "dxpch.h"
 #include "EngineAssetBridge.h"
 #include "models/ModelAsset.h"
+#include "scene/Scene.h"
 #include "RHI/GraphicsDevice.h"
 #include "utils/AssetNames.h"
 #include "utils/ImageLoader.h"
@@ -87,6 +88,30 @@ namespace DXEngine
     }
 
     // ---------------------------------------------------------------- resolving
+    std::string EngineAssetBridge::TextureKey(const std::string& name, TextureSlot slot)
+    {
+        return name + "@" + std::to_string(static_cast<int>(MaterialSlots::Info(slot).colorSpace));
+    }
+
+    void EngineAssetBridge::Reuse(Scene& alive)
+    {
+        for (auto [entity, renderer] : alive.Registry().view<MeshRendererComponent>().each())
+        {
+            for (const std::shared_ptr<Material>& material : renderer.materials)
+            {
+                if (!material) continue;
+                const auto& bound = material->GetTextures();
+                for (const SlotInfo& info : MaterialSlots::All())
+                {
+                    const size_t i = static_cast<size_t>(info.slot);
+                    if (i >= bound.size() || !bound[i]) continue;
+                    const std::string name = NameTexture(*bound[i], info.slot);
+                    if (!name.empty()) m_Textures.emplace(TextureKey(name, info.slot), bound[i]);     // the first holder wins
+                }
+            }
+        }
+    }
+
     std::shared_ptr<Mesh> EngineAssetBridge::ResolveMesh(const std::string& name)
     {
         AssetNames::Primitive p;
@@ -137,11 +162,10 @@ namespace DXEngine
 
     std::shared_ptr<RHI::ITexture> EngineAssetBridge::ResolveTexture(const std::string& name, TextureSlot slot)
     {
-        if (!m_Device) { m_Log.Warning("scene: no device, the texture '" + name + "' was not loaded"); return nullptr; }
-
         // the same file can be bound to a colour slot and a data slot: different formats, so different textures
-        const std::string key = name + "@" + std::to_string(static_cast<int>(MaterialSlots::Info(slot).colorSpace));
+        const std::string key = TextureKey(name, slot);
         if (const auto it = m_Textures.find(key); it != m_Textures.end()) return it->second;
+        if (!m_Device) { m_Log.Warning("scene: no device, the texture '" + name + "' was not loaded"); return nullptr; }
 
         std::shared_ptr<RHI::ITexture> texture;
         std::array<std::string, 6> faces;

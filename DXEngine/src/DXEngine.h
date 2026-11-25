@@ -23,6 +23,9 @@
 #include "scene/ScenePicking.h"
 #include "scene/AnimationSystem.h"
 #include "scene/TransformSystem.h"
+#include "scene/GameRuntime.h"
+#include "scene/SceneSnapshot.h"
+#include "assets/ProjectRoot.h"
 
 
 #define DX_BIND_EVENT_FN(fn) std::bind(&fn, this, std::placeholders::_1)

@@ -47,6 +47,11 @@ namespace DXEngine
         virtual std::shared_ptr<Material> ResolveMaterial(const std::string& name) = 0;   // a material that belongs to a named model
         virtual std::shared_ptr<RHI::ITexture> ResolveTexture(const std::string& name, TextureSlot slot) = 0;
         virtual std::shared_ptr<ModelAsset> ResolveModel(const std::string& name) = 0;
+
+        // Called just before a scene is loaded over a scene that is still alive (play mode putting its snapshot back). The bridge
+        // may take from that scene what it can hand out again, so that a texture which was read from a file is not read a second
+        // time. Nothing to do by default; the scene is only looked at.
+        virtual void Reuse(Scene& alive) { (void)alive; }
     };
 
     // ==================================================================

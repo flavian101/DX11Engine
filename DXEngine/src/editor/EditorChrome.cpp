@@ -116,8 +116,8 @@ namespace DXEngine
                     Renderer::Get().SetEnvironment(env);
                 }
                 Divider();
-                if (EditorIcons::Button("##play", Icon::Play, false, "Play: the scene fills the window  (F1 to come back)"))
-                    result.togglePlay = true;
+                if (EditorIcons::Button("##play", Icon::Play, false, "Play: the scene fills the window and the game runs  (F1 stops it and puts the scene back)"))
+                    result.playPressed = true;
 
                 ImGui::End();
             }

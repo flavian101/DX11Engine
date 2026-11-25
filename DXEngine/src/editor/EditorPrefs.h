@@ -13,6 +13,7 @@ namespace DXEngine
         float uiScale = 1.0f;          // View > UI scale (0.75 .. 2.5)
         float flySpeed = 20.0f;        // WASD speed of the camera (0.5 .. 400)
         bool  vsync = false;           // Renderer > Display > V-Sync (the renderer's own default is off: unchanged behaviour)
+        std::string lastScene;         // the scene file last opened or saved (stored relative to the project root); "" = none. It is the starting scene.
     };
 
     EditorPrefs ParseEditorPrefs(const std::string& text);

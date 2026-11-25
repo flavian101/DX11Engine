@@ -125,7 +125,7 @@ assets.
 * **The names the engine writes** (`AssetNames`, `EngineAssetBridge`): generated meshes carry all their parameters
   (`primitive/cube?size=2`, `primitive/sphere?radius=1&segments=32`, `primitive/plane?...`, `primitive/quad?...`); parts of an imported model are
   `model/<path>#mesh/<i>` and `model/<path>#material/<j>` (the model is imported on demand when the library does not have it); a texture is its
-  file path or `cube:<six paths>`. Paths are stored relative to the project root (today the working directory) with `/`, so a scene moves
+  file path or `cube:<six paths>`. Paths are stored relative to the project root (`ProjectRoot`, the working directory once the application has entered it) with `/`, so a scene moves
   between machines with its assets. A name a file could never honestly make (a sphere with a million segments) is refused when read.
   A model's material EDITED in the editor is saved as "that model's material": the model's own values come back on load (known limit).
 * **Not saved:** world matrices and bone matrices (derived: run `TransformSystem` / `AnimationSystem` after loading), the animator's
@@ -206,7 +206,7 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | B5 | `Ray.cpp` included `utils/mesh/...` (wrong case: breaks on a case-sensitive file system). | Fixed |
 | B6 | `editor_ui_tests` did not link: the two stubs its comment promises were missing. | Fixed (not run here: needs ImGui and `comdlg32`) |
 | B7 | `Esc` quits the whole application at once (unless a text field has focus), and nothing can be saved yet. | Policy moved out of the engine (`Application` no longer knows Esc or the middle mouse button: `EditorApp` handles them through the `OnApplicationEvent` hook). The behaviour itself is Open (P5: Esc stops play mode, it does not quit) |
-| B8 | Assets and shaders are found through paths relative to the working directory (`assets/shaders/`, `assets/textures/...` hard-coded in `EditorLayer`), so the Editor only works when started from the folder holding its assets. | Open. Scene files store paths relative to a "root" (the bridge takes it as a parameter; the editor passes the working directory), so the day the root becomes the project folder is a one-line change there; the shader folder and `EditorLayer`'s own paths are still working-directory relative |
+| B8 | Assets and shaders are found through paths relative to the working directory (`assets/shaders/`, `assets/textures/...` hard-coded in `EditorLayer`), so the Editor only works when started from the folder holding its assets. | Fixed (P3, found, not configured): `ProjectRoot::Find` looks for the nearest folder with `assets/shaders`, from the executable's folder upwards, then from the working directory upwards; `Main.h` enters it before anything else, so the Editor and the Game start the same way from anywhere (`project_root_tests`). The root is still the build output's folder after a CMake build (the assets are copied there): a separate project folder with a project file is not decided yet |
 | B9 | A skinned model (the horse) was drawn at the scene origin while its gizmo sat at the entity, and moving the entity moved only the gizmo. Cause: the bone matrices map the mesh into the skeleton's root space and carry no scene transform, but both skinning vertex shaders treated the result as world space and skipped `Model`; culling still used the entity's position, so the model could also vanish where it was not drawn. | Fixed in code and tests (the shaders apply `Model`; a skinned draw uses the Animator entity's world matrix, also for culling and shadows; pose-less skinned meshes get identity bones). **Still to check on a GPU**: load the horse, move / rotate / scale it, look at its shadow |
 
 ### C. Does not scale
@@ -228,8 +228,8 @@ Status: **Fixed** = fixed by the cleanup patch series, **Open** = still there. I
 | D2 | `DXEngine/tests/CMakeLists.txt` listed engine sources by hand, repeated per test target, so any file move touched many targets. | Fixed (every test links `DXEngineCore`; no engine source is listed in the tests file). Link-checked with a MinGW cross build, not yet built with MSVC |
 | D3 | Components hold `shared_ptr<Mesh>` / `shared_ptr<Material>` and entities had no stable id: a scene could not be saved or loaded, and a prefab could not refer to an asset. | Fixed for scenes: entities have a `Uuid`; `SceneSerializer` + `EngineAssetBridge` save and load scenes (see "Scene files"). Components still hold `shared_ptr`s: the file format does not need handles, so that part of the plan is dropped until something needs it (a prefab or a script referring to an asset) |
 | D4 | The camera is not a component; its weighted behaviour-blending stack is more than a fly camera needs. | Open (P5) |
-| D5 | Play mode only hides the panels: there is no scene snapshot and restore, and no game layer separate from the editor. | Open (P3) |
-| D6 | The editor scene is built in C++ (`EditorLayer`) with asset paths relative to the working directory. | Partly fixed: File > New / Open / Save / Save As work (Ctrl+N / O / S, Ctrl+Shift+S) and any scene can be saved and reopened. **Open:** the starting scene is still built in C++ at start-up (it could be the first saved file, loaded when it exists) |
+| D5 | Play mode only hides the panels: there is no scene snapshot and restore, and no game layer separate from the editor. | Fixed in code and tests (P3c): `SceneSnapshot` (Play writes the scene into memory, Stop loads it back), `GameRuntime` / `IGameSystem` (gameplay that runs only while playing, on the live scene), `PlayMode`, `Editor::Play / Stop / Update`. The `Game` app runs the same `GameRuntime` from its first frame. **Still to check on a GPU** (see section 5) |
+| D6 | The editor scene is built in C++ (`EditorLayer`) with asset paths relative to the working directory. | Fixed (P3): the starting scene is the file last opened or saved (`last_scene` in `editor_prefs.ini`, stored relative to the root; `Editor::OpenLastScene`, `SceneFileController::OpenFile`). The C++ scene is only what there is before a first file exists, or when the file is gone or unreadable (the Assets log says which) |
 | D7 | `ShadingModel::Emissive` is Lit plus emission under another name (the "one fact, two places" pattern the design rules out). | Open (P4) |
 | D8 | `SceneFactory` takes the device as a parameter while loaders and a few panels reach for `Renderer::PrimaryDevice()` / `Renderer::Get()`. `utils/` holds core types (Mesh, Material, Transform). | Open (P2: pass the device or the renderer explicitly; core types leave `utils/`) |
 | D9 | The scene has no environment lighting. IBL exists only as two *material* texture slots (`Environment`, `Irradiance`), and the only material that gets one is the sky dome, so every other object falls back to a flat ambient colour (metals go dark and flat, nothing is lit from "the sky"). Nothing produces the maps the shader expects: it reads `environmentTexture.SampleLevel(..., roughness * 8)` and assumes a GGX-prefiltered mip chain of exactly 8 levels, and `irradianceTexture` has no producer. The sky itself is an 8-bit LDR cube. | Open (P4: environment becomes a scene resource, baked from an HDR source) |
@@ -305,7 +305,7 @@ Each phase ends with something a person can check. Do not start a phase with a f
   (**met in code and tests**: View > View 2 draws the scene through a second camera into its own texture; **still to check on a
   GPU**: open it, pin it, fly the main camera, compare, check that shadows and the main view are unaffected).
 
-**P3: Assets, scenes, play mode** (B8, D3, D5, D6): *P3a and P3b done, P3c next*
+**P3: Assets, scenes, play mode** (B8, D3, D5, D6): *P3a, P3b, P3c, D6 and B8 done, P3d next*
 * P3a (done, tested without a GPU): `Uuid` + `IdComponent` + `Scene::FindByUuid / CreateEntityWithUuid / Clear`; `Json`; `SceneSerializer`
   with the `IAssetBridge` interface.
 * P3b (done in code and tests, GPU check pending): `AssetNames` (names for generated meshes, model parts, cube maps, paths relative to a
@@ -314,11 +314,29 @@ Each phase ends with something a person can check. Do not start a phase with a f
   "unsaved changes" question decided by comparing the scene's text with the last save, so no edit tracking), `SceneIO` (atomic writes:
   `<file>.tmp` then replace, so a failed save never damages the old file), `PlatformDialogs::OpenSceneFile / SaveSceneFile`, warnings
   in the Assets panel's log, selection cleared and transforms refreshed after a load.
-* P3c (next): play mode = snapshot (`SceneSerializer::Save` into memory) on Play, `Load` on Stop; a game layer runs on the live scene (D5).
-  Then the starting scene becomes a file (D6) and the project root replaces the working directory (B8).
+* P3c (done in code and tests, GPU check pending): play mode.
+  * `SceneSnapshot` (`scene/`): the scene as text in memory. `Take` is **refused** when the serializer had to warn (an attachment with no name a file
+    could use would be lost on Stop); `Restore` replaces the scene's contents and brings the world matrices up to date; `Pin` / `Pinned` find entities
+    again by id (handles do not survive a restore, and an old handle may even point at another entity). `IAssetBridge::Reuse` lets the bridge take
+    the textures of the scene about to be replaced, so Stop does not decode the 8k moon again.
+  * `GameRuntime` and `IGameSystem` (`scene/`): systems with `OnStart / OnUpdate / OnStop`, run in the order they were added (stopped in reverse). A
+    system that throws ends the game (every system still gets `OnStop`, the runtime keeps the error) instead of taking the application down.
+    The frame's order is: gameplay, then `AnimationSystem`, then `TransformSystem`, then drawing.
+  * `PlayMode` (`editor/`, no UI): Start = snapshot + camera pose + game start (undone as a whole if a system cannot start); Stop = game stop + restore
+    + selection and camera back. A session always ends on Stop, even when the scene could not be restored (the editor says so). `Editor::Play / Stop /
+    Update` add the UI side: the stress-test parent and the expanded hierarchy rows are kept by id, a refused Play says why in the status bar and in
+    the Assets log, F1 and the toolbar both go through them. The editor app registers one demo system (`LampSwing`: the lamp circles the spheres and
+    pulses while playing) so that Play then Stop has something visible to restore; replace it with real gameplay.
+  * What a restore is not: assets are shared and immutable (principle 3), so code that changes an imported model's own material, a texture or a mesh
+    while playing changes it for good; give an entity a material of its own to change it.
+* D6 and B8 (done in code and tests, GPU check pending): `ProjectRoot` (`assets/`) finds the root and `Main.h` enters it; `EditorPrefs::lastScene`
+  remembers the scene file (`SceneFileController` reports every path change through `Hooks::pathChanged`: a save or an open reports the path, New
+  reports "", failures and cancels report nothing); `OpenFile` opens it at start-up without a dialog and without the unsaved-changes question (the
+  scene built in code has nothing to lose). The editor camera is still not part of the scene (D4).
 * P3d: undo / redo and multi-selection (the two things the editor lacks after saving).
 * *Exit:* save, quit, start, load gives the same scene (met by the tests with the real bridge minus the GPU: generated meshes, imported
-  models by name, own materials; still to check with real textures and models in the editor); Play then Stop restores every component.
+  models by name, own materials; still to check with real textures and models in the editor); Play then Stop restores every component (met by
+  `play_mode_tests`: components, ids, hierarchy, material values, selection, camera; still to check on a GPU).
 
 **P4: Renderer scale and quality** (A4, C3, C4, C5, C7, D7, D9, E2)
 
@@ -363,7 +381,7 @@ itself is textbook Cook-Torrance: GGX, Smith, Schlick, Lambert / PI, and is not 
 **P5: Gameplay basics** (B7, D4)
 * `CameraComponent`; the editor fly camera is a controller, not part of the engine camera.
 * Input actions (named, rebindable) instead of polling keys in layers; `Esc` stops play mode, it does not quit.
-* A game layer / runtime loop separate from the editor layer.
+* A game layer / runtime loop separate from the editor layer (`GameRuntime` exists since P3c; what is left is an application shell that loads a scene file and runs it).
 * Physics and audio are decided only when a game needs them.
 
 ---
@@ -375,13 +393,16 @@ itself is textbook Cook-Torrance: GGX, Smith, Schlick, Lambert / PI, and is not 
   catalog, skeleton, image decode.
 * The P1 build change (`DXEngineCore`, `dx_add_test`) was built end to end with a MinGW-w64 cross build of the real top-level
   CMake (the library, the Editor and all 17 test executables link) and the GPU-free tests were run on Linux against the same
-  sources. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
+  sources. P3c, D6 and B8 (the 18th and 19th tests, `play_mode_tests` and `project_root_tests`) were checked differently: the changed engine, editor and
+  application files were compile-checked with MinGW (`Editor.cpp`, `EditorLayer.cpp`, `EditorApp.cpp`, `GameApp.cpp`, `Main.h` included) and
+  `play_mode_tests`, `project_root_tests`, `scene_serializer_tests`, `engine_asset_bridge_tests`, `editor_tests` and `editor_ui_tests` were run natively on Linux with a stand-in precompiled header; that build is not the CMake one, so run `ctest` on Windows. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
 * **Never executed on a real GPU or window** (check by running the Editor): File > Save / Open / New on the real starting scene (the sky's six faces,
-  the 8k moon, an imported model with its animator; Save As in a folder that does not exist yet; "unsaved changes"), the Windows file dialogs,
+  the 8k moon, an imported model with its animator; Save As in a folder that does not exist yet; "unsaved changes"), the Windows file dialogs, the Editor and the Game started from another folder (a shortcut, a terminal: `ProjectRoot` + `Main.h`), the Editor reopening the last scene on the next start (and the demo scene when that file is deleted),
   the new `Renderer` / `RenderView` path (main view
   into the window and into the viewport texture, View 2, closing View 2, resizing the window with both open), the depth pre-pass, the shadow bias values
   (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` were chosen by reasoning), the editor's look,
-  a middle-button fly, the gizmo handles, play mode, and a skinned model moving with its gizmo (B9: the horse, plus its shadow).
+  a middle-button fly, the gizmo handles, play mode (F1 and the Play button: the lamp circles and pulses, F1 puts it back with the selection, the
+  expanded rows and the camera; how long Stop takes with the real textures; a Play refused with a message; the horse animating through Play and Stop), and a skinned model moving with its gizmo (B9: the horse, plus its shadow).
 * Shaders: every permutation (static and skinned vertex shaders, the shadow caster, the Lit / Unlit / Emissive / Skybox pixel
   shaders) compiles with DXC at shader model 6.0. That checks the HLSL, not the engine's real D3DCompile (shader model 5).
 * The editor panels are run through real ImGui frames headlessly (`editor_ui_tests`); that cannot say whether the UI looks right.

@@ -375,6 +375,7 @@ struct FileEnv
             return std::make_unique<EngineAssetBridge>(nullptr, models, importer, bridgeLog, dir);
         };
         hooks.log = [this](const std::string& line, bool warning) { lines.push_back((warning ? "! " : "  ") + line); };
+        hooks.pathChanged = [this](const std::string& path) { paths.push_back(path); };
         controller = std::make_unique<SceneFileController>(std::move(hooks));
     }
     ~FileEnv() { std::filesystem::remove_all(dir); }
@@ -387,6 +388,7 @@ struct FileEnv
     ModelImporter importer;
     Assets::ImportLog bridgeLog;
     std::vector<std::string> lines;
+    std::vector<std::string> paths;              // what the controller reported as the scene's file, in order
     std::unique_ptr<SceneFileController> controller;
 };
 
@@ -521,6 +523,40 @@ static void TestSceneFileController()
     std::filesystem::create_directories(env.dir + "/blocked.dxscene");
     env.saveAnswer = env.dir + "/blocked.dxscene";
     CHECK(!files.SaveAs(ctx) && env.Logged("save failed") && files.Path() == pathBefore && std::filesystem::is_directory(env.dir + "/blocked.dxscene"));
+    CHECK(env.paths.empty() == false);
+
+    // ---- the file the scene is tied to is reported (the editor remembers it as the starting scene): saves and opens report the
+    //      path, New reports "", failures and cancels report nothing
+    {
+        FileEnv e2;
+        Scene s2; EditorContext c2; c2.scene = &s2;
+        s2.CreateEntity("one");
+        const std::string saved = e2.dir + "/one.dxscene";
+        e2.saveAnswer = saved;
+        CHECK(e2.controller->Save(c2) && e2.paths == std::vector<std::string>{ saved });
+        e2.saveAnswer.clear();
+        CHECK(!e2.controller->SaveAs(c2) && e2.paths.size() == 1);                                // cancelled
+        e2.controller->New(c2);
+        CHECK(e2.paths.size() == 2 && e2.paths.back().empty());                                   // New: no file
+        CHECK(!e2.controller->OpenFile(c2, e2.dir + "/missing.dxscene") && e2.paths.size() == 2 && e2.Logged("open failed"));
+
+        // ---- OpenFile: no dialog, no question about unsaved changes (the start-up scene is built in code and has nothing to lose)
+        s2.CreateEntity("unsaved");
+        CHECK(e2.controller->IsModified(c2));
+        e2.openDialogs = 0;
+        CHECK(e2.controller->OpenFile(c2, saved));
+        CHECK(e2.openDialogs == 0 && !e2.controller->HasPending() && s2.EntityCount() == 1 && e2.controller->Path() == saved);
+        CHECK(!e2.controller->IsModified(c2) && e2.paths.size() == 3 && e2.paths.back() == saved && e2.Logged("opened"));
+        CHECK(TransformSystem::IsCurrent(s2) && !c2.selection.Has());
+
+        // a file that cannot be loaded leaves the scene and the path alone
+        SceneIO::WriteTextFile(e2.dir + "/junk.dxscene", "not json at all");
+        CHECK(!e2.controller->OpenFile(c2, e2.dir + "/junk.dxscene") && s2.EntityCount() == 1 && e2.controller->Path() == saved && e2.paths.size() == 3);
+        CHECK(!e2.controller->OpenFile(c2, "") && e2.paths.size() == 3);
+
+        EditorContext none;
+        CHECK(!e2.controller->OpenFile(none, saved));                                             // no scene
+    }
 }
 
 static void TestViewportWithCamera()
