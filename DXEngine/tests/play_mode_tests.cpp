@@ -351,6 +351,25 @@ static void TestPlayThenStopRestoresTheEditor()
     CHECK(SameText(before, w.Text()));
 }
 
+static void TestPlayKeepsAMultiSelection()
+{
+    World w;
+    EditorContext ctx; ctx.scene = &w.scene;
+    ctx.selection.SetMany({ w.lamp, w.arm, w.rig });                                    // the rig is the primary
+    const Uuid lampId = w.scene.GetUuid(w.lamp), armId = w.scene.GetUuid(w.arm), rigId = w.scene.GetUuid(w.rig);
+
+    PlayMode play;
+    CHECK(play.Start(ctx, nullptr, BridgeOf(w), { w.lamp }).ok);
+    w.scene.DestroyEntity(w.scene.FindByName("Lamp"));                                  // the game deletes one of the selected
+    Entity born = w.scene.CreateEntity("Born");
+    const auto stopped = play.Stop(ctx, nullptr, BridgeOf(w));
+    CHECK(stopped.ok && stopped.kept.size() == 1 && stopped.kept[0].IsValid() && stopped.kept[0] == w.scene.FindByUuid(lampId));   // 'keep' is after the selection
+    CHECK(ctx.selection.Count() == 3);                                                  // the lamp is back (the restore brought it back), nothing else is selected
+    CHECK((ctx.selection.All() == std::vector<Entity>{ w.scene.FindByUuid(lampId), w.scene.FindByUuid(armId), w.scene.FindByUuid(rigId) }));
+    CHECK(ctx.selection.IsPrimary(w.scene.FindByUuid(rigId)));
+    CHECK(!w.scene.FindByName("Born").IsValid());
+}
+
 static void TestPlayIsRefusedWhenTheSceneCannotComeBack()
 {
     World w;
@@ -438,6 +457,7 @@ int main()
         { "game runtime: order, restart",                       TestGameRuntimeOrder },
         { "game runtime: a failing system",                     TestGameRuntimeFailures },
         { "play: stop restores scene, selection, camera, rows", TestPlayThenStopRestoresTheEditor },
+        { "play: a multi-selection comes back",                 TestPlayKeepsAMultiSelection },
         { "play: refused when the scene cannot come back",      TestPlayIsRefusedWhenTheSceneCannotComeBack },
         { "play: without a game",                               TestPlayWithoutGame },
         { "play: a game that cannot start",                     TestGameThatCannotStartLeavesTheSceneAlone },

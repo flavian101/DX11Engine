@@ -142,7 +142,13 @@ namespace DXEngine
 
                 // what is selected
                 Entity e = ctx.selection.Get();
-                if (e.IsValid())
+                if (ctx.selection.Count() > 1)
+                {
+                    ImGui::Text("%zu selected", ctx.selection.Count());
+                    ImGui::SameLine();
+                    ImGui::TextColored(pal.textDim, "(%s)", e.Get<NameComponent>().name.c_str());
+                }
+                else if (e.IsValid())
                 {
                     ImGui::TextUnformatted(e.Get<NameComponent>().name.c_str());
                     ImGui::SameLine();

@@ -263,6 +263,13 @@ namespace DXEngine
         }
 
         DrawHeader(ctx, e);
+        if (ctx.selection.Count() > 1)
+        {
+            // the Inspector edits ONE entity: the primary. The gizmo, Delete, Duplicate and dragging in the hierarchy act on all.
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorTheme::Colors().textDim);
+            ImGui::TextWrapped("%zu selected. The values below belong to this one (the last selected); Delete, Duplicate, the gizmo and dragging act on all of them.", ctx.selection.Count());
+            ImGui::PopStyleColor();
+        }
         ImGui::Spacing();
 
         DrawTransform(e);

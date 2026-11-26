@@ -18,8 +18,10 @@ namespace DXEngine
             return out;                                     // nothing changed: the scene, the camera and the game are as they were
         }
 
-        m_Snapshot.Pin(*ctx.scene, ctx.selection.Get());   // pin 0 is the selection
-        for (const Entity& e : keep) m_Snapshot.Pin(*ctx.scene, e);
+        const std::vector<Entity> selected = ctx.selection.All();     // the selection comes first, in order (the last one is the primary) ...
+        for (const Entity& e : selected) m_Snapshot.Pin(*ctx.scene, e);
+        m_SelectedCount = selected.size();
+        for (const Entity& e : keep) m_Snapshot.Pin(*ctx.scene, e);    // ... then the host's own
         m_Kept = keep;
 
         m_HasCamera = ctx.camera && ctx.camera->GetCamera();
@@ -78,9 +80,15 @@ namespace DXEngine
 
         if (back.ok)
         {
-            ctx.selection.Set(m_Snapshot.Pinned(*ctx.scene, 0));
+            std::vector<Entity> stillThere;
+            for (size_t i = 0; i < m_SelectedCount; ++i)
+            {
+                const Entity e = m_Snapshot.Pinned(*ctx.scene, i);
+                if (e.IsValid()) stillThere.push_back(e);
+            }
+            ctx.selection.SetMany(stillThere);
             out.kept.reserve(m_Kept.size());
-            for (size_t i = 0; i < m_Kept.size(); ++i) out.kept.push_back(m_Snapshot.Pinned(*ctx.scene, 1 + i));
+            for (size_t i = 0; i < m_Kept.size(); ++i) out.kept.push_back(m_Snapshot.Pinned(*ctx.scene, m_SelectedCount + i));
         }
         else
             out.kept = m_Kept;                              // the scene was not replaced: the old handles are still the ones to use
@@ -93,6 +101,7 @@ namespace DXEngine
         }
         m_Snapshot.Clear();
         m_Kept.clear();
+        m_SelectedCount = 0;
         return out;
     }
 }

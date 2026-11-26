@@ -98,6 +98,7 @@ namespace DXEngine
         EditorContext&   Context()   { return m_Ctx; }
 
     private:
+        void SelectAll();
         void StartHistory();                              // the scene as it is now is the first step
         void CommitEdits();                               // records the pending edits as one step
         void TrackEdits();                                // end of every UI frame: notices edits, commits them once the gesture is over

@@ -173,6 +173,12 @@ namespace DXEngine
         m_Ctx.editsPending = false;
     }
 
+    void Editor::SelectAll()
+    {
+        if (!m_Ctx.scene) return;
+        m_Ctx.selection.SetMany(SceneEditing::AllEntities(*m_Ctx.scene));
+    }
+
     void Editor::ApplyHistoryRequests()
     {
         const bool undo = m_UndoRequested, redo = m_RedoRequested;
@@ -383,6 +389,7 @@ namespace DXEngine
                 else if (ImGui::IsKeyPressed(ImGuiKey_N, false)) m_SceneFile->New(m_Ctx);
                 else if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) { if (io.KeyShift) RequestRedo(); else RequestUndo(); }
                 else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) RequestRedo();
+                else if (ImGui::IsKeyPressed(ImGuiKey_A, false)) SelectAll();
             }
         }
         m_SceneFile->OnImGui(m_Ctx);                       // the "unsaved changes" question, while one is pending
@@ -451,20 +458,22 @@ namespace DXEngine
             ImGui::Separator();
             if (ImGui::MenuItem("Rename", "F2", false, hasSelection))
                 m_Hierarchy.BeginRename(m_Ctx.selection.Get());
-            if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, hasSelection && scene && SceneEditing::CanDuplicate(*scene, m_Ctx.selection.Get())))
+            if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, hasSelection && scene && SceneEditing::CanDuplicateAny(*scene, m_Ctx.selection.All())))
             {
-                Entity copy = SceneEditing::Duplicate(*scene, m_Ctx.selection.Get());
-                if (copy.IsValid()) { m_Ctx.selection.Set(copy); m_Ctx.revealSelection = true; }
+                const std::vector<Entity> copies = SceneEditing::DuplicateEntities(*scene, m_Ctx.selection.All());
+                if (!copies.empty()) { m_Ctx.selection.SetMany(copies); m_Ctx.revealSelection = true; }
                 m_Ctx.MarkEdited();
             }
             if (ImGui::MenuItem("Delete", "Del", false, hasSelection && scene))
             {
-                scene->DestroyEntity(m_Ctx.selection.Get());
+                SceneEditing::DestroyEntities(*scene, m_Ctx.selection.All());
                 m_Ctx.MarkEdited();
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Frame selected", "F", false, hasSelection))
                 m_Viewport.FrameSelection(m_Ctx);
+            if (ImGui::MenuItem("Select all", "Ctrl+A", false, scene && scene->EntityCount() > 0))
+                SelectAll();
             if (ImGui::MenuItem("Select nothing", nullptr, false, hasSelection))
                 m_Ctx.selection.Clear();
             ImGui::EndMenu();
@@ -532,6 +541,9 @@ namespace DXEngine
                 { "Middle button + W A S D", "Fly the camera;  Space: up,  Left Ctrl: down" },
                 { "Mouse wheel while flying", "Change the fly speed" },
                 { "Left click", "Select the object under the cursor" },
+                { "Ctrl / Shift + click", "Add to the selection (Ctrl: take out); in the hierarchy Shift selects a range" },
+                { "Left drag (viewport)", "Select everything inside the box" },
+                { "Ctrl + A", "Select all" },
                 { "Q  W  E  R", "Select / move / rotate / scale tool" },
                 { "F", "Frame the selection" },
                 { "F2", "Rename (hierarchy)" },

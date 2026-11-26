@@ -86,6 +86,89 @@ namespace DXEngine
             return true;
         }
 
+        std::vector<Entity> AllEntities(Scene& scene)
+        {
+            std::vector<Entity> all;
+            all.reserve(scene.EntityCount());
+            for (auto [id, name] : scene.Registry().view<NameComponent>().each())
+            {
+                Entity e = scene.Wrap(id);
+                if (!e.Has<SkyboxComponent>()) all.push_back(e);
+            }
+            return all;
+        }
+
+        std::vector<Entity> Roots(Scene& scene, const std::vector<Entity>& entities)
+        {
+            std::vector<Entity> valid;
+            for (const Entity& e : entities)
+                if (e.IsValid() && e.GetScene() == &scene && std::find(valid.begin(), valid.end(), e) == valid.end())
+                    valid.push_back(e);
+
+            std::vector<Entity> roots;
+            for (const Entity& e : valid)
+            {
+                bool underAnother = false;
+                for (Entity p = scene.GetParent(e); p.IsValid() && !underAnother; p = scene.GetParent(p))
+                    underAnother = std::find(valid.begin(), valid.end(), p) != valid.end();
+                if (!underAnother) roots.push_back(e);
+            }
+            return roots;
+        }
+
+        size_t DestroyEntities(Scene& scene, const std::vector<Entity>& entities)
+        {
+            const std::vector<Entity> roots = Roots(scene, entities);
+            for (Entity e : roots) scene.DestroyEntity(e);           // its descendants go with it
+            return roots.size();
+        }
+
+        bool CanDuplicateAny(Scene& scene, const std::vector<Entity>& entities)
+        {
+            for (const Entity& e : Roots(scene, entities))
+                if (CanDuplicate(scene, e)) return true;
+            return false;
+        }
+
+        std::vector<Entity> DuplicateEntities(Scene& scene, const std::vector<Entity>& entities)
+        {
+            std::vector<Entity> copies;
+            for (Entity e : Roots(scene, entities))
+            {
+                Entity copy = Duplicate(scene, e);
+                if (copy.IsValid()) copies.push_back(copy);
+            }
+            return copies;
+        }
+
+        size_t ReparentEntities(Scene& scene, const std::vector<Entity>& entities, Entity newParent)
+        {
+            size_t moved = 0;
+            for (Entity e : Roots(scene, entities))
+                if (e != newParent && Reparent(scene, e, newParent)) ++moved;      // (a cycle is refused by Reparent)
+            return moved;
+        }
+
+        bool ApplyWorldDelta(Scene& scene, const std::vector<Entity>& entities, const DirectX::XMFLOAT4X4& before, const DirectX::XMFLOAT4X4& after)
+        {
+            using namespace DirectX;
+            const XMMATRIX oldWorld = XMLoadFloat4x4(&before);
+            XMVECTOR det;
+            const XMMATRIX inverse = XMMatrixInverse(&det, oldWorld);
+            if (std::fabs(XMVectorGetX(det)) < 1e-12f) return false;
+
+            // row vectors: new = old * delta, so a point moves by delta = old^-1 * new, whatever entity it belongs to
+            const XMMATRIX delta = XMMatrixMultiply(inverse, XMLoadFloat4x4(&after));
+            for (Entity e : Roots(scene, entities))
+            {
+                if (!e.Has<TransformComponent>()) continue;
+                XMFLOAT4X4 world;
+                XMStoreFloat4x4(&world, XMMatrixMultiply(e.Get<TransformComponent>().World(), delta));
+                ApplyWorldMatrix(scene, e, world);
+            }
+            return true;
+        }
+
         bool ApplyWorldMatrix(Scene& scene, Entity entity, const DirectX::XMFLOAT4X4& world)
         {
             if (!entity.IsValid() || entity.GetScene() != &scene) return false;

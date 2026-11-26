@@ -373,7 +373,7 @@ When an item is fixed: set **Status** to Fixed, note the commit, and update [ROA
 - **Exit:** Visual + timing notes attached to this issue.
 
 ### I-43 — Undo / redo and multi-select missing (P3d)
-- **Status:** In progress (undo / redo done in code and tests, GPU check pending; multi-selection is the next step)
+- **Status:** Fixed in code and tests (GPU check pending): undo / redo (`UndoHistory`) and multi-selection (an ordered `EditorSelection` with a primary; the operations act on the selection's roots). Editing the same VALUE on several entities at once in the Inspector is not included: the Inspector shows the primary
 - **Area:** Editor
 - **Problem:** After save/load, largest editor gaps.
 - **Related:** —

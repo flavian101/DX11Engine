@@ -28,6 +28,23 @@ namespace DXEngine
         // Returns the new root, or an invalid Entity when CanDuplicate is false.
         Entity Duplicate(Scene& scene, Entity entity);
 
+        // ---- several entities at once (a multi-selection). Every one of these acts on the ROOTS of the list: the entities that have
+        // no ancestor in the list. A parent takes its descendants along, so nothing is deleted, copied or moved twice.
+        // Every entity of the scene except the sky (Select all). In the order the scene keeps them.
+        std::vector<Entity> AllEntities(Scene& scene);
+        std::vector<Entity> Roots(Scene& scene, const std::vector<Entity>& entities);        // invalid / foreign ones left out, order kept
+        size_t DestroyEntities(Scene& scene, const std::vector<Entity>& entities);            // returns how many roots were destroyed
+        bool CanDuplicateAny(Scene& scene, const std::vector<Entity>& entities);
+        // The copies, one per root that can be duplicated (see CanDuplicate), in the order of the roots.
+        std::vector<Entity> DuplicateEntities(Scene& scene, const std::vector<Entity>& entities);
+        // Reparents every root of the list under 'newParent' (invalid = roots) without moving it in the world. A root that would end
+        // up below itself is left where it is. Returns how many were reparented.
+        size_t ReparentEntities(Scene& scene, const std::vector<Entity>& entities, Entity newParent);
+        // A gizmo moved one entity (the pivot) from the world matrix 'before' to 'after': every root of the list moves by the same
+        // world-space change, as one rigid group around the pivot. (A pivot below a listed root moves with it.) With one entity this is
+        // ApplyWorldMatrix. False when 'before' cannot be inverted: nothing is moved then.
+        bool ApplyWorldDelta(Scene& scene, const std::vector<Entity>& entities, const DirectX::XMFLOAT4X4& before, const DirectX::XMFLOAT4X4& after);
+
         // Makes 'newParent' the parent of 'child' (invalid = make it a root) WITHOUT moving it in the world: the local
         // transform is recomputed. (Scene::SetParent alone keeps the local transform, so the entity jumps.)
         // Returns false and changes nothing for a cycle (below itself) or an entity of another scene.

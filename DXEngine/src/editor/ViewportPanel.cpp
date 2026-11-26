@@ -13,7 +13,8 @@ namespace DXEngine
 {
     namespace
     {
-        constexpr ImU32 kOutline = IM_COL32(255, 166, 26, 255);
+        constexpr ImU32 kOutline = IM_COL32(255, 166, 26, 255);          // the primary entity
+        constexpr ImU32 kOutlineOthers = IM_COL32(255, 200, 110, 190);   // the rest of a multi-selection
 
     }
 
@@ -74,10 +75,14 @@ namespace DXEngine
                 view.projection = ctx.camera->GetCamera()->GetProjection4X4();
                 view.x = imageMin.x; view.y = imageMin.y; view.width = imageSize.x; view.height = imageSize.y;
 
-                DirectX::XMFLOAT4X4 world = selected.Get<TransformComponent>().world;
+                const DirectX::XMFLOAT4X4 before = selected.Get<TransformComponent>().world;
+                DirectX::XMFLOAT4X4 world = before;
                 if (ctx.gizmo->Manipulate(view, ctx.gizmoSettings, world))
                 {
-                    SceneEditing::ApplyWorldMatrix(*ctx.scene, selected, world);
+                    // the gizmo sits on the primary; everything selected moves with it, as one rigid group
+                    const std::vector<Entity> group = ctx.selection.All();
+                    if (group.size() < 2 || !SceneEditing::ApplyWorldDelta(*ctx.scene, group, before, world))
+                        SceneEditing::ApplyWorldMatrix(*ctx.scene, selected, world);
                     ctx.MarkEdited();                       // (the step is recorded when the drag ends)
                 }
                 gizmoBusy = ctx.gizmo->IsUsing() || ctx.gizmo->IsOver();
@@ -89,22 +94,36 @@ namespace DXEngine
         ctx.viewportHovered = overImage && !ImGui::IsAnyItemHovered();
         ctx.viewportFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
-        // ---- pick ----
+        // ---- pick, or a box ----
+        // A press in the picture starts it; the release decides: the mouse hardly moved = a click (pick), it moved = a box.
         if (ctx.viewportHovered && !gizmoBusy && !ctx.flying && ctx.camera && ctx.scene && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
+            m_Pressing = true;
+            m_Boxing = false;
+            m_PressPos = ImGui::GetMousePos();
+        }
+        if (m_Pressing)
+        {
             const ImVec2 mouse = ImGui::GetMousePos();
-            float x = 0, y = 0;
-            if (ViewportMath::ScreenToTarget(mouse.x, mouse.y, imageMin.x, imageMin.y, imageSize.x, imageSize.y,
-                                             m_Size.width, m_Size.height, x, y))
+            if (ctx.flying || !ctx.camera || !ctx.scene)
+                m_Pressing = false;
+            else if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
-                const PickResult hit = ScenePicking::Pick(*ctx.scene, *ctx.camera->GetCamera(), x, y, m_Size.width, m_Size.height);
-                if (hit)
+                const float dx = mouse.x - m_PressPos.x, dy = mouse.y - m_PressPos.y;
+                if (dx * dx + dy * dy > 16.0f * ImGui::GetIO().FontGlobalScale * ImGui::GetIO().FontGlobalScale) m_Boxing = true;
+                if (m_Boxing)                                                  // the box, clipped to the picture
                 {
-                    ctx.selection.Set(hit.entity);
-                    ctx.revealSelection = true;
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    dl->PushClipRect(ImVec2(imageMin.x, imageMin.y), ImVec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y), true);
+                    dl->AddRectFilled(m_PressPos, mouse, IM_COL32(255, 166, 26, 38));
+                    dl->AddRect(m_PressPos, mouse, IM_COL32(255, 166, 26, 220), 0.0f, 0, 1.0f);
+                    dl->PopClipRect();
                 }
-                else
-                    ctx.selection.Clear();
+            }
+            else
+            {
+                m_Pressing = false;
+                FinishClickOrBox(ctx, mouse, imageMin.x, imageMin.y, imageSize.x, imageSize.y);
             }
         }
 
@@ -112,6 +131,42 @@ namespace DXEngine
             HandleShortcuts(ctx);
 
         ImGui::End();
+    }
+
+    void ViewportPanel::FinishClickOrBox(EditorContext& ctx, const ImVec2& mouse, float imageX, float imageY, float imageW, float imageH)
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+        const bool adding = io.KeyCtrl || io.KeyShift;       // Ctrl / Shift: the result joins the selection (Ctrl: a click on a selected one removes it)
+
+        if (m_Boxing)
+        {
+            Camera& camera = *ctx.camera->GetCamera();
+            auto inImage = [&](const ImVec2& p) { return ImVec2(std::clamp(p.x - imageX, 0.0f, imageW), std::clamp(p.y - imageY, 0.0f, imageH)); };
+            const ImVec2 a = inImage(m_PressPos), b = inImage(mouse);
+            const std::vector<Entity> inside = EntitiesInRect(*ctx.scene, camera.GetViewMatrix4X4(), camera.GetProjection4X4(), imageW, imageH, a.x, a.y, b.x, b.y);
+            if (adding)
+                for (const Entity& e : inside) ctx.selection.Add(e);
+            else
+                ctx.selection.SetMany(inside);
+            if (!inside.empty()) ctx.revealSelection = true;
+            m_Boxing = false;
+            return;
+        }
+
+        // a click: what is under the press
+        float x = 0, y = 0;
+        if (!ViewportMath::ScreenToTarget(m_PressPos.x, m_PressPos.y, imageX, imageY, imageW, imageH, m_Size.width, m_Size.height, x, y))
+            return;
+        const PickResult hit = ScenePicking::Pick(*ctx.scene, *ctx.camera->GetCamera(), x, y, m_Size.width, m_Size.height);
+        if (hit)
+        {
+            if (io.KeyCtrl)       ctx.selection.Toggle(hit.entity);
+            else if (io.KeyShift) ctx.selection.Add(hit.entity);
+            else                  ctx.selection.Set(hit.entity);
+            ctx.revealSelection = true;
+        }
+        else if (!adding)
+            ctx.selection.Clear();
     }
 
     void ViewportPanel::DrawFlyHud(EditorContext& ctx, float imageX, float imageY, float imageW)
@@ -131,8 +186,8 @@ namespace DXEngine
     void ViewportPanel::DrawSelectionOutline(EditorContext& ctx, float imageX, float imageY, float imageW, float imageH)
     {
         using namespace DirectX;
-        Entity e = ctx.selection.Get();
-        if (!e.IsValid() || imageW < 1.0f || imageH < 1.0f) return;
+        const std::vector<Entity> selected = ctx.selection.All();
+        if (selected.empty() || imageW < 1.0f || imageH < 1.0f) return;
 
         Camera& camera = *ctx.camera->GetCamera();
         const XMFLOAT4X4 view = camera.GetViewMatrix4X4();
@@ -154,29 +209,33 @@ namespace DXEngine
             if (project(a, pa) && project(b, pb)) dl->AddLine(pa, pb, color, thickness);
         };
 
-        const EntityBounds bounds = ComputeEntityBounds(e);
-        if (bounds.hasBox)
+        for (Entity e : selected)
         {
-            for (int i = 0; i < 8; ++i)                       // 12 edges: corners that differ in exactly one bit
-                for (int bit : { 1, 2, 4 })
-                    if (!(i & bit))
-                        line(bounds.corners[i], bounds.corners[i | bit], kOutline, 1.5f);
-        }
-        else                                                   // no mesh: axes at the position (+ the aim of a light)
-        {
-            const XMFLOAT3 c = bounds.center;
-            const float len = bounds.radius;
-            line(c, { c.x + len, c.y, c.z }, IM_COL32(230, 60, 60, 255), 2.0f);
-            line(c, { c.x, c.y + len, c.z }, IM_COL32(60, 200, 60, 255), 2.0f);
-            line(c, { c.x, c.y, c.z + len }, IM_COL32(70, 110, 240, 255), 2.0f);
-            if (const LightComponent* light = e.TryGet<LightComponent>())
-                if (light->type != LightType::Point)
-                {
-                    const XMFLOAT3 f = e.Get<TransformComponent>().WorldForward();
-                    line(c, { c.x + f.x * 2.0f, c.y + f.y * 2.0f, c.z + f.z * 2.0f }, IM_COL32(255, 230, 80, 255), 2.0f);
-                }
-            ImVec2 p;
-            if (project(c, p)) dl->AddCircle(p, 6.0f, kOutline, 16, 1.5f);
+            const ImU32 outline = ctx.selection.IsPrimary(e) ? kOutline : kOutlineOthers;
+            const EntityBounds bounds = ComputeEntityBounds(e);
+            if (bounds.hasBox)
+            {
+                for (int i = 0; i < 8; ++i)                       // 12 edges: corners that differ in exactly one bit
+                    for (int bit : { 1, 2, 4 })
+                        if (!(i & bit))
+                            line(bounds.corners[i], bounds.corners[i | bit], outline, 1.5f);
+            }
+            else                                                   // no mesh: axes at the position (+ the aim of a light)
+            {
+                const XMFLOAT3 c = bounds.center;
+                const float len = bounds.radius;
+                line(c, { c.x + len, c.y, c.z }, IM_COL32(230, 60, 60, 255), 2.0f);
+                line(c, { c.x, c.y + len, c.z }, IM_COL32(60, 200, 60, 255), 2.0f);
+                line(c, { c.x, c.y, c.z + len }, IM_COL32(70, 110, 240, 255), 2.0f);
+                if (const LightComponent* light = e.TryGet<LightComponent>())
+                    if (light->type != LightType::Point)
+                    {
+                        const XMFLOAT3 f = e.Get<TransformComponent>().WorldForward();
+                        line(c, { c.x + f.x * 2.0f, c.y + f.y * 2.0f, c.z + f.z * 2.0f }, IM_COL32(255, 230, 80, 255), 2.0f);
+                    }
+                ImVec2 p;
+                if (project(c, p)) dl->AddCircle(p, 6.0f, outline, 16, 1.5f);
+            }
         }
         dl->PopClipRect();
     }
@@ -195,16 +254,16 @@ namespace DXEngine
         if (!ctx.selection.Has() || !ctx.scene) return;
         if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
         {
-            ctx.scene->DestroyEntity(ctx.selection.Get());
+            SceneEditing::DestroyEntities(*ctx.scene, ctx.selection.All());
             ctx.MarkEdited();
         }
-        else if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false) && SceneEditing::CanDuplicate(*ctx.scene, ctx.selection.Get()))
+        else if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false) && SceneEditing::CanDuplicateAny(*ctx.scene, ctx.selection.All()))
         {
             ctx.MarkEdited();
-            Entity copy = SceneEditing::Duplicate(*ctx.scene, ctx.selection.Get());
-            if (copy.IsValid())
+            const std::vector<Entity> copies = SceneEditing::DuplicateEntities(*ctx.scene, ctx.selection.All());
+            if (!copies.empty())
             {
-                ctx.selection.Set(copy);
+                ctx.selection.SetMany(copies);
                 ctx.revealSelection = true;
             }
         }
@@ -215,7 +274,7 @@ namespace DXEngine
         using namespace DirectX;
         if (!ctx.camera || !ctx.selection.Has()) return;
 
-        const EntityBounds b = ComputeEntityBounds(ctx.selection.Get());
+        const EntityBounds b = ComputeSelectionBounds(ctx.selection.All());     // all of it, not just the primary
         Camera& camera = *ctx.camera->GetCamera();
         const XMFLOAT3 forward = camera.GetForwardVector();         // keep the way the camera looks, back off along it
         const float distance = std::max(b.radius * 3.0f, 2.0f);

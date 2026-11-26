@@ -1468,6 +1468,294 @@ static void TestImGuiReportsEdits()
     CHECK(!edited);
 }
 
+// ------------------------------------------------------------ multi-selection in the hierarchy
+static void TestHierarchyMultiSelection()
+{
+    HierarchyRig r;
+    const float x = HierarchyRig::kX + 120.0f;
+    const float yA = r.RowY(r.alpha), yB = r.RowY(r.beta), yG = r.RowY(r.gamma);
+    CHECK(yA > 0 && yB > yA && yG > yB);
+    auto ctrl  = [&](bool on) { r.IO().AddKeyEvent(ImGuiMod_Ctrl, on);  r.Draw(); };
+    auto shift = [&](bool on) { r.IO().AddKeyEvent(ImGuiMod_Shift, on); r.Draw(); };
+    EditorSelection& sel = r.ctx.selection;
+
+    // Ctrl+click adds (the one clicked last is the primary) and takes out again
+    sel.Clear();
+    r.Click(x, yA);
+    CHECK(sel.Count() == 1 && sel.Is(r.alpha));
+    ctrl(true);
+    r.Click(x, yG);
+    CHECK(sel.Count() == 2 && sel.Is(r.alpha) && sel.IsPrimary(r.gamma));
+    r.Click(x, yG);
+    CHECK(sel.Count() == 1 && sel.Is(r.alpha) && !sel.Is(r.gamma));
+    ctrl(false);
+
+    // a plain click replaces everything
+    ctrl(true); r.Click(x, yG); ctrl(false);
+    r.Click(x, yB);
+    CHECK(sel.Count() == 1 && sel.Is(r.beta));
+
+    // Shift+click: the rows from the last plain click (the anchor) to the click; the clicked one is the primary
+    r.Click(x, yA);
+    shift(true); r.Click(x, yG); shift(false);
+    CHECK(sel.Count() == 3 && sel.Is(r.alpha) && sel.Is(r.beta) && sel.Is(r.gamma) && sel.IsPrimary(r.gamma));
+    shift(true); r.Click(x, yB); shift(false);                                         // the anchor stays: the range shrinks to Alpha..Beta
+    CHECK(sel.Count() == 2 && sel.Is(r.alpha) && sel.Is(r.beta) && !sel.Is(r.gamma) && sel.IsPrimary(r.beta));
+    r.Click(x, yG);                                                                     // and backwards
+    shift(true); r.Click(x, yA); shift(false);
+    CHECK(sel.Count() == 3 && sel.IsPrimary(r.alpha));
+
+    // a right click inside the selection keeps it (the menu then acts on all of it); outside, it selects the row
+    auto rightClick = [&](float y)
+    {
+        r.MoveTo(x, y);
+        r.IO().AddMouseButtonEvent(1, true);  r.Draw();
+        r.IO().AddMouseButtonEvent(1, false); r.Draw();
+        r.Click(500.0f, 300.0f);                                                        // a click outside the window closes the menu
+    };
+    rightClick(yB);
+    CHECK(sel.Count() == 3);
+    r.Click(x, yA);
+    rightClick(yG);
+    CHECK(sel.Count() == 1 && sel.Is(r.gamma));
+
+    // clicking the empty area below the rows clears; with Ctrl it does not
+    r.Click(x, yA);
+    ctrl(true); r.Click(x, HierarchyRig::kY + HierarchyRig::kH - 30.0f); ctrl(false);
+    CHECK(sel.Is(r.alpha));
+    r.Click(x, HierarchyRig::kY + HierarchyRig::kH - 30.0f);
+    CHECK(!sel.Has());
+}
+
+static void TestHierarchyCommandsActOnTheWholeSelection()
+{
+    {   // Delete
+        HierarchyRig r;
+        const float x = HierarchyRig::kX + 120.0f;
+        const float yA = r.RowY(r.alpha), yB = r.RowY(r.beta);
+        r.Click(x, yA);
+        r.IO().AddKeyEvent(ImGuiMod_Shift, true); r.Draw(); r.Click(x, yB); r.IO().AddKeyEvent(ImGuiMod_Shift, false); r.Draw();
+        CHECK(r.ctx.selection.Count() == 2);
+        r.Key(ImGuiKey_Delete);
+        CHECK(!r.alpha.IsValid() && !r.beta.IsValid() && r.gamma.IsValid() && r.delta.IsValid());
+        CHECK(!r.ctx.selection.Has() && r.ctx.editsPending);
+    }
+    {   // Ctrl+D: a copy of each, and the copies are what is selected
+        HierarchyRig r;
+        const size_t start = r.scene.EntityCount();
+        const float x = HierarchyRig::kX + 120.0f;
+        const float yA = r.RowY(r.alpha), yB = r.RowY(r.beta);
+        r.Click(x, yA);
+        r.IO().AddKeyEvent(ImGuiMod_Shift, true); r.Draw(); r.Click(x, yB); r.IO().AddKeyEvent(ImGuiMod_Shift, false); r.Draw();
+        r.IO().AddKeyEvent(ImGuiMod_Ctrl, true);
+        r.Key(ImGuiKey_D);
+        r.IO().AddKeyEvent(ImGuiMod_Ctrl, false);
+        r.Draw();
+        CHECK(r.scene.EntityCount() == start + 2);
+        CHECK(r.ctx.selection.Count() == 2);
+        std::vector<std::string> names;
+        for (Entity e : r.ctx.selection.All()) names.push_back(e.Get<NameComponent>().name);
+        CHECK(names == std::vector<std::string>({ "Alpha (Copy)", "Beta (Copy)" }));
+        CHECK(!r.ctx.selection.Is(r.alpha) && !r.ctx.selection.Is(r.beta));
+    }
+    {   // a drag of one selected row carries the whole selection
+        HierarchyRig r;
+        const float x = HierarchyRig::kX + 120.0f;
+        const float yA = r.RowY(r.alpha), yB = r.RowY(r.beta), yG = r.RowY(r.gamma);
+        r.alpha.Get<TransformComponent>().position = { 5, 0, 0 };
+        r.beta.Get<TransformComponent>().position = { 0, 6, 0 };
+        r.gamma.Get<TransformComponent>().scale = { 2, 2, 2 };
+        TransformSystem::Update(r.scene);
+        const DirectX::XMFLOAT3 a0 = r.alpha.Get<TransformComponent>().WorldPosition(), b0 = r.beta.Get<TransformComponent>().WorldPosition();
+
+        r.Click(x, yA);
+        r.IO().AddKeyEvent(ImGuiMod_Shift, true); r.Draw(); r.Click(x, yB); r.IO().AddKeyEvent(ImGuiMod_Shift, false); r.Draw();
+        r.Drag(x, yA, x, yG);                                                           // Alpha is dragged onto Gamma: Beta goes with it
+        CHECK(r.scene.GetParent(r.alpha) == r.gamma && r.scene.GetParent(r.beta) == r.gamma);
+        CHECK(r.ctx.editsPending);
+        TransformSystem::Update(r.scene);
+        CHECK(Distance(a0, r.alpha.Get<TransformComponent>().WorldPosition()) < 1e-3f);     // nobody moved in the world
+        CHECK(Distance(b0, r.beta.Get<TransformComponent>().WorldPosition()) < 1e-3f);
+    }
+    {   // dragging a row that is NOT selected carries only that row
+        HierarchyRig r;
+        const float x = HierarchyRig::kX + 120.0f;
+        const float yA = r.RowY(r.alpha), yB = r.RowY(r.beta), yG = r.RowY(r.gamma);
+        r.Click(x, yB);
+        r.Drag(x, yA, x, yG);
+        CHECK(r.scene.GetParent(r.alpha) == r.gamma && !r.scene.GetParent(r.beta).IsValid());
+    }
+}
+
+// ------------------------------------------------------------ multi-selection in the viewport: Ctrl / Shift click, a box, the group gizmo
+struct ViewportMultiRig
+{
+    UiEnv env;
+    Scene scene; EditorContext ctx;
+    ViewportPanel panel;
+    bool open = true;
+    Entity left, middle, right, lamp;
+
+    ViewportMultiRig(bool withGizmo = false)
+    {
+        static NoInput noInput;
+        Input::Init(&noInput);
+        ctx.scene = &scene;
+        if (withGizmo) ctx.gizmo = std::make_unique<ImGuizmoGizmo>();
+        ctx.camera = std::make_shared<CameraController>();
+        ctx.camera->SetFollowWindowAspect(false);
+
+        auto cube = [&](const char* name, float x)
+        {
+            Entity e = scene.CreateEntity(name);
+            MeshRendererComponent mr; mr.mesh = MakeCube();
+            e.Add<MeshRendererComponent>(mr);
+            e.Get<TransformComponent>().position = { x, 0, 0 };
+            return e;
+        };
+        left = cube("Left", -3.0f); middle = cube("Middle", 0.0f); right = cube("Right", 3.0f);
+        lamp = scene.CreateEntity("Lamp"); lamp.Add<LightComponent>().type = LightType::Point;
+        lamp.Get<TransformComponent>().position = { 0, 4, 0 };
+        TransformSystem::Update(scene);
+
+        Camera& camera = *ctx.camera->GetCamera();
+        camera.SetPosition({ 0, 0, 10 });
+        camera.Update(0.0f);
+        for (int i = 0; i < 3; ++i) Draw();
+    }
+
+    void Draw()
+    {
+        Frame([&]
+        {
+            ImGui::SetNextWindowPos(ImVec2(100, 100));
+            ImGui::SetNextWindowSize(ImVec2(800, 500));
+            panel.OnImGui(ctx, &open);
+            TransformSystem::Update(scene);
+        });
+    }
+
+    ImGuiIO& IO() { return ImGui::GetIO(); }
+
+    // where a world point is on screen
+    ImVec2 Screen(DirectX::XMFLOAT3 p)
+    {
+        const ViewportPanel::Rect img = panel.ImageRect();
+        Camera& camera = *ctx.camera->GetCamera();
+        DirectX::XMFLOAT2 s;
+        ViewportMath::ProjectToViewport(p, camera.GetViewMatrix4X4(), camera.GetProjection4X4(), img.width, img.height, s);
+        return ImVec2(img.x + s.x, img.y + s.y);
+    }
+    ImVec2 Screen(Entity e) { return Screen(e.Get<TransformComponent>().WorldPosition()); }
+
+    void Click(ImVec2 at)
+    {
+        IO().AddMousePosEvent(at.x, at.y); Draw(); Draw();
+        IO().AddMouseButtonEvent(0, true); Draw();
+        IO().AddMouseButtonEvent(0, false); Draw();
+    }
+    void Box(ImVec2 from, ImVec2 to)
+    {
+        IO().AddMousePosEvent(from.x, from.y); Draw(); Draw();
+        IO().AddMouseButtonEvent(0, true); Draw();
+        for (int i = 1; i <= 8; ++i) { IO().AddMousePosEvent(from.x + (to.x - from.x) * i / 8.0f, from.y + (to.y - from.y) * i / 8.0f); Draw(); }
+        IO().AddMouseButtonEvent(0, false); Draw(); Draw();
+    }
+    void Hold(ImGuiKey mod, bool down) { IO().AddKeyEvent(mod, down); Draw(); }
+};
+
+static void TestViewportClickAndBoxMultiSelect()
+{
+    ViewportMultiRig r;
+    EditorSelection& sel = r.ctx.selection;
+    const ViewportPanel::Rect img = r.panel.ImageRect();
+    const ImVec2 L = r.Screen(r.left), M = r.Screen(r.middle), R = r.Screen(r.right);
+    const ImVec2 empty(img.x + 15.0f, img.y + 15.0f);
+
+    // a plain click selects one; Ctrl+click adds and takes out; Shift+click only adds
+    r.Click(M);
+    CHECK(sel.Count() == 1 && sel.Is(r.middle));
+    r.Hold(ImGuiMod_Ctrl, true);
+    r.Click(R);
+    CHECK(sel.Count() == 2 && sel.IsPrimary(r.right));
+    r.Click(R);
+    CHECK(sel.Count() == 1 && !sel.Is(r.right));
+    r.Click(empty);                                                              // Ctrl on empty space does not clear
+    CHECK(sel.Count() == 1 && sel.Is(r.middle));
+    r.Hold(ImGuiMod_Ctrl, false);
+    r.Hold(ImGuiMod_Shift, true);
+    r.Click(R); r.Click(R);                                                      // Shift never takes out
+    CHECK(sel.Count() == 2 && sel.IsPrimary(r.right));
+    r.Hold(ImGuiMod_Shift, false);
+    r.Click(empty);                                                              // plain click on empty space clears
+    CHECK(!sel.Has());
+
+    // a box around two of the three: they are selected, the third is not
+    const float x0 = std::min(L.x, M.x) - 25.0f, x1 = std::max(L.x, M.x) + 25.0f;
+    r.Box(ImVec2(x0, M.y - 40.0f), ImVec2(x1, M.y + 40.0f));
+    CHECK(sel.Count() == 2 && sel.Is(r.left) && sel.Is(r.middle) && !sel.Is(r.right));
+    CHECK(r.ctx.revealSelection);
+
+    // another box replaces (dragged backwards, from the bottom right to the top left, over the right one only)
+    r.Box(ImVec2(R.x + 25.0f, R.y + 40.0f), ImVec2(R.x - 25.0f, R.y - 40.0f));
+    CHECK(sel.Count() == 1 && sel.Is(r.right));
+
+    // with Ctrl it adds
+    r.Hold(ImGuiMod_Ctrl, true);
+    r.Box(ImVec2(L.x - 25.0f, L.y - 40.0f), ImVec2(L.x + 25.0f, L.y + 40.0f));
+    r.Hold(ImGuiMod_Ctrl, false);
+    CHECK(sel.Count() == 2 && sel.Is(r.right) && sel.Is(r.left));
+
+    // a box over nothing clears; with Ctrl it keeps what there is
+    r.Hold(ImGuiMod_Ctrl, true);
+    r.Box(ImVec2(img.x + 10.0f, img.y + 10.0f), ImVec2(img.x + 60.0f, img.y + 50.0f));
+    r.Hold(ImGuiMod_Ctrl, false);
+    CHECK(sel.Count() == 2);
+    r.Box(ImVec2(img.x + 10.0f, img.y + 10.0f), ImVec2(img.x + 60.0f, img.y + 50.0f));
+    CHECK(!sel.Has());
+
+    // a box that starts ON an entity is still a box, not a pick (the press position decides nothing: the movement does)
+    const float beyondRight = R.x + (R.x > M.x ? 25.0f : -25.0f);                // (which way +X points on screen is the camera's business)
+    r.Box(ImVec2(M.x, M.y - 5.0f), ImVec2(beyondRight, R.y + 40.0f));
+    CHECK(sel.Is(r.right) && sel.Is(r.middle) && !sel.Is(r.left));
+
+    // the whole scene fits in one box; the lamp (no mesh) is picked by its position
+    r.Box(ImVec2(img.x + 10.0f, img.y + 10.0f), ImVec2(img.x + img.width + 40.0f, img.y + img.height + 40.0f));    // (released outside the picture: the box is clipped to it)
+    CHECK(sel.Count() == 4 && sel.Is(r.lamp));
+}
+
+static void TestViewportGizmoMovesTheWholeSelection()
+{
+    ViewportMultiRig r(true);
+    EditorSelection& sel = r.ctx.selection;
+    r.ctx.gizmoSettings.operation = GizmoOperation::Translate;
+    r.ctx.gizmoSettings.space = GizmoSpace::World;
+
+    // Right is the primary (selected last): the gizmo sits on it. Left and Lamp are selected too, Middle is not.
+    sel.SetMany({ r.left, r.lamp, r.right });
+    for (int i = 0; i < 3; ++i) r.Draw();
+    const DirectX::XMFLOAT3 l0 = r.left.Get<TransformComponent>().WorldPosition(), m0 = r.middle.Get<TransformComponent>().WorldPosition();
+    const DirectX::XMFLOAT3 lamp0 = r.lamp.Get<TransformComponent>().WorldPosition(), p0 = r.right.Get<TransformComponent>().WorldPosition();
+
+    // drag the world-Y handle of the primary
+    const ImVec2 o = r.Screen(p0);
+    const ImVec2 t = r.Screen({ p0.x, p0.y + 1.0f, p0.z });
+    ImVec2 d(t.x - o.x, t.y - o.y);
+    const float len = std::sqrt(d.x * d.x + d.y * d.y);
+    d.x /= len; d.y /= len;
+    r.Box(ImVec2(o.x + d.x * 30.0f, o.y + d.y * 30.0f), ImVec2(o.x + d.x * 90.0f, o.y + d.y * 90.0f));        // (Box is just press, drag, release)
+
+    const DirectX::XMFLOAT3 p1 = r.right.Get<TransformComponent>().WorldPosition();
+    const DirectX::XMFLOAT3 moved = { p1.x - p0.x, p1.y - p0.y, p1.z - p0.z };
+    CHECK(moved.y > 0.2f);                                                                                     // the primary moved up ...
+    auto delta = [&](Entity e, DirectX::XMFLOAT3 before) { const DirectX::XMFLOAT3 n = e.Get<TransformComponent>().WorldPosition(); return DirectX::XMFLOAT3{ n.x - before.x, n.y - before.y, n.z - before.z }; };
+    CHECK(Distance(delta(r.left, l0), moved) < 1e-3f);                                                         // ... and the other two moved exactly as much
+    CHECK(Distance(delta(r.lamp, lamp0), moved) < 1e-3f);
+    CHECK(Distance(r.middle.Get<TransformComponent>().WorldPosition(), m0) < 1e-6f);                          // the one that is not selected did not
+    CHECK(sel.Count() == 3 && sel.IsPrimary(r.right));                                                         // and grabbing the handle did not change the selection
+    CHECK(r.ctx.editsPending);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -1490,6 +1778,10 @@ int main()
         { "hierarchy: Ctrl+D and Delete",                   TestHierarchyDeleteDuplicate },
         { "hierarchy: drag to reparent, keeps position",    TestHierarchyDragToReparent },
         { "imgui: edits are reported to the editor",        TestImGuiReportsEdits },
+        { "hierarchy: Ctrl / Shift click, range, right click", TestHierarchyMultiSelection },
+        { "hierarchy: delete, duplicate, drag act on all",     TestHierarchyCommandsActOnTheWholeSelection },
+        { "viewport: Ctrl / Shift click and a box",            TestViewportClickAndBoxMultiSelect },
+        { "viewport: the gizmo moves the whole selection",     TestViewportGizmoMovesTheWholeSelection },
         { "gizmo: a drag moves along the dragged axis",     TestGizmoTranslatesAlongTheDraggedAxis },
         { "gizmo: a child under a rotated, scaled parent",  TestViewportGizmoMovesAChildUnderATransformedParent },
     };

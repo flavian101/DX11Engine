@@ -20,7 +20,7 @@ namespace DXEngine
     // A play session cannot be left half done: Stop always ends it, even when the scene could not be restored (the outcome says
     // so, and the scene then keeps what the game made of it).
     //
-    // Entity handles die with the restore. The selection is kept by id, and 'keep' on Start is for the host's own: the
+    // Entity handles die with the restore. The whole selection is kept by id, and 'keep' on Start is for the host's own: the
     // restored entities come back in Outcome::kept, in the same order (invalid where an entity is gone).
     // ==================================================================
     class PlayMode
@@ -46,6 +46,7 @@ namespace DXEngine
 
         SceneSnapshot m_Snapshot;
         std::vector<Entity> m_Kept;                   // the entities passed as 'keep' (their pins follow the selection's)
+        size_t m_SelectedCount = 0;                   // how many entities were selected (they are pinned first, the primary last)
         bool m_Playing = false;
 
         // the editor camera is not part of the scene: its pose is put back by hand

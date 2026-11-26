@@ -169,6 +169,35 @@ static void TestSelectionAndKeptEntitiesByIdentity()
     CHECK(!h.Redo(none, w.bridge).ok);                                 // no scene
 }
 
+static void TestMultiSelectionSurvivesUndoAndRedo()
+{
+    World w;
+    UndoHistory h;
+    h.Reset(w.scene, w.bridge);
+    const Uuid rigId = w.scene.GetUuid(w.rig), armId = w.scene.GetUuid(w.arm), lampId = w.scene.GetUuid(w.lamp);
+
+    w.MoveRig(4.0f);
+    Entity extra = w.scene.CreateEntity("Spawned");
+    h.Record(w.scene, w.bridge);
+
+    // three selected, the arm is the primary (selected last), plus the one that exists only in the later state
+    w.ctx.selection.SetMany({ w.scene.FindByName("Rig"), w.scene.FindByName("Lamp"), extra, w.scene.FindByName("Arm") });
+    CHECK(w.ctx.selection.Count() == 4);
+
+    CHECK(h.Undo(w.ctx, w.bridge).ok);
+    CHECK(w.ctx.selection.Count() == 3);                                              // "Spawned" is not in the earlier state: it left the selection
+    CHECK((w.ctx.selection.All() == std::vector<Entity>{ w.scene.FindByUuid(rigId), w.scene.FindByUuid(lampId), w.scene.FindByUuid(armId) }));
+    CHECK(w.ctx.selection.IsPrimary(w.scene.FindByUuid(armId)));                       // the order, and with it the primary, is kept
+
+    CHECK(h.Redo(w.ctx, w.bridge).ok);                                                 // the others are still there; the spawned one is not selected again
+    CHECK(w.ctx.selection.Count() == 3 && w.ctx.selection.IsPrimary(w.scene.FindByUuid(armId)) && w.scene.FindByName("Spawned").IsValid());
+
+    // when the primary does not exist in that state, the one selected before it becomes the primary
+    w.ctx.selection.SetMany({ w.scene.FindByName("Rig"), w.scene.FindByName("Spawned") });
+    CHECK(h.Undo(w.ctx, w.bridge).ok);
+    CHECK(w.ctx.selection.Count() == 1 && w.ctx.selection.IsPrimary(w.scene.FindByUuid(rigId)));
+}
+
 static void TestRefusesWhatItCannotWriteBack()
 {
     World w;
@@ -237,6 +266,7 @@ int main()
         { "a new edit drops the redo steps",                  TestNewEditDropsTheRedoSteps },
         { "material values and structure",                    TestMaterialValuesAndStructure },
         { "selection and kept entities by id",                TestSelectionAndKeptEntitiesByIdentity },
+        { "a multi-selection survives undo and redo",         TestMultiSelectionSurvivesUndoAndRedo },
         { "refuses what it cannot write back",                TestRefusesWhatItCannotWriteBack },
         { "limits: steps and bytes",                          TestLimits },
     };

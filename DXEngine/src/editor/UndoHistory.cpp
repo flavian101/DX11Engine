@@ -70,7 +70,8 @@ namespace DXEngine
 
         // Handles die with the restore: remember the selection and the host's entities by id.
         SceneSnapshot pins;
-        pins.Pin(*ctx.scene, ctx.selection.Get());
+        const std::vector<Entity> selected = ctx.selection.All();       // the whole selection, in order: the last one is the primary
+        for (const Entity& e : selected) pins.Pin(*ctx.scene, e);
         for (const Entity& e : keep) pins.Pin(*ctx.scene, e);
 
         SceneSnapshot::RestoreResult back = SceneSnapshot::RestoreText(m_States[target], *ctx.scene, bridge);
@@ -83,9 +84,15 @@ namespace DXEngine
         }
 
         m_Index = target;
-        ctx.selection.Set(pins.Pinned(*ctx.scene, 0));
+        std::vector<Entity> stillThere;                                  // the selected entities that exist in that state; the primary is the same one if it does
+        for (size_t i = 0; i < selected.size(); ++i)
+        {
+            const Entity e = pins.Pinned(*ctx.scene, i);
+            if (e.IsValid()) stillThere.push_back(e);
+        }
+        ctx.selection.SetMany(stillThere);
         out.kept.reserve(keep.size());
-        for (size_t i = 0; i < keep.size(); ++i) out.kept.push_back(pins.Pinned(*ctx.scene, 1 + i));
+        for (size_t i = 0; i < keep.size(); ++i) out.kept.push_back(pins.Pinned(*ctx.scene, selected.size() + i));
         out.ok = true;
         return out;
     }

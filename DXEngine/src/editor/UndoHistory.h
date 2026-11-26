@@ -27,7 +27,7 @@ namespace DXEngine
     // Assets are not part of a step (principle 3): a mesh, a texture or an imported model's own material is found again by name,
     // so a change made to one of those is not undone. A scene's own materials are.
     //
-    // Entity handles die with every Undo / Redo. The selection is kept by id, and 'keep' is for the host's own (expanded rows,
+    // Entity handles die with every Undo / Redo. The whole selection is kept by id (the entities that are not in that state drop out of it), and 'keep' is for the host's own (expanded rows,
     // the stress-test parent): they come back in Outcome::kept in the same order, invalid where the entity is not in that state.
     // ==================================================================
     class UndoHistory

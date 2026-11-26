@@ -305,7 +305,7 @@ Each phase ends with something a person can check. Do not start a phase with a f
   (**met in code and tests**: View > View 2 draws the scene through a second camera into its own texture; **still to check on a
   GPU**: open it, pin it, fly the main camera, compare, check that shadows and the main view are unaffected).
 
-**P3: Assets, scenes, play mode** (B8, D3, D5, D6): *P3a, P3b, P3c, D6 and B8 done, P3d next*
+**P3: Assets, scenes, play mode** (B8, D3, D5, D6): *P3a to P3d, D6 and B8 done; P4 next*
 * P3a (done, tested without a GPU): `Uuid` + `IdComponent` + `Scene::FindByUuid / CreateEntityWithUuid / Clear`; `Json`; `SceneSerializer`
   with the `IAssetBridge` interface.
 * P3b (done in code and tests, GPU check pending): `AssetNames` (names for generated meshes, model parts, cube maps, paths relative to a
@@ -345,8 +345,15 @@ Each phase ends with something a person can check. Do not start a phase with a f
     expanded rows and the stress-test parent are kept by id across an undo. Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z and the Edit menu; a request is carried out at
     the start of the next UI frame, never in the middle of one. New / Open start a new history; Play first records what is pending, so Stop puts back
     the last step. What is not undone (principle 3): a change to an asset: a mesh, a texture or an imported model's own material.
-  * Multi-selection (next): select several entities (Ctrl / Shift click, box select), act on all of them (delete, duplicate, move with the gizmo,
-    reparent), edit common values in the Inspector.
+  * Multi-selection (done in code and tests, GPU check pending): `EditorSelection` is an ordered set whose last entity is the PRIMARY (the Inspector
+    shows it, the gizmo sits on it, a Shift range starts from the last plain click); `Get()` still answers the primary, so one-entity code is unchanged.
+    Selecting: Ctrl+click toggles, Shift+click adds (viewport) or selects the range of rows (hierarchy), a drag in the viewport is a box (an entity is
+    inside when the CENTER of its bounds is: a ground plane under everything is not picked by every box; the sky never is), Ctrl+A. Acting: Delete,
+    Ctrl+D, Unparent, a drag of any selected row in the hierarchy, and the gizmo (one rigid group around the primary: `SceneEditing::ApplyWorldDelta`)
+    all work on the ROOTS of the selection (`SceneEditing::Roots`: an entity with a selected ancestor rides with it), so a parent and its child are
+    deleted, copied or moved once. A right click inside the selection keeps it. Outlines for all (the primary stronger), Frame selected frames all,
+    the status bar and the Inspector say how many are selected. Undo / redo and Play keep the whole selection by id. Not included: changing the same
+    value on several entities at once in the Inspector (it edits the primary; the note in it says so).
 * *Exit:* save, quit, start, load gives the same scene (met by the tests with the real bridge minus the GPU: generated meshes, imported
   models by name, own materials; still to check with real textures and models in the editor); Play then Stop restores every component (met by
   `play_mode_tests`: components, ids, hierarchy, material values, selection, camera; still to check on a GPU).
@@ -406,11 +413,11 @@ itself is textbook Cook-Torrance: GGX, Smith, Schlick, Lambert / PI, and is not 
   catalog, skeleton, image decode.
 * The P1 build change (`DXEngineCore`, `dx_add_test`) was built end to end with a MinGW-w64 cross build of the real top-level
   CMake (the library, the Editor and all 17 test executables link) and the GPU-free tests were run on Linux against the same
-  sources. P3c, D6, B8 and undo / redo (the 18th to 20th tests, `play_mode_tests`, `project_root_tests` and `undo_history_tests`) were checked differently: the changed engine, editor and
+  sources. P3c, D6, B8, undo / redo and multi-selection (the 18th to 21st tests, `play_mode_tests`, `project_root_tests`, `undo_history_tests` and `multi_select_tests`) were checked differently: the changed engine, editor and
   application files were compile-checked with MinGW (`Editor.cpp`, `EditorLayer.cpp`, `EditorApp.cpp`, `GameApp.cpp`, `Main.h` included) and
-  `play_mode_tests`, `project_root_tests`, `undo_history_tests`, `scene_serializer_tests`, `engine_asset_bridge_tests`, `editor_tests` and `editor_ui_tests` were run natively on Linux with a stand-in precompiled header; that build is not the CMake one, so run `ctest` on Windows. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
+  `play_mode_tests`, `project_root_tests`, `undo_history_tests`, `multi_select_tests`, `scene_serializer_tests`, `engine_asset_bridge_tests`, `editor_tests` and `editor_ui_tests` were run natively on Linux with a stand-in precompiled header; that build is not the CMake one, so run `ctest` on Windows. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
 * **Never executed on a real GPU or window** (check by running the Editor): File > Save / Open / New on the real starting scene (the sky's six faces,
-  the 8k moon, an imported model with its animator; Save As in a folder that does not exist yet; "unsaved changes"), the Windows file dialogs, undo / redo in the real editor (Ctrl+Z / Ctrl+Y and the Edit menu after a drag of a value, a gizmo drag, a create, a delete, a duplicate, a reparent, adding a component; one step per gesture; the selection and the expanded rows after an undo; how long a step takes with the stress test on), the Editor and the Game started from another folder (a shortcut, a terminal: `ProjectRoot` + `Main.h`), the Editor reopening the last scene on the next start (and the demo scene when that file is deleted),
+  the 8k moon, an imported model with its animator; Save As in a folder that does not exist yet; "unsaved changes"), the Windows file dialogs, multi-selection in the real editor (Ctrl / Shift click in the hierarchy and the viewport, a box drag, Ctrl+A, the gizmo moving a group, Delete / Duplicate / drag on several, the status bar count; whether a box drag over a crowded scene feels right and whether the primary's outline is easy to tell from the others), undo / redo in the real editor (Ctrl+Z / Ctrl+Y and the Edit menu after a drag of a value, a gizmo drag, a create, a delete, a duplicate, a reparent, adding a component; one step per gesture; the selection and the expanded rows after an undo; how long a step takes with the stress test on), the Editor and the Game started from another folder (a shortcut, a terminal: `ProjectRoot` + `Main.h`), the Editor reopening the last scene on the next start (and the demo scene when that file is deleted),
   the new `Renderer` / `RenderView` path (main view
   into the window and into the viewport texture, View 2, closing View 2, resizing the window with both open), the depth pre-pass, the shadow bias values
   (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` were chosen by reasoning), the editor's look,

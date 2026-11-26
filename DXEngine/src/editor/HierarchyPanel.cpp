@@ -23,12 +23,47 @@ namespace DXEngine
             return { Icon::Entity, p.kindEmpty };
         }
 
+        // What a drag of 'dragged' carries: the whole selection when that row is part of it, otherwise only the row.
+        std::vector<Entity> Carried(EditorContext& ctx, Entity dragged)
+        {
+            return ctx.selection.Is(dragged) ? ctx.selection.All() : std::vector<Entity>{ dragged };
+        }
+
         Entity FromPayload(Scene& scene, const ImGuiPayload* payload)
         {
             if (!payload || payload->DataSize != sizeof(uint32_t)) return Entity();
             const entt::entity id = static_cast<entt::entity>(*static_cast<const uint32_t*>(payload->Data));
             return scene.Registry().valid(id) ? scene.Wrap(id) : Entity();
         }
+    }
+
+    void HierarchyPanel::SelectByClick(EditorContext& ctx, Entity clicked)
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+        if (io.KeyShift && m_Anchor.IsValid())
+        {
+            // a range of the rows as they are listed now (collapsed children are not in it), from the anchor to the click
+            const std::vector<HierarchyRow>& rows = m_Model.Rows();
+            size_t from = rows.size(), to = rows.size();
+            for (size_t i = 0; i < rows.size(); ++i)
+            {
+                if (rows[i].entity == m_Anchor) from = i;
+                if (rows[i].entity == clicked) to = i;
+            }
+            if (from < rows.size() && to < rows.size())
+            {
+                std::vector<Entity> picked = io.KeyCtrl ? ctx.selection.All() : std::vector<Entity>{};
+                if (from <= to) for (size_t i = from; i <= to; ++i) picked.push_back(rows[i].entity);
+                else            for (size_t i = from + 1; i-- > to;) picked.push_back(rows[i].entity);       // the clicked row ends up last: the primary
+                ctx.selection.SetMany(picked);
+                return;                                                  // the anchor stays: the next Shift+click starts from the same place
+            }
+        }
+        if (io.KeyCtrl)
+            ctx.selection.Toggle(clicked);
+        else
+            ctx.selection.Set(clicked);
+        m_Anchor = clicked;
     }
 
     void HierarchyPanel::BeginRename(Entity e)
@@ -135,7 +170,7 @@ namespace DXEngine
         ImVec2 rest = ImGui::GetContentRegionAvail();
         rest.y = std::max(rest.y, 32.0f);
         ImGui::InvisibleButton("##empty", rest);
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift)
             ctx.selection.Clear();
         if (ImGui::BeginPopupContextItem("##emptyctx"))
         {
@@ -147,11 +182,16 @@ namespace DXEngine
             if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload(kPayload))
             {
                 Entity dragged = FromPayload(scene, p);
-                if (dragged.IsValid() && scene.GetParent(dragged).IsValid())
+                if (dragged.IsValid())
                 {
-                    m_PendingReparentChild = dragged;
-                    m_PendingReparentParent = Entity();
-                    m_HasPendingReparent = true;
+                    std::vector<Entity> carried = Carried(ctx, dragged);
+                    const bool anyBelowAParent = std::any_of(carried.begin(), carried.end(), [&](const Entity& c) { return scene.GetParent(c).IsValid(); });
+                    if (anyBelowAParent)
+                    {
+                        m_PendingReparentChildren = std::move(carried);
+                        m_PendingReparentParent = Entity();
+                        m_HasPendingReparent = true;
+                    }
                 }
             }
             ImGui::EndDragDropTarget();
@@ -163,11 +203,11 @@ namespace DXEngine
         if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput && ctx.selection.Has())
         {
             if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
-                m_PendingDelete = ctx.selection.Get();
+                m_PendingDelete = true;
             if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
-                BeginRename(ctx.selection.Get());
-            if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false) && SceneEditing::CanDuplicate(scene, ctx.selection.Get()))
-                m_PendingDuplicate = ctx.selection.Get();
+                BeginRename(ctx.selection.Get());                          // the primary
+            if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false) && SceneEditing::CanDuplicateAny(scene, ctx.selection.All()))
+                m_PendingDuplicate = true;
         }
 
         ImGui::End();
@@ -187,6 +227,7 @@ namespace DXEngine
         const float eyeW = rowH;
         const bool hasRenderer = e.Has<MeshRendererComponent>();
         const bool selected = ctx.selection.Is(e);
+        const bool primary = ctx.selection.IsPrimary(e);                // the one the Inspector and the gizmo are about: a little stronger
 
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
         const float rowW = ImGui::GetContentRegionAvail().x;
@@ -219,7 +260,7 @@ namespace DXEngine
             hovered = ImGui::IsItemHovered();
         }
         if (selected)
-            dl->AddRectFilled(rowMin, bgMax, ImGui::ColorConvertFloat4ToU32(ImVec4(pal.accent.x, pal.accent.y, pal.accent.z, 0.30f)), 3.0f);
+            dl->AddRectFilled(rowMin, bgMax, ImGui::ColorConvertFloat4ToU32(ImVec4(pal.accent.x, pal.accent.y, pal.accent.z, primary || ctx.selection.Count() == 1 ? 0.30f : 0.18f)), 3.0f);
         else if (hovered)
             dl->AddRectFilled(rowMin, bgMax, IM_COL32(255, 255, 255, 14), 3.0f);
 
@@ -260,21 +301,26 @@ namespace DXEngine
 
         // 3. select / rename / expand
         if (clicked)
-            ctx.selection.Set(e);
+            SelectByClick(ctx, e);
         if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
             if (row.hasChildren) m_Model.Toggle(e);
             else                 BeginRename(e);
         }
-        if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && !ctx.selection.Is(e))      // a right click inside the selection keeps it: the menu acts on all of it
+        {
             ctx.selection.Set(e);
+            m_Anchor = e;
+        }
 
         // 4. drag it onto another entity to make it a child
         if (!renaming && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
         {
             const uint32_t id = entt::to_integral(e.Id());
             ImGui::SetDragDropPayload(kPayload, &id, sizeof(id));
-            ImGui::Text("%s", name);
+            const size_t carried = Carried(ctx, e).size();
+            if (carried > 1) ImGui::Text("%zu items", carried);
+            else             ImGui::Text("%s", name);
             ImGui::EndDragDropSource();
         }
         if (!renaming && ImGui::BeginDragDropTarget())
@@ -284,7 +330,7 @@ namespace DXEngine
                 Entity dragged = FromPayload(scene, p);
                 if (dragged.IsValid() && dragged != e)
                 {
-                    m_PendingReparentChild = dragged;
+                    m_PendingReparentChildren = Carried(ctx, dragged);
                     m_PendingReparentParent = e;
                     m_HasPendingReparent = true;
                 }
@@ -303,20 +349,23 @@ namespace DXEngine
             ImGui::Separator();
             if (ImGui::MenuItem("Rename", "F2"))
                 BeginRename(e);
-            const bool canDuplicate = SceneEditing::CanDuplicate(scene, e);
+            // (a right click inside the selection keeps it, so these act on all of it)
+            const std::vector<Entity> chosen = ctx.selection.Is(e) ? ctx.selection.All() : std::vector<Entity>{ e };
+            const bool canDuplicate = SceneEditing::CanDuplicateAny(scene, chosen);
             if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, canDuplicate))
-                m_PendingDuplicate = e;
+                m_PendingDuplicate = true;
             if (!canDuplicate && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                ImGui::SetTooltip("Skinned meshes, animations and the sky cannot be duplicated yet");
-            if (ImGui::MenuItem("Unparent", nullptr, false, scene.GetParent(e).IsValid()))
+                ImGui::SetTooltip("The sky cannot be duplicated: there is one");
+            const bool anyBelowAParent = std::any_of(chosen.begin(), chosen.end(), [&](const Entity& c) { return scene.GetParent(c).IsValid(); });
+            if (ImGui::MenuItem("Unparent", nullptr, false, anyBelowAParent))
             {
-                m_PendingReparentChild = e;
+                m_PendingReparentChildren = chosen;
                 m_PendingReparentParent = Entity();
                 m_HasPendingReparent = true;
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("Delete", "Del"))
-                m_PendingDelete = e;
+            if (ImGui::MenuItem(chosen.size() > 1 ? "Delete selected" : "Delete", "Del"))
+                m_PendingDelete = true;
             ImGui::EndPopup();
         }
 
@@ -343,27 +392,30 @@ namespace DXEngine
     {
         Scene& scene = *ctx.scene;
 
-        if (m_HasPendingReparent || m_PendingDuplicate.IsValid() || m_PendingDelete.IsValid())
+        if (m_HasPendingReparent || m_PendingDuplicate || m_PendingDelete)
             ctx.MarkEdited();
 
         if (m_HasPendingReparent)
         {
             m_HasPendingReparent = false;
-            if (SceneEditing::Reparent(scene, m_PendingReparentChild, m_PendingReparentParent) && m_PendingReparentParent.IsValid())
+            if (SceneEditing::ReparentEntities(scene, m_PendingReparentChildren, m_PendingReparentParent) > 0 && m_PendingReparentParent.IsValid())
                 m_Model.SetExpanded(m_PendingReparentParent, true);       // show where it went
         }
-        if (m_PendingDuplicate.IsValid())
+        if (m_PendingDuplicate)
         {
-            Entity copy = SceneEditing::Duplicate(scene, m_PendingDuplicate);
-            if (copy.IsValid())
+            const std::vector<Entity> copies = SceneEditing::DuplicateEntities(scene, ctx.selection.All());
+            if (!copies.empty())
             {
-                ctx.selection.Set(copy);
+                ctx.selection.SetMany(copies);                             // the copies are what is selected now
+                m_Anchor = copies.back();
                 ctx.revealSelection = true;
             }
         }
-        if (m_PendingDelete.IsValid())
-            scene.DestroyEntity(m_PendingDelete);          // its descendants go with it; the selection reads as empty by itself
+        if (m_PendingDelete)
+            SceneEditing::DestroyEntities(scene, ctx.selection.All());     // their descendants go with them; the selection reads as empty by itself
 
-        m_PendingDelete = m_PendingDuplicate = m_PendingReparentChild = m_PendingReparentParent = Entity();
+        m_PendingDelete = m_PendingDuplicate = false;
+        m_PendingReparentChildren.clear();
+        m_PendingReparentParent = Entity();
     }
 }
