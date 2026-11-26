@@ -43,7 +43,7 @@ when it is gone, it builds a small demo scene.
 
 * Hold the **middle mouse button** over the viewport to look around, **W A S D** to fly, the mouse wheel changes the speed.
 * Left click picks, **F** frames the selection, **Q W E R** select / move / rotate / scale, **Ctrl+D** duplicates,
-  **Del** deletes. **F1** plays and stops (play hides the panels and runs the game systems; stop puts the scene back exactly as it was).
+  **Del** deletes, **Ctrl+Z / Ctrl+Y** undo and redo (one step per finished edit: a drag is one step). **F1** plays and stops (play hides the panels and runs the game systems; stop puts the scene back exactly as it was).
 * Models are imported from the Assets panel.
 * **File > Save / Open / New** (Ctrl+S / Ctrl+O / Ctrl+N, Ctrl+Shift+S for Save As) write and read the scene as a `.dxscene` text file. It stores
   names for meshes, models and textures, not the assets themselves, so keep the files it names where they were. Problems found while loading

@@ -76,7 +76,10 @@ namespace DXEngine
 
                 DirectX::XMFLOAT4X4 world = selected.Get<TransformComponent>().world;
                 if (ctx.gizmo->Manipulate(view, ctx.gizmoSettings, world))
+                {
                     SceneEditing::ApplyWorldMatrix(*ctx.scene, selected, world);
+                    ctx.MarkEdited();                       // (the step is recorded when the drag ends)
+                }
                 gizmoBusy = ctx.gizmo->IsUsing() || ctx.gizmo->IsOver();
             }
         }
@@ -191,9 +194,13 @@ namespace DXEngine
 
         if (!ctx.selection.Has() || !ctx.scene) return;
         if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+        {
             ctx.scene->DestroyEntity(ctx.selection.Get());
+            ctx.MarkEdited();
+        }
         else if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false) && SceneEditing::CanDuplicate(*ctx.scene, ctx.selection.Get()))
         {
+            ctx.MarkEdited();
             Entity copy = SceneEditing::Duplicate(*ctx.scene, ctx.selection.Get());
             if (copy.IsValid())
             {

@@ -30,6 +30,8 @@ namespace DXEngine
             // The scene's file changed: saved to a path, opened from one ("" = New: no file). The editor remembers it as the
             // scene to start with next time. Optional.
             std::function<void(const std::string& path)> pathChanged;
+            // The scene's contents were replaced by New or Open (its entities are all different now). The editor starts a new undo history. Optional.
+            std::function<void()> sceneReplaced;
         };
 
         explicit SceneFileController(Hooks hooks) : m_Hooks(std::move(hooks)) {}
@@ -63,6 +65,7 @@ namespace DXEngine
         bool ReadFrom(EditorContext& ctx, const std::string& path);
         void RememberBaseline(EditorContext& ctx);
         void PathChanged() const { if (m_Hooks.pathChanged) m_Hooks.pathChanged(m_Path); }
+        void Replaced() const { if (m_Hooks.sceneReplaced) m_Hooks.sceneReplaced(); }
         void Report(const std::string& line, bool warning) const { if (m_Hooks.log) m_Hooks.log(line, warning); }
         std::string CurrentText(EditorContext& ctx);
 

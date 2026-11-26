@@ -60,6 +60,7 @@ namespace DXEngine
         if (!model || !ctx.scene) return;
 
         Entity root = SceneEditing::InstantiateModel(*ctx.scene, model->asset, model->name, ctx.SpawnPoint());
+        ctx.MarkEdited();
         if (!root.IsValid())
         {
             m_Status = "Could not add " + model->name + ": the model is empty";

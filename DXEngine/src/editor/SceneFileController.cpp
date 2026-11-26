@@ -74,6 +74,7 @@ namespace DXEngine
             m_Path.clear();
             RememberBaseline(ctx);
             Report("new scene", false);
+            Replaced();
             PathChanged();
         }
         else if (action == Action::Open)
@@ -123,6 +124,7 @@ namespace DXEngine
         RememberBaseline(ctx);                                                          // what a save would write now
         Report("opened '" + path + "': " + std::to_string(r.entities) + " entities" +
                (r.warnings.empty() ? std::string() : ", " + std::to_string(r.warnings.size()) + " warning" + (r.warnings.size() == 1 ? "" : "s")), false);
+        Replaced();
         PathChanged();
         return true;
     }

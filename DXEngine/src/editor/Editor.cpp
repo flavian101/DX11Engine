@@ -36,6 +36,7 @@ namespace DXEngine
         hooks.makeBridge = [this] { return MakeBridge(); };
         hooks.log = [this](const std::string& line, bool warning) { LogLine("scene: " + line, warning); };
         hooks.pathChanged = [this](const std::string& path) { RememberScene(path); };
+        hooks.sceneReplaced = [this] { m_HistoryStarted = false; };
         m_SceneFile = std::make_unique<SceneFileController>(std::move(hooks));
     }
 
@@ -107,11 +108,85 @@ namespace DXEngine
         m_Ctx.gizmo = gizmo ? std::move(gizmo) : std::make_unique<NullGizmo>();
     }
 
+    // ---------------------------------------------------------------- undo / redo
+    void Editor::ReportHistoryRefusal(const UndoHistory::Outcome& outcome)
+    {
+        if (m_HistoryRefused) return;                       // said once
+        m_HistoryRefused = true;
+        const std::string why = outcome.warnings.empty() ? outcome.error : outcome.warnings.front();
+        for (const std::string& w : outcome.warnings) LogLine("undo: " + w, true);
+        LogLine("undo: " + outcome.error, true);
+        Notify("Undo is off: " + why);
+    }
+
+    void Editor::StartHistory()
+    {
+        m_HistoryStarted = true;
+        if (!m_Ctx.scene) return;
+        m_Ctx.editsPending = false;
+        const UndoHistory::Outcome r = m_History.Reset(*m_Ctx.scene, *MakeBridge());
+        if (r.ok) m_HistoryRefused = false;
+        else      ReportHistoryRefusal(r);
+    }
+
+    void Editor::CommitEdits()
+    {
+        if (!m_Ctx.scene || !m_Ctx.editsPending) return;
+        m_Ctx.editsPending = false;
+        if (!m_History.IsActive()) { StartHistory(); return; }      // refused earlier: the scene may be writable now
+
+        const UndoHistory::Outcome r = m_History.Record(*m_Ctx.scene, *MakeBridge());
+        if (!r.ok) ReportHistoryRefusal(r);
+    }
+
+    void Editor::TrackEdits()
+    {
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        const bool gizmoBusy = m_Ctx.gizmo && m_Ctx.gizmo->IsUsing();
+        if (g.ActiveIdHasBeenEditedThisFrame) m_Ctx.editsPending = true;       // any widget that changed a value this frame
+
+        // A step is one finished gesture: nothing is being dragged or typed, no button is down, the gizmo is not in use.
+        bool buttonDown = false;
+        for (int b = 0; b < ImGuiMouseButton_COUNT; ++b) buttonDown = buttonDown || ImGui::IsMouseDown(b);
+        if (g.ActiveId == 0 && !buttonDown && !gizmoBusy) CommitEdits();
+    }
+
+    void Editor::ApplyHistory(bool undo)
+    {
+        if (!m_Ctx.scene) return;
+        CommitEdits();                                      // an edit that is still pending belongs in the history before we step back
+        if (!m_History.IsActive()) { Notify("Undo is off for this scene"); return; }
+        if (undo ? !m_History.CanUndo() : !m_History.CanRedo()) return;
+
+        std::vector<Entity> keep;                           // what the editor holds by handle: the stress-test parent, then the expanded rows
+        keep.push_back(m_StressTest);
+        for (Entity e : m_Hierarchy.Model().ExpandedEntities(*m_Ctx.scene)) keep.push_back(e);
+
+        const UndoHistory::Outcome r = undo ? m_History.Undo(m_Ctx, *MakeBridge(), keep) : m_History.Redo(m_Ctx, *MakeBridge(), keep);
+        for (const std::string& w : r.warnings) LogLine(std::string(undo ? "undo: " : "redo: ") + w, true);
+        if (!r.kept.empty())
+        {
+            m_StressTest = r.kept.front();
+            for (size_t i = 1; i < r.kept.size(); ++i) m_Hierarchy.Model().SetExpanded(r.kept[i], true);
+        }
+        if (!r.ok) Notify(std::string(undo ? "Undo" : "Redo") + " failed: " + r.error);
+        m_Ctx.editsPending = false;
+    }
+
+    void Editor::ApplyHistoryRequests()
+    {
+        const bool undo = m_UndoRequested, redo = m_RedoRequested;
+        m_UndoRequested = m_RedoRequested = false;
+        if (undo) ApplyHistory(true);
+        else if (redo) ApplyHistory(false);
+    }
+
     // ---------------------------------------------------------------- play mode
     bool Editor::Play()
     {
         if (IsPlaying()) return false;
         if (!m_Ctx.scene) { Notify("Nothing to play: there is no scene"); return false; }
+        CommitEdits();                                      // the history is up to date: Stop puts back what the last step is
         m_Ctx.device = Renderer::Get().GetDevice();
 
         // What the editor holds by entity handle and wants back after the scene is restored: the stress-test parent, then every
@@ -243,6 +318,7 @@ namespace DXEngine
         }
         else
             m_StressTest = SceneEditing::AddStressLights(*m_Ctx.scene, 1000);
+        m_Ctx.MarkEdited();
     }
 
     void Editor::OnImGui()
@@ -278,6 +354,9 @@ namespace DXEngine
         m_Ctx.flying = IsFlying();
         m_Ctx.device = Renderer::Get().GetDevice();
 
+        if (!m_HistoryStarted) StartHistory();              // first frame, or the scene was replaced by New / Open
+        ApplyHistoryRequests();                             // before anything is drawn: undo replaces the scene's contents
+
         // The order matters: the bars first (each one shrinks the area left), then the dock space inside what is left.
         DrawMainMenu();
         if (EditorChrome::DrawToolbar(m_Ctx).playPressed && Play())
@@ -302,6 +381,8 @@ namespace DXEngine
                 if (ImGui::IsKeyPressed(ImGuiKey_S, false)) { if (io.KeyShift) m_SceneFile->SaveAs(m_Ctx); else m_SceneFile->Save(m_Ctx); }
                 else if (ImGui::IsKeyPressed(ImGuiKey_O, false)) m_SceneFile->Open(m_Ctx);
                 else if (ImGui::IsKeyPressed(ImGuiKey_N, false)) m_SceneFile->New(m_Ctx);
+                else if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) { if (io.KeyShift) RequestRedo(); else RequestUndo(); }
+                else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) RequestRedo();
             }
         }
         m_SceneFile->OnImGui(m_Ctx);                       // the "unsaved changes" question, while one is pending
@@ -317,6 +398,8 @@ namespace DXEngine
 
         // Over the scene picture the mouse belongs to the scene (picking, cursor capture); everywhere else to the panels.
         ui.SetBlockMouseEvents(!m_Ctx.viewportHovered);
+
+        TrackEdits();                                      // last: every panel has had its say about this frame's edits
     }
 
     void Editor::DrawPlayHint()
@@ -363,15 +446,22 @@ namespace DXEngine
         }
         if (ImGui::BeginMenu("Edit"))
         {
+            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, m_History.CanUndo())) RequestUndo();
+            if (ImGui::MenuItem("Redo", "Ctrl+Y", false, m_History.CanRedo())) RequestRedo();
+            ImGui::Separator();
             if (ImGui::MenuItem("Rename", "F2", false, hasSelection))
                 m_Hierarchy.BeginRename(m_Ctx.selection.Get());
             if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, hasSelection && scene && SceneEditing::CanDuplicate(*scene, m_Ctx.selection.Get())))
             {
                 Entity copy = SceneEditing::Duplicate(*scene, m_Ctx.selection.Get());
                 if (copy.IsValid()) { m_Ctx.selection.Set(copy); m_Ctx.revealSelection = true; }
+                m_Ctx.MarkEdited();
             }
             if (ImGui::MenuItem("Delete", "Del", false, hasSelection && scene))
+            {
                 scene->DestroyEntity(m_Ctx.selection.Get());
+                m_Ctx.MarkEdited();
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("Frame selected", "F", false, hasSelection))
                 m_Viewport.FrameSelection(m_Ctx);
@@ -445,6 +535,7 @@ namespace DXEngine
                 { "Q  W  E  R", "Select / move / rotate / scale tool" },
                 { "F", "Frame the selection" },
                 { "F2", "Rename (hierarchy)" },
+                { "Ctrl + Z  /  Ctrl + Y", "Undo / redo (Ctrl + Shift + Z also redoes)" },
                 { "Ctrl + D", "Duplicate" },
                 { "Delete", "Delete" },
                 { "F1", "Play / Stop (Stop puts the scene back as it was)" },

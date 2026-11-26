@@ -53,6 +53,9 @@ namespace DXEngine
         // refuses) is left exactly as it is.
         RestoreResult Restore(Scene& scene, IAssetBridge& bridge);
 
+        // The same as Restore for text that is kept elsewhere (an undo history holds many snapshots and never copies them).
+        static RestoreResult RestoreText(const std::string& text, Scene& scene, IAssetBridge& bridge);
+
         bool IsEmpty() const { return m_Text.empty(); }
         const std::string& Text() const { return m_Text; }
         void Clear() { m_Text.clear(); m_Pins.clear(); }

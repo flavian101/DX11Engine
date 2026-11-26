@@ -326,7 +326,10 @@ namespace DXEngine
             ImGui::SetCursorScreenPos(ImVec2(rowMin.x + rowW - eyeW, rowMin.y));
             MeshRendererComponent& mr = e.Get<MeshRendererComponent>();
             if (EditorIcons::Button("##eye", mr.visible ? Icon::Eye : Icon::EyeOff, false, mr.visible ? "Hide" : "Show", rowH))
+            {
                 mr.visible = !mr.visible;
+                ctx.MarkEdited();
+            }
         }
 
         // The next row starts exactly one row height below this one, whatever the widgets above did to the cursor
@@ -339,6 +342,9 @@ namespace DXEngine
     void HierarchyPanel::ApplyPending(EditorContext& ctx)
     {
         Scene& scene = *ctx.scene;
+
+        if (m_HasPendingReparent || m_PendingDuplicate.IsValid() || m_PendingDelete.IsValid())
+            ctx.MarkEdited();
 
         if (m_HasPendingReparent)
         {

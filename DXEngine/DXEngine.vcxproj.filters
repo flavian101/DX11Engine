@@ -340,6 +340,9 @@
     <ClInclude Include="src\editor\PlayMode.h">
       <Filter>editor</Filter>
     </ClInclude>
+    <ClInclude Include="src\editor\UndoHistory.h">
+      <Filter>editor</Filter>
+    </ClInclude>
     <ClInclude Include="src\editor\SceneFileController.h">
       <Filter>editor</Filter>
     </ClInclude>
@@ -597,6 +600,9 @@
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\PlayMode.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\UndoHistory.cpp">
       <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\SceneFileController.cpp">

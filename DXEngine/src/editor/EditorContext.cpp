@@ -34,6 +34,7 @@ namespace DXEngine
         auto place = [&](Entity e)
         {
             if (!e.IsValid()) return;
+            ctx.MarkEdited();
             // a child appears at its parent's origin; a root where the camera is looking
             if (!underParent)
                 e.Get<TransformComponent>().position = ctx.SpawnPoint();

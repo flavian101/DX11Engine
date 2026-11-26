@@ -2,6 +2,7 @@
 #include "EditorContext.h"
 #include "EditorPrefs.h"
 #include "PlayMode.h"
+#include "UndoHistory.h"
 #include "AssetsPanel.h"
 #include "HierarchyPanel.h"
 #include "SceneFileController.h"
@@ -51,6 +52,14 @@ namespace DXEngine
         // after SetScene, before the first frame.
         bool OpenLastScene();
 
+        // Undo / redo: the scene's states, one per finished edit (UndoHistory). The editor notices edits itself (an ImGui widget changed a value,
+        // the gizmo moved something, a panel called EditorContext::MarkEdited) and records a step when the gesture is over, so a drag is one step.
+        // A request is carried out at the start of the next UI frame, never in the middle of one (it replaces the scene's contents).
+        void RequestUndo() { m_UndoRequested = true; }
+        void RequestRedo() { m_RedoRequested = true; }
+        bool CanUndo() const { return m_History.CanUndo(); }
+        bool CanRedo() const { return m_History.CanRedo(); }
+
         // The game that runs between Play and Stop. The host owns it and registers its systems; null = playing without gameplay
         // (animations run, the camera flies).
         void SetGame(GameRuntime* game) { m_Game = game; }
@@ -89,6 +98,12 @@ namespace DXEngine
         EditorContext&   Context()   { return m_Ctx; }
 
     private:
+        void StartHistory();                              // the scene as it is now is the first step
+        void CommitEdits();                               // records the pending edits as one step
+        void TrackEdits();                                // end of every UI frame: notices edits, commits them once the gesture is over
+        void ApplyHistory(bool undo);
+        void ApplyHistoryRequests();
+        void ReportHistoryRefusal(const UndoHistory::Outcome& outcome);
         void SetUiEnabled(bool enabled);                // the editor's panels or the full-window scene (Play and Stop use it)
         std::unique_ptr<IAssetBridge> MakeBridge();      // names and finds assets, as scene files do
         std::string ProjectRoot() const;                  // what stored asset and scene paths are relative to (the working directory: Main.h entered the root)
@@ -110,6 +125,11 @@ namespace DXEngine
         SecondViewPanel m_SecondView;
         AssetsPanel    m_Assets;
         std::unique_ptr<SceneFileController> m_SceneFile;   // New / Open / Save / Save As (built in the constructor: its hooks need the panels)
+        UndoHistory    m_History;
+        bool           m_HistoryStarted = false;     // false = the next UI frame starts a new history (first frame, after New / Open)
+        bool           m_HistoryRefused = false;     // the scene cannot be written back completely: said once, until it can be
+        bool           m_UndoRequested = false;
+        bool           m_RedoRequested = false;
         PlayMode       m_Play;
         GameRuntime*   m_Game = nullptr;            // the host's, may be null
         EditorPrefs    m_Prefs;

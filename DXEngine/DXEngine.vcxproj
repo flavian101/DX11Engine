@@ -230,6 +230,7 @@
     <ClInclude Include="src\editor\ViewportPanel.h" />
     <ClInclude Include="src\editor\SceneIO.h" />
     <ClInclude Include="src\editor\PlayMode.h" />
+    <ClInclude Include="src\editor\UndoHistory.h" />
     <ClInclude Include="src\editor\SceneFileController.h" />
     <ClInclude Include="src\editor\SecondViewPanel.h" />
     <ClInclude Include="src\editor\ImGuizmoGizmo.h" />
@@ -367,6 +368,7 @@
     <ClCompile Include="src\editor\ViewportPanel.cpp" />
     <ClCompile Include="src\editor\SceneIO.cpp" />
     <ClCompile Include="src\editor\PlayMode.cpp" />
+    <ClCompile Include="src\editor\UndoHistory.cpp" />
     <ClCompile Include="src\editor\SceneFileController.cpp" />
     <ClCompile Include="src\editor\SecondViewPanel.cpp" />
     <ClCompile Include="vendor\ImGuizmo\src\ImGuizmo.cpp">

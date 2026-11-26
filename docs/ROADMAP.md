@@ -333,7 +333,20 @@ Each phase ends with something a person can check. Do not start a phase with a f
   remembers the scene file (`SceneFileController` reports every path change through `Hooks::pathChanged`: a save or an open reports the path, New
   reports "", failures and cancels report nothing); `OpenFile` opens it at start-up without a dialog and without the unsaved-changes question (the
   scene built in code has nothing to lose). The editor camera is still not part of the scene (D4).
-* P3d: undo / redo and multi-selection (the two things the editor lacks after saving).
+* P3d: undo / redo and multi-selection (the two things the editor lacks after saving). Done in this order, each its own step:
+  * Undo / redo (done in code and tests, GPU check pending): `UndoHistory` (`editor/`) keeps the scene's states as text (`SceneSerializer`), one per
+    finished edit, and Undo / Redo put a state back the way Stop puts back a play session (the same `SceneSnapshot::RestoreText`, so textures the scene
+    shows are not read again). Snapshots, not commands: every way of changing a scene is undone the same way and nothing is written twice. The editor
+    notices an edit when an ImGui widget reports it (`ActiveIdHasBeenEditedThisFrame`: a drag, a checkbox, typing), when the gizmo moves something, or
+    when a panel calls `EditorContext::MarkEdited` (create, delete, duplicate, reparent, add / remove a component, the eye); it records ONE step when
+    the gesture is over (nothing active, no button down), so a drag is one step and a click that edits nothing costs nothing. A step is recorded only
+    when the scene can be written back completely (otherwise an undo would drop an attachment): the history is then cleared, the status bar and the
+    Assets log say why, and it starts again when the scene can be written. Limits: 128 steps and 96 MB of text, the oldest go first. The selection, the
+    expanded rows and the stress-test parent are kept by id across an undo. Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z and the Edit menu; a request is carried out at
+    the start of the next UI frame, never in the middle of one. New / Open start a new history; Play first records what is pending, so Stop puts back
+    the last step. What is not undone (principle 3): a change to an asset: a mesh, a texture or an imported model's own material.
+  * Multi-selection (next): select several entities (Ctrl / Shift click, box select), act on all of them (delete, duplicate, move with the gizmo,
+    reparent), edit common values in the Inspector.
 * *Exit:* save, quit, start, load gives the same scene (met by the tests with the real bridge minus the GPU: generated meshes, imported
   models by name, own materials; still to check with real textures and models in the editor); Play then Stop restores every component (met by
   `play_mode_tests`: components, ids, hierarchy, material values, selection, camera; still to check on a GPU).
@@ -393,11 +406,11 @@ itself is textbook Cook-Torrance: GGX, Smith, Schlick, Lambert / PI, and is not 
   catalog, skeleton, image decode.
 * The P1 build change (`DXEngineCore`, `dx_add_test`) was built end to end with a MinGW-w64 cross build of the real top-level
   CMake (the library, the Editor and all 17 test executables link) and the GPU-free tests were run on Linux against the same
-  sources. P3c, D6 and B8 (the 18th and 19th tests, `play_mode_tests` and `project_root_tests`) were checked differently: the changed engine, editor and
+  sources. P3c, D6, B8 and undo / redo (the 18th to 20th tests, `play_mode_tests`, `project_root_tests` and `undo_history_tests`) were checked differently: the changed engine, editor and
   application files were compile-checked with MinGW (`Editor.cpp`, `EditorLayer.cpp`, `EditorApp.cpp`, `GameApp.cpp`, `Main.h` included) and
-  `play_mode_tests`, `project_root_tests`, `scene_serializer_tests`, `engine_asset_bridge_tests`, `editor_tests` and `editor_ui_tests` were run natively on Linux with a stand-in precompiled header; that build is not the CMake one, so run `ctest` on Windows. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
+  `play_mode_tests`, `project_root_tests`, `undo_history_tests`, `scene_serializer_tests`, `engine_asset_bridge_tests`, `editor_tests` and `editor_ui_tests` were run natively on Linux with a stand-in precompiled header; that build is not the CMake one, so run `ctest` on Windows. It has **not** been built with MSVC or run on Windows: do that first (`-DDXENGINE_BUILD_TESTS=ON`, `ctest`).
 * **Never executed on a real GPU or window** (check by running the Editor): File > Save / Open / New on the real starting scene (the sky's six faces,
-  the 8k moon, an imported model with its animator; Save As in a folder that does not exist yet; "unsaved changes"), the Windows file dialogs, the Editor and the Game started from another folder (a shortcut, a terminal: `ProjectRoot` + `Main.h`), the Editor reopening the last scene on the next start (and the demo scene when that file is deleted),
+  the 8k moon, an imported model with its animator; Save As in a folder that does not exist yet; "unsaved changes"), the Windows file dialogs, undo / redo in the real editor (Ctrl+Z / Ctrl+Y and the Edit menu after a drag of a value, a gizmo drag, a create, a delete, a duplicate, a reparent, adding a component; one step per gesture; the selection and the expanded rows after an undo; how long a step takes with the stress test on), the Editor and the Game started from another folder (a shortcut, a terminal: `ProjectRoot` + `Main.h`), the Editor reopening the last scene on the next start (and the demo scene when that file is deleted),
   the new `Renderer` / `RenderView` path (main view
   into the window and into the viewport texture, View 2, closing View 2, resizing the window with both open), the depth pre-pass, the shadow bias values
   (`normalBias`, `constantBias`, `rasterDepthBias`, `rasterSlopeBias` were chosen by reasoning), the editor's look,

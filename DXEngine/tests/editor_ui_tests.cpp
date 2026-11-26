@@ -33,6 +33,7 @@
 #include "utils/Mesh/Resource/MeshResource.h"
 #include "utils/material/Material.h"
 #include "imgui.h"
+#include "imgui_internal.h"      // ImGuiContext::ActiveIdHasBeenEditedThisFrame (what the editor reads to notice edits)
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -940,6 +941,7 @@ static void TestViewportGizmoMovesAChildUnderATransformedParent()
     CHECK(std::fabs(after.y - before.y) < 0.05f && std::fabs(after.z - before.z) < 0.05f);   // ... and only along it, though the parent is rotated and scaled
     CHECK(ctx.selection.Is(child));                                            // grabbing the handle did not pick something else
     CHECK(!ctx.flying);
+    CHECK(ctx.editsPending);                                                   // a gizmo drag is an edit (one undo step, recorded when the drag ends)
 }
 
 // ------------------------------------------------------------ the look
@@ -1169,8 +1171,9 @@ static void TestHierarchyEyeTogglesVisibility()
     MeshRendererComponent& mr = r.alpha.Get<MeshRendererComponent>();
     CHECK(mr.visible);
     const float eyeX = HierarchyRig::kX + HierarchyRig::kW - 28.0f;       // the right end of the row
+    CHECK(!r.ctx.editsPending);                                           // looking at the rows is not an edit
     r.Click(eyeX, yA);
-    CHECK(!mr.visible);                                                   // hidden
+    CHECK(!mr.visible && r.ctx.editsPending);                             // hidden: an edit
     r.Click(eyeX, yA);
     CHECK(mr.visible);                                                    // shown again
     // the eye is only on meshes: the same click on an entity without a mesh does nothing to it
@@ -1224,6 +1227,8 @@ static void TestHierarchyDeleteDuplicate()
     r.IO().AddKeyEvent(ImGuiMod_Ctrl, false);
     r.Draw();
     CHECK(r.scene.EntityCount() == start + 1);
+    CHECK(r.ctx.editsPending);                                            // the editor records an undo step once the gesture is over
+    r.ctx.editsPending = false;
     CHECK(r.ctx.selection.Has() && r.ctx.selection.Get().Get<NameComponent>().name == "Alpha (Copy)");   // the copy is selected
     CHECK(r.ctx.selection.Get().Has<MeshRendererComponent>());
 
@@ -1232,6 +1237,7 @@ static void TestHierarchyDeleteDuplicate()
     CHECK(yG > 0);
     r.Key(ImGuiKey_Delete);
     CHECK(!r.gamma.IsValid() && !r.delta.IsValid());
+    CHECK(r.ctx.editsPending);
     CHECK(r.scene.EntityCount() == start + 1 - 2);
     CHECK(!r.ctx.selection.Has());
 }
@@ -1251,6 +1257,7 @@ static void TestHierarchyDragToReparent()
 
     r.Drag(HierarchyRig::kX + 120.0f, yA, HierarchyRig::kX + 120.0f, yB);  // drop Alpha on Beta
     CHECK(r.scene.GetParent(r.alpha) == r.beta);
+    CHECK(r.ctx.editsPending);                                            // a reparent is an edit: an undo step follows
     TransformSystem::Update(r.scene);
     const DirectX::XMFLOAT3 after = r.alpha.Get<TransformComponent>().WorldPosition();
     CHECK(Distance(before, after) < 1e-3f);                               // it did not move
@@ -1401,6 +1408,66 @@ static void TestAssetsPanel()
     fs::remove_all(root);
 }
 
+// The editor records an undo step when ImGui says a widget edited a value (ActiveIdHasBeenEditedThisFrame, read at the end of the frame):
+// a drag, a checkbox, typed text. A plain button edits nothing by itself (panels that act on a button call EditorContext::MarkEdited).
+static void TestImGuiReportsEdits()
+{
+    UiEnv env;
+    ImGuiIO& io = ImGui::GetIO();
+    float value = 1.0f; bool ticked = false; char text[16] = "a"; int pressed = 0;
+    ImVec2 dragAt, tickAt, buttonAt, textAt;
+    bool edited = false;
+    auto draw = [&]
+    {
+        ImGui::SetNextWindowPos(ImVec2(100, 100));
+        ImGui::SetNextWindowSize(ImVec2(500, 300));
+        ImGui::Begin("edits", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
+        auto center = [] { const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax(); return ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f); };
+        ImGui::DragFloat("##drag", &value);      dragAt = center();
+        ImGui::Checkbox("##tick", &ticked);      tickAt = center();
+        if (ImGui::Button("button")) ++pressed;  buttonAt = center();
+        ImGui::InputText("##text", text, sizeof(text)); textAt = center();
+        ImGui::End();
+        edited = ImGui::GetCurrentContext()->ActiveIdHasBeenEditedThisFrame;
+    };
+    Frame(draw); Frame(draw);                                                // layout settles; the widgets' positions are known
+
+    // a drag: edited while the value moves, not while held still, not on release
+    io.AddMousePosEvent(dragAt.x, dragAt.y);          Frame(draw);
+    io.AddMouseButtonEvent(0, true);                  Frame(draw);
+    CHECK(!edited);                                                          // pressed, nothing moved yet
+    io.AddMousePosEvent(dragAt.x + 30.0f, dragAt.y);  Frame(draw);
+    CHECK(edited && value != 1.0f);
+    Frame(draw);
+    CHECK(!edited);                                                          // held still: no edit this frame
+    io.AddMouseButtonEvent(0, false);                 Frame(draw);
+    CHECK(!edited && ImGui::GetCurrentContext()->ActiveId == 0);            // released: the gesture is over (the editor commits now)
+
+    // a checkbox: the edit is reported on the frame of the click
+    io.AddMousePosEvent(tickAt.x, tickAt.y);          Frame(draw);
+    io.AddMouseButtonEvent(0, true);                  Frame(draw);
+    io.AddMouseButtonEvent(0, false);                 Frame(draw);
+    CHECK(ticked);
+    // (the click is complete on the release frame: the flag was seen there or on the press frame; the editor reads it every frame)
+
+    // a button changes nothing by itself
+    bool buttonEdited = false;
+    io.AddMousePosEvent(buttonAt.x, buttonAt.y);      Frame(draw);
+    io.AddMouseButtonEvent(0, true);                  Frame(draw); buttonEdited = buttonEdited || edited;
+    io.AddMouseButtonEvent(0, false);                 Frame(draw); buttonEdited = buttonEdited || edited;
+    CHECK(pressed == 1 && !buttonEdited);
+
+    // typed text
+    io.AddMousePosEvent(textAt.x, textAt.y);          Frame(draw);
+    io.AddMouseButtonEvent(0, true);                  Frame(draw);
+    io.AddMouseButtonEvent(0, false);                 Frame(draw);
+    CHECK(!edited && ImGui::GetCurrentContext()->ActiveId != 0);             // focused: a gesture in progress (no commit while typing)
+    io.AddInputCharacter('x');                        Frame(draw);
+    CHECK(edited && std::string(text) == "ax");
+    Frame(draw);
+    CHECK(!edited);
+}
+
 int main()
 {
     struct { const char* name; void (*fn)(); } tests[] = {
@@ -1422,6 +1489,7 @@ int main()
         { "hierarchy: rename (double click, F2, Esc)",      TestHierarchyRename },
         { "hierarchy: Ctrl+D and Delete",                   TestHierarchyDeleteDuplicate },
         { "hierarchy: drag to reparent, keeps position",    TestHierarchyDragToReparent },
+        { "imgui: edits are reported to the editor",        TestImGuiReportsEdits },
         { "gizmo: a drag moves along the dragged axis",     TestGizmoTranslatesAlongTheDraggedAxis },
         { "gizmo: a child under a rotated, scaled parent",  TestViewportGizmoMovesAChildUnderATransformedParent },
     };

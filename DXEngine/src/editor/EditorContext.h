@@ -39,6 +39,12 @@ namespace DXEngine
             return ViewportMath::PointInFront(c.GetPositionFloat3(), c.GetForwardVector(), 8.0f);
         }
 
+        // The scene was changed by something a property edit does not report: a created, deleted or duplicated entity, a component added or
+        // removed, a reparent, the gizmo. The editor records an undo step once the gesture is over (nothing active, no button down).
+        // (Edits made through ImGui widgets are noticed by the editor itself; call this for everything else.)
+        bool editsPending = false;
+        void MarkEdited() { editsPending = true; }
+
         // Something selected an entity from outside the hierarchy (a click in the viewport): the hierarchy opens the
         // chain above it and scrolls to it, then clears this.
         bool revealSelection = false;

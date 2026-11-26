@@ -283,8 +283,8 @@ namespace DXEngine
         ImGui::PopStyleColor();
 
         // removals requested by the section headers' close buttons: after everything was drawn
-        if (m_RemoveLight)    { e.Remove<LightComponent>();        m_RemoveLight = false; }
-        if (m_RemoveRenderer) { e.Remove<MeshRendererComponent>(); m_RemoveRenderer = false; }
+        if (m_RemoveLight)    { e.Remove<LightComponent>();        m_RemoveLight = false;    ctx.MarkEdited(); }
+        if (m_RemoveRenderer) { e.Remove<MeshRendererComponent>(); m_RemoveRenderer = false; ctx.MarkEdited(); }
 
         ImGui::End();
     }
@@ -335,6 +335,7 @@ namespace DXEngine
                         LightComponent light;
                         light.type = t.type;
                         e.Add<LightComponent>(light);
+                        ctx.MarkEdited();
                     }
                 ImGui::EndMenu();
             }
@@ -345,7 +346,10 @@ namespace DXEngine
                     SceneEditing::Primitive::Cube, SceneEditing::Primitive::Sphere, SceneEditing::Primitive::Plane };
                 for (SceneEditing::Primitive p : kPrimitives)
                     if (ImGui::MenuItem(SceneEditing::PrimitiveName(p)) && ctx.scene)
+                    {
                         SceneEditing::AddMeshRenderer(*ctx.scene, ctx.device, e, p);
+                        ctx.MarkEdited();
+                    }
 
                 // the meshes of the imported models. Skinned ones are left out: they need the skeleton and the Animator
                 // of their model, which "Add to scene" in the Assets panel brings along.
@@ -361,7 +365,10 @@ namespace DXEngine
                         if (entry.skinned || !entry.mesh) continue;
                         any = true;
                         if (ImGui::MenuItem(entry.name.c_str()) && ctx.scene)
+                        {
                             SceneEditing::AddMeshRenderer(*ctx.scene, e, entry.mesh);
+                            ctx.MarkEdited();
+                        }
                     }
                     if (!any) ImGui::TextDisabled("(no unskinned meshes)");
                     ImGui::EndMenu();

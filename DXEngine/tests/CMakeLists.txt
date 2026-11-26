@@ -34,6 +34,7 @@ dx_add_test(rhi_tests)                 # RHI rules that need no device (buffer d
 dx_add_test(shadow_tests)              # cascade fitting, spot / point views, the atlas allocator, which lights get shadows
 dx_add_test(material_tests)            # texture slot table, Material's derived texture mask, colour-space aware mips
 target_compile_definitions(material_tests PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/Editor/assets/shaders/")
+dx_add_test(undo_history_tests EDITOR)  # undo / redo: scene states, selection by id, limits, refusing what cannot be written back
 dx_add_test(play_mode_tests EDITOR)    # play mode: scene snapshot + restore, the game runtime, PlayMode (Start / Stop, selection, camera)
 dx_add_test(editor_tests EDITOR)       # selection, hierarchy rows, duplicate / reparent / gizmo write-back, picking, ...
 dx_add_test(editor_ui_tests EDITOR)    # the editor panels through real ImGui frames (ImGui's assertions are the oracle);

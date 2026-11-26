@@ -21,14 +21,19 @@ namespace DXEngine
 
     SceneSnapshot::RestoreResult SceneSnapshot::Restore(Scene& scene, IAssetBridge& bridge)
     {
+        return RestoreText(m_Text, scene, bridge);
+    }
+
+    SceneSnapshot::RestoreResult SceneSnapshot::RestoreText(const std::string& text, Scene& scene, IAssetBridge& bridge)
+    {
         RestoreResult result;
-        if (m_Text.empty()) { result.error = "there is no snapshot to restore"; return result; }
+        if (text.empty()) { result.error = "there is no snapshot to restore"; return result; }
 
         // The scene about to be replaced is still alive while the snapshot loads (Load builds the new one on the side), so the
         // bridge can hand out what that scene holds instead of reading the same files again.
         bridge.Reuse(scene);
 
-        SceneSerializer::LoadResult loaded = SceneSerializer::Load(m_Text, scene, bridge);
+        SceneSerializer::LoadResult loaded = SceneSerializer::Load(text, scene, bridge);
         if (!loaded.ok) { result.error = std::move(loaded.error); return result; }       // the scene is untouched
 
         TransformSystem::Update(scene);                     // world matrices are not saved

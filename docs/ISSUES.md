@@ -373,7 +373,7 @@ When an item is fixed: set **Status** to Fixed, note the commit, and update [ROA
 - **Exit:** Visual + timing notes attached to this issue.
 
 ### I-43 — Undo / redo and multi-select missing (P3d)
-- **Status:** Open
+- **Status:** In progress (undo / redo done in code and tests, GPU check pending; multi-selection is the next step)
 - **Area:** Editor
 - **Problem:** After save/load, largest editor gaps.
 - **Related:** —
